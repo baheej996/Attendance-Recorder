@@ -103,16 +103,16 @@ const ClassManagement = () => {
         let count = 0;
         let errors = 0;
         data.forEach(row => {
-            if (row.classname && row.division) {
+            if (row.name && row.division) {
                 // Check dup
                 const isDup = classes.some(c =>
-                    c.name.toLowerCase() === String(row.classname).toLowerCase() &&
+                    c.name.toLowerCase() === String(row.name).toLowerCase() &&
                     c.division.toLowerCase() === String(row.division).toLowerCase()
                 );
 
                 if (!isDup) {
                     addClass({
-                        name: String(row.classname),
+                        name: String(row.name),
                         division: String(row.division)
                     });
                     count++;

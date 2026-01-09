@@ -37,7 +37,7 @@ export const parseCSV = (file, type) => {
         const reader = new FileReader();
 
         reader.onload = (event) => {
-            const text = event.target.result;
+            const text = event.target.result.replace(/^\uFEFF/, '');
             const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
             if (lines.length < 2) {
