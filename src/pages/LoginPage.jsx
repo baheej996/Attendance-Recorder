@@ -9,7 +9,7 @@ import { clsx } from 'clsx';
 
 const LoginPage = () => {
     const navigate = useNavigate();
-    const { mentors, students, login } = useData();
+    const { mentors, students, login, validateAdmin } = useData();
     const [role, setRole] = useState('admin'); // admin, mentor, student
     const [formData, setFormData] = useState({
         username: '',
@@ -24,7 +24,6 @@ const LoginPage = () => {
         setError('');
 
         if (role === 'admin') {
-            const { validateAdmin } = useData();
             if (validateAdmin(formData.username, formData.password)) {
                 login({ role: 'admin', name: 'Administrator' });
                 navigate('/admin');
