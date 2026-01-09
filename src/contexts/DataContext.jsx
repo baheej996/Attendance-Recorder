@@ -135,39 +135,8 @@ export const DataProvider = ({ children }) => {
 
         if (seeded) setClasses(newClasses);
 
-        // Seed Students
-        let newStudents = [...students];
-        let studentSeeded = false;
+        // Seed Students logic removed to prevent reappearing after deletion
 
-        const s1 = newStudents.find(s => s.registerNo === "REG001");
-        if (!s1) {
-            newStudents.push({
-                id: generateId(),
-                name: "SHAHAN AHMED",
-                registerNo: "REG001",
-                uid: "UID123",
-                gender: "Male",
-                status: "Active",
-                classId: id1A
-            });
-            studentSeeded = true;
-        }
-
-        const s2 = newStudents.find(s => s.registerNo === "REG002");
-        if (!s2) {
-            newStudents.push({
-                id: generateId(),
-                name: "MUHAMMED IZYAN K",
-                registerNo: "REG002",
-                uid: "UID124",
-                gender: "Male",
-                status: "Active",
-                classId: id2B
-            });
-            studentSeeded = true;
-        }
-
-        if (studentSeeded) setStudents(newStudents);
 
     }, []); // Run once on mount
 
