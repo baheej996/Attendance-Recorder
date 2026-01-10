@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const StudentResultView = () => {
-    const { currentUser, exams, subjects, results } = useData();
+    const { currentUser, exams, subjects, results, institutionSettings } = useData();
     const [selectedExamId, setSelectedExamId] = useState('');
 
     // Filter published exams only
@@ -42,9 +42,9 @@ const StudentResultView = () => {
 
         // Header
         doc.setFontSize(20);
-        doc.text("Metrolite School", 105, 15, { align: "center" });
+        doc.text(institutionSettings?.name || "Attendance Recorder", 105, 15, { align: "center" });
         doc.setFontSize(14);
-        doc.text("Excellence in Education", 105, 22, { align: "center" });
+        doc.text(institutionSettings?.tagline || "Track Smart, Act Fast", 105, 22, { align: "center" });
 
         doc.setLineWidth(0.5);
         doc.line(20, 25, 190, 25);
