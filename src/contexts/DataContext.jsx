@@ -113,66 +113,66 @@ export const DataProvider = ({ children }) => {
         }
     });
 
-    // Seeding Logic (Run once on mount)
+    // Unified Seeding Logic (Run only ONCE on first ever load)
     useEffect(() => {
-        let seeded = false;
-        let newClasses = [...classes];
+        const isInitialized = localStorage.getItem('appInitialized');
 
-        // Seed Classes if empty
-        const class1A = newClasses.find(c => c.name === "1" && c.division === "A");
-        let id1A = class1A ? class1A.id : generateId();
-        if (!class1A) {
-            newClasses.push({ id: id1A, name: "1", division: "A" });
-            seeded = true;
-        }
+        if (!isInitialized) {
+            console.log("First time load: Seeding demo data...");
 
-        const class2B = newClasses.find(c => c.name === "2" && c.division === "B");
-        let id2B = class2B ? class2B.id : generateId();
-        if (!class2B) {
-            newClasses.push({ id: id2B, name: "2", division: "B" });
-            seeded = true;
-        }
+            // 1. Seed Classes
+            const id1A = generateId();
+            const id2B = generateId();
+            const initialClasses = [
+                { id: id1A, name: "1", division: "A" },
+                { id: id2B, name: "2", division: "B" }
+            ];
+            setClasses(initialClasses);
 
-        if (seeded) setClasses(newClasses);
+            // 2. Seed Students
+            const initialStudents = [
+                {
+                    id: generateId(),
+                    name: "SHAHAN AHMED",
+                    registerNo: "REG001",
+                    uid: "UID123",
+                    gender: "Male",
+                    status: "Active",
+                    classId: id1A
+                },
+                {
+                    id: generateId(),
+                    name: "MUHAMMED IZYAN K",
+                    registerNo: "REG002",
+                    uid: "UID124",
+                    gender: "Male",
+                    status: "Active",
+                    classId: id2B
+                }
+            ];
+            setStudents(initialStudents);
 
-        // Seed Students logic removed to prevent reappearing after deletion
+            // 3. Seed Subjects
+            const initialSubjects = [
+                { id: generateId(), name: "English", classId: id1A, maxMarks: 100, passMarks: 40 },
+                { id: generateId(), name: "Mathematics", classId: id1A, maxMarks: 100, passMarks: 40 },
+                { id: generateId(), name: "Science", classId: id1A, maxMarks: 100, passMarks: 40 }
+            ];
+            setSubjects(initialSubjects);
 
-
-    }, []); // Run once on mount
-
-    // Seeding logic for Exams/Subjects (Run once on mount/update if empty)
-    useEffect(() => {
-        let seeded = false;
-        let newSubjects = [...subjects];
-
-        // Seed Subjects if empty
-        if (newSubjects.length === 0 && classes.length > 0) {
-            const class1A = classes.find(c => c.name === "1" && c.division === "A");
-            if (class1A) {
-                newSubjects.push(
-                    { id: generateId(), name: "English", classId: class1A.id, maxMarks: 100, passMarks: 40 },
-                    { id: generateId(), name: "Mathematics", classId: class1A.id, maxMarks: 100, passMarks: 40 },
-                    { id: generateId(), name: "Science", classId: class1A.id, maxMarks: 100, passMarks: 40 }
-                );
-                seeded = true;
-            }
-        }
-        if (seeded) setSubjects(newSubjects);
-
-        let examSeeded = false;
-        let newExams = [...exams];
-        if (newExams.length === 0) {
-            newExams.push({
+            // 4. Seed Exams
+            const initialExams = [{
                 id: generateId(),
                 name: "First Term Examination",
                 date: new Date().toISOString().split('T')[0],
-                status: "Published" // Draft, Published
-            });
-            examSeeded = true;
-        }
-        if (examSeeded) setExams(newExams);
+                status: "Published"
+            }];
+            setExams(initialExams);
 
-    }, [classes.length]); // Depend on classes to seed subjects correctly
+            // Mark as initialized
+            localStorage.setItem('appInitialized', 'true');
+        }
+    }, []);
 
     // Effects to save data
     useEffect(() => localStorage.setItem('classes', JSON.stringify(classes)), [classes]);
