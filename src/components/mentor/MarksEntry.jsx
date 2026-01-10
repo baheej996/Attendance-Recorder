@@ -432,20 +432,20 @@ const MarksEntry = () => {
                     </table>
                 </div>
             </Card>
-        </Card>
 
-            {/* Grading Modal */ }
-    <ExamGradingModal
-        isOpen={gradingModalOpen}
-        onClose={() => {
-            setGradingModalOpen(false);
-            // Refresh data? MarksEntry listens to `results`, so it should auto-update if `recordResult` was called.
-        }}
-        examId={selectedExamId}
-        subjectId={selectedSubjectId}
-        studentId={currentStudentForGrading?.id}
-        studentName={currentStudentForGrading?.name}
-    />
+
+            {/* Grading Modal */}
+            <ExamGradingModal
+                isOpen={gradingModalOpen}
+                onClose={() => {
+                    setGradingModalOpen(false);
+                    // Refresh data? MarksEntry listens to `results`, so it should auto-update if `recordResult` was called.
+                }}
+                examId={selectedExamId}
+                subjectId={selectedSubjectId}
+                studentId={currentStudentForGrading?.id}
+                studentName={currentStudentForGrading?.name}
+            />
         </div >
     );
 };
