@@ -71,6 +71,12 @@ const QuestionBank = () => {
         e.preventDefault();
         if (!context.examId || !context.classId || !context.subjectId || !qText) return;
 
+        // Validation: Positive Marks
+        if (Number(qMarks) <= 0) {
+            alert("Marks must be greater than 0.");
+            return;
+        }
+
         // Validation: Max Marks Check
         // 1. Find the Max Marks for this Subject (context.subjectId is Name, context.classId is Class Name)
         const relevantSubject = subjects.find(s =>
