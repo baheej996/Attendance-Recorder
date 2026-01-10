@@ -262,29 +262,41 @@ export const DataProvider = ({ children }) => {
     const addQuestion = (q) => setQuestions(prev => [...prev, { ...q, id: generateId() }]);
     const deleteQuestion = (id) => setQuestions(prev => prev.filter(q => q.id !== id));
     const recalculateResultsForQuestion = (updatedQuestion, allQuestions) => {
+        console.log(`[Regrade] Triggered for Question: ${updatedQuestion.text}, Correct: ${updatedQuestion.correctAnswer}`);
+
         // Find students who answered this question
         const affectedResponses = studentResponses.filter(r =>
             r.answers && r.answers[updatedQuestion.id] !== undefined
         );
+
+        console.log(`[Regrade] Found ${affectedResponses.length} affected responses`);
 
         if (affectedResponses.length === 0) return;
 
         const updates = [];
 
         affectedResponses.forEach(response => {
+            console.log(`[Regrade] Recalculating for Student: ${response.studentId}`);
+
             // Recalculate Score for this student
             const relevantQuestions = allQuestions.filter(q =>
                 q.examId === response.examId &&
                 q.subjectId === (response.subjectName || response.subjectId)
             );
 
+            console.log(`[Regrade] Found ${relevantQuestions.length} relevant questions for Subject: ${response.subjectName}`);
+
             let newScore = 0;
             relevantQuestions.forEach(q => {
                 const studentAns = response.answers[q.id];
-                if (q.type === 'MCQ' && studentAns === q.correctAnswer) {
+                const isCorrect = q.type === 'MCQ' && studentAns === q.correctAnswer;
+                console.log(`[Regrade] Q: ${q.text} (${q.marks}m) - Ans: ${studentAns} vs Correct: ${q.correctAnswer} -> ${isCorrect ? 'MATCH' : 'NO'}`);
+
+                if (isCorrect) {
                     newScore += Number(q.marks);
                 }
             });
+            console.log(`[Regrade] New Total Score: ${newScore}`);
 
             // Prepare updates
             const updatedResp = { ...response, autoScore: newScore };
@@ -318,19 +330,26 @@ export const DataProvider = ({ children }) => {
     };
 
     const updateQuestion = (id, updated) => {
-        setQuestions(prev => {
-            const newQuestions = prev.map(q => q.id === id ? { ...q, ...updated } : q);
+        // Calculate the new state from the current valid 'questions'
+        // 'questions' in scope is from the current render cycle
+        const oldQ = questions.find(q => q.id === id);
+        if (!oldQ) return;
 
-            const oldQ = prev.find(q => q.id === id);
-            const newQ = newQuestions.find(q => q.id === id);
+        // Create the updated question object
+        const newQ = { ...oldQ, ...updated };
 
-            // Trigger re-grading if ANSWER or MARKS changed
-            if (oldQ && newQ && (oldQ.correctAnswer !== newQ.correctAnswer || oldQ.marks !== newQ.marks)) {
-                setTimeout(() => recalculateResultsForQuestion(newQ, newQuestions), 0);
-            }
+        // Create the new questions array
+        const newQuestions = questions.map(q => q.id === id ? newQ : q);
 
-            return newQuestions;
-        });
+        // 1. Update State synchronously (react will batch)
+        setQuestions(newQuestions);
+
+        // 2. Trigger Re-grading if critical fields changed
+        // We pass 'newQuestions' explicitly so grading sees the update immediately
+        if (oldQ.correctAnswer !== newQ.correctAnswer || oldQ.marks !== newQ.marks) {
+            console.log(`[UpdateQuestion] Detected change. Triggering Regrade for Q: ${newQ.text}`);
+            recalculateResultsForQuestion(newQ, newQuestions);
+        }
     };
     // q object: { examId (optional global), classLevel, subjectId, type, text, options:[], correctAnswer, marks }
 
