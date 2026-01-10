@@ -9,12 +9,10 @@ const QuestionBank = () => {
     const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, examSettings, updateExamSetting, currentUser } = useData();
 
     // Mentor specific filtering
-    // currentUser.assignedClasses is array of { classId, subjectId } (where subjectId effectively means Subject Name in most contexts here)
-    const assignedClassIds = currentUser?.assignedClasses?.map(ac => ac.classId) || [];
+    // currentUser.assignedClassIds is Array of Strings (Class IDs)
+    const assignedClassIds = currentUser?.assignedClassIds || [];
 
     // Get unique Class Names assigned to this mentor
-    // Filter global 'classes' list to only those IDs in 'assignedClassIds'
-    // Then map to Names and deduplicate
     const mentorClassNames = [...new Set(
         classes
             .filter(c => assignedClassIds.includes(c.id))
@@ -141,25 +139,27 @@ const QuestionBank = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {/* Class Cards (Filtered by Mentor's assignments) */}
                     {mentorClassNames.map(className => {
-                        // Get subjects assigned to this mentor FOR THIS CLASS NAME
-                        // 1. Find all class IDs that match this name (e.g. 1A, 1B for "1")
-                        // 2. Filter mentor's assignments that match these class IDs
-                        // 3. Extract the subjectIds (Names)
-                        const matchingClassIds = classes.filter(c => c.name === className).map(c => c.id);
-                        const mentorAssignmentsForClass = currentUser?.assignedClasses?.filter(ac => matchingClassIds.includes(ac.classId)) || [];
-                        const mentorSubjectNames = [...new Set(mentorAssignmentsForClass.map(ac => ac.subjectId))]; // subjectId in assignment is typically the Name (e.g. "English")
+                        // Filter subjects available for this Class Name
+                        // 1. Get all Class IDs for this name (e.g. 1A, 1B)
+                        const classIdsForName = classes.filter(c => c.name === className).map(c => c.id);
+
+                        // 2. Get subjects linked to these Class IDs
+                        const relevantSubjects = subjects.filter(s => classIdsForName.includes(s.classId));
+
+                        // 3. Unique Subject Names
+                        const uniqueSubjectNames = [...new Set(relevantSubjects.map(s => s.name))];
 
                         return (
                             <Card key={className} className="flex flex-col h-full bg-white shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
                                     <h3 className="font-bold text-indigo-900 text-lg">Class {className}</h3>
                                     <span className="text-xs bg-white text-indigo-600 px-2 py-1 rounded-full font-medium border border-indigo-100">
-                                        {mentorSubjectNames.length} Subjects Assigned
+                                        {uniqueSubjectNames.length} Subjects Linked
                                     </span>
                                 </div>
 
                                 <div className="p-4 space-y-4 flex-1">
-                                    {mentorSubjectNames.map(subjectName => {
+                                    {uniqueSubjectNames.map(subjectName => {
                                         const setting = getSetting(selectedExamId, className, subjectName);
 
                                         return (
