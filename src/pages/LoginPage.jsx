@@ -9,8 +9,14 @@ import { clsx } from 'clsx';
 
 const LoginPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { mentors, students, login, validateAdmin } = useData();
-    const [role, setRole] = useState('admin'); // admin, mentor, student
+
+    // Check for ?portal=student query param
+    const query = new URLSearchParams(location.search);
+    const isStudentPortal = query.get('portal') === 'student';
+
+    const [role, setRole] = useState(isStudentPortal ? 'student' : 'admin'); // admin, mentor, student
     const [formData, setFormData] = useState({
         username: '',
         password: '',
@@ -57,42 +63,47 @@ const LoginPage = () => {
             <Card className="w-full max-w-md p-8 shadow-2xl">
                 <div className="text-center mb-8">
                     <div className="inline-flex p-3 bg-indigo-100 rounded-full text-indigo-600 mb-4">
-                        <LogIn className="w-8 h-8" />
+                        {isStudentPortal ? <GraduationCap className="w-8 h-8" /> : <LogIn className="w-8 h-8" />}
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        {isStudentPortal ? 'Student Portal' : 'Welcome Back'}
+                    </h1>
                     <p className="text-gray-500">Please login to continue</p>
                 </div>
 
                 {/* Role Toggles */}
-                <div className="flex p-1 bg-gray-100 rounded-xl mb-6">
-                    <button
-                        onClick={() => { setRole('admin'); setError(''); }}
-                        className={clsx(
-                            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
-                            role === 'admin' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        <UserCog className="w-4 h-4" /> Admin
-                    </button>
-                    <button
-                        onClick={() => { setRole('mentor'); setError(''); }}
-                        className={clsx(
-                            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
-                            role === 'mentor' ? "bg-white text-purple-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        <User className="w-4 h-4" /> Mentor
-                    </button>
-                    <button
-                        onClick={() => { setRole('student'); setError(''); }}
-                        className={clsx(
-                            "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
-                            role === 'student' ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        <GraduationCap className="w-4 h-4" /> Student
-                    </button>
-                </div>
+                {/* Role Toggles */}
+                {!isStudentPortal && (
+                    <div className="flex p-1 bg-gray-100 rounded-xl mb-6">
+                        <button
+                            onClick={() => { setRole('admin'); setError(''); }}
+                            className={clsx(
+                                "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
+                                role === 'admin' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            <UserCog className="w-4 h-4" /> Admin
+                        </button>
+                        <button
+                            onClick={() => { setRole('mentor'); setError(''); }}
+                            className={clsx(
+                                "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
+                                role === 'mentor' ? "bg-white text-purple-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            <User className="w-4 h-4" /> Mentor
+                        </button>
+                        <button
+                            onClick={() => { setRole('student'); setError(''); }}
+                            className={clsx(
+                                "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
+                                role === 'student' ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            <GraduationCap className="w-4 h-4" /> Student
+                        </button>
+                    </div>
+                )}
 
                 <form onSubmit={handleLogin} className="space-y-4">
                     {role === 'admin' && (
