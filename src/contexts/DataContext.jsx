@@ -83,6 +83,28 @@ export const DataProvider = ({ children }) => {
         }
     });
 
+    const [questions, setQuestions] = useState(() => {
+        try {
+            const saved = localStorage.getItem('questions');
+            const parsed = saved ? JSON.parse(saved) : null;
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.error("Error parsing questions:", e);
+            return [];
+        }
+    });
+
+    const [studentResponses, setStudentResponses] = useState(() => {
+        try {
+            const saved = localStorage.getItem('studentResponses');
+            const parsed = saved ? JSON.parse(saved) : null;
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.error("Error parsing studentResponses:", e);
+            return [];
+        }
+    });
+
     const [institutionSettings, setInstitutionSettings] = useState(() => {
         try {
             const saved = localStorage.getItem('institutionSettings');
@@ -190,6 +212,8 @@ export const DataProvider = ({ children }) => {
     useEffect(() => localStorage.setItem('subjects', JSON.stringify(subjects)), [subjects]);
     useEffect(() => localStorage.setItem('exams', JSON.stringify(exams)), [exams]);
     useEffect(() => localStorage.setItem('results', JSON.stringify(results)), [results]);
+    useEffect(() => localStorage.setItem('questions', JSON.stringify(questions)), [questions]);
+    useEffect(() => localStorage.setItem('studentResponses', JSON.stringify(studentResponses)), [studentResponses]);
     useEffect(() => localStorage.setItem('institutionSettings', JSON.stringify(institutionSettings)), [institutionSettings]);
     useEffect(() => localStorage.setItem('adminCredentials', JSON.stringify(adminCredentials)), [adminCredentials]);
 
@@ -233,6 +257,67 @@ export const DataProvider = ({ children }) => {
     const addExam = (exam) => setExams(prev => [...prev, { ...exam, id: generateId(), status: 'Draft' }]);
     const updateExam = (id, updated) => setExams(prev => prev.map(e => e.id === id ? { ...e, ...updated } : e));
     const deleteExam = (id) => setExams(prev => prev.filter(e => e.id !== id));
+
+    // Question Actions
+    const addQuestion = (q) => setQuestions(prev => [...prev, { ...q, id: generateId() }]);
+    const deleteQuestion = (id) => setQuestions(prev => prev.filter(q => q.id !== id));
+    // q object: { examId (optional global), classLevel, subjectId, type, text, options:[], correctAnswer, marks }
+
+    // Exam Submission & Auto-grading
+    const submitExam = (submission) => {
+        // submission: { examId, subjectId, studentId, answers: { qId: val } }
+        const rId = generateId();
+        const timestamp = new Date().toISOString();
+
+        // 1. Calculate Score
+        let score = 0;
+        const relevantQuestions = questions.filter(q =>
+            // Match questions to this context (logic depends on how we link questions to exams)
+            // For now assuming questions are linked via Class/Subject, and we filter by that.
+            // BUT: User said "mentor can create questions... for that batch". 
+            // So we need to match questions that belong to this Subject & Class.
+            q.subjectId === submission.subjectId
+            // And potentially Exam ID if questions are Exam-specific?
+            // "create questions for each subject in each class under the exam created by the admin"
+            // So yes, Questions should have 'examId'.
+            && q.examId === submission.examId
+        );
+
+        relevantQuestions.forEach(q => {
+            const studentAns = submission.answers[q.id];
+            if (q.type === 'MCQ' && studentAns === q.correctAnswer) {
+                score += Number(q.marks);
+            }
+            // Text answers get 0 initially, need manual grading
+        });
+
+        // 2. Save Response
+        const newResponse = {
+            id: rId,
+            ...submission,
+            timestamp,
+            status: 'Submitted',
+            autoScore: score
+        };
+
+        setStudentResponses(prev => [...prev.filter(r => !(r.examId === submission.examId && r.subjectId === submission.subjectId && r.studentId === submission.studentId)), newResponse]);
+
+        // 3. Update Results (Leaderboard) with Auto-Score
+        // Note: This overrides any previous result for this exam/subject
+        const newResult = {
+            id: generateId(),
+            examId: submission.examId,
+            subjectId: submission.subjectId,
+            studentId: submission.studentId,
+            marks: score,
+            timestamp
+        };
+
+        setResults(prev => {
+            const filtered = prev.filter(p => !(p.examId === submission.examId && p.subjectId === submission.subjectId && p.studentId === submission.studentId));
+            return [...filtered, newResult];
+        });
+    };
 
     // Result Actions
     // Record is { examId, subjectId, records: [{ studentId, marks }] }
@@ -316,6 +401,10 @@ export const DataProvider = ({ children }) => {
         localStorage.removeItem('mentors');
         setExams([]);
         setResults([]);
+        setQuestions([]);
+        setStudentResponses([]);
+        localStorage.removeItem('questions');
+        localStorage.removeItem('studentResponses');
     };
 
     const deleteAllClasses = () => {
@@ -346,6 +435,8 @@ export const DataProvider = ({ children }) => {
             subjects, addSubject, deleteSubject,
             exams, addExam, updateExam, deleteExam,
             results, recordResult, deleteResultBatch, setResults,
+            questions, addQuestion, deleteQuestion,
+            studentResponses, submitExam,
             currentUser, login, logout,
             resetData,
             resetData,

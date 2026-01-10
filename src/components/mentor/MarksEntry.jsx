@@ -4,6 +4,7 @@ import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, Ale
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
+import ExamGradingModal from './ExamGradingModal';
 
 const MarksEntry = () => {
     const {
@@ -23,6 +24,10 @@ const MarksEntry = () => {
     // Marks State
     const [marksData, setMarksData] = useState({});
     const [hasChanges, setHasChanges] = useState(false);
+
+    // Grading Modal State
+    const [gradingModalOpen, setGradingModalOpen] = useState(false);
+    const [currentStudentForGrading, setCurrentStudentForGrading] = useState(null);
 
     // Helper: partial reset
     const resetSelection = (level) => {
@@ -374,26 +379,48 @@ const MarksEntry = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reg No</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Marks Obtained</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {classStudents.map(student => (
-                                <tr key={student.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.registerNo}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max={subjects.find(s => s.id === selectedSubjectId)?.maxMarks || 100}
-                                            value={marksData[student.id] || ''}
-                                            onChange={e => handleMarkChange(student.id, e.target.value)}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1.5 px-2 border"
-                                            placeholder="0"
-                                        />
-                                    </td>
-                                </tr>
-                            ))}
+                            {classStudents.map(student => {
+                                // Check if student has submitted
+                                // We can check if their score exists in results?
+                                // OR if they have a response in studentResponses (more accurate for "Needs Grading")
+                                // But MarksEntry accesses `results`.
+                                // Let's just provide the button always, or if mark is entered?
+                                // Better: Provide simple "Grade" button.
+                                return (
+                                    <tr key={student.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.registerNo}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={subjects.find(s => s.id === selectedSubjectId)?.maxMarks || 100}
+                                                value={marksData[student.id] || ''}
+                                                onChange={e => handleMarkChange(student.id, e.target.value)}
+                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1.5 px-2 border"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                className="text-xs px-2 py-1 h-auto"
+                                                onClick={() => {
+                                                    setCurrentStudentForGrading(student);
+                                                    setGradingModalOpen(true);
+                                                }}
+                                            >
+                                                View/Grade
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             {classStudents.length === 0 && (
                                 <tr>
                                     <td colSpan="3" className="px-6 py-12 text-center text-gray-500">
@@ -405,7 +432,21 @@ const MarksEntry = () => {
                     </table>
                 </div>
             </Card>
-        </div>
+        </Card>
+
+            {/* Grading Modal */ }
+    <ExamGradingModal
+        isOpen={gradingModalOpen}
+        onClose={() => {
+            setGradingModalOpen(false);
+            // Refresh data? MarksEntry listens to `results`, so it should auto-update if `recordResult` was called.
+        }}
+        examId={selectedExamId}
+        subjectId={selectedSubjectId}
+        studentId={currentStudentForGrading?.id}
+        studentName={currentStudentForGrading?.name}
+    />
+        </div >
     );
 };
 

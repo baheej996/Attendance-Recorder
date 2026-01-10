@@ -4,6 +4,7 @@ import { ClipboardCheck, BarChart2, CalendarDays, FileEdit } from 'lucide-react'
 import { clsx } from 'clsx';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
+import QuestionBank from '../components/mentor/QuestionBank';
 import MarksEntry from '../components/mentor/MarksEntry';
 import { useData } from '../contexts/DataContext';
 
@@ -20,8 +21,9 @@ const MentorDashboard = () => {
 
     const navItems = [
         { icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
-        { icon: FileEdit, label: 'Enter Exam Marks', path: '/mentor/marks' },
-        { icon: BarChart2, label: 'Statistics & History', path: '/mentor/stats' },
+        { icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
+        { icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
+        { icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
     ];
 
     return (
@@ -72,6 +74,7 @@ const MentorDashboard = () => {
                 <Routes>
                     <Route path="/" element={<DashboardHome />} />
                     <Route path="/record" element={<AttendanceRecorder />} />
+                    <Route path="/questions" element={<QuestionBank />} />
                     <Route path="/marks" element={<MarksEntry />} />
                     <Route path="/stats" element={<MentorStats />} />
                 </Routes>

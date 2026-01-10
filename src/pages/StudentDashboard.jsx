@@ -9,6 +9,7 @@ import { clsx } from 'clsx';
 
 // Import New Student Components
 import StudentResultView from '../components/student/StudentResultView';
+import StudentExamView from '../components/student/StudentExamView';
 import Leaderboard from '../components/student/Leaderboard';
 
 const COLORS = ['#10B981', '#EF4444'];
@@ -38,6 +39,7 @@ const StudentDashboard = () => {
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/student' },
+        { icon: FileText, label: 'Online Exams', path: '/student/exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results' },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
     ];
@@ -99,6 +101,7 @@ const StudentDashboard = () => {
             <main className="flex-1 md:ml-64 p-8">
                 <Routes>
                     <Route path="/" element={<StudentOverview student={currentUser} />} />
+                    <Route path="/exams" element={<StudentExamView />} />
                     <Route path="/results" element={<StudentResultView />} />
                     <Route path="/leaderboard" element={<Leaderboard />} />
                 </Routes>
