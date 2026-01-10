@@ -108,7 +108,7 @@ const LoginPage = () => {
                                 value={formData.password}
                                 onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
                             />
-                            <p className="text-xs text-gray-400 text-center">Default: admin / admin123</p>
+
                         </>
                     )}
 
