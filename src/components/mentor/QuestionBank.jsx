@@ -6,11 +6,23 @@ import { Input } from '../ui/Input';
 import { Plus, Trash2, CheckCircle, HelpCircle, Edit2, Play, PauseCircle, Calendar, Eye, EyeOff, X } from 'lucide-react';
 
 const QuestionBank = () => {
-    const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, examSettings, updateExamSetting } = useData();
+    const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, examSettings, updateExamSetting, currentUser } = useData();
+
+    // Mentor specific filtering
+    // currentUser.assignedClasses is array of { classId, subjectId } (where subjectId effectively means Subject Name in most contexts here)
+    const assignedClassIds = currentUser?.assignedClasses?.map(ac => ac.classId) || [];
+
+    // Get unique Class Names assigned to this mentor
+    // Filter global 'classes' list to only those IDs in 'assignedClassIds'
+    // Then map to Names and deduplicate
+    const mentorClassNames = [...new Set(
+        classes
+            .filter(c => assignedClassIds.includes(c.id))
+            .map(c => c.name)
+    )].sort();
 
     // Hierarchy State
     const [selectedExamId, setSelectedExamId] = useState('');
-    const [expandedClassId, setExpandedClassId] = useState(null); // Which class card is expanded? (Optional, if we want accordion. Or just show all classes in grid)
 
     // Modal / Editor State
     const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -127,111 +139,101 @@ const QuestionBank = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {/* Class Cards */}
-                    {[...new Set(classes.map(c => c.name))].sort().map(className => (
-                        <Card key={className} className="flex flex-col h-full bg-white shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
-                                <h3 className="font-bold text-indigo-900 text-lg">Class {className}</h3>
-                                <span className="text-xs bg-white text-indigo-600 px-2 py-1 rounded-full font-medium border border-indigo-100">
-                                    {subjects.length} Subjects Linked
-                                </span>
-                            </div>
+                    {/* Class Cards (Filtered by Mentor's assignments) */}
+                    {mentorClassNames.map(className => {
+                        // Get subjects assigned to this mentor FOR THIS CLASS NAME
+                        // 1. Find all class IDs that match this name (e.g. 1A, 1B for "1")
+                        // 2. Filter mentor's assignments that match these class IDs
+                        // 3. Extract the subjectIds (Names)
+                        const matchingClassIds = classes.filter(c => c.name === className).map(c => c.id);
+                        const mentorAssignmentsForClass = currentUser?.assignedClasses?.filter(ac => matchingClassIds.includes(ac.classId)) || [];
+                        const mentorSubjectNames = [...new Set(mentorAssignmentsForClass.map(ac => ac.subjectId))]; // subjectId in assignment is typically the Name (e.g. "English")
 
-                            <div className="p-4 space-y-4 flex-1">
-                                {subjects.map(subj => {
-                                    // Use SUBJECT NAME as ID key because questions/settings are linked to Subject Name + Class Name composite
-                                    // Or are subjects global? "English" exists once or per class? 
-                                    // In DataContext, subjects have classId. So we should filter subjects by this class.
-                                    // Current logic: classes is array of {id, name}. 
-                                    // subjects is array of {id, name, classId}.
+                        return (
+                            <Card key={className} className="flex flex-col h-full bg-white shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-indigo-900 text-lg">Class {className}</h3>
+                                    <span className="text-xs bg-white text-indigo-600 px-2 py-1 rounded-full font-medium border border-indigo-100">
+                                        {mentorSubjectNames.length} Subjects Assigned
+                                    </span>
+                                </div>
 
-                                    // 1. Find the Class ID(s) for this "Class Name" (could be multiple divisions 9A, 9B?)
-                                    // The user prompt said "Subjects listed under class".
-                                    // Let's assume subjects are unique per Class Name for simplicity in this view, 
-                                    // OR better: Filter subjects that belong to ANY class with this name.
+                                <div className="p-4 space-y-4 flex-1">
+                                    {mentorSubjectNames.map(subjectName => {
+                                        const setting = getSetting(selectedExamId, className, subjectName);
 
-                                    // Actually, let's keep it simple: Show all unique Subject Names available in the system?
-                                    // No, show subjects linked to this class hierarchy.
-
-                                    // Issue: 'classes' has 'name' (e.g. "10"). 'subjects' has 'classId' (e.g. "id_10A").
-                                    // We are grouping by Class NAME. So we need to find subjects for any class ID that has this name.
-                                    const classIds = classes.filter(c => c.name === className).map(c => c.id);
-                                    if (!classIds.includes(subj.classId)) return null;
-
-                                    const setting = getSetting(selectedExamId, className, subj.name);
-                                    // Note: Using className and subj.name as keys for settings to be robust across divisions.
-
-                                    return (
-                                        <div key={subj.id} className="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50/50">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div>
-                                                    <h4 className="font-bold text-gray-800">{subj.name}</h4>
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        {questions.filter(q => q.examId === selectedExamId && q.classId === className && q.subjectId === subj.name).length} Questions
-                                                    </p>
-                                                </div>
-                                                <Button
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    onClick={() => openEditor(selectedExamId, className, subj.name)}
-                                                    className="text-xs h-8"
-                                                >
-                                                    <Edit2 className="w-3 h-3 mr-1" /> Manage Questions
-                                                </Button>
-                                            </div>
-
-                                            {/* Controls */}
-                                            <div className="space-y-3 bg-white p-3 rounded border border-gray-100">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-semibold text-gray-500 uppercase">Access</span>
-                                                    <div className="flex gap-1">
-                                                        <button
-                                                            onClick={() => handleSettingChange(selectedExamId, className, subj.name, { isActive: !setting.isActive })}
-                                                            className={`p-1.5 rounded transition-colors ${setting.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                                            title={setting.isActive ? "Active: Students can take" : "Inactive: Hidden from students"}
-                                                        >
-                                                            {setting.isActive ? <Play className="w-4 h-4" /> : <PauseCircle className="w-4 h-4" />}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleSettingChange(selectedExamId, className, subj.name, { isPublished: !setting.isPublished })}
-                                                            className={`p-1.5 rounded transition-colors ${setting.isPublished ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                                            title={setting.isPublished ? "Published: Results visible" : "Unpublished: Results hidden"}
-                                                        >
-                                                            {setting.isPublished ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                                        </button>
+                                        return (
+                                            <div key={subjectName} className="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50/50">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-800">{subjectName}</h4>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            {questions.filter(q => q.examId === selectedExamId && q.classId === className && q.subjectId === subjectName).length} Questions
+                                                        </p>
                                                     </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        onClick={() => openEditor(selectedExamId, className, subjectName)}
+                                                        className="text-xs h-8"
+                                                    >
+                                                        <Edit2 className="w-3 h-3 mr-1" /> Manage Questions
+                                                    </Button>
                                                 </div>
 
-                                                <div className="pt-2 border-t border-gray-50">
-                                                    <label className="text-[10px] text-gray-400 uppercase font-bold mb-1 block">Auto-Schedule (Optional)</label>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <span className="text-[10px] text-gray-400">Start</span>
-                                                            <input
-                                                                type="datetime-local"
-                                                                className="w-full text-[10px] p-1 border rounded"
-                                                                value={setting.startTime || ''}
-                                                                onChange={e => handleSettingChange(selectedExamId, className, subj.name, { startTime: e.target.value })}
-                                                            />
+                                                {/* Controls */}
+                                                <div className="space-y-3 bg-white p-3 rounded border border-gray-100">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-semibold text-gray-500 uppercase">Access</span>
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => handleSettingChange(selectedExamId, className, subjectName, { isActive: !setting.isActive })}
+                                                                className={`p-1.5 rounded transition-colors ${setting.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                                title={setting.isActive ? "Active: Students can take" : "Inactive: Hidden from students"}
+                                                            >
+                                                                {setting.isActive ? <Play className="w-4 h-4" /> : <PauseCircle className="w-4 h-4" />}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleSettingChange(selectedExamId, className, subjectName, { isPublished: !setting.isPublished })}
+                                                                className={`p-1.5 rounded transition-colors ${setting.isPublished ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                                title={setting.isPublished ? "Published: Results visible" : "Unpublished: Results hidden"}
+                                                            >
+                                                                {setting.isPublished ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                                            </button>
                                                         </div>
-                                                        <div>
-                                                            <span className="text-[10px] text-gray-400">End</span>
-                                                            <input
-                                                                type="datetime-local"
-                                                                className="w-full text-[10px] p-1 border rounded"
-                                                                value={setting.endTime || ''}
-                                                                onChange={e => handleSettingChange(selectedExamId, className, subj.name, { endTime: e.target.value })}
-                                                            />
+                                                    </div>
+
+                                                    <div className="pt-2 border-t border-gray-50">
+                                                        <label className="text-[10px] text-gray-400 uppercase font-bold mb-1 block">Auto-Schedule (Optional)</label>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <span className="text-[10px] text-gray-400">Start</span>
+                                                                <input
+                                                                    type="datetime-local"
+                                                                    className="w-full text-[10px] p-1 border rounded"
+                                                                    value={setting.startTime || ''}
+                                                                    onChange={e => handleSettingChange(selectedExamId, className, subjectName, { startTime: e.target.value })}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] text-gray-400">End</span>
+                                                                <input
+                                                                    type="datetime-local"
+                                                                    className="w-full text-[10px] p-1 border rounded"
+                                                                    value={setting.endTime || ''}
+                                                                    onChange={e => handleSettingChange(selectedExamId, className, subjectName, { endTime: e.target.value })}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </Card>
-                    ))}
+                                        );
+                                    })}
+                                </div>
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
 
