@@ -169,9 +169,9 @@ const StudentExamView = () => {
                                                             <Button
                                                                 onClick={() => handleViewAnswers(exam.id, subj.name, subj.id)}
                                                                 variant="secondary"
-                                                                className="w-full text-xs h-8"
+                                                                className="w-full text-xs h-8 flex items-center justify-center gap-2"
                                                             >
-                                                                <Eye className="w-3 h-3 mr-1" /> View Answers
+                                                                <Eye className="w-3 h-3" /> View Answers
                                                             </Button>
                                                         )}
                                                     </div>
