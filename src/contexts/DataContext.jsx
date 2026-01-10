@@ -118,6 +118,14 @@ export const DataProvider = ({ children }) => {
         const isInitialized = localStorage.getItem('appInitialized');
 
         if (!isInitialized) {
+            // CRITICAL FIX: Check if data actually exists before overwriting!
+            const hasData = classes.length > 0 || students.length > 0;
+            if (hasData) {
+                console.log("Existing data found. Skipping seed, setting initialized flag.");
+                localStorage.setItem('appInitialized', 'true');
+                return;
+            }
+
             console.log("First time load: Seeding demo data...");
 
             // 1. Seed Classes
@@ -172,7 +180,7 @@ export const DataProvider = ({ children }) => {
             // Mark as initialized
             localStorage.setItem('appInitialized', 'true');
         }
-    }, []);
+    }, [classes.length, students.length]);
 
     // Effects to save data
     useEffect(() => localStorage.setItem('classes', JSON.stringify(classes)), [classes]);
