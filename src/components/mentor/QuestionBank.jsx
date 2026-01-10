@@ -71,13 +71,35 @@ const QuestionBank = () => {
         e.preventDefault();
         if (!context.examId || !context.classId || !context.subjectId || !qText) return;
 
+        // Validation: Max Marks Check
+        // 1. Find the Max Marks for this Subject (context.subjectId is Name, context.classId is Class Name)
+        const relevantSubject = subjects.find(s =>
+            s.name === context.subjectId &&
+            classes.find(c => c.id === s.classId)?.name === context.classId
+        );
+        const maxMarks = relevantSubject ? Number(relevantSubject.maxMarks) : 100;
+
+        // 2. Calculate Current Total
+        // currentQuestions is already filtered by context
+        const currentTotal = currentQuestions.reduce((sum, q) => sum + Number(q.marks), 0);
+
+        // 3. Calculate New Total
+        // If editing, we subtract the OLD marks of this question first
+        const deduction = editingId ? Number(questions.find(q => q.id === editingId)?.marks || 0) : 0;
+        const newTotal = currentTotal - deduction + Number(qMarks);
+
+        if (newTotal > maxMarks) {
+            alert(`Cannot save question!\n\nTotal Marks (${newTotal}) would exceed the Maximum Allowed Marks (${maxMarks}) for ${context.subjectId}.`);
+            return;
+        }
+
         const questionData = {
             examId: context.examId,
             classId: context.classId,
             subjectId: context.subjectId,
             type: qType,
             text: qText,
-            marks: qMarks,
+            marks: Number(qMarks), // Ensure number type
             options: qType === 'MCQ' ? options : [],
             correctAnswer: qType === 'MCQ' ? correctAnswer : null
         };
