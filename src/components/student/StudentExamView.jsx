@@ -138,7 +138,8 @@ const StudentExamView = () => {
                                     // 1. Admin Exam Active (Checked by activeExams filter)
                                     // 2. Mentor Subject Setting Active
                                     // 3. Time Window (if set)
-                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === studentClassName && s.subjectId === subj.name) || { isActive: false, isPublished: false };
+                                    // Lookup using Class ID (UUID) for strict division-level isolation
+                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === currentUser.classId && s.subjectId === subj.name) || { isActive: false, isPublished: false };
 
                                     const now = new Date();
                                     const start = setting.startTime ? new Date(setting.startTime) : null;

@@ -303,23 +303,22 @@ const MarksEntry = () => {
                         </div>
                     ) : (
                         subjectStats.list.map(sub => {
-                            // Resolve Class Name for Settings Key
-                            const selectedClassName = availableClasses.find(c => c.id === selectedClassId)?.name;
-                            const setting = examSettings.find(s => s.examId === selectedExamId && s.classId === selectedClassName && s.subjectId === sub.name)
+                            // Use unique Class ID for Settings Key to ensure division-level control
+                            const setting = examSettings.find(s => s.examId === selectedExamId && s.classId === selectedClassId && s.subjectId === sub.name)
                                 || { isActive: false, isPublished: false, startTime: '', endTime: '' };
 
                             const handleToggleActive = (e) => {
                                 e.stopPropagation();
-                                updateExamSetting(selectedExamId, selectedClassName, sub.name, { isActive: !setting.isActive });
+                                updateExamSetting(selectedExamId, selectedClassId, sub.name, { isActive: !setting.isActive });
                             };
 
                             const handleTogglePublish = (e) => {
                                 e.stopPropagation();
-                                updateExamSetting(selectedExamId, selectedClassName, sub.name, { isPublished: !setting.isPublished });
+                                updateExamSetting(selectedExamId, selectedClassId, sub.name, { isPublished: !setting.isPublished });
                             };
 
                             const handleDateChange = (type, value) => {
-                                updateExamSetting(selectedExamId, selectedClassName, sub.name, { [type]: value });
+                                updateExamSetting(selectedExamId, selectedClassId, sub.name, { [type]: value });
                             };
 
                             return (
