@@ -55,9 +55,13 @@ const StudentExamView = () => {
     const handleSubmit = () => {
         if (!window.confirm("Are you sure you want to submit? You cannot change answers after submission.")) return;
 
+        // Resolve Real Subject ID (for results/DB)
+        const realSubject = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);
+
         submitExam({
             examId: activeExamId,
-            subjectId: selectedSubjectId,
+            subjectId: realSubject ? realSubject.id : selectedSubjectId, // Pass ID for storage
+            subjectName: selectedSubjectId, // Pass Name for Question Grading lookup
             studentId: currentUser.id,
             answers
         });

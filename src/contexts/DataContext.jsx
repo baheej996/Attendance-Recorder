@@ -276,7 +276,9 @@ export const DataProvider = ({ children }) => {
             // For now assuming questions are linked via Class/Subject, and we filter by that.
             // BUT: User said "mentor can create questions... for that batch". 
             // So we need to match questions that belong to this Subject & Class.
-            q.subjectId === submission.subjectId
+            // FIX: Use subjectName for question lookup if provided (since questions are linked by Name), 
+            // otherwise fallback to subjectId.
+            q.subjectId === (submission.subjectName || submission.subjectId)
             // And potentially Exam ID if questions are Exam-specific?
             // "create questions for each subject in each class under the exam created by the admin"
             // So yes, Questions should have 'examId'.
