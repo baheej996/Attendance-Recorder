@@ -6,7 +6,7 @@ import { CheckCircle, Clock, AlertCircle, Eye, XCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const StudentExamView = () => {
-    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results } = useData();
+    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings } = useData();
     const [activeExamId, setActiveExamId] = useState(null);
     const [selectedSubjectId, setSelectedSubjectId] = useState(null); // This is Subject NAME (linked to questions)
     const [answers, setAnswers] = useState({});
@@ -133,7 +133,24 @@ const StudentExamView = () => {
                                     // So yes, questions.subjectId is the Name (e.g., "English").
 
                                     const isDone = hasTaken(exam.id, subj.id); // Check by ID
-                                    const canViewResults = isDone && exam.status === 'Published'; // Only if Published
+
+                                    // Composite Logic for taking exam
+                                    // 1. Admin Exam Active (Checked by activeExams filter)
+                                    // 2. Mentor Subject Setting Active
+                                    // 3. Time Window (if set)
+                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === studentClassName && s.subjectId === subj.name) || { isActive: false, isPublished: false };
+
+                                    const now = new Date();
+                                    const start = setting.startTime ? new Date(setting.startTime) : null;
+                                    const end = setting.endTime ? new Date(setting.endTime) : null;
+                                    const withinTime = (!start || now >= start) && (!end || now <= end);
+
+                                    const canTake = setting.isActive && withinTime;
+
+                                    // Composite Logic for Viewing Results
+                                    // 1. Admin Exam Published (exam.status === 'Published')
+                                    // 2. Mentor Subject Published (setting.isPublished)
+                                    const canViewResults = isDone && exam.status === 'Published' && setting.isPublished;
 
                                     return (
                                         <div key={subj.id} className="border rounded-lg p-4 flex flex-col justify-between hover:border-indigo-200 transition-colors">
@@ -163,8 +180,10 @@ const StudentExamView = () => {
                                                         onClick={() => handleStartExam(exam.id, subj.name)}
                                                         variant="primary"
                                                         className="w-full text-sm"
+                                                        disabled={!canTake}
+                                                        title={!canTake ? "Exam is currently closed by your mentor" : "Start Exam"}
                                                     >
-                                                        Take Exam
+                                                        {canTake ? "Take Exam" : (setting.isActive ? "Scheduled" : "Closed")}
                                                     </Button>
                                                 ) : (
                                                     <span className="text-gray-400 text-sm italic">No Questions</span>

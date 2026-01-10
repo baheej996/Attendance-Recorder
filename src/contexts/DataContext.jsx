@@ -264,6 +264,30 @@ export const DataProvider = ({ children }) => {
     const updateQuestion = (id, updated) => setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updated } : q));
     // q object: { examId (optional global), classLevel, subjectId, type, text, options:[], correctAnswer, marks }
 
+    // Advanced Scheduling: Per-subject/class settings
+    // { id, examId, classId, subjectId, isActive, isPublished, startTime, endTime }
+    const [examSettings, setExamSettings] = useState(() => {
+        const saved = localStorage.getItem('examSettings');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('examSettings', JSON.stringify(examSettings));
+    }, [examSettings]);
+
+    const updateExamSetting = (examId, classId, subjectId, updates) => {
+        setExamSettings(prev => {
+            const index = prev.findIndex(s => s.examId === examId && s.classId === classId && s.subjectId === subjectId);
+            if (index >= 0) {
+                const newSettings = [...prev];
+                newSettings[index] = { ...newSettings[index], ...updates };
+                return newSettings;
+            } else {
+                return [...prev, { id: generateId(), examId, classId, subjectId, isActive: false, isPublished: false, ...updates }];
+            }
+        });
+    };
+
     // Exam Submission & Auto-grading
     const submitExam = (submission) => {
         // submission: { examId, subjectId, studentId, answers: { qId: val } }
@@ -436,7 +460,7 @@ export const DataProvider = ({ children }) => {
             mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors,
             attendance, recordAttendance, setAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds,
             subjects, addSubject, deleteSubject,
-            exams, addExam, updateExam, deleteExam,
+            exams, addExam, updateExam, deleteExam, examSettings, updateExamSetting,
             results, recordResult, deleteResultBatch, setResults,
             questions, addQuestion, deleteQuestion, updateQuestion,
             studentResponses, submitExam,
