@@ -261,7 +261,77 @@ export const DataProvider = ({ children }) => {
     // Question Actions
     const addQuestion = (q) => setQuestions(prev => [...prev, { ...q, id: generateId() }]);
     const deleteQuestion = (id) => setQuestions(prev => prev.filter(q => q.id !== id));
-    const updateQuestion = (id, updated) => setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updated } : q));
+    const recalculateResultsForQuestion = (updatedQuestion, allQuestions) => {
+        // Find students who answered this question
+        const affectedResponses = studentResponses.filter(r =>
+            r.answers && r.answers[updatedQuestion.id] !== undefined
+        );
+
+        if (affectedResponses.length === 0) return;
+
+        const updates = [];
+
+        affectedResponses.forEach(response => {
+            // Recalculate Score for this student
+            const relevantQuestions = allQuestions.filter(q =>
+                q.examId === response.examId &&
+                q.subjectId === (response.subjectName || response.subjectId)
+            );
+
+            let newScore = 0;
+            relevantQuestions.forEach(q => {
+                const studentAns = response.answers[q.id];
+                if (q.type === 'MCQ' && studentAns === q.correctAnswer) {
+                    newScore += Number(q.marks);
+                }
+            });
+
+            // Prepare updates
+            const updatedResp = { ...response, autoScore: newScore };
+
+            const existingResult = results.find(r =>
+                r.examId === response.examId &&
+                r.subjectId === response.subjectId &&
+                r.studentId === response.studentId
+            );
+
+            let updatedRes = null;
+            if (existingResult) {
+                updatedRes = { ...existingResult, marks: newScore };
+            }
+
+            updates.push({ response: updatedResp, result: updatedRes });
+        });
+
+        // Batch Apply
+        if (updates.length > 0) {
+            setStudentResponses(prev => prev.map(r => {
+                const match = updates.find(u => u.response.id === r.id);
+                return match ? match.response : r;
+            }));
+
+            setResults(prev => prev.map(r => {
+                const match = updates.find(u => u.result && u.result.id === r.id);
+                return match ? match.result : r;
+            }));
+        }
+    };
+
+    const updateQuestion = (id, updated) => {
+        setQuestions(prev => {
+            const newQuestions = prev.map(q => q.id === id ? { ...q, ...updated } : q);
+
+            const oldQ = prev.find(q => q.id === id);
+            const newQ = newQuestions.find(q => q.id === id);
+
+            // Trigger re-grading if ANSWER or MARKS changed
+            if (oldQ && newQ && (oldQ.correctAnswer !== newQ.correctAnswer || oldQ.marks !== newQ.marks)) {
+                setTimeout(() => recalculateResultsForQuestion(newQ, newQuestions), 0);
+            }
+
+            return newQuestions;
+        });
+    };
     // q object: { examId (optional global), classLevel, subjectId, type, text, options:[], correctAnswer, marks }
 
     // Advanced Scheduling: Per-subject/class settings
