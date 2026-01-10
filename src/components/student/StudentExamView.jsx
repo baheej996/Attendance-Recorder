@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Eye, XCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const StudentExamView = () => {
-    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects } = useData();
+    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results } = useData();
     const [activeExamId, setActiveExamId] = useState(null);
-    const [selectedSubjectId, setSelectedSubjectId] = useState(null);
+    const [selectedSubjectId, setSelectedSubjectId] = useState(null); // This is Subject NAME (linked to questions)
     const [answers, setAnswers] = useState({});
+    const [viewingMode, setViewingMode] = useState(false); // false = taking, true = viewing result
 
     // 1. Resolve Student's Class Name (to match Questions which use Class Name)
     const studentClass = classes.find(c => c.id === currentUser?.classId);
@@ -20,10 +21,11 @@ const StudentExamView = () => {
     const activeExams = exams.filter(e => e.isActive);
 
     // 3. Helper to check if student already took the exam for a subject
+    // 3. Helper to check if student already took the exam for a subject (Check by ID)
     const hasTaken = (examId, subjectId) => {
         return studentResponses.some(r =>
             r.examId === examId &&
-            r.subjectId === subjectId &&
+            r.subjectId === subjectId && // Expecting ID here
             r.studentId === currentUser.id
         );
     };
@@ -42,10 +44,27 @@ const StudentExamView = () => {
     // Group questions by Subject?
     // Better flow: Select Exam -> Select Subject -> Take Test.
 
-    const handleStartExam = (examId, subjectId) => {
+    const handleStartExam = (examId, subjectName) => {
         setActiveExamId(examId);
-        setSelectedSubjectId(subjectId);
+        setSelectedSubjectId(subjectName);
         setAnswers({});
+        setViewingMode(false);
+    };
+
+    const handleViewAnswers = (examId, subjectName, subjectId) => {
+        setActiveExamId(examId);
+        setSelectedSubjectId(subjectName);
+        setViewingMode(true);
+
+        // Load existing answers
+        const response = studentResponses.find(r =>
+            r.examId === examId &&
+            r.subjectId === subjectId &&
+            r.studentId === currentUser.id
+        );
+        if (response) {
+            setAnswers(response.answers);
+        }
     };
 
     const handleAnswerChange = (qId, value) => {
@@ -113,7 +132,8 @@ const StudentExamView = () => {
                                     // in QuestionBank: value={name} -> selectedSubjectId -> addQuestion({ subjectId: selectedSubjectId })
                                     // So yes, questions.subjectId is the Name (e.g., "English").
 
-                                    const isDone = hasTaken(exam.id, subj.name);
+                                    const isDone = hasTaken(exam.id, subj.id); // Check by ID
+                                    const canViewResults = isDone && exam.status === 'Published'; // Only if Published
 
                                     return (
                                         <div key={subj.id} className="border rounded-lg p-4 flex flex-col justify-between hover:border-indigo-200 transition-colors">
@@ -124,9 +144,20 @@ const StudentExamView = () => {
 
                                             <div className="mt-4">
                                                 {isDone ? (
-                                                    <span className="flex items-center gap-2 text-green-600 font-medium text-sm">
-                                                        <CheckCircle className="w-4 h-4" /> Completed
-                                                    </span>
+                                                    <div className="space-y-2">
+                                                        <span className="flex items-center gap-2 text-green-600 font-medium text-sm">
+                                                            <CheckCircle className="w-4 h-4" /> Completed
+                                                        </span>
+                                                        {canViewResults && (
+                                                            <Button
+                                                                onClick={() => handleViewAnswers(exam.id, subj.name, subj.id)}
+                                                                variant="secondary"
+                                                                className="w-full text-xs h-8"
+                                                            >
+                                                                <Eye className="w-3 h-3 mr-1" /> View Answers
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 ) : qCount > 0 ? (
                                                     <Button
                                                         onClick={() => handleStartExam(exam.id, subj.name)}
@@ -146,6 +177,94 @@ const StudentExamView = () => {
                         </Card>
                     ))
                 )}
+            </div>
+        );
+    }
+
+    // View: Answer Sheet (Read Only)
+    if (viewingMode) {
+        // Calculate Total Score for display
+        // We can get it from 'results' or calculate on fly? 
+        // results is array: { examId, subjectId... marks }
+        // Find result:
+        const realSubj = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);
+        const myResult = results.find(r =>
+            r.examId === activeExamId &&
+            r.subjectId === realSubj?.id &&
+            r.studentId === currentUser.id
+        );
+
+        return (
+            <div className="max-w-4xl mx-auto pb-12">
+                <div className="flex items-center justify-between mb-6">
+                    <button
+                        onClick={() => setActiveExamId(null)}
+                        className="text-gray-500 hover:text-gray-900 font-medium"
+                    >
+                        &larr; Back to Exams
+                    </button>
+                    <div className="text-right">
+                        <p className="text-sm text-gray-500">Subject: {selectedSubjectId}</p>
+                        <p className="text-xl font-bold text-indigo-600">
+                            Score: {myResult ? myResult.marks : 'Pending'}
+                        </p>
+                    </div>
+                </div>
+
+                <Card className="p-8 border-t-4 border-t-indigo-500">
+                    <h2 className="text-2xl font-bold mb-6">Answer Sheet</h2>
+                    <div className="space-y-8">
+                        {examQuestions.map((q, idx) => {
+                            const myAns = answers[q.id];
+                            const isMCQ = q.type === 'MCQ';
+                            const isCorrect = isMCQ && myAns === q.correctAnswer;
+
+                            return (
+                                <div key={q.id} className={clsx(
+                                    "p-6 rounded-xl border relative overflow-hidden",
+                                    isMCQ
+                                        ? (isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")
+                                        : "bg-gray-50 border-gray-200"
+                                )}>
+                                    <div className="flex gap-3 mb-4">
+                                        <span className="font-bold text-gray-500 text-lg">Q{idx + 1}.</span>
+                                        <div className="flex-1">
+                                            <p className="text-lg font-medium text-gray-900">{q.text}</p>
+                                            <p className="text-xs text-gray-500 mt-1">{q.marks} Marks</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="pl-8 space-y-4">
+                                        <div className="bg-white/50 p-3 rounded-lg">
+                                            <p className="text-xs uppercase font-bold text-gray-500 mb-1">Your Answer:</p>
+                                            <p className={clsx("font-medium",
+                                                isMCQ && (isCorrect ? "text-green-700" : "text-red-700")
+                                            )}>
+                                                {myAns || "(Skipped)"}
+                                                {isMCQ && (isCorrect ? <CheckCircle className="inline w-4 h-4 ml-2" /> : <XCircle className="inline w-4 h-4 ml-2" />)}
+                                            </p>
+                                        </div>
+
+                                        {((isMCQ && !isCorrect) || (!isMCQ)) && (
+                                            <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                                {isMCQ ? (
+                                                    <>
+                                                        <p className="text-xs uppercase font-bold text-indigo-600 mb-1">Correct Answer:</p>
+                                                        <p className="font-bold text-indigo-900">{q.correctAnswer}</p>
+                                                    </>
+                                                ) : (
+                                                    <p className="text-xs text-indigo-600 italic">
+                                                        Note: Text answers are graded manually by your mentor.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Card>
             </div>
         );
     }

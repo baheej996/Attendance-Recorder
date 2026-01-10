@@ -261,6 +261,7 @@ export const DataProvider = ({ children }) => {
     // Question Actions
     const addQuestion = (q) => setQuestions(prev => [...prev, { ...q, id: generateId() }]);
     const deleteQuestion = (id) => setQuestions(prev => prev.filter(q => q.id !== id));
+    const updateQuestion = (id, updated) => setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updated } : q));
     // q object: { examId (optional global), classLevel, subjectId, type, text, options:[], correctAnswer, marks }
 
     // Exam Submission & Auto-grading
@@ -437,7 +438,7 @@ export const DataProvider = ({ children }) => {
             subjects, addSubject, deleteSubject,
             exams, addExam, updateExam, deleteExam,
             results, recordResult, deleteResultBatch, setResults,
-            questions, addQuestion, deleteQuestion,
+            questions, addQuestion, deleteQuestion, updateQuestion,
             studentResponses, submitExam,
             currentUser, login, logout,
             resetData,

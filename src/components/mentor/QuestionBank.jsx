@@ -3,10 +3,10 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input, Select } from '../ui/Input';
-import { Plus, Trash2, CheckCircle, HelpCircle, FileText, X } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, HelpCircle, FileText, X, Edit2 } from 'lucide-react';
 
 const QuestionBank = () => {
-    const { questions, addQuestion, deleteQuestion, exams, classes, subjects, currentUser } = useData();
+    const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser } = useData();
 
     // Selection State
     const [selectedExamId, setSelectedExamId] = useState('');
@@ -19,6 +19,7 @@ const QuestionBank = () => {
     const [qMarks, setQMarks] = useState(1);
     const [options, setOptions] = useState(['', '', '', '']); // Default 4 options for MCQ
     const [correctAnswer, setCorrectAnswer] = useState('');
+    const [editingId, setEditingId] = useState(null);
 
     // Filtered Data
     // Admin exams are global. 
@@ -37,7 +38,7 @@ const QuestionBank = () => {
         e.preventDefault();
         if (!selectedExamId || !selectedClassId || !selectedSubjectId || !qText) return;
 
-        const question = {
+        const questionData = {
             examId: selectedExamId,
             classId: selectedClassId,
             subjectId: selectedSubjectId,
@@ -48,12 +49,40 @@ const QuestionBank = () => {
             correctAnswer: qType === 'MCQ' ? correctAnswer : null
         };
 
-        addQuestion(question);
+        if (editingId) {
+            updateQuestion(editingId, questionData);
+            setEditingId(null);
+        } else {
+            addQuestion(questionData);
+        }
 
         // Reset form but keep selection
         setQText('');
         setOptions(['', '', '', '']);
         setCorrectAnswer('');
+        setQMarks(1);
+    };
+
+    const handleEdit = (q) => {
+        setEditingId(q.id);
+        setQType(q.type);
+        setQText(q.text);
+        setQMarks(q.marks);
+        if (q.type === 'MCQ') {
+            setOptions([...q.options]);
+            setCorrectAnswer(q.correctAnswer);
+        } else {
+            setOptions(['', '', '', '']);
+            setCorrectAnswer('');
+        }
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setQText('');
+        setOptions(['', '', '', '']);
+        setCorrectAnswer('');
+        setQMarks(1);
     };
 
     const updateOption = (index, value) => {
@@ -132,8 +161,14 @@ const QuestionBank = () => {
                             <Card className="p-6">
                                 <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                                     <Plus className="w-5 h-5 text-indigo-600" />
-                                    Add New Question
+                                    {editingId ? 'Edit Question' : 'Add New Question'}
                                 </h3>
+                                {editingId && (
+                                    <div className="mb-4 p-3 bg-yellow-50 text-yellow-700 text-sm rounded-lg flex justify-between items-center">
+                                        <span>Editing active. Make changes and click Update.</span>
+                                        <button onClick={cancelEdit} type="button" className="text-gray-500 hover:text-gray-900 font-bold ml-4">Cancel</button>
+                                    </div>
+                                )}
                                 <form onSubmit={handleAddQuestion} className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -197,7 +232,7 @@ const QuestionBank = () => {
                                     )}
 
                                     <Button type="submit" variant="primary" className="w-full">
-                                        Add Question to Bank
+                                        {editingId ? 'Update Question' : 'Add Question to Bank'}
                                     </Button>
                                 </form>
                             </Card>
@@ -219,12 +254,22 @@ const QuestionBank = () => {
                                     )}
                                     {filteredQuestions.map((q, i) => (
                                         <div key={q.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
-                                            <button
-                                                onClick={() => deleteQuestion(q.id)}
-                                                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleEdit(q)}
+                                                    className="text-gray-400 hover:text-indigo-600 p-1 hover:bg-gray-100 rounded"
+                                                    title="Edit"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteQuestion(q.id)}
+                                                    className="text-gray-400 hover:text-red-500 p-1 hover:bg-gray-100 rounded"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
 
                                             <div className="flex gap-3">
                                                 <span className="font-bold text-gray-400">Q{i + 1}.</span>
