@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
@@ -9,7 +9,8 @@ import ExamGradingModal from './ExamGradingModal';
 const MarksEntry = () => {
     const {
         subjects, exams, students, results,
-        recordResult, deleteResultBatch, classes, currentUser
+        recordResult, deleteResultBatch, classes, currentUser,
+        examSettings, updateExamSetting
     } = useData();
 
     // 1. Data Filtering & Stats
@@ -301,31 +302,112 @@ const MarksEntry = () => {
                             No subjects found for this class.
                         </div>
                     ) : (
-                        subjectStats.list.map(sub => (
-                            <Card
-                                key={sub.id}
-                                onClick={() => setSelectedSubjectId(sub.id)}
-                                className="p-6 flex justify-between items-center cursor-pointer hover:shadow-lg transition-all hover:bg-gray-50 border border-gray-100"
-                            >
-                                <div>
-                                    <h3 className="font-bold text-xl text-gray-900">{sub.name}</h3>
-                                    <p className="text-gray-500 mt-1">Max Marks: {sub.maxMarks}</p>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    {sub.isEntered ? (
-                                        <span className="px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-sm font-bold">
-                                            Entered
-                                        </span>
-                                    ) : (
-                                        <span className="px-4 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-bold">
-                                            Not Entered
-                                        </span>
-                                    )}
-                                    <ChevronRight className="w-6 h-6 text-gray-300" />
-                                </div>
-                            </Card>
-                        ))
-                    )}
+                        subjectStats.list.map(sub => {
+                            // Resolve Class Name for Settings Key
+                            const selectedClassName = availableClasses.find(c => c.id === selectedClassId)?.name;
+                            const setting = examSettings.find(s => s.examId === selectedExamId && s.classId === selectedClassName && s.subjectId === sub.name)
+                                || { isActive: false, isPublished: false, startTime: '', endTime: '' };
+
+                            const handleToggleActive = (e) => {
+                                e.stopPropagation();
+                                updateExamSetting(selectedExamId, selectedClassName, sub.name, { isActive: !setting.isActive });
+                            };
+
+                            const handleTogglePublish = (e) => {
+                                e.stopPropagation();
+                                updateExamSetting(selectedExamId, selectedClassName, sub.name, { isPublished: !setting.isPublished });
+                            };
+
+                            const handleDateChange = (type, value) => {
+                                updateExamSetting(selectedExamId, selectedClassName, sub.name, { [type]: value });
+                            };
+
+                            return (
+                                <Card
+                                    key={sub.id}
+                                    className="flex flex-col p-0 overflow-hidden border border-gray-100 hover:shadow-lg transition-all"
+                                >
+                                    {/* Header / Main Click Area */}
+                                    <div
+                                        onClick={() => setSelectedSubjectId(sub.id)}
+                                        className="p-6 cursor-pointer bg-white hover:bg-gray-50 transition-colors border-b border-gray-100"
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="font-bold text-xl text-gray-900">{sub.name}</h3>
+                                                <p className="text-gray-500 mt-1">Max Marks: {sub.maxMarks}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {sub.isEntered ? (
+                                                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">Entered</span>
+                                                ) : (
+                                                    <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">Pending</span>
+                                                )}
+                                                <ChevronRight className="w-5 h-5 text-gray-300" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Controls Footer */}
+                                    <div className="p-4 bg-gray-50 flex flex-col gap-3">
+                                        <div className="flex items-center justify-between gap-4">
+                                            {/* Activation Control */}
+                                            <div
+                                                onClick={handleToggleActive}
+                                                className={clsx(
+                                                    "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border",
+                                                    setting.isActive
+                                                        ? "bg-green-100 border-green-200 text-green-700"
+                                                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-100"
+                                                )}
+                                            >
+                                                {setting.isActive ? <Play className="w-4 h-4 fill-current" /> : <PauseCircle className="w-4 h-4" />}
+                                                <span className="text-xs font-bold uppercase">{setting.isActive ? "Active" : "Inactive"}</span>
+                                            </div>
+
+                                            {/* Publish Control */}
+                                            <div
+                                                onClick={handleTogglePublish}
+                                                className={clsx(
+                                                    "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border",
+                                                    setting.isPublished
+                                                        ? "bg-indigo-100 border-indigo-200 text-indigo-700"
+                                                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-100"
+                                                )}
+                                            >
+                                                {setting.isPublished ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                                <span className="text-xs font-bold uppercase">{setting.isPublished ? "Published" : "Hidden"}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Auto Schedule */}
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                                <label className="text-gray-500 font-semibold mb-1 block">Start</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:border-indigo-500"
+                                                    value={setting.startTime || ''}
+                                                    onChange={(e) => handleDateChange('startTime', e.target.value)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-gray-500 font-semibold mb-1 block">End</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:border-indigo-500"
+                                                    value={setting.endTime || ''}
+                                                    onChange={(e) => handleDateChange('endTime', e.target.value)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Card>
+                            );
+                        }))
+                    }
                 </div>
             </div>
         );
