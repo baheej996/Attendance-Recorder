@@ -201,7 +201,7 @@ const QuestionBank = () => {
                                                             size="sm"
                                                             variant="secondary"
                                                             onClick={(e) => { e.stopPropagation(); openEditor(selectedExamId, className, subjectName); }}
-                                                            className="text-xs h-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="text-xs h-8 opacity-0 group-hover:opacity-100 transition-opacity flex items-center"
                                                         >
                                                             <Edit2 className="w-3 h-3 mr-1" /> Manage
                                                         </Button>
