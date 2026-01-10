@@ -8,7 +8,7 @@ import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp } from 'luci
 
 const QuestionBank = () => {
     const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser } = useData();
-    const { showAlert } = useUI();
+    const { showAlert, showConfirm } = useUI();
 
     // Mentor specific filtering
     // currentUser.assignedClassIds is Array of Strings (Class IDs)
@@ -139,6 +139,14 @@ const QuestionBank = () => {
         const newOptions = [...options];
         newOptions[index] = value;
         setOptions(newOptions);
+    };
+
+    const confirmDelete = (id) => {
+        showConfirm(
+            "Delete Question",
+            "Are you sure you want to delete this question? This action cannot be undone.",
+            () => deleteQuestion(id)
+        );
     };
 
     // Filter questions for the modal
@@ -360,7 +368,7 @@ const QuestionBank = () => {
                                         <div key={q.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative group hover:border-indigo-200">
                                             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-sm rounded">
                                                 <button onClick={() => handleEditQuestion(q)} className="p-1 text-gray-400 hover:text-indigo-600"><Edit2 className="w-3 h-3" /></button>
-                                                <button onClick={() => deleteQuestion(q.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                                                <button onClick={() => confirmDelete(q.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
                                             </div>
                                             <div className="flex gap-2">
                                                 <span className="font-bold text-gray-300 text-sm">#{i + 1}</span>
