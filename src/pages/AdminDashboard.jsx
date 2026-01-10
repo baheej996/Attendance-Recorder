@@ -9,12 +9,14 @@ import SubjectManager from '../components/admin/SubjectManager';
 import ExamManager from '../components/admin/ExamManager';
 import SettingsManager from './components/SettingsManager';
 import { useData } from '../contexts/DataContext';
+import { useUI } from '../contexts/UIContext';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { AdminAuthModal } from '../components/ui/AdminAuthModal';
 import { Card, CardHeader } from '../components/ui/Card';
 
 const DashboardHome = () => {
     const { classes, mentors, students, resetData } = useData();
+    const { showAlert } = useUI();
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isAdminAuthOpen, setIsAdminAuthOpen] = useState(false);
 
@@ -26,8 +28,8 @@ const DashboardHome = () => {
     const handleFinalReset = () => {
         resetData();
         setIsAdminAuthOpen(false);
-        alert("System Factory Reset Complete. All data has been erased.");
-        window.location.reload();
+        showAlert('Reset Complete', "System Factory Reset Complete. All data has been erased.", 'success');
+        setTimeout(() => window.location.reload(), 2000);
     };
 
     return (

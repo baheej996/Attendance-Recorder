@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -12,6 +13,7 @@ import { Modal } from '../../components/ui/Modal';
 
 const MentorManagement = () => {
     const { mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors, classes, students } = useData();
+    const { showAlert } = useUI();
     const [formData, setFormData] = useState({ name: '', email: '', password: '', assignedClassIds: [] });
     const [editingId, setEditingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,7 +62,7 @@ const MentorManagement = () => {
                 }
             }
         });
-        alert(`Bulk Upload Complete.\nAdded: ${count}\nDuplicates/Skipped: ${errors}`);
+        showAlert('Bulk Upload Complete', `Added: ${count}\nDuplicates/Skipped: ${errors}`, 'info');
     };
 
     const handleOpenModal = () => {

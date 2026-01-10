@@ -10,38 +10,42 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
+import { UIProvider } from './contexts/UIContext';
+
 function App() {
   return (
     <ErrorBoundary>
       <DataProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<LoginPage />} />
+        <UIProvider>
+          <Router>
+            <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/login" element={<LoginPage />} />
 
-              <Route path="/admin/*" element={
-                <ProtectedRoute allowedRole="admin">
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
+                <Route path="/admin/*" element={
+                  <ProtectedRoute allowedRole="admin">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/mentor/*" element={
-                <ProtectedRoute allowedRole="mentor">
-                  <MentorDashboard />
-                </ProtectedRoute>
-              } />
+                <Route path="/mentor/*" element={
+                  <ProtectedRoute allowedRole="mentor">
+                    <MentorDashboard />
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/student/*" element={
-                <ProtectedRoute allowedRole="student">
-                  <StudentDashboard />
-                </ProtectedRoute>
-              } />
+                <Route path="/student/*" element={
+                  <ProtectedRoute allowedRole="student">
+                    <StudentDashboard />
+                  </ProtectedRoute>
+                } />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
-        </Router>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </Router>
+        </UIProvider>
       </DataProvider>
     </ErrorBoundary>
   );

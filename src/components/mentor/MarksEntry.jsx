@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -12,6 +13,7 @@ const MarksEntry = () => {
         recordResult, deleteResultBatch, classes, currentUser,
         examSettings, updateExamSetting
     } = useData();
+    const { showAlert, showConfirm } = useUI();
 
     // 1. Data Filtering & Stats
     const availableClasses = useMemo(() => classes.filter(c =>
@@ -128,17 +130,21 @@ const MarksEntry = () => {
         }));
         recordResult({ examId: selectedExamId, subjectId: selectedSubjectId, records });
         setHasChanges(false);
-        alert('Marks saved successfully!');
+        showAlert('Success', 'Marks saved successfully!', 'success');
     };
 
     const handleDelete = () => {
-        if (window.confirm('Delete all marks for this subject? This cannot be undone.')) {
-            const studentIds = classStudents.map(s => s.id);
-            deleteResultBatch(selectedExamId, selectedSubjectId, studentIds);
-            setMarksData({});
-            setHasChanges(false);
-            alert('Marks deleted successfully!');
-        }
+        showConfirm(
+            'Delete Marks',
+            'Are you sure you want to delete all marks for this subject? This change cannot be undone.',
+            () => {
+                const studentIds = classStudents.map(s => s.id);
+                deleteResultBatch(selectedExamId, selectedSubjectId, studentIds);
+                setMarksData({});
+                setHasChanges(false);
+                showAlert('Deleted', 'Marks deleted successfully!', 'success');
+            }
+        );
     };
 
     // --- Render Steps ---

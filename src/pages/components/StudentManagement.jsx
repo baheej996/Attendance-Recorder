@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
@@ -12,6 +13,7 @@ import { Modal } from '../../components/ui/Modal';
 
 const StudentManagement = () => {
     const { students, addStudent, deleteStudent, deleteStudents, setStudents, classes, updateStudent, deleteAllStudents } = useData();
+    const { showAlert } = useUI();
     const [formData, setFormData] = useState({
         name: '',
         registerNo: '',
@@ -84,7 +86,13 @@ const StudentManagement = () => {
             msg += "\n\nErrors:\n" + errorDetails.slice(0, 10).join("\n");
             if (errorDetails.length > 10) msg += `\n...and ${errorDetails.length - 10} more.`;
         }
-        alert(msg);
+        if (errors > 0) {
+            msg += "\n\nErrors:\n" + errorDetails.slice(0, 10).join("\n");
+            if (errorDetails.length > 10) msg += `\n...and ${errorDetails.length - 10} more.`;
+            showAlert('Bulk Upload Warning', msg, 'warning');
+        } else {
+            showAlert('Bulk Upload Success', msg, 'success');
+        }
     };
 
     const handleOpenModal = () => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -7,6 +8,7 @@ import { Save, Building, Calendar, User, Type, UserCog, Lock } from 'lucide-reac
 
 const SettingsManager = () => {
     const { institutionSettings, updateInstitutionSettings, updateAdminCredentials, validateAdmin } = useData();
+    const { showAlert } = useUI();
     const [formData, setFormData] = useState({
         name: '',
         tagline: '',
@@ -38,8 +40,7 @@ const SettingsManager = () => {
         e.preventDefault();
         updateInstitutionSettings(formData);
         setIsDirty(false);
-        setMessage('Settings saved successfully!');
-        setTimeout(() => setMessage(''), 3000);
+        showAlert('Success', 'Settings saved successfully!', 'success');
     };
 
     const handleAdminUpdate = (e) => {
@@ -190,10 +191,10 @@ const SettingsManager = () => {
 
                     if (validateAdmin(adminData.currentUsername, adminData.currentPassword)) {
                         updateAdminCredentials(adminData.newUsername, adminData.newPassword);
-                        setAdminMessage({ type: 'success', text: 'Admin credentials updated successfully!' });
+                        showAlert('Success', 'Admin credentials updated successfully!', 'success');
                         setAdminData({ currentUsername: '', currentPassword: '', newUsername: '', newPassword: '' });
                     } else {
-                        setAdminMessage({ type: 'error', text: 'Current credentials incorrect.' });
+                        showAlert('Authentication Failed', 'Current credentials incorrect.', 'error');
                     }
                 }} className="space-y-6 p-6">
 

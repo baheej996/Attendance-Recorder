@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Button } from '../ui/Button';
 import { X, Save, Check, XCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, studentName }) => {
     const { questions, studentResponses, classes, recordResult } = useData();
+    const { showAlert } = useUI();
     const [manualMarks, setManualMarks] = useState({});
 
     if (!isOpen) return null;
@@ -77,7 +79,8 @@ const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, stude
             records: [{ studentId, marks: totalScore }]
         });
         onClose();
-        alert(`Score Updated: ${totalScore}`);
+        onClose();
+        showAlert('Grading Complete', `Score Updated: ${totalScore}`, 'success');
     };
 
     return (

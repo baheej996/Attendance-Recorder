@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -7,6 +8,7 @@ import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp } from 'luci
 
 const QuestionBank = () => {
     const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser } = useData();
+    const { showAlert } = useUI();
 
     // Mentor specific filtering
     // currentUser.assignedClassIds is Array of Strings (Class IDs)
@@ -73,7 +75,7 @@ const QuestionBank = () => {
 
         // Validation: Positive Marks
         if (Number(qMarks) <= 0) {
-            alert("Marks must be greater than 0.");
+            showAlert('Invalid Marks', 'Marks must be greater than 0.', 'error');
             return;
         }
 
@@ -95,7 +97,7 @@ const QuestionBank = () => {
         const newTotal = currentTotal - deduction + Number(qMarks);
 
         if (newTotal > maxMarks) {
-            alert(`Cannot save question!\n\nTotal Marks (${newTotal}) would exceed the Maximum Allowed Marks (${maxMarks}) for ${context.subjectId}.`);
+            showAlert('Limit Exceeded', `Cannot save question!\n\nTotal Marks (${newTotal}) would exceed the Maximum Allowed Marks (${maxMarks}) for ${context.subjectId}.`, 'error');
             return;
         }
 

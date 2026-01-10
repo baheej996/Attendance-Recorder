@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Trash2, Plus, BookOpen, Layers } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -7,6 +8,7 @@ import { Card } from '../ui/Card';
 
 const SubjectManager = () => {
     const { classes, subjects, addSubject, deleteSubject } = useData();
+    const { showAlert } = useUI();
     // We now track 'gradeName' instead of specific 'classId'
     const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40 });
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('all');
@@ -19,7 +21,7 @@ const SubjectManager = () => {
         if (!newSubject.name || !newSubject.gradeName) return;
 
         if (Number(newSubject.passMarks) > Number(newSubject.maxMarks)) {
-            alert("Pass marks cannot be greater than Maximum marks.");
+            showAlert('Validation Error', "Pass marks cannot be greater than Maximum marks.", 'error');
             return;
         }
 
@@ -43,7 +45,7 @@ const SubjectManager = () => {
         });
 
         if (addedCount === 0) {
-            alert(`Subject '${newSubject.name}' already exists for all classes in Grade ${newSubject.gradeName}.`);
+            showAlert('Duplicate Subject', `Subject '${newSubject.name}' already exists for all classes in Grade ${newSubject.gradeName}.`, 'warning');
         }
 
         setNewSubject({

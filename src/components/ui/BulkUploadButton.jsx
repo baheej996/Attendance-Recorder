@@ -2,9 +2,11 @@ import React, { useRef } from 'react';
 import { Upload, Download, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { generateCSVTemplate, parseCSV } from '../../utils/csvHelpers';
 import { Button } from './Button';
+import { useUI } from '../../contexts/UIContext';
 
 export const BulkUploadButton = ({ type, onUploadSuccess }) => {
     const fileInputRef = useRef(null);
+    const { showAlert } = useUI();
 
     const handleDownloadModel = () => {
         generateCSVTemplate(type);
@@ -19,7 +21,7 @@ export const BulkUploadButton = ({ type, onUploadSuccess }) => {
             onUploadSuccess(data);
             e.target.value = ''; // Reset input
         } catch (error) {
-            alert("Error parsing CSV: " + error);
+            showAlert('CSV Error', "Error parsing CSV: " + error, 'error');
         }
     };
 

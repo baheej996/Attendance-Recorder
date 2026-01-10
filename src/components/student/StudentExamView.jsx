@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { CheckCircle, Clock, AlertCircle, Eye, XCircle } from 'lucide-react';
@@ -7,6 +8,7 @@ import { clsx } from 'clsx';
 
 const StudentExamView = () => {
     const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings } = useData();
+    const { showAlert, showConfirm } = useUI();
     const [activeExamId, setActiveExamId] = useState(null);
     const [selectedSubjectId, setSelectedSubjectId] = useState(null); // This is Subject NAME (linked to questions)
     const [answers, setAnswers] = useState({});
@@ -72,22 +74,26 @@ const StudentExamView = () => {
     };
 
     const handleSubmit = () => {
-        if (!window.confirm("Are you sure you want to submit? You cannot change answers after submission.")) return;
+        showConfirm(
+            "Submit Exam",
+            "Are you sure you want to submit? You cannot change answers after submission.",
+            () => {
+                // Resolve Real Subject ID (for results/DB)
+                const realSubject = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);
 
-        // Resolve Real Subject ID (for results/DB)
-        const realSubject = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);
+                submitExam({
+                    examId: activeExamId,
+                    subjectId: realSubject ? realSubject.id : selectedSubjectId, // Pass ID for storage
+                    subjectName: selectedSubjectId, // Pass Name for Question Grading lookup
+                    studentId: currentUser.id,
+                    answers
+                });
 
-        submitExam({
-            examId: activeExamId,
-            subjectId: realSubject ? realSubject.id : selectedSubjectId, // Pass ID for storage
-            subjectName: selectedSubjectId, // Pass Name for Question Grading lookup
-            studentId: currentUser.id,
-            answers
-        });
-
-        alert("Exam Submitted Successfully!");
-        setActiveExamId(null);
-        setSelectedSubjectId(null);
+                showAlert("Success", "Exam Submitted Successfully!", "success");
+                setActiveExamId(null);
+                setSelectedSubjectId(null);
+            }
+        );
     };
 
     // View: List of Exams

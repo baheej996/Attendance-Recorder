@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Trash2, Plus, Calendar, CheckCircle, Eye, EyeOff, Play, PauseCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -7,6 +8,7 @@ import { Card } from '../ui/Card';
 
 const ExamManager = () => {
     const { exams, addExam, updateExam, deleteExam } = useData();
+    const { showConfirm } = useUI();
     const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft' });
 
     const handleAdd = (e) => {
@@ -26,9 +28,11 @@ const ExamManager = () => {
     };
 
     const handleDelete = (id) => {
-        if (window.confirm("Are you sure you want to delete this exam? This action cannot be undone.")) {
-            deleteExam(id);
-        }
+        showConfirm(
+            "Delete Exam",
+            "Are you sure you want to delete this exam? This action cannot be undone.",
+            () => deleteExam(id)
+        );
     };
 
     return (

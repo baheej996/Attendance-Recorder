@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -77,6 +78,7 @@ const ClassAllotmentModal = ({ isOpen, onClose, classItem, mentors, updateMentor
 
 const ClassManagement = () => {
     const { classes, addClass, deleteClass, deleteClasses, deleteAllClasses, updateMentor, mentors, students } = useData();
+    const { showAlert } = useUI();
     const [formData, setFormData] = useState({ name: '', division: '' });
     const [editingId, setEditingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -121,7 +123,7 @@ const ClassManagement = () => {
                 }
             }
         });
-        alert(`Bulk Upload Complete.\nAdded: ${count}\nDuplicates/Skipped: ${errors}`);
+        showAlert('Bulk Upload Complete', `Added: ${count}\nDuplicates/Skipped: ${errors}`, 'info');
     };
 
     const handleOpenModal = () => {
