@@ -16,8 +16,8 @@ const StudentExamView = () => {
     if (!studentClass) return <div className="p-8 text-center text-gray-500">Class information not found.</div>;
     const studentClassName = studentClass.name;
 
-    // 2. Get Published Exams
-    const publishedExams = exams.filter(e => e.status === 'Published');
+    // 2. Get Active Exams (Students can take these, regardless of Publication status)
+    const activeExams = exams.filter(e => e.isActive);
 
     // 3. Helper to check if student already took the exam for a subject
     const hasTaken = (examId, subjectId) => {
@@ -80,12 +80,12 @@ const StudentExamView = () => {
                     Active Exams
                 </h2>
 
-                {publishedExams.length === 0 ? (
+                {activeExams.length === 0 ? (
                     <div className="p-12 bg-white rounded-xl text-center text-gray-500 shadow-sm border border-gray-100">
                         No active exams at the moment.
                     </div>
                 ) : (
-                    publishedExams.map(exam => (
+                    activeExams.map(exam => (
                         <Card key={exam.id} className="p-6">
                             <h3 className="text-xl font-bold text-gray-900 mb-2">{exam.name}</h3>
                             <p className="text-gray-500 mb-6 flex items-center gap-2">

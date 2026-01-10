@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { Trash2, Plus, Calendar, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { Trash2, Plus, Calendar, CheckCircle, Eye, EyeOff, Play, PauseCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
@@ -19,6 +19,16 @@ const ExamManager = () => {
     const toggleStatus = (exam) => {
         const newStatus = exam.status === 'Draft' ? 'Published' : 'Draft';
         updateExam(exam.id, { status: newStatus });
+    };
+
+    const toggleActive = (exam) => {
+        updateExam(exam.id, { isActive: !exam.isActive });
+    };
+
+    const handleDelete = (id) => {
+        if (window.confirm("Are you sure you want to delete this exam? This action cannot be undone.")) {
+            deleteExam(id);
+        }
     };
 
     return (
@@ -86,21 +96,37 @@ const ExamManager = () => {
                                                 }`}>
                                                 {exam.status}
                                             </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${exam.isActive
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                {exam.isActive ? 'Active' : 'Inactive'}
+                                            </span>
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => toggleActive(exam)}
+                                            className={`p-2 rounded-lg transition-colors ${exam.isActive
+                                                ? 'text-blue-600 hover:bg-blue-50'
+                                                : 'text-gray-400 hover:bg-gray-100'
+                                                }`}
+                                            title={exam.isActive ? "Deactivate (Students cannot take)" : "Activate (Students can take)"}
+                                        >
+                                            {exam.isActive ? <PauseCircle className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                                        </button>
                                         <button
                                             onClick={() => toggleStatus(exam)}
                                             className={`p-2 rounded-lg transition-colors ${exam.status === 'Published'
                                                 ? 'text-green-600 hover:bg-green-50'
                                                 : 'text-gray-400 hover:bg-gray-100'
                                                 }`}
-                                            title={exam.status === 'Published' ? "Unpublish" : "Publish"}
+                                            title={exam.status === 'Published' ? "Unpublish Results" : "Publish Results"}
                                         >
                                             {exam.status === 'Published' ? <CheckCircle className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                                         </button>
                                         <button
-                                            onClick={() => deleteExam(exam.id)}
+                                            onClick={() => handleDelete(exam.id)}
                                             className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
                                             title="Delete Exam"
                                         >

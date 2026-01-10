@@ -254,7 +254,7 @@ export const DataProvider = ({ children }) => {
     const deleteSubject = (id) => setSubjects(prev => prev.filter(s => s.id !== id));
 
     // Exam Actions
-    const addExam = (exam) => setExams(prev => [...prev, { ...exam, id: generateId(), status: 'Draft' }]);
+    const addExam = (exam) => setExams(prev => [...prev, { ...exam, id: generateId(), status: 'Draft', isActive: false }]);
     const updateExam = (id, updated) => setExams(prev => prev.map(e => e.id === id ? { ...e, ...updated } : e));
     const deleteExam = (id) => setExams(prev => prev.filter(e => e.id !== id));
 
