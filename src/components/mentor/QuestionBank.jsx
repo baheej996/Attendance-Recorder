@@ -369,92 +369,92 @@ const QuestionBank = () => {
                                             )}
                                         </div>
                                     </div>
+
+
+                                    <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <input
+                                            type="checkbox"
+                                            id="allowAttachments"
+                                            checked={allowAttachments}
+                                            onChange={(e) => setAllowAttachments(e.target.checked)}
+                                            className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                        />
+                                        <label htmlFor="allowAttachments" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                                            Allow Students to Attach Files
+                                        </label>
+                                    </div>
+
+                                    {qType === 'MCQ' && (
+                                        <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                            <p className="text-sm font-medium text-gray-700">Choices</p>
+                                            {options.map((opt, idx) => (
+                                                <div key={idx} className="flex items-center gap-2">
+                                                    <span className="text-gray-400 text-xs w-4">{String.fromCharCode(65 + idx)}</span>
+                                                    <input
+                                                        type="text"
+                                                        value={opt}
+                                                        onChange={e => updateOption(idx, e.target.value)}
+                                                        className="flex-1 rounded border-gray-300 p-1.5 text-sm"
+                                                        placeholder={`Option ${idx + 1}`}
+                                                        required
+                                                    />
+                                                    <input
+                                                        type="radio"
+                                                        name="correctAnswer"
+                                                        checked={correctAnswer === opt && opt !== ''}
+                                                        onChange={() => setCorrectAnswer(opt)}
+                                                        className="text-indigo-600 focus:ring-indigo-500"
+                                                        disabled={!opt}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="flex gap-2">
+                                        <Button type="submit" variant="primary" className="flex-1">
+                                            {editingId ? 'Update' : 'Add Question'}
+                                        </Button>
+                                        {editingId && (
+                                            <Button type="button" variant="secondary" onClick={resetForm}>
+                                                Cancel
+                                            </Button>
+                                        )}
+                                    </div>
+                                </form>
                             </div>
 
-                            <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                <input
-                                    type="checkbox"
-                                    id="allowAttachments"
-                                    checked={allowAttachments}
-                                    onChange={(e) => setAllowAttachments(e.target.checked)}
-                                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                />
-                                <label htmlFor="allowAttachments" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
-                                    Allow Students to Attach Files
-                                </label>
-                            </div>
-
-                            {qType === 'MCQ' && (
-                                <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                    <p className="text-sm font-medium text-gray-700">Choices</p>
-                                    {options.map((opt, idx) => (
-                                        <div key={idx} className="flex items-center gap-2">
-                                            <span className="text-gray-400 text-xs w-4">{String.fromCharCode(65 + idx)}</span>
-                                            <input
-                                                type="text"
-                                                value={opt}
-                                                onChange={e => updateOption(idx, e.target.value)}
-                                                className="flex-1 rounded border-gray-300 p-1.5 text-sm"
-                                                placeholder={`Option ${idx + 1}`}
-                                                required
-                                            />
-                                            <input
-                                                type="radio"
-                                                name="correctAnswer"
-                                                checked={correctAnswer === opt && opt !== ''}
-                                                onChange={() => setCorrectAnswer(opt)}
-                                                className="text-indigo-600 focus:ring-indigo-500"
-                                                disabled={!opt}
-                                            />
+                            {/* Right: List */}
+                            <div className="space-y-4 border-l border-gray-100 pl-8">
+                                <h4 className="font-bold text-gray-700">
+                                    Existing Questions ({currentQuestions.length})
+                                </h4>
+                                <div className="space-y-3 h-[500px] overflow-y-auto pr-2">
+                                    {currentQuestions.length === 0 && (
+                                        <p className="text-gray-400 italic text-sm text-center py-10">No questions yet.</p>
+                                    )}
+                                    {currentQuestions.map((q, i) => (
+                                        <div key={q.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative group hover:border-indigo-200">
+                                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-sm rounded">
+                                                <button onClick={() => handleEditQuestion(q)} className="p-1 text-gray-400 hover:text-indigo-600"><Edit2 className="w-3 h-3" /></button>
+                                                <button onClick={() => confirmDelete(q.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <span className="font-bold text-gray-300 text-sm">#{i + 1}</span>
+                                                <div>
+                                                    <p className="text-gray-800 text-sm font-medium">{q.text}</p>
+                                                    <div className="flex gap-2 mt-1">
+                                                        <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">{q.type}</span>
+                                                        <span className="text-[10px] bg-indigo-50 px-1.5 rounded text-indigo-500">{q.marks} m</span>
+                                                        {q.image && <span className="text-[10px] bg-blue-50 px-1.5 rounded text-blue-500 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Image</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
-                            )}
-
-                            <div className="flex gap-2">
-                                <Button type="submit" variant="primary" className="flex-1">
-                                    {editingId ? 'Update' : 'Add Question'}
-                                </Button>
-                                {editingId && (
-                                    <Button type="button" variant="secondary" onClick={resetForm}>
-                                        Cancel
-                                    </Button>
-                                )}
-                            </div>
-                        </form>
-                </div>
-
-                            {/* Right: List */}
-            <div className="space-y-4 border-l border-gray-100 pl-8">
-                <h4 className="font-bold text-gray-700">
-                    Existing Questions ({currentQuestions.length})
-                </h4>
-                <div className="space-y-3 h-[500px] overflow-y-auto pr-2">
-                    {currentQuestions.length === 0 && (
-                        <p className="text-gray-400 italic text-sm text-center py-10">No questions yet.</p>
-                    )}
-                    {currentQuestions.map((q, i) => (
-                        <div key={q.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative group hover:border-indigo-200">
-                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-sm rounded">
-                                <button onClick={() => handleEditQuestion(q)} className="p-1 text-gray-400 hover:text-indigo-600"><Edit2 className="w-3 h-3" /></button>
-                                <button onClick={() => confirmDelete(q.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
-                            </div>
-                            <div className="flex gap-2">
-                                <span className="font-bold text-gray-300 text-sm">#{i + 1}</span>
-                                <div>
-                                    <p className="text-gray-800 text-sm font-medium">{q.text}</p>
-                                    <div className="flex gap-2 mt-1">
-                                        <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">{q.type}</span>
-                                        <span className="text-[10px] bg-indigo-50 px-1.5 rounded text-indigo-500">{q.marks} m</span>
-                                        {q.image && <span className="text-[10px] bg-blue-50 px-1.5 rounded text-blue-500 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Image</span>}
-                                    </div>
-                                </div>
                             </div>
                         </div>
-                    ))}
-                </div>
-            </div>
-        </div>
                     </Card >
                 </div >
             )}

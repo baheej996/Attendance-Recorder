@@ -590,7 +590,6 @@ export const DataProvider = ({ children }) => {
             studentResponses, submitExam,
             currentUser, login, logout,
             resetData,
-            resetData,
             institutionSettings, updateInstitutionSettings,
             validateAdmin, updateAdminCredentials
         }}>
