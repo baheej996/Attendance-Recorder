@@ -132,7 +132,8 @@ const AttendanceRecorder = () => {
         .filter(s => s.classId === selectedClassId && s.status === 'Active')
         .sort((a, b) => {
             if ((a.gender || 'Male') === (b.gender || 'Male')) {
-                return a.name.localeCompare(b.name);
+                // Secondary sort: Register No (Assuming alphanumeric or numeric)
+                return a.registerNo.localeCompare(b.registerNo, undefined, { numeric: true, sensitivity: 'base' });
             }
             return (a.gender || 'Male') === 'Male' ? -1 : 1;
         });

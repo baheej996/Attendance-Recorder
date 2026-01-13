@@ -37,7 +37,8 @@ const PrintAttendance = () => {
     const classStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active')
         .sort((a, b) => {
             if ((a.gender || 'Male') === (b.gender || 'Male')) {
-                return a.name.localeCompare(b.name);
+                // Secondary sort: Register No
+                return a.registerNo.localeCompare(b.registerNo, undefined, { numeric: true, sensitivity: 'base' });
             }
             return (a.gender || 'Male') === 'Male' ? -1 : 1;
         });
@@ -221,7 +222,7 @@ const PrintAttendance = () => {
                                         const { letter, isSunday } = getDayLetter(day);
                                         return (
                                             <th key={`day-${day}`} className={clsx(
-                                                "border border-black w-4 relative align-bottom p-0",
+                                                "border border-black w-8 relative align-bottom p-0",
                                                 isSunday ? "text-red-600 border-b-0" : "border-b-0"
                                             )}>
                                                 <div className="flex items-end justify-center h-full pb-1">
@@ -263,7 +264,7 @@ const PrintAttendance = () => {
                                         const { isSunday } = getDayLetter(day);
                                         return (
                                             <th key={`num-${day}`} className={clsx(
-                                                "border border-black px-0.5 py-0.5 text-center font-bold text-[10px]",
+                                                "border border-black px-1 py-1 text-center font-bold text-[10px]",
                                                 isSunday ? "text-red-600" : ""
                                             )}>
                                                 {day}
@@ -290,12 +291,12 @@ const PrintAttendance = () => {
                                     classStudents.map((student, index) => {
                                         const stats = processAttendance(student.id);
                                         return (
-                                            <tr key={student.id} className="h-6">
+                                            <tr key={student.id} className="h-9">
                                                 <td className="border border-black text-center">{index + 1}</td>
                                                 <td className="border border-black px-1 text-center font-mono">{student.registerNo}</td>
                                                 <td className="border border-black px-1 text-center font-mono">{student.uid || ''}</td>
                                                 <td className={clsx(
-                                                    "border border-black px-2 font-medium uppercase truncate max-w-[200px] text-left",
+                                                    "border border-black px-2 font-normal uppercase truncate max-w-[200px] text-left",
                                                     student.gender === 'Female' ? "text-red-600" : "text-black"
                                                 )}>
                                                     {student.name}
