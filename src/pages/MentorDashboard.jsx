@@ -6,7 +6,7 @@ import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
 import QuestionBank from '../components/mentor/QuestionBank';
 import MarksEntry from '../components/mentor/MarksEntry';
-import Readme from './Readme';
+import Help from './Help';
 import { useData } from '../contexts/DataContext';
 
 const DashboardHome = () => (
@@ -25,7 +25,7 @@ const MentorDashboard = () => {
         { icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
         { icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
         { icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
-        { icon: Info, label: 'Read Me', path: '/mentor/readme' },
+        { icon: Info, label: 'Help', path: '/mentor/help' },
     ];
 
     return (
@@ -79,7 +79,7 @@ const MentorDashboard = () => {
                     <Route path="/questions" element={<QuestionBank />} />
                     <Route path="/marks" element={<MarksEntry />} />
                     <Route path="/stats" element={<MentorStats />} />
-                    <Route path="/readme" element={<Readme />} />
+                    <Route path="/help" element={<Help />} />
                 </Routes>
             </div>
         </div>

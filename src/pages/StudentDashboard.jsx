@@ -11,7 +11,7 @@ import { clsx } from 'clsx';
 import StudentResultView from '../components/student/StudentResultView';
 import StudentExamView from '../components/student/StudentExamView';
 import Leaderboard from '../components/student/Leaderboard';
-import Readme from './Readme';
+import Help from './Help';
 
 const COLORS = ['#10B981', '#EF4444'];
 
@@ -43,7 +43,7 @@ const StudentDashboard = () => {
         { icon: FileText, label: 'Online Exams', path: '/student/exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results' },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
-        { icon: Info, label: 'Read Me', path: '/student/readme' },
+        { icon: Info, label: 'Help', path: '/student/help' },
     ];
 
     const isActive = (path) => {
@@ -233,7 +233,7 @@ const StudentDashboard = () => {
                     <Route path="/exams" element={<StudentExamView />} />
                     <Route path="/results" element={<StudentResultView />} />
                     <Route path="/leaderboard" element={<Leaderboard />} />
-                    <Route path="/readme" element={<Readme />} />
+                    <Route path="/help" element={<Help />} />
                 </Routes>
             </main>
         </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info } from 'lucide-react';
 import { clsx } from 'clsx';
 import ClassManagement from './components/ClassManagement';
 import MentorManagement from './components/MentorManagement';
@@ -8,6 +8,7 @@ import StudentManagement from './components/StudentManagement';
 import SubjectManager from '../components/admin/SubjectManager';
 import ExamManager from '../components/admin/ExamManager';
 import SettingsManager from './components/SettingsManager';
+import Help from './Help';
 import { useData } from '../contexts/DataContext';
 import { useUI } from '../contexts/UIContext';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
@@ -111,17 +112,21 @@ const DashboardHome = () => {
 const AdminDashboard = () => {
     const location = useLocation();
     const { logout } = useData();
+    const [activeTab, setActiveTab] = useState('dashboard');
 
-    const navItems = [
-        { icon: LayoutDashboard, label: 'Overview', path: '/admin' },
-        { icon: School, label: 'Classes', path: '/admin/classes' },
-        { icon: Users, label: 'Mentors', path: '/admin/mentors' },
-        { icon: UserCheck, label: 'Students', path: '/admin/students' },
-        { icon: BookOpen, label: 'Subjects', path: '/admin/subjects' },
-        { icon: FileText, label: 'Exams', path: '/admin/exams' },
-        { icon: Settings, label: 'Settings', path: '/admin/settings' },
-        { icon: Info, label: 'Read Me', path: '/admin/readme' }, // Added Read Me nav item
-    ];
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'dashboard': return <DashboardHome />;
+            case 'classes': return <ClassManagement />;
+            case 'mentors': return <MentorManagement />;
+            case 'students': return <StudentManagement />;
+            case 'subjects': return <SubjectManager />;
+            case 'exams': return <ExamManager />;
+            case 'settings': return <SettingsManager />;
+            case 'help': return <Help />;
+            default: return <DashboardHome />;
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -178,6 +183,7 @@ const AdminDashboard = () => {
                             </div>
                             <nav className="flex flex-col p-2 space-y-1">
                                 <SidebarItem icon={Settings} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
+                                <SidebarItem icon={Info} label="Help" active={activeTab === 'help'} onClick={() => setActiveTab('help')} />
                             </nav>
                         </div>
                     </div>
