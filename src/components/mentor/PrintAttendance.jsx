@@ -255,7 +255,7 @@ const PrintAttendance = () => {
                                         const { letter, isSunday } = getDayLetter(day);
                                         return (
                                             <th key={`day-${day}`} className={clsx(
-                                                "border border-black w-8 min-w-[2rem] relative align-bottom p-0", // w-8 + min-w for strict width
+                                                "border border-black w-7 min-w-[1.75rem] relative align-bottom p-0", // Reduced to w-7 for page fit // w-8 + min-w for strict width
                                                 isSunday ? "text-red-600 border-b-0" : "border-b-0"
                                             )}>
                                                 <div className="flex items-end justify-center h-full pb-1">
@@ -324,7 +324,7 @@ const PrintAttendance = () => {
                                     classStudents.map((student, index) => {
                                         const stats = processAttendance(student.id);
                                         return (
-                                            <tr key={student.id} className="h-9">
+                                            <tr key={student.id} className="h-8">
                                                 <td className="border border-black text-center">{index + 1}</td>
                                                 <td className="border border-black px-1 text-center font-mono">{student.registerNo}</td>
                                                 <td className="border border-black px-1 text-center font-mono">{student.uid || ''}</td>
@@ -363,8 +363,25 @@ const PrintAttendance = () => {
 
                         {/* Signatures */}
                         {/* Signatures and Working Days Summary */}
+                        {/* Signatures and Working Days Summary */}
                         <div className="mt-8 flex justify-between items-end text-xs px-4 pb-4">
-                            {/* Signatures */}
+                            {/* Working Days Summary Table (Left) */}
+                            <div className="border border-black text-sm">
+                                <div className="flex border-b border-black">
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32">This month</div>
+                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.thisMonth}</div>
+                                </div>
+                                <div className="flex border-b border-black">
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32">Previous month</div>
+                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.previous}</div>
+                                </div>
+                                <div className="flex">
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32">Total</div>
+                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.total}</div>
+                                </div>
+                            </div>
+
+                            {/* Signatures (Right) */}
                             <div className="flex gap-16 font-semibold">
                                 <div className="text-center">
                                     <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase">
@@ -381,22 +398,6 @@ const PrintAttendance = () => {
                                 <div className="text-center">
                                     <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1"></div>
                                     <p>Mufathish name and sign</p>
-                                </div>
-                            </div>
-
-                            {/* Working Days Summary Table */}
-                            <div className="border border-black text-sm">
-                                <div className="flex border-b border-black">
-                                    <div className="px-3 py-1 font-bold border-r border-black w-32">This month</div>
-                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.thisMonth}</div>
-                                </div>
-                                <div className="flex border-b border-black">
-                                    <div className="px-3 py-1 font-bold border-r border-black w-32">Previous month</div>
-                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.previous}</div>
-                                </div>
-                                <div className="flex">
-                                    <div className="px-3 py-1 font-bold border-r border-black w-32">Total</div>
-                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.total}</div>
                                 </div>
                             </div>
                         </div>
