@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload } from 'lucide-react';
 
 const QuestionBank = () => {
     const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser } = useData();
@@ -41,6 +41,7 @@ const QuestionBank = () => {
     const [qType, setQType] = useState('MCQ');
     const [qText, setQText] = useState('');
     const [qMarks, setQMarks] = useState(1);
+    const [qImage, setQImage] = useState(null);
     const [options, setOptions] = useState(['', '', '', '']);
     const [correctAnswer, setCorrectAnswer] = useState('');
     const [editingId, setEditingId] = useState(null);
@@ -62,11 +63,23 @@ const QuestionBank = () => {
 
     const resetForm = () => {
         setQText('');
+        setQImage(null);
         setOptions(['', '', '', '']);
         setCorrectAnswer('');
         setQMarks(1);
         setEditingId(null);
         setQType('MCQ');
+    };
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setQImage(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleSaveQuestion = (e) => {
@@ -107,6 +120,7 @@ const QuestionBank = () => {
             subjectId: context.subjectId,
             type: qType,
             text: qText,
+            image: qImage,
             marks: Number(qMarks), // Ensure number type
             options: qType === 'MCQ' ? options : [],
             correctAnswer: qType === 'MCQ' ? correctAnswer : null
@@ -125,6 +139,7 @@ const QuestionBank = () => {
         setEditingId(q.id);
         setQType(q.type);
         setQText(q.text);
+        setQImage(q.image || null);
         setQMarks(q.marks);
         if (q.type === 'MCQ') {
             setOptions([...q.options]);
@@ -312,8 +327,44 @@ const QuestionBank = () => {
                                         label="Question Text"
                                         value={qText}
                                         onChange={e => setQText(e.target.value)}
+                                        value={qText}
+                                        onChange={e => setQText(e.target.value)}
                                         placeholder="Enter question text..."
                                     />
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Question Image (Optional)</label>
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleImageUpload}
+                                                    className="hidden"
+                                                    id="q-image-upload"
+                                                />
+                                                <label
+                                                    htmlFor="q-image-upload"
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer shadow-sm"
+                                                >
+                                                    <Upload className="w-4 h-4" />
+                                                    {qImage ? 'Change Image' : 'Upload Image'}
+                                                </label>
+                                            </div>
+                                            {qImage && (
+                                                <div className="relative group">
+                                                    <img src={qImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg border border-gray-200" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setQImage(null)}
+                                                        className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
 
                                     {qType === 'MCQ' && (
                                         <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
@@ -377,6 +428,7 @@ const QuestionBank = () => {
                                                     <div className="flex gap-2 mt-1">
                                                         <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">{q.type}</span>
                                                         <span className="text-[10px] bg-indigo-50 px-1.5 rounded text-indigo-500">{q.marks} m</span>
+                                                        {q.image && <span className="text-[10px] bg-blue-50 px-1.5 rounded text-blue-500 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Image</span>}
                                                     </div>
                                                 </div>
                                             </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Button } from '../ui/Button';
-import { X, Save, Check, XCircle } from 'lucide-react';
+import { X, Save, Check, XCircle, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, studentName }) => {
@@ -105,6 +105,8 @@ const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, stude
                             ? manualMarks[q.id]
                             : (isCorrect ? q.marks : 0);
 
+                        const attachment = response.attachments ? response.attachments[q.id] : null;
+
                         return (
                             <div key={q.id} className="border border-gray-200 rounded-lg p-4">
                                 <div className="flex justify-between items-start mb-3">
@@ -121,6 +123,20 @@ const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, stude
                                         {studentAns || "(No Answer)"}
                                         {isMCQ && (isCorrect ? <Check className="inline w-4 h-4 ml-2" /> : <XCircle className="inline w-4 h-4 ml-2" />)}
                                     </p>
+
+                                    {attachment && (
+                                        <div className="mt-2 pt-2 border-t border-gray-200">
+                                            <p className="text-xs font-bold text-gray-400 mb-1 uppercase">Attachment</p>
+                                            {attachment.startsWith('data:image') ? (
+                                                <img src={attachment} alt="Attachment" className="max-h-40 rounded border border-gray-300" />
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-sm text-gray-600 bg-white p-2 rounded border">
+                                                    <FileText className="w-4 h-4" />
+                                                    <span>Attached File</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {!isMCQ && (

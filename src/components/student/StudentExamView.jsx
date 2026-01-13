@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { CheckCircle, Clock, AlertCircle, Eye, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Upload, FileText, X } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const StudentExamView = () => {
@@ -12,6 +12,7 @@ const StudentExamView = () => {
     const [activeExamId, setActiveExamId] = useState(null);
     const [selectedSubjectId, setSelectedSubjectId] = useState(null); // This is Subject NAME (linked to questions)
     const [answers, setAnswers] = useState({});
+    const [attachments, setAttachments] = useState({});
     const [viewingMode, setViewingMode] = useState(false); // false = taking, true = viewing result
 
     // 1. Resolve Student's Class Name (to match Questions which use Class Name)
@@ -49,7 +50,9 @@ const StudentExamView = () => {
     const handleStartExam = (examId, subjectName) => {
         setActiveExamId(examId);
         setSelectedSubjectId(subjectName);
+        setSelectedSubjectId(subjectName);
         setAnswers({});
+        setAttachments({});
         setViewingMode(false);
     };
 
@@ -66,11 +69,31 @@ const StudentExamView = () => {
         );
         if (response) {
             setAnswers(response.answers);
+            setAttachments(response.attachments || {});
         }
     };
 
     const handleAnswerChange = (qId, value) => {
         setAnswers(prev => ({ ...prev, [qId]: value }));
+    };
+
+    const handleFileUpload = (qId, e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setAttachments(prev => ({ ...prev, [qId]: reader.result }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const removeAttachment = (qId) => {
+        setAttachments(prev => {
+            const next = { ...prev };
+            delete next[qId];
+            return next;
+        });
     };
 
     const handleSubmit = () => {
@@ -86,7 +109,9 @@ const StudentExamView = () => {
                     subjectId: realSubject ? realSubject.id : selectedSubjectId, // Pass ID for storage
                     subjectName: selectedSubjectId, // Pass Name for Question Grading lookup
                     studentId: currentUser.id,
-                    answers
+                    studentId: currentUser.id,
+                    answers,
+                    attachments
                 });
 
                 showAlert("Success", "Exam Submitted Successfully!", "success");
@@ -269,104 +294,160 @@ const StudentExamView = () => {
                                                 {myAns || "(Skipped)"}
                                                 {isMCQ && (isCorrect ? <CheckCircle className="inline w-4 h-4 ml-2" /> : <XCircle className="inline w-4 h-4 ml-2" />)}
                                             </p>
-                                        </div>
 
-                                        {((isMCQ && !isCorrect) || (!isMCQ)) && (
-                                            <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
-                                                {isMCQ ? (
-                                                    <>
-                                                        <p className="text-xs uppercase font-bold text-indigo-600 mb-1">Correct Answer:</p>
-                                                        <p className="font-bold text-indigo-900">{q.correctAnswer}</p>
-                                                    </>
-                                                ) : (
-                                                    <p className="text-xs text-indigo-600 italic">
-                                                        Note: Text answers are graded manually by your mentor.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
+                                            {/* Show Attachment if exists */}
+                                            {attachments[q.id] && (
+                                                <div className="mt-3 pt-3 border-t border-gray-100">
+                                                    <p className="text-xs font-bold text-gray-400 mb-2 uppercase">Attachment</p>
+                                                    {attachments[q.id].startsWith('data:image') ? (
+                                                        <img src={attachments[q.id]} alt="Student Attachment" className="max-h-48 rounded-lg border border-gray-200" />
+                                                    ) : (
+                                                        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border text-sm text-gray-600">
+                                                            <FileText className="w-4 h-4" />
+                                                            <span>Attached File (Download not supported in demo)</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
+
+                                    {((isMCQ && !isCorrect) || (!isMCQ)) && (
+                                        <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                            {isMCQ ? (
+                                                <>
+                                                    <p className="text-xs uppercase font-bold text-indigo-600 mb-1">Correct Answer:</p>
+                                                    <p className="font-bold text-indigo-900">{q.correctAnswer}</p>
+                                                </>
+                                            ) : (
+                                                <p className="text-xs text-indigo-600 italic">
+                                                    Note: Text answers are graded manually by your mentor.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            );
+                                </div>
+                    );
                         })}
-                    </div>
-                </Card>
             </div>
+                </Card >
+            </div >
         );
     }
 
-    // View: Taking Exam
-    return (
-        <div className="max-w-4xl mx-auto pb-12">
-            <div className="flex items-center justify-between mb-6">
-                <button
-                    onClick={() => setActiveExamId(null)}
-                    className="text-gray-500 hover:text-gray-900 font-medium"
-                >
-                    &larr; Back to Exams
-                </button>
-                <div className="text-right">
-                    <p className="text-sm text-gray-500">Subject</p>
-                    <p className="text-xl font-bold text-indigo-600">{selectedSubjectId}</p>
-                </div>
+// View: Taking Exam
+return (
+    <div className="max-w-4xl mx-auto pb-12">
+        <div className="flex items-center justify-between mb-6">
+            <button
+                onClick={() => setActiveExamId(null)}
+                className="text-gray-500 hover:text-gray-900 font-medium"
+            >
+                &larr; Back to Exams
+            </button>
+            <div className="text-right">
+                <p className="text-sm text-gray-500">Subject</p>
+                <p className="text-xl font-bold text-indigo-600">{selectedSubjectId}</p>
             </div>
+        </div>
 
-            <Card className="p-8">
-                <div className="space-y-8">
-                    {examQuestions.map((q, idx) => (
-                        <div key={q.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="flex gap-3 mb-4">
-                                <span className="font-bold text-gray-500 text-lg">Q{idx + 1}.</span>
-                                <div className="flex-1">
-                                    <p className="text-lg font-medium text-gray-900">{q.text}</p>
-                                    <p className="text-xs text-gray-400 mt-1">{q.marks} Marks</p>
-                                </div>
-                            </div>
-
-                            <div className="pl-8">
-                                {q.type === 'MCQ' ? (
-                                    <div className="space-y-2">
-                                        {q.options.map((opt, i) => (
-                                            <label key={i} className={clsx(
-                                                "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                                                answers[q.id] === opt
-                                                    ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200"
-                                                    : "bg-white border-gray-200 hover:bg-gray-50"
-                                            )}>
-                                                <input
-                                                    type="radio"
-                                                    name={`q-${q.id}`} // Unique name per question group
-                                                    value={opt}
-                                                    checked={answers[q.id] === opt}
-                                                    onChange={() => handleAnswerChange(q.id, opt)}
-                                                    className="text-indigo-600 focus:ring-indigo-500 w-4 h-4"
-                                                />
-                                                <span className="text-gray-700">{opt}</span>
-                                            </label>
-                                        ))}
+        <Card className="p-8">
+            <div className="space-y-8">
+                {examQuestions.map((q, idx) => (
+                    <div key={q.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <div className="flex gap-3 mb-4">
+                            <span className="font-bold text-gray-500 text-lg">Q{idx + 1}.</span>
+                            <div className="flex-1">
+                                <p className="text-lg font-medium text-gray-900">{q.text}</p>
+                                <p className="text-xs text-gray-400 mt-1">{q.marks} Marks</p>
+                                {q.image && (
+                                    <div className="mt-3">
+                                        <img src={q.image} alt="Question Reference" className="max-h-64 rounded-lg border border-gray-200" />
                                     </div>
-                                ) : (
-                                    <textarea
-                                        rows={4}
-                                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                        placeholder="Type your answer here..."
-                                        value={answers[q.id] || ''}
-                                        onChange={e => handleAnswerChange(q.id, e.target.value)}
-                                    />
                                 )}
                             </div>
                         </div>
-                    ))}
-                </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-100">
-                    <Button onClick={handleSubmit} variant="primary" className="w-full py-3 text-lg font-bold shadow-lg">
-                        Submit Exam
-                    </Button>
-                </div>
-            </Card>
-        </div>
-    );
+                        <div className="pl-8">
+                            {q.type === 'MCQ' ? (
+                                <div className="space-y-2">
+                                    {q.options.map((opt, i) => (
+                                        <label key={i} className={clsx(
+                                            "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                                            answers[q.id] === opt
+                                                ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200"
+                                                : "bg-white border-gray-200 hover:bg-gray-50"
+                                        )}>
+                                            <input
+                                                type="radio"
+                                                name={`q-${q.id}`} // Unique name per question group
+                                                value={opt}
+                                                checked={answers[q.id] === opt}
+                                                onChange={() => handleAnswerChange(q.id, opt)}
+                                                className="text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                                            />
+                                            <span className="text-gray-700">{opt}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            ) : (
+                                <textarea
+                                    rows={4}
+                                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    placeholder="Type your answer here..."
+                                    value={answers[q.id] || ''}
+                                    onChange={e => handleAnswerChange(q.id, e.target.value)}
+                                />
+                            )}
+
+                            <div className="mt-4 border-t border-gray-100 pt-3">
+                                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Attach File (Optional)</label>
+
+                                {!attachments[q.id] ? (
+                                    <div className="flex items-center gap-4">
+                                        <input
+                                            type="file"
+                                            id={`file-${q.id}`}
+                                            className="hidden"
+                                            accept="image/*,.pdf,.doc,.docx"
+                                            onChange={(e) => handleFileUpload(q.id, e)}
+                                        />
+                                        <label
+                                            htmlFor={`file-${q.id}`}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50 cursor-pointer shadow-sm transition-colors"
+                                        >
+                                            <Upload className="w-3 h-3" />
+                                            Upload Attachment
+                                        </label>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 w-fit">
+                                        <FileText className="w-4 h-4 text-indigo-600" />
+                                        <span className="text-sm text-indigo-700 font-medium">File Attached</span>
+                                        <button
+                                            onClick={() => removeAttachment(q.id)}
+                                            className="ml-2 p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-700 transition-colors"
+                                            title="Remove File"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-gray-100">
+                <Button onClick={handleSubmit} variant="primary" className="w-full py-3 text-lg font-bold shadow-lg">
+                    Submit Exam
+                </Button>
+            </div>
+        </Card>
+    </div>
+);
 };
 
 const CalendarIcon = ({ className }) => (
