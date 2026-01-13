@@ -368,35 +368,35 @@ const PrintAttendance = () => {
                             {/* Working Days Summary Table (Left) */}
                             <div className="border border-black text-sm">
                                 <div className="flex border-b border-black">
-                                    <div className="px-3 py-1 font-bold border-r border-black w-32">This month</div>
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32 whitespace-nowrap">This month</div>
                                     <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.thisMonth}</div>
                                 </div>
                                 <div className="flex border-b border-black">
-                                    <div className="px-3 py-1 font-bold border-r border-black w-32">Previous month</div>
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32 whitespace-nowrap">Previous month</div>
                                     <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.previous}</div>
                                 </div>
                                 <div className="flex">
-                                    <div className="px-3 py-1 font-bold border-r border-black w-32">Total</div>
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32 whitespace-nowrap">Total</div>
                                     <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.total}</div>
                                 </div>
                             </div>
 
                             {/* Signatures (Right) */}
-                            <div className="flex gap-16 font-semibold">
+                            <div className="flex gap-16 font-semibold items-end">
                                 <div className="text-center">
-                                    <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase">
+                                    <div className="min-w-[150px] h-6 border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase whitespace-nowrap overflow-hidden">
                                         {classMentor?.name || ""}
                                     </div>
                                     <p>Mentor name and sign</p>
                                 </div>
                                 <div className="text-center">
-                                    <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase">
+                                    <div className="min-w-[150px] h-6 border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase whitespace-nowrap overflow-hidden">
                                         {institutionSettings.chiefMentor || ""}
                                     </div>
                                     <p>Chief Mentor name and sign</p>
                                 </div>
                                 <div className="text-center">
-                                    <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1"></div>
+                                    <div className="min-w-[150px] h-6 border-b border-black mb-1 px-2 pb-1"></div>
                                     <p>Mufathish name and sign</p>
                                 </div>
                             </div>
