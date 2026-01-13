@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers } from 'lucide-react';
+import { clsx } from 'clsx';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
 import QuestionBank from '../components/mentor/QuestionBank';
