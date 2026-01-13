@@ -109,21 +109,19 @@ const DashboardHome = () => {
 };
 
 const AdminDashboard = () => {
+    const location = useLocation();
     const { logout } = useData();
-    const [activeTab, setActiveTab] = useState('dashboard');
 
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'dashboard': return <DashboardHome />;
-            case 'classes': return <ClassManagement />;
-            case 'mentors': return <MentorManagement />;
-            case 'students': return <StudentManagement />;
-            case 'subjects': return <SubjectManager />;
-            case 'exams': return <ExamManager />;
-            case 'settings': return <SettingsManager />;
-            default: return <DashboardHome />;
-        }
-    };
+    const navItems = [
+        { icon: LayoutDashboard, label: 'Overview', path: '/admin' },
+        { icon: School, label: 'Classes', path: '/admin/classes' },
+        { icon: Users, label: 'Mentors', path: '/admin/mentors' },
+        { icon: UserCheck, label: 'Students', path: '/admin/students' },
+        { icon: BookOpen, label: 'Subjects', path: '/admin/subjects' },
+        { icon: FileText, label: 'Exams', path: '/admin/exams' },
+        { icon: Settings, label: 'Settings', path: '/admin/settings' },
+        { icon: Info, label: 'Read Me', path: '/admin/readme' }, // Added Read Me nav item
+    ];
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">

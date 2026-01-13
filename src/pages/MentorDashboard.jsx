@@ -1,11 +1,12 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit } from 'lucide-react';
+import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info } from 'lucide-react';
 import { clsx } from 'clsx';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
 import QuestionBank from '../components/mentor/QuestionBank';
 import MarksEntry from '../components/mentor/MarksEntry';
+import Readme from './Readme';
 import { useData } from '../contexts/DataContext';
 
 const DashboardHome = () => (
@@ -24,6 +25,7 @@ const MentorDashboard = () => {
         { icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
         { icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
         { icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
+        { icon: Info, label: 'Read Me', path: '/mentor/readme' },
     ];
 
     return (
@@ -77,6 +79,7 @@ const MentorDashboard = () => {
                     <Route path="/questions" element={<QuestionBank />} />
                     <Route path="/marks" element={<MarksEntry />} />
                     <Route path="/stats" element={<MentorStats />} />
+                    <Route path="/readme" element={<Readme />} />
                 </Routes>
             </div>
         </div>
