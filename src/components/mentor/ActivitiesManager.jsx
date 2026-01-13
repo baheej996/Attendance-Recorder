@@ -1,25 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 const ActivitiesManager = () => {
     const {
         activities, addActivity, deleteActivity, toggleActivityStatus,
-        classes, students,
+        classes, students, subjects, currentUser,
         activitySubmissions, markActivityAsDone, markActivityAsPending
     } = useData();
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [expandedActivityId, setExpandedActivityId] = useState(null);
+    const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, activityId: null });
 
     // Form State
     const [newActivity, setNewActivity] = useState({
         title: '',
         description: '',
         classId: '',
+        subjectId: '',
         maxPoints: 10,
         dueDate: ''
     });
@@ -29,8 +32,23 @@ const ActivitiesManager = () => {
         if (!newActivity.title || !newActivity.classId) return;
         addActivity(newActivity);
         setIsCreateModalOpen(false);
-        setNewActivity({ title: '', description: '', classId: '', maxPoints: 10, dueDate: '' });
+        setNewActivity({ title: '', description: '', classId: '', subjectId: '', maxPoints: 10, dueDate: '' });
     };
+
+    const confirmDelete = () => {
+        if (deleteConfirmation.activityId) {
+            deleteActivity(deleteConfirmation.activityId);
+            setDeleteConfirmation({ isOpen: false, activityId: null });
+        }
+    };
+
+    const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
+        ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
+        : classes, [classes, currentUser]);
+
+    const availableSubjects = useMemo(() => newActivity.classId
+        ? subjects.filter(s => s.classId === newActivity.classId)
+        : [], [subjects, newActivity.classId]);
 
     const getClassStudentStats = (activity) => {
         const classStudents = students.filter(s => s.classId === activity.classId);
@@ -63,6 +81,7 @@ const ActivitiesManager = () => {
                     activities.map(activity => {
                         const stats = getClassStudentStats(activity);
                         const assignedClass = classes.find(c => c.id === activity.classId);
+                        const assignedSubject = subjects.find(s => s.id === activity.subjectId);
                         const isExpanded = expandedActivityId === activity.id;
 
                         return (
@@ -78,6 +97,11 @@ const ActivitiesManager = () => {
                                             <span className="px-2 py-0.5 text-xs font-bold bg-indigo-100 text-indigo-700 rounded-full">
                                                 {assignedClass ? `${assignedClass.name}-${assignedClass.division}` : 'Unknown Class'}
                                             </span>
+                                            {assignedSubject && (
+                                                <span className="px-2 py-0.5 text-xs font-bold bg-blue-100 text-blue-700 rounded-full">
+                                                    {assignedSubject.name}
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-gray-600 text-sm mb-4">{activity.description}</p>
 
@@ -100,7 +124,7 @@ const ActivitiesManager = () => {
                                             variant="danger"
                                             size="sm"
                                             onClick={() => {
-                                                if (confirm('Delete this activity?')) deleteActivity(activity.id);
+                                                setDeleteConfirmation({ isOpen: true, activityId: activity.id });
                                             }}
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -141,8 +165,8 @@ const ActivitiesManager = () => {
                                                                     else markActivityAsDone(activity.id, student.id, activity.maxPoints);
                                                                 }}
                                                                 className={`p-2 rounded-full transition-colors ${isDone
-                                                                        ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                                                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                                                    ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                                                                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                                                                     }`}
                                                             >
                                                                 {isDone ? <CheckCircle className="w-5 h-5" /> : <div className="w-5 h-5 border-2 border-current rounded-full" />}
@@ -195,8 +219,21 @@ const ActivitiesManager = () => {
                                     required
                                 >
                                     <option value="">Select Class</option>
-                                    {classes.map(c => (
+                                    {availableClasses.map(c => (
                                         <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Subject (Optional)</label>
+                                <select
+                                    className="w-full p-2 border rounded-lg"
+                                    value={newActivity.subjectId}
+                                    onChange={e => setNewActivity({ ...newActivity, subjectId: e.target.value })}
+                                >
+                                    <option value="">Select Subject</option>
+                                    {availableSubjects.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -223,6 +260,16 @@ const ActivitiesManager = () => {
                     </Card>
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={deleteConfirmation.isOpen}
+                onClose={() => setDeleteConfirmation({ isOpen: false, activityId: null })}
+                onConfirm={confirmDelete}
+                title="Delete Activity"
+                message="Are you sure you want to delete this activity? This action cannot be undone and will remove all student submissions associated with it."
+                confirmText="Delete Activity"
+                isDanger={true}
+            />
         </div>
     );
 };
