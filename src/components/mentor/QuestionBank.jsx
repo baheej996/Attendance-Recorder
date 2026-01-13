@@ -331,8 +331,6 @@ const QuestionBank = () => {
                                         label="Question Text"
                                         value={qText}
                                         onChange={e => setQText(e.target.value)}
-                                        value={qText}
-                                        onChange={e => setQText(e.target.value)}
                                         placeholder="Enter question text..."
                                     />
 

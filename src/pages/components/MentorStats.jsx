@@ -414,7 +414,7 @@ const MentorStats = () => {
                                                 ))}
                                                 {attendanceStats.atRisk.length > 6 && <span className="text-xs text-red-500 font-medium self-center">+{attendanceStats.atRisk.length - 6} more</span>}
                                             </div>
-                                        ) : <p className="text-sm text-green-700 font-medium flex items-center gap-2"><CheckCircle className="w-4 h-4" /> All students > 75% attendance!</p>}
+                                        ) : <p className="text-sm text-green-700 font-medium flex items-center gap-2"><CheckCircle className="w-4 h-4" /> All students &gt; 75% attendance!</p>}
                                     </div>
                                 </div>
 
