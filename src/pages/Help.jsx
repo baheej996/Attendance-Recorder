@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Shield, Users, GraduationCap, ClipboardCheck, FileText, BarChart2, CheckCircle, Info, Printer } from 'lucide-react';
+import { BookOpen, Shield, Users, GraduationCap, ClipboardCheck, FileText, BarChart2, CheckCircle, Info, Printer, Layers } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 
 const Section = ({ title, icon: Icon, children }) => (
@@ -61,7 +61,7 @@ const Readme = () => {
                                 <p>Manage critical system configurations.</p>
                                 <div className="mt-4 space-y-3">
                                     <FeatureItem icon={CheckCircle} title="Factory Reset" description="Wipe all data to start fresh (Requires Admin Password)." />
-                                    <FeatureItem icon={CheckCircle} title="Subject Management" description="Define standard subjects for the curriculum." />
+                                    <FeatureItem icon={CheckCircle} title="Subject Management" description="Create subjects that Mentors can link to their Activities/Homework." />
                                 </div>
                             </Section>
 
@@ -85,6 +85,15 @@ const Readme = () => {
                         <div className="grid md:grid-cols-2 gap-8">
                             <Section title="Attendance Recorder" icon={ClipboardCheck}>
                                 <p>Mark daily attendance for your assigned class. The system automatically tracks present/absent counts.</p>
+                            </Section>
+
+                            <Section title="Activity Manager (Homework)" icon={Layers}>
+                                <p>Assign homework or tasks to your classes. Track completion and assign points.</p>
+                                <div className="mt-4 space-y-3">
+                                    <FeatureItem icon={CheckCircle} title="Smart Creation" description="Simply select your class and subject. We'll warn you if you try to create a duplicate activity." />
+                                    <FeatureItem icon={CheckCircle} title="Edit & Manage" description="Need to change a due date? Use the Edit (Pencil) button. You can also bulk delete multiple activities at once." />
+                                    <FeatureItem icon={CheckCircle} title="Student Tracker" description="Click an activity to see who has finished it. Check off students to award points." />
+                                </div>
                             </Section>
 
                             <Section title="Question Bank" icon={FileText}>
@@ -124,6 +133,14 @@ const Readme = () => {
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-8">
+                            <Section title="Activities (Homework)" icon={Layers}>
+                                <p>Stay on top of your assignments. Your dashboard shows what's pending and what's done.</p>
+                                <div className="mt-4 space-y-3">
+                                    <FeatureItem icon={CheckCircle} title="Split View" description="Pending tasks are on the left, Completed history on the right. Never miss a deadline." />
+                                    <FeatureItem icon={CheckCircle} title="Subject Tags" description="Every activity shows its subject (e.g., Maths, Science) so you know which notebook to grab." />
+                                </div>
+                            </Section>
+
                             <Section title="Online Exams" icon={FileText}>
                                 <p>Participate in scheduled online exams. Answer questions and verify your responses before submitting.</p>
                                 <div className="mt-4 space-y-3">
