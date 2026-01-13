@@ -1,12 +1,12 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer } from 'lucide-react';
-import { clsx } from 'clsx';
+import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers } from 'lucide-react';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
 import QuestionBank from '../components/mentor/QuestionBank';
 import MarksEntry from '../components/mentor/MarksEntry';
 import PrintAttendance from '../components/mentor/PrintAttendance';
+import ActivitiesManager from '../components/mentor/ActivitiesManager';
 import Help from './Help';
 import { useData } from '../contexts/DataContext';
 
@@ -23,6 +23,7 @@ const MentorDashboard = () => {
 
     const navItems = [
         { icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
+        { icon: Layers, label: 'Activities', path: '/mentor/activities' },
         { icon: Printer, label: 'Print Attendance', path: '/mentor/print' },
         { icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
         { icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
@@ -78,6 +79,7 @@ const MentorDashboard = () => {
                 <Routes>
                     <Route path="/" element={<DashboardHome />} />
                     <Route path="/record" element={<AttendanceRecorder />} />
+                    <Route path="/activities" element={<ActivitiesManager />} />
                     <Route path="/print" element={<PrintAttendance />} />
                     <Route path="/questions" element={<QuestionBank />} />
                     <Route path="/marks" element={<MarksEntry />} />

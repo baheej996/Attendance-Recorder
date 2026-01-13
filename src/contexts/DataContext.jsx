@@ -577,6 +577,72 @@ export const DataProvider = ({ children }) => {
     const deleteMentors = (ids) => setMentors(prev => prev.filter(m => !ids.includes(m.id)));
     const deleteStudents = (ids) => setStudents(prev => prev.filter(s => !ids.includes(s.id)));
 
+    // Activities State
+    const [activities, setActivities] = useState(() => {
+        try {
+            const saved = localStorage.getItem('activities');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error("Error parsing activities:", e);
+            return [];
+        }
+    });
+
+    // Activity Submissions/Tracking State
+    const [activitySubmissions, setActivitySubmissions] = useState(() => {
+        try {
+            const saved = localStorage.getItem('activitySubmissions');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error("Error parsing activitySubmissions:", e);
+            return [];
+        }
+    });
+
+    useEffect(() => localStorage.setItem('activities', JSON.stringify(activities)), [activities]);
+    useEffect(() => localStorage.setItem('activitySubmissions', JSON.stringify(activitySubmissions)), [activitySubmissions]);
+
+    // Activity Actions
+    const addActivity = (activity) => {
+        const newActivity = { ...activity, id: generateId(), status: 'Active', createdAt: new Date().toISOString() };
+        setActivities(prev => [...prev, newActivity]);
+    };
+
+    const updateActivity = (id, updates) => {
+        setActivities(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    };
+
+    const deleteActivity = (id) => {
+        setActivities(prev => prev.filter(a => a.id !== id));
+        // Also clean up submissions
+        setActivitySubmissions(prev => prev.filter(s => s.activityId !== id));
+    };
+
+    const toggleActivityStatus = (id) => {
+        setActivities(prev => prev.map(a => a.id === id ? { ...a, status: a.status === 'Active' ? 'Inactive' : 'Active' } : a));
+    };
+
+    // Submission/Grading Actions
+    const markActivityAsDone = (activityId, studentId, points = 0) => {
+        setActivitySubmissions(prev => {
+            const existing = prev.find(s => s.activityId === activityId && s.studentId === studentId);
+            if (existing) {
+                return prev.map(s => s.activityId === activityId && s.studentId === studentId ? { ...s, status: 'Completed', points, timestamp: new Date().toISOString() } : s);
+            }
+            return [...prev, { id: generateId(), activityId, studentId, status: 'Completed', points, timestamp: new Date().toISOString() }];
+        });
+    };
+
+    const markActivityAsPending = (activityId, studentId) => {
+        setActivitySubmissions(prev => prev.filter(s => !(s.activityId === activityId && s.studentId === studentId)));
+    };
+
+    const getStudentActivityPoints = (studentId) => {
+        return activitySubmissions
+            .filter(s => s.studentId === studentId && s.status === 'Completed')
+            .reduce((sum, s) => sum + (Number(s.points) || 0), 0);
+    };
+
     return (
         <DataContext.Provider value={{
             classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses,
@@ -591,7 +657,10 @@ export const DataProvider = ({ children }) => {
             currentUser, login, logout,
             resetData,
             institutionSettings, updateInstitutionSettings,
-            validateAdmin, updateAdminCredentials
+            validateAdmin, updateAdminCredentials,
+            // Activities Exports
+            activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
+            activitySubmissions, markActivityAsDone, markActivityAsPending, getStudentActivityPoints
         }}>
             {children}
         </DataContext.Provider>

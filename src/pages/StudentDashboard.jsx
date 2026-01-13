@@ -4,42 +4,53 @@ import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info } from 'lucide-react';
+import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers } from 'lucide-react';
 import { clsx } from 'clsx';
 
 // Import New Student Components
 import StudentResultView from '../components/student/StudentResultView';
 import StudentExamView from '../components/student/StudentExamView';
 import Leaderboard from '../components/student/Leaderboard';
+import StudentActivities from '../components/student/StudentActivities';
 import Help from './Help';
 
 const COLORS = ['#10B981', '#EF4444'];
 
 // 1. Sidebar Component (Same style as Admin/Mentor)
-const SidebarItem = ({ icon: Icon, label, path, active, onClick }) => (
+const SidebarItem = ({ icon: Icon, label, path, active, onClick, hasNotification }) => (
     <Link
         to={path}
         onClick={onClick}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${active
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative ${active
             ? 'bg-indigo-50 text-indigo-700 shadow-sm'
             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             }`}
     >
         <Icon className={`w-5 h-5 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />
         {label}
+        {hasNotification && (
+            <span className="absolute right-4 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+        )}
     </Link>
 );
 
 // 2. Main Student Dashboard Layout
 const StudentDashboard = () => {
-    const { currentUser, logout } = useData();
+    const { currentUser, logout, activities, activitySubmissions } = useData();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const hasPendingActivities = (activities || []).filter(a =>
+        a.classId === currentUser.classId &&
+        a.status === 'Active' &&
+        !(activitySubmissions || []).some(s => s.activityId === a.id && s.studentId === currentUser.id && s.status === 'Completed')
+    ).length > 0;
 
     if (!currentUser) return null;
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/student' },
+        { icon: Layers, label: 'Activities', path: '/student/activities', hasNotification: hasPendingActivities },
         { icon: FileText, label: 'Online Exams', path: '/student/exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results' },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
@@ -74,6 +85,7 @@ const StudentDashboard = () => {
                                 label={item.label}
                                 path={item.path}
                                 active={isActive(item.path)}
+                                hasNotification={item.hasNotification}
                             />
                         ))}
                     </nav>
@@ -231,6 +243,7 @@ const StudentDashboard = () => {
                         </div>
                     } />
                     <Route path="/exams" element={<StudentExamView />} />
+                    <Route path="/activities" element={<StudentActivities />} />
                     <Route path="/results" element={<StudentResultView />} />
                     <Route path="/leaderboard" element={<Leaderboard />} />
                     <Route path="/help" element={<Help />} />
