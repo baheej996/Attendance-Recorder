@@ -98,6 +98,39 @@ const PrintAttendance = () => {
         return { letter: days[dayIndex], isWeekend: dayIndex === 0 || dayIndex === 6, isSunday: dayIndex === 0 };
     };
 
+    // Calculate Working Days
+    const calculateWorkingDays = () => {
+        if (!classStudents.length) return { thisMonth: 0, previous: 0, total: 0 };
+
+        // Get all student IDs for this class
+        const studentIds = new Set(classStudents.map(s => s.id));
+
+        // Filter attendance records for this class
+        const classRecords = attendance.filter(r => studentIds.has(r.studentId));
+
+        // Get unique dates
+        const uniqueDates = [...new Set(classRecords.map(r => r.date))];
+
+        let thisMonth = 0;
+        let previous = 0;
+
+        uniqueDates.forEach(dateStr => {
+            const d = new Date(dateStr);
+            const rMonth = d.getMonth();
+            const rYear = d.getFullYear();
+
+            if (rMonth === selectedMonth && rYear === selectedYear) {
+                thisMonth++;
+            } else if (d < new Date(selectedYear, selectedMonth, 1)) {
+                previous++;
+            }
+        });
+
+        return { thisMonth, previous, total: thisMonth + previous };
+    };
+
+    const workingDays = calculateWorkingDays();
+
     return (
         <div className="p-8 max-w-[1400px] mx-auto space-y-6">
             {/* Controls - Hidden on Print */}
@@ -222,7 +255,7 @@ const PrintAttendance = () => {
                                         const { letter, isSunday } = getDayLetter(day);
                                         return (
                                             <th key={`day-${day}`} className={clsx(
-                                                "border border-black w-8 relative align-bottom p-0",
+                                                "border border-black w-8 min-w-[2rem] relative align-bottom p-0", // w-8 + min-w for strict width
                                                 isSunday ? "text-red-600 border-b-0" : "border-b-0"
                                             )}>
                                                 <div className="flex items-end justify-center h-full pb-1">
@@ -329,22 +362,42 @@ const PrintAttendance = () => {
                         </table>
 
                         {/* Signatures */}
-                        <div className="mt-16 flex justify-between items-end text-xs font-semibold px-4 pb-4">
-                            <div className="text-center">
-                                <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase">
-                                    {classMentor?.name || ""}
+                        {/* Signatures and Working Days Summary */}
+                        <div className="mt-8 flex justify-between items-end text-xs px-4 pb-4">
+                            {/* Signatures */}
+                            <div className="flex gap-16 font-semibold">
+                                <div className="text-center">
+                                    <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase">
+                                        {classMentor?.name || ""}
+                                    </div>
+                                    <p>Mentor name and sign</p>
                                 </div>
-                                <p>Mentor name and sign</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase">
-                                    {institutionSettings.chiefMentor || ""}
+                                <div className="text-center">
+                                    <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1 text-sm font-bold uppercase">
+                                        {institutionSettings.chiefMentor || ""}
+                                    </div>
+                                    <p>Chief Mentor name and sign</p>
                                 </div>
-                                <p>Chief Mentor name and sign</p>
+                                <div className="text-center">
+                                    <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1"></div>
+                                    <p>Mufathish name and sign</p>
+                                </div>
                             </div>
-                            <div className="text-center">
-                                <div className="min-w-[150px] border-b border-black mb-1 px-2 pb-1"></div>
-                                <p>Mufathish name and sign</p>
+
+                            {/* Working Days Summary Table */}
+                            <div className="border border-black text-sm">
+                                <div className="flex border-b border-black">
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32">This month</div>
+                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.thisMonth}</div>
+                                </div>
+                                <div className="flex border-b border-black">
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32">Previous month</div>
+                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.previous}</div>
+                                </div>
+                                <div className="flex">
+                                    <div className="px-3 py-1 font-bold border-r border-black w-32">Total</div>
+                                    <div className="px-3 py-1 text-center w-16 bg-white font-mono">{workingDays.total}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
