@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import localforage from 'localforage';
 
 const DataContext = createContext();
 
@@ -8,7 +9,7 @@ export const DataProvider = ({ children }) => {
     // Initial Data with Robust Parsing
     const [classes, setClasses] = useState(() => {
         try {
-            const saved = localStorage.getItem('classes');
+            const saved = localStorage.getItem('classes')
             const parsed = saved ? JSON.parse(saved) : null;
             return Array.isArray(parsed) ? parsed : [];
         } catch (e) {
@@ -83,27 +84,61 @@ export const DataProvider = ({ children }) => {
         }
     });
 
-    const [questions, setQuestions] = useState(() => {
-        try {
-            const saved = localStorage.getItem('questions');
-            const parsed = saved ? JSON.parse(saved) : null;
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            console.error("Error parsing questions:", e);
-            return [];
-        }
-    });
+    const [questions, setQuestions] = useState([]);
+    const [studentResponses, setStudentResponses] = useState([]);
+    const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-    const [studentResponses, setStudentResponses] = useState(() => {
-        try {
-            const saved = localStorage.getItem('studentResponses');
-            const parsed = saved ? JSON.parse(saved) : null;
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            console.error("Error parsing studentResponses:", e);
-            return [];
+    // Load Heavy Data (Questions & Responses) from IndexedDB (localforage)
+    useEffect(() => {
+        const loadHeavyData = async () => {
+            try {
+                // Questions Migration checks
+                const legacyQuestions = localStorage.getItem('questions');
+                if (legacyQuestions) {
+                    console.log("Migrating questions to IndexedDB...");
+                    const parsed = JSON.parse(legacyQuestions);
+                    setQuestions(parsed);
+                    await localforage.setItem('questions', parsed);
+                    localStorage.removeItem('questions');
+                } else {
+                    const loadedQuestions = await localforage.getItem('questions');
+                    if (loadedQuestions) setQuestions(loadedQuestions);
+                }
+
+                // Responses Migration checks
+                const legacyResponses = localStorage.getItem('studentResponses');
+                if (legacyResponses) {
+                    console.log("Migrating studentResponses to IndexedDB...");
+                    const parsed = JSON.parse(legacyResponses);
+                    setStudentResponses(parsed);
+                    await localforage.setItem('studentResponses', parsed);
+                    localStorage.removeItem('studentResponses');
+                } else {
+                    const loadedResponses = await localforage.getItem('studentResponses');
+                    if (loadedResponses) setStudentResponses(loadedResponses);
+                }
+            } catch (err) {
+                console.error("Error loading heavy data:", err);
+            } finally {
+                setIsDataLoaded(true);
+            }
+        };
+        loadHeavyData();
+    }, []);
+
+    // Sync Questions to localforage
+    useEffect(() => {
+        if (isDataLoaded) {
+            localforage.setItem('questions', questions).catch(e => console.error("Error saving questions:", e));
         }
-    });
+    }, [questions, isDataLoaded]);
+
+    // Sync StudentResponses to localforage
+    useEffect(() => {
+        if (isDataLoaded) {
+            localforage.setItem('studentResponses', studentResponses).catch(e => console.error("Error saving studentResponses:", e));
+        }
+    }, [studentResponses, isDataLoaded]);
 
     const [institutionSettings, setInstitutionSettings] = useState(() => {
         try {
@@ -519,8 +554,8 @@ export const DataProvider = ({ children }) => {
         setResults([]);
         setQuestions([]);
         setStudentResponses([]);
-        localStorage.removeItem('questions');
-        localStorage.removeItem('studentResponses');
+        localforage.removeItem('questions');
+        localforage.removeItem('studentResponses');
     };
 
     const deleteAllClasses = () => {
