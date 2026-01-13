@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Shield, Users, GraduationCap, ClipboardCheck, FileText, BarChart2, CheckCircle, Info } from 'lucide-react';
+import { BookOpen, Shield, Users, GraduationCap, ClipboardCheck, FileText, BarChart2, CheckCircle, Info, Printer } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 
 const Section = ({ title, icon: Icon, children }) => (
@@ -100,6 +100,14 @@ const Readme = () => {
 
                             <Section title="Statistics" icon={Info}>
                                 <p>View visual analytics of your class performance and attendance trends over time.</p>
+                            </Section>
+
+                            <Section title="Print Register" icon={Printer}>
+                                <p>Generate and print monthly student attendance registers in an optimized A4 landscape format.</p>
+                                <div className="mt-4 space-y-3">
+                                    <FeatureItem icon={CheckCircle} title="Working Days" description="Auto-calculated summary of working days for the month." />
+                                    <FeatureItem icon={CheckCircle} title="Signatures" description="Dedicated spaces for Mentor, Chief Mentor, and Mufathish signatures." />
+                                </div>
                             </Section>
                         </div>
                     </>
