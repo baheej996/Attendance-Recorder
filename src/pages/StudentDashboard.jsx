@@ -224,6 +224,14 @@ const StudentDashboard = () => {
                                         <Button
                                             variant="primary"
                                             className="w-full justify-start gap-3 bg-white text-indigo-700 hover:bg-indigo-100 border-0"
+                                            onClick={() => window.location.href = '/student/activities'}
+                                        >
+                                            <Layers className="w-4 h-4" />
+                                            Complete Pending Activities
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            className="w-full justify-start gap-3 bg-white text-gray-700 hover:bg-gray-100 border-0"
                                             onClick={() => window.location.href = '/student/exams'}
                                         >
                                             <FileText className="w-4 h-4" />
