@@ -208,158 +208,169 @@ const PrintAttendance = () => {
                     >
                         {/* Title Header */}
                         <div className="text-center mb-2">
-                            <h1 className="text-2xl font-black text-black font-serif tracking-wider transform scale-x-110">SAMASTHA ONLINE GLOBAL MADRASA (10666)</h1>
-                            <h2 className="text-sm font-bold text-black mt-1">Student Attendance Register- {selectedYear}</h2>
+                            <h1 className="text-xl font-black text-black font-serif tracking-wider transform scale-x-110">SAMASTHA ONLINE GLOBAL MADRASA (10666)</h1>
+                            <h2 className="text-xs font-bold text-black mt-1">Student Attendance Register- {selectedYear}</h2>
                         </div>
 
+                        {/* Force Landscape & Scale */}
+                        <style>{`
+                            @media print {
+                                @page { size: landscape; margin: 5mm; }
+                                body { -webkit-print-color-adjust: exact; }
+                                .print-container { transform: scale(0.95); transform-origin: top left; width: 105%; }
+                            }
+                        `}</style>
+
                         {/* Table */}
-                        <table className="w-full border-collapse border border-black text-xs">
-                            <thead>
-                                {/* Row 1: Left Info, Month, Attendance Header */}
-                                <tr>
-                                    {/* Class & Division Info - Split into Label and Value */}
-                                    <th colSpan="2" className="border border-black px-2 py-1 text-left whitespace-nowrap font-bold w-16">
-                                        Class & Division:
-                                    </th>
-                                    <th colSpan="2" className="border border-black px-2 py-1 text-left font-bold">
-                                        {selectedClass?.name} {selectedClass?.division}
-                                    </th>
-
-                                    {/* Spacer with "Month:" label right aligned */}
-                                    <th colSpan={Math.max(1, daysInMonth - 4)} className="border border-black px-2 py-1 text-right font-bold align-middle">
-                                        Month:
-                                    </th>
-
-                                    {/* Month Name Value */}
-                                    <th colSpan="4" className="border border-black bg-green-200 uppercase font-bold px-2 py-1 text-center align-middle">
-                                        {months[selectedMonth]}
-                                    </th>
-
-                                    {/* Attendance Header */}
-                                    <th colSpan="3" className="border border-black px-1 py-1 text-center font-bold">Attendance</th>
-
-                                    {/* Remarks Header */}
-                                    <th rowSpan="3" className="border border-black px-1 py-1 text-center font-bold">Remarks</th>
-                                </tr>
-
-                                {/* Row 2: Identity Headers (Merged), Vertical Headers for Days and Attendance Stats */}
-                                <tr className="h-28"> {/* Reduced height from h-40 to h-28 for tighter layout */}
-                                    {/* Identity Headers (Merged vertically to remove blank space) */}
-                                    <th rowSpan="2" className="border border-black px-1 py-1 w-10 text-center font-bold text-[10px] align-bottom">SI/NO</th>
-                                    <th rowSpan="2" className="border border-black px-1 py-1 w-16 text-center font-bold text-[10px] align-bottom">REG NO</th>
-                                    <th rowSpan="2" className="border border-black px-1 py-1 w-16 text-center font-bold text-[10px] align-bottom">UID NO</th>
-                                    <th rowSpan="2" className="border border-black px-1 py-1 text-center font-bold min-w-[200px] text-[10px] align-bottom">NAME</th>
-
-                                    {/* Vertical Day Names */}
-                                    {daysArray.map(day => {
-                                        const { letter, isSunday } = getDayLetter(day);
-                                        return (
-                                            <th key={`day-${day}`} className={clsx(
-                                                "border border-black w-7 min-w-[1.75rem] relative align-bottom p-0", // Reduced to w-7 for page fit // w-8 + min-w for strict width
-                                                isSunday ? "text-red-600 border-b-0" : "border-b-0"
-                                            )}>
-                                                <div className="flex items-end justify-center h-full pb-1">
-                                                    <span className="block [writing-mode:vertical-lr] rotate-180 text-[10px] font-normal leading-none whitespace-nowrap">
-                                                        {isSunday ? 'Sunday' :
-                                                            letter === 'M' ? 'Monday' :
-                                                                letter === 'T' ? 'Tuesday' :
-                                                                    letter === 'W' ? 'Wednesday' :
-                                                                        letter === 'F' ? 'Friday' :
-                                                                            letter === 'S' ? 'Saturday' : ''}
-                                                    </span>
-                                                </div>
-                                            </th>
-                                        )
-                                    })}
-
-                                    {/* Vertical Attendance Headers */}
-                                    <th className="border border-black relative align-bottom p-0">
-                                        <div className="flex items-end justify-center h-full pb-1">
-                                            <span className="block [writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[10px] font-bold">In the month</span>
-                                        </div>
-                                    </th>
-                                    <th className="border border-black relative align-bottom p-0">
-                                        <div className="flex items-end justify-center h-full pb-1">
-                                            <span className="block [writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[10px] font-bold">Previous</span>
-                                        </div>
-                                    </th>
-                                    <th className="border border-black relative align-bottom p-0">
-                                        <div className="flex items-end justify-center h-full pb-1">
-                                            <span className="block [writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[10px] font-bold">Total</span>
-                                        </div>
-                                    </th>
-                                </tr>
-
-                                {/* Row 3: Day Numbers + Previous Month Label (Identity headers are now in Row 2 spanning down) */}
-                                <tr>
-                                    {/* Day Numbers */}
-                                    {daysArray.map(day => {
-                                        const { isSunday } = getDayLetter(day);
-                                        return (
-                                            <th key={`num-${day}`} className={clsx(
-                                                "border border-black px-1 py-1 text-center font-bold text-[10px]",
-                                                isSunday ? "text-red-600" : ""
-                                            )}>
-                                                {day}
-                                            </th>
-                                        )
-                                    })}
-
-                                    {/* Stats Sub-row (Empty, Previous Month, Empty) */}
-                                    <th className="border border-black bg-white"></th>
-                                    <th className="border border-black bg-green-200 text-[10px] font-bold px-0.5 py-1 text-center uppercase min-w-[24px]">
-                                        <div className="truncate text-[8px] sm:text-[10px]">{previousMonthName}</div>
-                                    </th>
-                                    <th className="border border-black bg-white"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {classStudents.length === 0 ? (
+                        <div className="print-container">
+                            <table className="w-full border-collapse border border-black text-[10px]">
+                                <thead>
+                                    {/* Row 1: Left Info, Month, Attendance Header */}
                                     <tr>
-                                        <td colSpan={daysInMonth + 9} className="border border-black px-4 py-8 text-center text-gray-400 italic">
-                                            No students found in this class.
-                                        </td>
+                                        {/* Class & Division Info - Split into Label and Value */}
+                                        <th colSpan="2" className="border border-black px-2 py-1 text-left whitespace-nowrap font-bold w-16">
+                                            Class & Division:
+                                        </th>
+                                        <th colSpan="2" className="border border-black px-2 py-1 text-left font-bold">
+                                            {selectedClass?.name} {selectedClass?.division}
+                                        </th>
+
+                                        {/* Spacer with "Month:" label right aligned */}
+                                        <th colSpan={Math.max(1, daysInMonth - 4)} className="border border-black px-2 py-1 text-right font-bold align-middle">
+                                            Month:
+                                        </th>
+
+                                        {/* Month Name Value */}
+                                        <th colSpan="4" className="border border-black bg-green-200 uppercase font-bold px-2 py-1 text-center align-middle">
+                                            {months[selectedMonth]}
+                                        </th>
+
+                                        {/* Attendance Header */}
+                                        <th colSpan="3" className="border border-black px-1 py-1 text-center font-bold">Attendance</th>
+
+                                        {/* Remarks Header */}
+                                        <th rowSpan="3" className="border border-black px-1 py-1 text-center font-bold">Remarks</th>
                                     </tr>
-                                ) : (
-                                    classStudents.map((student, index) => {
-                                        const stats = processAttendance(student.id);
-                                        return (
-                                            <tr key={student.id} className="h-8">
-                                                <td className="border border-black text-center">{index + 1}</td>
-                                                <td className="border border-black px-1 text-center font-mono">{student.registerNo}</td>
-                                                <td className="border border-black px-1 text-center font-mono">{student.uid || ''}</td>
-                                                <td className={clsx(
-                                                    "border border-black px-2 font-normal uppercase truncate max-w-[200px] text-left",
-                                                    student.gender === 'Female' ? "text-red-600" : "text-black"
+
+                                    {/* Row 2: Identity Headers (Merged), Vertical Headers for Days and Attendance Stats */}
+                                    <tr className="h-28"> {/* Reduced height from h-40 to h-28 for tighter layout */}
+                                        {/* Identity Headers (Merged vertically to remove blank space) */}
+                                        <th rowSpan="2" className="border border-black px-1 py-1 w-8 text-center font-bold text-[9px] align-bottom">SI/NO</th>
+                                        <th rowSpan="2" className="border border-black px-1 py-1 w-14 text-center font-bold text-[9px] align-bottom">REG NO</th>
+                                        <th rowSpan="2" className="border border-black px-1 py-1 w-14 text-center font-bold text-[9px] align-bottom">UID NO</th>
+                                        <th rowSpan="2" className="border border-black px-1 py-1 text-center font-bold min-w-[150px] text-[9px] align-bottom">NAME</th>
+
+                                        {/* Vertical Day Names */}
+                                        {daysArray.map(day => {
+                                            const { letter, isSunday } = getDayLetter(day);
+                                            return (
+                                                <th key={`day-${day}`} className={clsx(
+                                                    "border border-black w-6 min-w-[1.5rem] relative align-bottom p-0", // Reduced to w-6
+                                                    isSunday ? "text-red-600 border-b-0" : "border-b-0"
                                                 )}>
-                                                    {student.name}
-                                                </td>
+                                                    <div className="flex items-end justify-center h-full pb-1">
+                                                        <span className="block [writing-mode:vertical-lr] rotate-180 text-[9px] font-normal leading-none whitespace-nowrap">
+                                                            {isSunday ? 'Sunday' :
+                                                                letter === 'M' ? 'Monday' :
+                                                                    letter === 'T' ? 'Tuesday' :
+                                                                        letter === 'W' ? 'Wednesday' :
+                                                                            letter === 'F' ? 'Friday' :
+                                                                                letter === 'S' ? 'Saturday' : ''}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                            )
+                                        })}
 
-                                                {daysArray.map(day => {
-                                                    const status = stats.currentMonth.days[day];
-                                                    const { isSunday } = getDayLetter(day);
-                                                    return (
-                                                        <td key={day} className={clsx(
-                                                            "border border-black text-center font-bold text-[10px]",
-                                                            status === 'X' ? "text-black" :
-                                                                status === 'A' ? "text-red-500" : "", // Red 'A'
-                                                            isSunday ? "" : "" // Removed bg-red-50 for clean look like image
-                                                        )}>
-                                                            {status || ''}
-                                                        </td>
-                                                    );
-                                                })}
+                                        {/* Vertical Attendance Headers */}
+                                        <th className="border border-black relative align-bottom p-0">
+                                            <div className="flex items-end justify-center h-full pb-1">
+                                                <span className="block [writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[9px] font-bold">In the month</span>
+                                            </div>
+                                        </th>
+                                        <th className="border border-black relative align-bottom p-0">
+                                            <div className="flex items-end justify-center h-full pb-1">
+                                                <span className="block [writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[9px] font-bold">Previous</span>
+                                            </div>
+                                        </th>
+                                        <th className="border border-black relative align-bottom p-0">
+                                            <div className="flex items-end justify-center h-full pb-1">
+                                                <span className="block [writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[9px] font-bold">Total</span>
+                                            </div>
+                                        </th>
+                                    </tr>
 
-                                                <td className="border border-black text-center font-bold">{stats.currentMonth.total}</td>
-                                                <td className="border border-black text-center text-gray-600">{stats.previousTotal}</td>
-                                                <td className="border border-black text-center font-bold bg-gray-50">{stats.total}</td>
-                                                <td className="border border-black text-center"></td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                    {/* Row 3: Day Numbers + Previous Month Label (Identity headers are now in Row 2 spanning down) */}
+                                    <tr>
+                                        {/* Day Numbers */}
+                                        {daysArray.map(day => {
+                                            const { isSunday } = getDayLetter(day);
+                                            return (
+                                                <th key={`num-${day}`} className={clsx(
+                                                    "border border-black px-1 py-1 text-center font-bold text-[9px]",
+                                                    isSunday ? "text-red-600" : ""
+                                                )}>
+                                                    {day}
+                                                </th>
+                                            )
+                                        })}
+
+                                        {/* Stats Sub-row (Empty, Previous Month, Empty) */}
+                                        <th className="border border-black bg-white"></th>
+                                        <th className="border border-black bg-green-200 text-[10px] font-bold px-0.5 py-1 text-center uppercase min-w-[24px]">
+                                            <div className="truncate text-[8px] sm:text-[10px]">{previousMonthName}</div>
+                                        </th>
+                                        <th className="border border-black bg-white"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {classStudents.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={daysInMonth + 9} className="border border-black px-4 py-8 text-center text-gray-400 italic">
+                                                No students found in this class.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        classStudents.map((student, index) => {
+                                            const stats = processAttendance(student.id);
+                                            return (
+                                                <tr key={student.id} className="h-8">
+                                                    <td className="border border-black text-center">{index + 1}</td>
+                                                    <td className="border border-black px-1 text-center font-mono">{student.registerNo}</td>
+                                                    <td className="border border-black px-1 text-center font-mono">{student.uid || ''}</td>
+                                                    <td className={clsx(
+                                                        "border border-black px-2 font-normal uppercase truncate max-w-[200px] text-left",
+                                                        student.gender === 'Female' ? "text-red-600" : "text-black"
+                                                    )}>
+                                                        {student.name}
+                                                    </td>
+
+                                                    {daysArray.map(day => {
+                                                        const status = stats.currentMonth.days[day];
+                                                        const { isSunday } = getDayLetter(day);
+                                                        return (
+                                                            <td key={day} className={clsx(
+                                                                "border border-black text-center font-bold text-[10px]",
+                                                                status === 'X' ? "text-black" :
+                                                                    status === 'A' ? "text-red-500" : "", // Red 'A'
+                                                                isSunday ? "" : "" // Removed bg-red-50 for clean look like image
+                                                            )}>
+                                                                {status || ''}
+                                                            </td>
+                                                        );
+                                                    })}
+
+                                                    <td className="border border-black text-center font-bold">{stats.currentMonth.total}</td>
+                                                    <td className="border border-black text-center text-gray-600">{stats.previousTotal}</td>
+                                                    <td className="border border-black text-center font-bold bg-gray-50">{stats.total}</td>
+                                                    <td className="border border-black text-center"></td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
 
                         {/* Signatures */}
                         {/* Signatures and Working Days Summary */}
