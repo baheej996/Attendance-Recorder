@@ -170,7 +170,6 @@ const PrintAttendance = () => {
             ) : (
                 <div className="overflow-auto bg-gray-50 p-4 rounded-xl print:p-0 print:bg-white print:overflow-visible">
                     <div
-                        ref={componentRef}
                         className="bg-white p-4 mx-auto min-w-[1000px] print:w-full print:min-w-0"
                     >
                         {/* Title Header */}
