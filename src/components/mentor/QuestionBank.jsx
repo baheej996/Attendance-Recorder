@@ -336,52 +336,53 @@ const QuestionBank = () => {
                                         placeholder="Enter question text..."
                                     />
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Question Image (Optional)</label>
-                                        <div className="flex items-center gap-4">
-                                            <div className="relative">
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={handleImageUpload}
-                                                    className="hidden"
-                                                    id="q-image-upload"
-                                                />
-                                                <label
-                                                    htmlFor="q-image-upload"
-                                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer shadow-sm"
-                                                >
-                                                    <Upload className="w-4 h-4" />
-                                                    {qImage ? 'Change Image' : 'Upload Image'}
-                                                </label>
-                                            </div>
-                                            {qImage && (
-                                                <div className="relative group">
-                                                    <img src={qImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg border border-gray-200" />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setQImage(null)}
-                                                        className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    <div className="flex items-end gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Question Image (Optional)</label>
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleImageUpload}
+                                                        className="hidden"
+                                                        id="q-image-upload"
+                                                    />
+                                                    <label
+                                                        htmlFor="q-image-upload"
+                                                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer shadow-sm"
                                                     >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
+                                                        <Upload className="w-4 h-4" />
+                                                        {qImage ? 'Change Image' : 'Upload Image'}
+                                                    </label>
                                                 </div>
-                                            )}
+                                                {qImage && (
+                                                    <div className="relative group">
+                                                        <img src={qImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg border border-gray-200" />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setQImage(null)}
+                                                            className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
 
-
-                                    <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                        <input
-                                            type="checkbox"
-                                            id="allowAttachments"
-                                            checked={allowAttachments}
-                                            onChange={(e) => setAllowAttachments(e.target.checked)}
-                                            className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                        />
-                                        <label htmlFor="allowAttachments" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
-                                            Allow Students to Attach Files
-                                        </label>
+                                        <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 mb-[2px]">
+                                            <input
+                                                type="checkbox"
+                                                id="allowAttachments"
+                                                checked={allowAttachments}
+                                                onChange={(e) => setAllowAttachments(e.target.checked)}
+                                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                            />
+                                            <label htmlFor="allowAttachments" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                                                Allow Students to Attach Files
+                                            </label>
+                                        </div>
                                     </div>
 
                                     {qType === 'MCQ' && (
