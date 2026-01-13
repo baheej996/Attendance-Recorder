@@ -17,6 +17,17 @@ const PrintAttendance = () => {
     const handlePrint = useReactToPrint({
         content: () => componentRef.current,
         documentTitle: `Attendance_Register_${selectedMonth + 1}_${selectedYear}`,
+        pageStyle: `
+            @page {
+                size: landscape;
+                margin: 5mm;
+            }
+            @media print {
+                body {
+                    -webkit-print-color-adjust: exact;
+                }
+            }
+        `
     });
 
     // Filter classes for Mentors
@@ -292,7 +303,12 @@ const PrintAttendance = () => {
                                                 <td className="border border-black text-center">{index + 1}</td>
                                                 <td className="border border-black px-1 text-center font-mono">{student.registerNo}</td>
                                                 <td className="border border-black px-1 text-center font-mono">{student.uid || ''}</td>
-                                                <td className="border border-black px-2 font-medium uppercase truncate max-w-[200px] text-left">{student.name}</td>
+                                                <td className={clsx(
+                                                    "border border-black px-2 font-medium uppercase truncate max-w-[200px] text-left",
+                                                    student.gender === 'Female' ? "text-red-600" : "text-black"
+                                                )}>
+                                                    {student.name}
+                                                </td>
 
                                                 {daysArray.map(day => {
                                                     const status = stats.currentMonth.days[day];
