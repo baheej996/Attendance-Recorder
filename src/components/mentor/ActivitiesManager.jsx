@@ -46,9 +46,33 @@ const ActivitiesManager = () => {
         ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
         : classes, [classes, currentUser]);
 
-    const availableSubjects = useMemo(() => newActivity.classId
-        ? subjects.filter(s => s.classId === newActivity.classId)
-        : [], [subjects, newActivity.classId]);
+    const availableSubjects = useMemo(() => {
+        if (!newActivity.classId) return [];
+
+        const selectedClass = classes.find(c => c.id === newActivity.classId);
+        if (!selectedClass) return [];
+
+        // 1. Get all classes that share the same Grade Name (e.g., "1", "10")
+        const sameGradeClassIds = classes
+            .filter(c => c.name === selectedClass.name)
+            .map(c => c.id);
+
+        // 2. Find all subjects assigned to ANY of these classes
+        const allGradeSubjects = subjects.filter(s => sameGradeClassIds.includes(s.classId));
+
+        // 3. Deduplicate by Subject Name (e.g. if Math exists for 1-A and 1-B, show once)
+        const uniqueSubjects = [];
+        const seenNames = new Set();
+
+        allGradeSubjects.forEach(s => {
+            if (!seenNames.has(s.name)) {
+                seenNames.add(s.name);
+                uniqueSubjects.push(s);
+            }
+        });
+
+        return uniqueSubjects.sort((a, b) => a.name.localeCompare(b.name));
+    }, [subjects, classes, newActivity.classId]);
 
     const getClassStudentStats = (activity) => {
         const classStudents = students.filter(s => s.classId === activity.classId);
