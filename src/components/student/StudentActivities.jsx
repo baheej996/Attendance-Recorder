@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Layers, CheckCircle, Clock, Trophy, Target } from 'lucide-react';
 
 const StudentActivities = () => {
-    const { currentUser, activities, activitySubmissions, students } = useData();
+    const { currentUser, activities, activitySubmissions, students, subjects } = useData();
 
     if (!currentUser) return null;
 
@@ -115,7 +115,14 @@ const StudentActivities = () => {
                                     <Card key={activity.id} className="p-4 border-l-4 border-l-orange-400">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <h4 className="font-bold text-gray-900">{activity.title}</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-gray-900">{activity.title}</h4>
+                                                    {activity.subjectId && subjects.find(s => s.id === activity.subjectId) && (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                                                            {subjects.find(s => s.id === activity.subjectId).name}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-gray-600 text-sm mt-1">{activity.description}</p>
                                                 <div className="flex gap-4 mt-3 text-xs text-gray-500 font-medium">
                                                     <span>Max Points: {activity.maxPoints}</span>
@@ -142,7 +149,14 @@ const StudentActivities = () => {
                                     <Card key={activity.id} className="p-4 border-l-4 border-l-green-400 bg-gray-50/50">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <h4 className="font-bold text-gray-700 line-through">{activity.title}</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-gray-700 line-through">{activity.title}</h4>
+                                                    {activity.subjectId && subjects.find(s => s.id === activity.subjectId) && (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full">
+                                                            {subjects.find(s => s.id === activity.subjectId).name}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-gray-500 text-sm mt-1">{activity.description}</p>
                                                 <div className="flex gap-4 mt-3 text-xs text-gray-400 font-medium">
                                                     <span>Points Earned: {activity.submission.points}/{activity.maxPoints}</span>
@@ -171,9 +185,9 @@ const StudentActivities = () => {
                                 <div key={s.id} className={`p-4 flex items-center justify-between ${s.id === currentUser.id ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}>
                                     <div className="flex items-center gap-3">
                                         <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                index === 1 ? 'bg-gray-200 text-gray-700' :
-                                                    index === 2 ? 'bg-orange-100 text-orange-700' :
-                                                        'text-gray-400'
+                                            index === 1 ? 'bg-gray-200 text-gray-700' :
+                                                index === 2 ? 'bg-orange-100 text-orange-700' :
+                                                    'text-gray-400'
                                             }`}>
                                             {index + 1}
                                         </span>

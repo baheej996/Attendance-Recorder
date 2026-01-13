@@ -3,17 +3,18 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil } from 'lucide-react';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 const ActivitiesManager = () => {
     const {
-        activities, addActivity, deleteActivity, toggleActivityStatus,
+        activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
         classes, students, subjects, currentUser,
         activitySubmissions, markActivityAsDone, markActivityAsPending
     } = useData();
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [editingActivityId, setEditingActivityId] = useState(null);
     const [expandedActivityId, setExpandedActivityId] = useState(null);
     const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, activityId: null });
 
@@ -27,11 +28,41 @@ const ActivitiesManager = () => {
         dueDate: ''
     });
 
-    const handleCreate = (e) => {
+    const handleCreateOrUpdate = (e) => {
         e.preventDefault();
         if (!newActivity.title || !newActivity.classId) return;
-        addActivity(newActivity);
+
+        if (editingActivityId) {
+            updateActivity(editingActivityId, newActivity);
+        } else {
+            addActivity(newActivity);
+        }
+
+        closeModal();
+    };
+
+    const openCreateModal = () => {
+        setEditingActivityId(null);
+        setNewActivity({ title: '', description: '', classId: '', subjectId: '', maxPoints: 10, dueDate: '' });
+        setIsCreateModalOpen(true);
+    };
+
+    const openEditModal = (activity) => {
+        setEditingActivityId(activity.id);
+        setNewActivity({
+            title: activity.title,
+            description: activity.description,
+            classId: activity.classId,
+            subjectId: activity.subjectId || '',
+            maxPoints: activity.maxPoints,
+            dueDate: activity.dueDate || ''
+        });
+        setIsCreateModalOpen(true);
+    };
+
+    const closeModal = () => {
         setIsCreateModalOpen(false);
+        setEditingActivityId(null);
         setNewActivity({ title: '', description: '', classId: '', subjectId: '', maxPoints: 10, dueDate: '' });
     };
 
@@ -89,7 +120,7 @@ const ActivitiesManager = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Activity Manager</h1>
                     <p className="text-gray-500">Assign and track class activities</p>
                 </div>
-                <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
+                <Button onClick={openCreateModal} className="flex items-center gap-2">
                     <Plus className="w-4 h-4" /> New Activity
                 </Button>
             </div>
@@ -137,6 +168,13 @@ const ActivitiesManager = () => {
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => openEditModal(activity)}
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </Button>
                                         <Button
                                             variant="secondary"
                                             size="sm"
@@ -212,10 +250,10 @@ const ActivitiesManager = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <Card className="w-full max-w-md p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold">Create Activity</h2>
-                            <button onClick={() => setIsCreateModalOpen(false)}><XCircle className="w-6 h-6 text-gray-400" /></button>
+                            <h2 className="text-xl font-bold">{editingActivityId ? 'Edit Activity' : 'Create Activity'}</h2>
+                            <button onClick={closeModal}><XCircle className="w-6 h-6 text-gray-400" /></button>
                         </div>
-                        <form onSubmit={handleCreate} className="space-y-4">
+                        <form onSubmit={handleCreateOrUpdate} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                                 <Input
@@ -279,7 +317,9 @@ const ActivitiesManager = () => {
                                     />
                                 </div>
                             </div>
-                            <Button type="submit" className="w-full">Create Activity</Button>
+                            <Button type="submit" className="w-full">
+                                {editingActivityId ? 'Update Activity' : 'Create Activity'}
+                            </Button>
                         </form>
                     </Card>
                 </div>
