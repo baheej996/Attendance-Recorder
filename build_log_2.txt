@@ -1,0 +1,67 @@
+
+> attendance-recorder@0.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m✓[39m 40 modules transformed.
+[31m✗[39m Build failed in 3.44s
+[31merror during build:
+[31m[vite:esbuild] Transform failed with 5 errors:
+C:/Users/user/Documents/ATTENDANCE RECORDER/src/components/mentor/QuestionBank.jsx:372:30: ERROR: Unexpected closing "div" tag does not match opening "form" tag
+C:/Users/user/Documents/ATTENDANCE RECORDER/src/components/mentor/QuestionBank.jsx:424:26: ERROR: Unexpected closing "form" tag does not match opening "div" tag
+C:/Users/user/Documents/ATTENDANCE RECORDER/src/components/mentor/QuestionBank.jsx:457:10: ERROR: Unexpected closing "div" tag does not match opening "Card" tag
+C:/Users/user/Documents/ATTENDANCE RECORDER/src/components/mentor/QuestionBank.jsx:458:22: ERROR: Unexpected closing "Card" tag does not match opening "div" tag
+C:/Users/user/Documents/ATTENDANCE RECORDER/src/components/mentor/QuestionBank.jsx:459:23: ERROR: Unterminated regular expression[31m
+file: [36mC:/Users/user/Documents/ATTENDANCE RECORDER/src/components/mentor/QuestionBank.jsx:372:30[31m
+[33m
+[33mUnexpected closing "div" tag does not match opening "form" tag[33m
+370 |                                          </div>
+371 |                                      </div>
+372 |                              </div>
+    |                                ^
+373 |  
+374 |                              <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+
+[33mUnexpected closing "form" tag does not match opening "div" tag[33m
+422 |                                  )}
+423 |                              </div>
+424 |                          </form>
+    |                            ^
+425 |                  </div>
+426 |  
+
+[33mUnexpected closing "div" tag does not match opening "Card" tag[33m
+455 |                  </div>
+456 |              </div>
+457 |          </div>
+    |            ^
+458 |                      </Card >
+459 |                  </div >
+
+[33mUnexpected closing "Card" tag does not match opening "div" tag[33m
+456 |              </div>
+457 |          </div>
+458 |                      </Card >
+    |                        ^
+459 |                  </div >
+460 |              )}
+
+[33mUnterminated regular expression[33m
+457 |          </div>
+458 |                      </Card >
+459 |                  </div >
+    |                         ^
+460 |              )}
+461 |          </div >
+[31m
+    at failureErrorWithLog (C:\Users\user\Documents\ATTENDANCE RECORDER\node_modules\esbuild\lib\main.js:1467:15)
+    at C:\Users\user\Documents\ATTENDANCE RECORDER\node_modules\esbuild\lib\main.js:736:50
+    at responseCallbacks.<computed> (C:\Users\user\Documents\ATTENDANCE RECORDER\node_modules\esbuild\lib\main.js:603:9)
+    at handleIncomingPacket (C:\Users\user\Documents\ATTENDANCE RECORDER\node_modules\esbuild\lib\main.js:658:12)
+    at Socket.readFromStdout (C:\Users\user\Documents\ATTENDANCE RECORDER\node_modules\esbuild\lib\main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)[39m

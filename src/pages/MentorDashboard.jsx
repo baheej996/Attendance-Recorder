@@ -1,11 +1,12 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info } from 'lucide-react';
+import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer } from 'lucide-react';
 import { clsx } from 'clsx';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
 import QuestionBank from '../components/mentor/QuestionBank';
 import MarksEntry from '../components/mentor/MarksEntry';
+import PrintAttendance from '../components/mentor/PrintAttendance';
 import Help from './Help';
 import { useData } from '../contexts/DataContext';
 
@@ -22,6 +23,7 @@ const MentorDashboard = () => {
 
     const navItems = [
         { icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
+        { icon: Printer, label: 'Print Attendance', path: '/mentor/print' },
         { icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
         { icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
         { icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
@@ -31,7 +33,7 @@ const MentorDashboard = () => {
     return (
         <div className="flex h-screen bg-gray-50">
             {/* Sidebar */}
-            <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+            <div className="w-64 bg-white border-r border-gray-200 flex flex-col print:hidden">
                 <div className="p-6 border-b border-gray-100">
                     <h1 className="text-xl font-bold text-purple-600 flex items-center gap-2">
                         <CalendarDays className="w-6 h-6" />
@@ -72,10 +74,11 @@ const MentorDashboard = () => {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto print:overflow-visible">
                 <Routes>
                     <Route path="/" element={<DashboardHome />} />
                     <Route path="/record" element={<AttendanceRecorder />} />
+                    <Route path="/print" element={<PrintAttendance />} />
                     <Route path="/questions" element={<QuestionBank />} />
                     <Route path="/marks" element={<MarksEntry />} />
                     <Route path="/stats" element={<MentorStats />} />
