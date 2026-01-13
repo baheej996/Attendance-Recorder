@@ -401,40 +401,42 @@ const StudentExamView = () => {
                                     />
                                 )}
 
-                                <div className="mt-4 border-t border-gray-100 pt-3">
-                                    <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Attach File (Optional)</label>
+                                {q.allowAttachments && (
+                                    <div className="mt-4 border-t border-gray-100 pt-3">
+                                        <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Attach File (Optional)</label>
 
-                                    {!attachments[q.id] ? (
-                                        <div className="flex items-center gap-4">
-                                            <input
-                                                type="file"
-                                                id={`file-${q.id}`}
-                                                className="hidden"
-                                                accept="image/*,.pdf,.doc,.docx"
-                                                onChange={(e) => handleFileUpload(q.id, e)}
-                                            />
-                                            <label
-                                                htmlFor={`file-${q.id}`}
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50 cursor-pointer shadow-sm transition-colors"
-                                            >
-                                                <Upload className="w-3 h-3" />
-                                                Upload Attachment
-                                            </label>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 w-fit">
-                                            <FileText className="w-4 h-4 text-indigo-600" />
-                                            <span className="text-sm text-indigo-700 font-medium">File Attached</span>
-                                            <button
-                                                onClick={() => removeAttachment(q.id)}
-                                                className="ml-2 p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-700 transition-colors"
-                                                title="Remove File"
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
+                                        {!attachments[q.id] ? (
+                                            <div className="flex items-center gap-4">
+                                                <input
+                                                    type="file"
+                                                    id={`file-${q.id}`}
+                                                    className="hidden"
+                                                    accept="image/*,.pdf,.doc,.docx"
+                                                    onChange={(e) => handleFileUpload(q.id, e)}
+                                                />
+                                                <label
+                                                    htmlFor={`file-${q.id}`}
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50 cursor-pointer shadow-sm transition-colors"
+                                                >
+                                                    <Upload className="w-3 h-3" />
+                                                    Upload Attachment
+                                                </label>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 w-fit">
+                                                <FileText className="w-4 h-4 text-indigo-600" />
+                                                <span className="text-sm text-indigo-700 font-medium">File Attached</span>
+                                                <button
+                                                    onClick={() => removeAttachment(q.id)}
+                                                    className="ml-2 p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-700 transition-colors"
+                                                    title="Remove File"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
