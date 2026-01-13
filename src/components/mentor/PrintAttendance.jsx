@@ -4,7 +4,6 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Input';
 import { Printer, FileText } from 'lucide-react';
-import { Printer, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const PrintAttendance = () => {
