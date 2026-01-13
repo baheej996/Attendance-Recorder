@@ -31,12 +31,14 @@ export const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, 
                     </div>
 
                     <div className="mt-8 flex gap-3 justify-end">
-                        <Button
-                            onClick={onClose}
-                            className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm"
-                        >
-                            {cancelText}
-                        </Button>
+                        {cancelText && (
+                            <Button
+                                onClick={onClose}
+                                className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm"
+                            >
+                                {cancelText}
+                            </Button>
+                        )}
                         <Button
                             onClick={() => {
                                 onConfirm();

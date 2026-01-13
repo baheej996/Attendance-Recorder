@@ -18,6 +18,7 @@ const ActivitiesManager = () => {
     const [editingActivityId, setEditingActivityId] = useState(null);
     const [expandedActivityId, setExpandedActivityId] = useState(null);
     const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, activityId: null, isBulk: false });
+    const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
     // Filter/Search States
     const [selectedClassId, setSelectedClassId] = useState('all');
@@ -37,6 +38,23 @@ const ActivitiesManager = () => {
     const handleCreateOrUpdate = (e) => {
         e.preventDefault();
         if (!newActivity.title || !newActivity.classId) return;
+
+        // Duplicate Check
+        // Clean strings for comparison
+        const cleanTitle = newActivity.title.trim().toLowerCase();
+
+        const isDuplicate = activities.some(a =>
+            a.id !== editingActivityId && // Ignore self if editing
+            a.status !== 'Deleted' && // Ignore deleted? Actually we usually hard delete, but if soft delete, check. Assuming hard delete from context.
+            a.classId === newActivity.classId &&
+            a.subjectId === newActivity.subjectId &&
+            a.title.trim().toLowerCase() === cleanTitle
+        );
+
+        if (isDuplicate) {
+            setShowDuplicateWarning(true);
+            return;
+        }
 
         if (editingActivityId) {
             updateActivity(editingActivityId, newActivity);
@@ -471,6 +489,18 @@ const ActivitiesManager = () => {
                     : "Are you sure you want to delete this activity? This action cannot be undone and will remove all student submissions associated with it."
                 }
                 confirmText={deleteConfirmation.isBulk ? "Delete All Selected" : "Delete Activity"}
+                isDanger={true}
+            />
+
+            {/* Duplicate Warning Modal */}
+            <ConfirmationModal
+                isOpen={showDuplicateWarning}
+                onClose={() => setShowDuplicateWarning(false)}
+                onConfirm={() => setShowDuplicateWarning(false)}
+                title="Duplicate Activity"
+                message="An activity with this Title and Subject is already assigned to this Class. Please use a different title or edit the existing activity."
+                confirmText="Okay"
+                cancelText={null} // Hide cancel button
                 isDanger={true}
             />
         </div>
