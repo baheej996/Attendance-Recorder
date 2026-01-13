@@ -128,7 +128,14 @@ const AttendanceRecorder = () => {
     };
 
 
-    const classStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active');
+    const classStudents = students
+        .filter(s => s.classId === selectedClassId && s.status === 'Active')
+        .sort((a, b) => {
+            if ((a.gender || 'Male') === (b.gender || 'Male')) {
+                return a.name.localeCompare(b.name);
+            }
+            return (a.gender || 'Male') === 'Male' ? -1 : 1;
+        });
     const selectedClass = classes.find(c => c.id === selectedClassId);
     const className = selectedClass ? `${selectedClass.name}-${selectedClass.division}` : 'this class';
 

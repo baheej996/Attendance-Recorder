@@ -48,7 +48,12 @@ const PrintAttendance = () => {
     const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
     const classStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active')
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => {
+            if ((a.gender || 'Male') === (b.gender || 'Male')) {
+                return a.name.localeCompare(b.name);
+            }
+            return (a.gender || 'Male') === 'Male' ? -1 : 1;
+        });
 
     const selectedClass = classes.find(c => c.id === selectedClassId);
 
