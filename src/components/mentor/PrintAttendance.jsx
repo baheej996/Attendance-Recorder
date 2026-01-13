@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Input';
 import { Printer, FileText } from 'lucide-react';
-import { useReactToPrint } from 'react-to-print';
+import { Printer, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const PrintAttendance = () => {
@@ -13,22 +13,10 @@ const PrintAttendance = () => {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-    const componentRef = useRef();
-    const handlePrint = useReactToPrint({
-        content: () => componentRef.current,
-        documentTitle: `Attendance_Register_${selectedMonth + 1}_${selectedYear}`,
-        pageStyle: `
-            @page {
-                size: landscape;
-                margin: 5mm;
-            }
-            @media print {
-                body {
-                    -webkit-print-color-adjust: exact;
-                }
-            }
-        `
-    });
+    // Simple window print handler
+    const handlePrint = () => {
+        window.print();
+    };
 
     // Filter classes for Mentors
     const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
