@@ -97,6 +97,14 @@ const StudentExamView = () => {
     };
 
     const handleSubmit = () => {
+        // Validation: Check if all questions are answered
+        const unansweredQuestions = examQuestions.filter(q => !answers[q.id]);
+
+        if (unansweredQuestions.length > 0) {
+            showAlert("Action Required", "Please answer all questions before submitting the exam.", "alert");
+            return;
+        }
+
         showConfirm(
             "Submit Exam",
             "Are you sure you want to submit? You cannot change answers after submission.",
