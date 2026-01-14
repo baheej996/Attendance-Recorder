@@ -260,9 +260,7 @@ const QuestionBank = () => {
                                                                 <p className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full inline-block">
                                                                     {qCount} Questions
                                                                 </p>
-                                                                <p className={`text-xs font-medium px-2 py-0.5 rounded-full inline-block ${setting.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                                    {setting.isActive ? 'Active' : 'Locked'}
-                                                                </p>
+
                                                                 {setting.duration && (
                                                                     <p className="text-xs text-blue-700 font-medium bg-blue-100 px-2 py-0.5 rounded-full inline-block">
                                                                         {setting.duration} mins
