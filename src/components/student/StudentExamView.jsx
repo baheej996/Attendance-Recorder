@@ -23,6 +23,17 @@ const StudentExamView = () => {
 
     // Timer Effect
     useEffect(() => {
+        // Restore Session
+        const savedSession = localStorage.getItem(`active_exam_session_${currentUser.id}`);
+        if (savedSession && !activeExamId) {
+            const { examId, subjectName } = JSON.parse(savedSession);
+            setActiveExamId(examId);
+            setSelectedSubjectId(subjectName);
+            setViewingMode(false);
+        }
+    }, []);
+
+    useEffect(() => {
         if (!activeExamId || !selectedSubjectId || viewingMode || !studentClass) return;
 
         // Find setting for this specific exam/class/subject
@@ -167,9 +178,10 @@ const StudentExamView = () => {
     };
 
     if (!studentClass) return <div className="p-8 text-center text-gray-500">Class information not found.</div>;
-    const studentClassName = studentClass.name;
+    // const studentClassName = studentClass.name; // Moved up
 
     const handleBack = () => {
+        localStorage.removeItem(`active_exam_session_${currentUser.id}`);
         setActiveExamId(null);
         setSelectedSubjectId(null);
         setTimeLeft(null);
@@ -206,8 +218,8 @@ const StudentExamView = () => {
     // Better flow: Select Exam -> Select Subject -> Take Test.
 
     const handleStartExam = (examId, subjectName) => {
+        localStorage.setItem(`active_exam_session_${currentUser.id}`, JSON.stringify({ examId, subjectName }));
         setActiveExamId(examId);
-        setSelectedSubjectId(subjectName);
         setSelectedSubjectId(subjectName);
         setAnswers({});
         setAttachments({});
@@ -258,38 +270,39 @@ const StudentExamView = () => {
         // Validation: Check if all questions are answered
         const unansweredQuestions = examQuestions.filter(q => !answers[q.id]);
 
-        if (unansweredQuestions.length > 0) {
-            showAlert("Action Required", "Please answer all questions before submitting the exam.", "alert");
-            return;
+        // Auto-save logic handles "Time Up", but for manual verify:
+        if (unansweredQuestions.length > 0 && timeLeft > 0) { // Only warn if time remains
+            showConfirm("Unanswered Questions", `You have ${unansweredQuestions.length} unanswered questions. Are you sure you want to submit?`, () => {
+                confirmSubmit();
+            });
+        } else {
+            confirmSubmit();
         }
-
-        showConfirm(
-            "Submit Exam",
-            "Are you sure you want to submit? You cannot change answers after submission.",
-            () => {
-                // Resolve Real Subject ID (for results/DB)
-                const realSubject = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);
-
-                submitExam({
-                    examId: activeExamId,
-                    subjectId: realSubject ? realSubject.id : selectedSubjectId, // Pass ID for storage
-                    subjectName: selectedSubjectId, // Pass Name for Question Grading lookup
-                    studentId: currentUser.id,
-
-                    answers,
-                    attachments
-                });
-
-                // Clear Timer Storage
-                const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
-                localStorage.removeItem(storageKey);
-
-                showAlert("Success", "Exam Submitted Successfully!", "success");
-                setActiveExamId(null);
-                setSelectedSubjectId(null);
-            }
-        );
     };
+
+    const confirmSubmit = () => {
+        localStorage.removeItem(`active_exam_session_${currentUser.id}`);
+
+        // Clear Timer Storage
+        const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
+        localStorage.removeItem(storageKey);
+
+        const submission = {
+            examId: activeExamId,
+            subjectId: selectedSubjectId, // Name
+            studentId: currentUser.id,
+            answers: answers, // Use state directly for manual
+            examName: exams.find(e => e.id === activeExamId)?.name
+        };
+        submitExam(submission);
+
+        // Show Success View? Or go back to list?
+        // Let's go to list or show Result immediately if allowed.
+        // For now, go back to list but maybe show "Submitted" toast.
+        showAlert("Submitted", "Your exam has been submitted successfully.", "success");
+        handleBack();
+    };
+
 
     // View: List of Exams
     if (!activeExamId) {
@@ -514,7 +527,7 @@ const StudentExamView = () => {
     return (
         <div className="max-w-4xl mx-auto pb-12">
             <div className="flex items-center justify-between mb-6">
-                <div>
+                <div className="flex items-center gap-6">
                     {viewingMode && (
                         <button
                             onClick={handleBack}
@@ -523,17 +536,17 @@ const StudentExamView = () => {
                             &larr; Back to Exams
                         </button>
                     )}
+                    {timeLeft !== null && !viewingMode && (
+                        <div className={`flex items-center gap-2 px-6 py-3 rounded-full text-2xl font-bold border shadow-sm ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+                            <Clock className="w-6 h-6" />
+                            <span>{formatTime(timeLeft)}</span>
+                        </div>
+                    )}
                 </div>
                 <div className="text-right">
                     <p className="text-sm text-gray-500">Subject</p>
                     <div className="flex items-center gap-3">
                         <p className="text-xl font-bold text-indigo-600">{selectedSubjectId}</p>
-                        {timeLeft !== null && (
-                            <div className={`flex items-center gap-2 px-6 py-3 rounded-full text-2xl font-bold border shadow-sm ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
-                                <Clock className="w-6 h-6" />
-                                <span>{formatTime(timeLeft)}</span>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
