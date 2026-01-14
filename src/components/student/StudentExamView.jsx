@@ -514,19 +514,23 @@ const StudentExamView = () => {
     return (
         <div className="max-w-4xl mx-auto pb-12">
             <div className="flex items-center justify-between mb-6">
-                <button
-                    onClick={handleBack}
-                    className="text-gray-500 hover:text-gray-900 font-medium"
-                >
-                    &larr; Back to Exams
-                </button>
+                <div>
+                    {viewingMode && (
+                        <button
+                            onClick={handleBack}
+                            className="text-gray-500 hover:text-gray-900 font-medium"
+                        >
+                            &larr; Back to Exams
+                        </button>
+                    )}
+                </div>
                 <div className="text-right">
                     <p className="text-sm text-gray-500">Subject</p>
                     <div className="flex items-center gap-3">
                         <p className="text-xl font-bold text-indigo-600">{selectedSubjectId}</p>
                         {timeLeft !== null && (
-                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold border ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
-                                <Clock className="w-4 h-4" />
+                            <div className={`flex items-center gap-2 px-6 py-3 rounded-full text-2xl font-bold border shadow-sm ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+                                <Clock className="w-6 h-6" />
                                 <span>{formatTime(timeLeft)}</span>
                             </div>
                         )}
