@@ -187,7 +187,7 @@ const StudentExamView = () => {
     // 3. Helper to check if student already took the exam for a subject (Check by ID or Name)
     const hasTaken = (examId, subjectId, subjectName) => {
         return studentResponses.some(r =>
-            r.examId === examId &&
+            r.examId == examId &&
             r.studentId === currentUser.id &&
             (r.subjectId === subjectId || (subjectName && r.subjectName === subjectName))
         );
