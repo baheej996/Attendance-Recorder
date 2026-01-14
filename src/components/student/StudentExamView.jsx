@@ -22,7 +22,13 @@ const StudentExamView = () => {
     useEffect(() => {
         if (!activeExamId || !selectedSubjectId || viewingMode) return;
 
-        const setting = examSettings.find(s => s.examId === activeExamId && s.classId === currentUser.classId && s.subjectId === selectedSubjectId);
+        // Find setting for this specific exam/class/subject
+        const setting = examSettings.find(s =>
+            s.examId === activeExamId &&
+            s.classId === currentUser.classId &&
+            s.subjectId === selectedSubjectId
+        );
+
         const durationMins = setting?.duration ? parseInt(setting.duration) : 0;
 
         if (durationMins > 0) {
@@ -35,6 +41,10 @@ const StudentExamView = () => {
             }
 
             const endTime = startTime + (durationMins * 60 * 1000);
+
+            // Immediate update
+            const initialDiff = Math.ceil((endTime - Date.now()) / 1000);
+            setTimeLeft(initialDiff > 0 ? initialDiff : 0);
 
             const interval = setInterval(() => {
                 const now = Date.now();
@@ -317,17 +327,21 @@ const StudentExamView = () => {
 
                                     // Composite Logic for taking exam
                                     // 1. Admin Exam Active (Checked by activeExams filter)
-                                    // 2. Mentor Subject Setting Active
+                                    // 2. Mentor Subject Setting Active (Default to true if not set)
                                     // 3. Time Window (if set)
                                     // Lookup using Class ID (UUID) for strict division-level isolation
-                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === currentUser.classId && s.subjectId === subj.name) || { isActive: false, isPublished: false };
+                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === currentUser.classId && s.subjectId === subj.name) || { isActive: true, isPublished: true, duration: 0 };
 
                                     const now = new Date();
                                     const start = setting.startTime ? new Date(setting.startTime) : null;
                                     const end = setting.endTime ? new Date(setting.endTime) : null;
                                     const withinTime = (!start || now >= start) && (!end || now <= end);
 
-                                    const canTake = setting.isActive && withinTime;
+                                    // If setting exists, use its isActive. If not, default to true.
+                                    // Wait, if it exists but isActive is undefined? It shouldn't happen with our update logic, but safe to default.
+                                    const isSubjectActive = setting.isActive !== false; // Active unless explicitly false
+
+                                    const canTake = isSubjectActive && withinTime;
 
                                     // Composite Logic for Viewing Results
                                     // 1. Admin Exam Published (exam.status === 'Published')

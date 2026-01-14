@@ -505,21 +505,8 @@ const QuestionBank = () => {
                                             const setting = getSetting(context.examId, context.classId, context.subjectId);
                                             return (
                                                 <>
-                                                    {/* Activation Toggle */}
-                                                    <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg">
-                                                        <div>
-                                                            <p className="font-semibold text-gray-800">Exam Status</p>
-                                                            <p className="text-sm text-gray-500">
-                                                                {setting.isActive ? 'Students can currently access this exam subject.' : 'Access is currently locked for students.'}
-                                                            </p>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleSettingChange(context.examId, context.classId, context.subjectId, { isActive: !setting.isActive })}
-                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${setting.isActive ? 'bg-green-500' : 'bg-gray-200'}`}
-                                                        >
-                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${setting.isActive ? 'translate-x-6' : 'translate-x-1'}`} />
-                                                        </button>
-                                                    </div>
+                                                    {/* Activation Toggle Removed as per request */}
+                                                    {/* Duration Input */}
 
                                                     {/* Duration Input */}
                                                     <div>
