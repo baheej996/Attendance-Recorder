@@ -46,6 +46,7 @@ const QuestionBank = () => {
     const [options, setOptions] = useState(['', '', '', '']);
     const [correctAnswer, setCorrectAnswer] = useState('');
     const [editingId, setEditingId] = useState(null);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     // Helpers
     const getSetting = (examId, classId, subjectId) => {
@@ -165,6 +166,25 @@ const QuestionBank = () => {
             "Delete Question",
             "Are you sure you want to delete this question? This action cannot be undone.",
             () => deleteQuestion(id)
+        );
+    };
+
+    const handleToggleSelect = (id) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    const handleSelectAll = (checked, allIds) => {
+        setSelectedIds(checked ? allIds : []);
+    };
+
+    const handleBulkDelete = () => {
+        showConfirm(
+            "Delete Multiple Questions",
+            `Are you sure you want to delete ${selectedIds.length} questions? This action cannot be undone.`,
+            () => {
+                selectedIds.forEach(id => deleteQuestion(id));
+                setSelectedIds([]);
+            }
         );
     };
 
@@ -471,27 +491,60 @@ const QuestionBank = () => {
 
                             {/* Right: List */}
                             <div className="space-y-4 border-l border-gray-100 pl-8">
-                                <h4 className="font-bold text-gray-700">
-                                    Existing Questions ({currentQuestions.length})
-                                </h4>
+                                <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                                    <h4 className="font-bold text-gray-700">
+                                        Existing Questions ({currentQuestions.length})
+                                    </h4>
+                                    {selectedIds.length > 0 && (
+                                        <button
+                                            onClick={handleBulkDelete}
+                                            className="text-xs text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1"
+                                        >
+                                            <Trash2 className="w-3 h-3" /> Delete ({selectedIds.length})
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-2 py-2">
+                                    <input
+                                        type="checkbox"
+                                        disabled={currentQuestions.length === 0}
+                                        checked={currentQuestions.length > 0 && selectedIds.length === currentQuestions.length}
+                                        onChange={(e) => handleSelectAll(e.target.checked, currentQuestions.map(q => q.id))}
+                                        className="rounded border-gray-300 w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                    />
+                                    <span className="text-xs text-gray-500 font-medium select-none">Select All</span>
+                                </div>
                                 <div className="space-y-3 h-[500px] overflow-y-auto pr-2">
                                     {currentQuestions.length === 0 && (
                                         <p className="text-gray-400 italic text-sm text-center py-10">No questions yet.</p>
                                     )}
                                     {currentQuestions.map((q, i) => (
-                                        <div key={q.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative group hover:border-indigo-200">
+                                        <div key={q.id} className={`p-3 rounded-lg border shadow-sm relative group hover:border-indigo-200 transition-colors ${selectedIds.includes(q.id) ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-200'}`}>
                                             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-sm rounded">
                                                 <button onClick={() => handleEditQuestion(q)} className="p-1 text-gray-400 hover:text-indigo-600"><Edit2 className="w-3 h-3" /></button>
                                                 <button onClick={() => confirmDelete(q.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <span className="font-bold text-gray-300 text-sm">#{i + 1}</span>
-                                                <div>
-                                                    <p className="text-gray-800 text-sm font-medium">{q.text}</p>
-                                                    <div className="flex gap-2 mt-1">
-                                                        <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">{q.type}</span>
-                                                        <span className="text-[10px] bg-indigo-50 px-1.5 rounded text-indigo-500">{q.marks} m</span>
-                                                        {q.image && <span className="text-[10px] bg-blue-50 px-1.5 rounded text-blue-500 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Image</span>}
+                                            <div className="flex gap-3">
+                                                <div className="pt-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.includes(q.id)}
+                                                        onChange={() => handleToggleSelect(q.id)}
+                                                        className="rounded border-gray-300 w-4 h-4 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                    />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex gap-2">
+                                                        <span className="font-bold text-gray-300 text-sm">#{i + 1}</span>
+                                                        <div className="flex-1">
+                                                            <p className="text-gray-800 text-sm font-medium line-clamp-2">{q.text}</p>
+                                                            <div className="flex gap-2 mt-1">
+                                                                <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">{q.type}</span>
+                                                                <span className="text-[10px] bg-indigo-50 px-1.5 rounded text-indigo-500">{q.marks} m</span>
+                                                                {q.image && <span className="text-[10px] bg-blue-50 px-1.5 rounded text-blue-500 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Image</span>}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
