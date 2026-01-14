@@ -236,59 +236,9 @@ const LogBook = () => {
                 </div>
             </div>
 
-            {/* Syllabus Coverage Dashboard */}
-            {displayedStats.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-2">
-                    {displayedStats.map((stat, idx) => (
-                        <div key={`${stat.classId}-${stat.subjectId}`} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
-                            <div className="w-16 h-16 shrink-0 relative">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={[
-                                                { name: 'Covered', value: stat.uniqueChapters },
-                                                { name: 'Remaining', value: Math.max(0, stat.totalChapters - stat.uniqueChapters) }
-                                            ]}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={20}
-                                            outerRadius={30}
-                                            fill="#8884d8"
-                                            paddingAngle={0}
-                                            dataKey="value"
-                                            startAngle={90}
-                                            endAngle={-270}
-                                        >
-                                            <Cell key="cell-0" fill="#4f46e5" />
-                                            <Cell key="cell-1" fill="#f3f4f6" />
-                                        </Pie>
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700">
-                                    {stat.percentage}%
-                                </div>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-gray-800 text-sm">{stat.subjectName}</h4>
-                                <p className="text-xs text-gray-500 mb-1">{stat.className}</p>
-                                <p className="text-xs font-medium text-indigo-600">
-                                    {stat.uniqueChapters} / {stat.totalChapters} Chapters
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                filter.classId !== 'all' && (
-                    <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-4 rounded-xl text-sm text-center">
-                        No tracked subjects found for this class. Ensure subjects have 'Total Chapters' set in Admin.
-                    </div>
-                )
-            )}
-
-
+            {/* Main Layout Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Entry Form */}
+                {/* Left Column: Entry Form */}
                 <div className="lg:col-span-1">
                     <Card className="sticky top-6">
                         <div className="p-6 space-y-4">
@@ -392,81 +342,134 @@ const LogBook = () => {
                     </Card>
                 </div>
 
-                {/* Log History */}
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-                        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                            <History className="w-5 h-5 text-gray-500" />
-                            Recent Logs
-                        </h3>
-                        {/* Filters removed from here and moved to top */}
-                        <div className="text-xs text-gray-400">
-                            Showing {displayedLogs.length} entries matches filters.
+                {/* Right Column: Syllabus Stats + Log History */}
+                <div className="lg:col-span-2 space-y-6">
+
+                    {/* 1. Syllabus Coverage Section */}
+                    {displayedStats.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {displayedStats.map((stat, idx) => (
+                                <div key={`${stat.classId}-${stat.subjectId}`} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
+                                    <div className="w-16 h-16 shrink-0 relative">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={[
+                                                        { name: 'Covered', value: stat.uniqueChapters },
+                                                        { name: 'Remaining', value: Math.max(0, stat.totalChapters - stat.uniqueChapters) }
+                                                    ]}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={20}
+                                                    outerRadius={30}
+                                                    fill="#8884d8"
+                                                    paddingAngle={0}
+                                                    dataKey="value"
+                                                    startAngle={90}
+                                                    endAngle={-270}
+                                                >
+                                                    <Cell key="cell-0" fill="#4f46e5" />
+                                                    <Cell key="cell-1" fill="#f3f4f6" />
+                                                </Pie>
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700">
+                                            {stat.percentage}%
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-gray-800 text-sm">{stat.subjectName}</h4>
+                                        <p className="text-xs text-gray-500 mb-1">{stat.className}</p>
+                                        <p className="text-xs font-medium text-indigo-600">
+                                            {stat.uniqueChapters} / {stat.totalChapters} Chapters
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {displayedLogs.length === 0 ? (
-                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
-                                <div className="mx-auto w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
-                                    <BookOpen className="w-6 h-6 text-gray-300" />
-                                </div>
-                                <h3 className="text-gray-900 font-medium">{assignedClasses.length === 0 ? "No Assigned Classes" : "No Logs Found"}</h3>
-                                <p className="text-gray-500 text-sm mt-1">{assignedClasses.length === 0 ? "Ask admin to assign classes to you." : "Start by adding a new entry on the left."}</p>
+                    ) : (
+                        filter.classId !== 'all' && (
+                            <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-4 rounded-xl text-sm text-center">
+                                No tracked subjects found for this class. Ensure subjects have 'Total Chapters' set in Admin.
                             </div>
-                        ) : (
-                            displayedLogs.map(log => (
-                                <div key={log.id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group relative">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded">
-                                                {log.className}
-                                            </span>
-                                            <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                                                {log.subjectName}
-                                            </span>
-                                            <span className="text-xs text-gray-400 ml-auto md:ml-2">
-                                                {new Date(log.timestamp).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                        <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white pl-2">
-                                            <button
-                                                onClick={() => handleEdit(log)}
-                                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                                                title="Edit Log"
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => confirmDelete(log.id)}
-                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                title="Delete Log"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
+                        )
+                    )}
 
-                                    <div className="space-y-1">
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-sm font-semibold text-gray-900 min-w-[70px]">Chapter:</span>
-                                            <span className="text-sm text-gray-800">{log.chapter}</span>
-                                        </div>
-                                        {log.heading && (
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-sm font-semibold text-gray-500 min-w-[70px]">Topic:</span>
-                                                <span className="text-sm text-gray-700">{log.heading}</span>
-                                            </div>
-                                        )}
-                                        {log.remarks && (
-                                            <div className="mt-3 bg-yellow-50/50 p-3 rounded-lg text-sm text-gray-700 italic border border-yellow-100/50">
-                                                "{log.remarks}"
-                                            </div>
-                                        )}
+                    {/* 2. Log History Section */}
+                    <div className="space-y-4">
+                        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                                <History className="w-5 h-5 text-gray-500" />
+                                Recent Logs
+                            </h3>
+                            <div className="text-xs text-gray-400">
+                                Showing {displayedLogs.length} entries matches filters.
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            {displayedLogs.length === 0 ? (
+                                <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
+                                    <div className="mx-auto w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                                        <BookOpen className="w-6 h-6 text-gray-300" />
                                     </div>
+                                    <h3 className="text-gray-900 font-medium">{assignedClasses.length === 0 ? "No Assigned Classes" : "No Logs Found"}</h3>
+                                    <p className="text-gray-500 text-sm mt-1">{assignedClasses.length === 0 ? "Ask admin to assign classes to you." : "Start by adding a new entry on the left."}</p>
                                 </div>
-                            ))
-                        )}
+                            ) : (
+                                displayedLogs.map(log => (
+                                    <div key={log.id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group relative">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded">
+                                                    {log.className}
+                                                </span>
+                                                <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                                    {log.subjectName}
+                                                </span>
+                                                <span className="text-xs text-gray-400 ml-auto md:ml-2">
+                                                    {new Date(log.timestamp).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white pl-2">
+                                                <button
+                                                    onClick={() => handleEdit(log)}
+                                                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                                    title="Edit Log"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => confirmDelete(log.id)}
+                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                    title="Delete Log"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-sm font-semibold text-gray-900 min-w-[70px]">Chapter:</span>
+                                                <span className="text-sm text-gray-800">{log.chapter}</span>
+                                            </div>
+                                            {log.heading && (
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-sm font-semibold text-gray-500 min-w-[70px]">Topic:</span>
+                                                    <span className="text-sm text-gray-700">{log.heading}</span>
+                                                </div>
+                                            )}
+                                            {log.remarks && (
+                                                <div className="mt-3 bg-yellow-50/50 p-3 rounded-lg text-sm text-gray-700 italic border border-yellow-100/50">
+                                                    "{log.remarks}"
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
