@@ -115,6 +115,10 @@ const StudentExamView = () => {
         setSelectedSubjectId(null);
     };
 
+    // Keep strict latest ref for interval
+    const performAutoSubmitRef = React.useRef(performAutoSubmit);
+    useEffect(() => { performAutoSubmitRef.current = performAutoSubmit; });
+
     // Update the interval to call performAutoSubmit
     useEffect(() => {
         if (!activeExamId || !selectedSubjectId || viewingMode) return;
@@ -143,7 +147,7 @@ const StudentExamView = () => {
                     setTimeLeft(0);
                     clearInterval(timer);
                     showAlert("Time Up!", "Your exam time has ended. Your answers are being submitted.", "warn");
-                    performAutoSubmit();
+                    performAutoSubmitRef.current();
                 } else {
                     setTimeLeft(diff);
                 }
@@ -180,11 +184,12 @@ const StudentExamView = () => {
 
     // 3. Helper to check if student already took the exam for a subject
     // 3. Helper to check if student already took the exam for a subject (Check by ID)
-    const hasTaken = (examId, subjectId) => {
+    // 3. Helper to check if student already took the exam for a subject (Check by ID or Name)
+    const hasTaken = (examId, subjectId, subjectName) => {
         return studentResponses.some(r =>
             r.examId === examId &&
-            r.subjectId === subjectId && // Expecting ID here
-            r.studentId === currentUser.id
+            r.studentId === currentUser.id &&
+            (r.subjectId === subjectId || (subjectName && r.subjectName === subjectName))
         );
     };
 
@@ -331,7 +336,7 @@ const StudentExamView = () => {
                                     // in QuestionBank: value={name} -> selectedSubjectId -> addQuestion({ subjectId: selectedSubjectId })
                                     // So yes, questions.subjectId is the Name (e.g., "English").
 
-                                    const isDone = hasTaken(exam.id, subj.id); // Check by ID
+                                    const isDone = hasTaken(exam.id, subj.id, subj.name); // Check by ID or Name fallback
 
                                     // Composite Logic for taking exam
                                     // 1. Admin Exam Active (Checked by activeExams filter)
