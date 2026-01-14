@@ -599,8 +599,20 @@ export const DataProvider = ({ children }) => {
         }
     });
 
+    // Log Book State
+    const [logEntries, setLogEntries] = useState(() => {
+        try {
+            const saved = localStorage.getItem('logEntries');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error("Error parsing logEntries:", e);
+            return [];
+        }
+    });
+
     useEffect(() => localStorage.setItem('activities', JSON.stringify(activities)), [activities]);
     useEffect(() => localStorage.setItem('activitySubmissions', JSON.stringify(activitySubmissions)), [activitySubmissions]);
+    useEffect(() => localStorage.setItem('logEntries', JSON.stringify(logEntries)), [logEntries]);
 
     // Activity Actions
     const addActivity = (activity) => {
@@ -643,6 +655,16 @@ export const DataProvider = ({ children }) => {
             .reduce((sum, s) => sum + (Number(s.points) || 0), 0);
     };
 
+    // Log Book Actions
+    const addLogEntry = (entry) => {
+        const newEntry = { ...entry, id: generateId(), timestamp: new Date().toISOString() };
+        setLogEntries(prev => [newEntry, ...prev]);
+    };
+
+    const deleteLogEntry = (id) => {
+        setLogEntries(prev => prev.filter(e => e.id !== id));
+    };
+
     return (
         <DataContext.Provider value={{
             classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses,
@@ -660,7 +682,9 @@ export const DataProvider = ({ children }) => {
             validateAdmin, updateAdminCredentials,
             // Activities Exports
             activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
-            activitySubmissions, markActivityAsDone, markActivityAsPending, getStudentActivityPoints
+            activitySubmissions, markActivityAsDone, markActivityAsPending, getStudentActivityPoints,
+            // Log Book Exports
+            logEntries, addLogEntry, deleteLogEntry
         }}>
             {children}
         </DataContext.Provider>
