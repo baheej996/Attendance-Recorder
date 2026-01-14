@@ -343,15 +343,20 @@ const StudentExamView = () => {
                                     // 2. Mentor Subject Setting Active (Default to true if not set)
                                     // 3. Time Window (if set)
                                     // Lookup using Class Name for strict division-level isolation
-                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === studentClassName && s.subjectId === subj.name) || { isActive: true, isPublished: true, duration: 0 };
+                                    // Lookup using Class ID (GUID) to match MarksEntry settings
+                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === currentUser.classId && s.subjectId === subj.name)
+                                        || { isActive: true, isPublished: true, duration: 0 };
 
                                     const now = new Date();
                                     const start = setting.startTime ? new Date(setting.startTime) : null;
                                     const end = setting.endTime ? new Date(setting.endTime) : null;
-                                    const withinTime = (!start || now >= start) && (!end || now <= end);
 
-                                    // If setting exists, use its isActive. If not, default to true.
-                                    // Wait, if it exists but isActive is undefined? It shouldn't happen with our update logic, but safe to default.
+                                    // Robust Date Check
+                                    const isStartValid = start && !isNaN(start.getTime());
+                                    const isEndValid = end && !isNaN(end.getTime());
+
+                                    const withinTime = (!isStartValid || now >= start) && (!isEndValid || now <= end);
+
                                     const isSubjectActive = setting.isActive !== false; // Active unless explicitly false
 
                                     const canTake = isSubjectActive && withinTime;
