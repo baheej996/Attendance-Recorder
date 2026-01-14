@@ -10,7 +10,7 @@ const SubjectManager = () => {
     const { classes, subjects, addSubject, deleteSubject } = useData();
     const { showAlert } = useUI();
     // We now track 'gradeName' instead of specific 'classId'
-    const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40 });
+    const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('all');
 
     // Extract unique grade names (e.g. "1", "2", "3") sorted
@@ -38,7 +38,8 @@ const SubjectManager = () => {
                     name: newSubject.name,
                     classId: c.id,
                     maxMarks: Number(newSubject.maxMarks),
-                    passMarks: Number(newSubject.passMarks)
+                    passMarks: Number(newSubject.passMarks),
+                    totalChapters: Number(newSubject.totalChapters) || 0
                 });
                 addedCount++;
             }
@@ -52,8 +53,9 @@ const SubjectManager = () => {
             name: '',
             gradeName: newSubject.gradeName,
             maxMarks: newSubject.maxMarks,
-            passMarks: newSubject.passMarks
-        }); // Keep grade/marks for faster entry
+            passMarks: newSubject.passMarks,
+            totalChapters: newSubject.totalChapters
+        }); // Keep grade/marks/chapters for faster entry
     };
 
     // Filter subjects logic
@@ -120,6 +122,13 @@ const SubjectManager = () => {
                                 required
                             />
                         </div>
+                        <Input
+                            label="Total Chapters (For Syllabus Tracking)"
+                            type="number"
+                            value={newSubject.totalChapters}
+                            onChange={e => setNewSubject({ ...newSubject, totalChapters: e.target.value })}
+                            placeholder="e.g. 12"
+                        />
                         <Button type="submit" variant="primary" className="w-full">
                             Add Subject to Grade
                         </Button>
@@ -162,6 +171,12 @@ const SubjectManager = () => {
                                             {getClassName(subject.classId)}
                                             <span className="text-gray-300">|</span>
                                             Max: {subject.maxMarks} • Pass: {subject.passMarks || 40}
+                                            {subject.totalChapters > 0 && (
+                                                <>
+                                                    <span className="text-gray-300">|</span>
+                                                    {subject.totalChapters} Chaps
+                                                </>
+                                            )}
                                         </p>
                                     </div>
                                     <button

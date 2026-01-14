@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { BookOpen, Save, Trash2, History, Filter, Search, Edit } from 'lucide-react';
+import { BookOpen, Save, Trash2, History, Filter, Search, Edit, PieChart as PieChartIcon, CheckCircle } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const LogBook = () => {
     const { classes, subjects, logEntries, addLogEntry, updateLogEntry, deleteLogEntry, currentUser } = useData();
@@ -62,6 +63,49 @@ const LogBook = () => {
         return { chapters, headings };
     }, [logEntries, formData.subjectId]);
 
+    // --- Syllabus Coverage Calculation ---
+    const coverageStats = useMemo(() => {
+        // Stats for graphs: grouped by Subject per Class
+        // We only care about assigned classes
+
+        const stats = [];
+
+        assignedClasses.forEach(cls => {
+            // Get subjects for this class
+            const clsSubjects = subjects.filter(s => s.classId === cls.id);
+
+            clsSubjects.forEach(sub => {
+                const logsForSub = logEntries.filter(l => l.classId === cls.id && l.subjectId === sub.id);
+                const uniqueChapters = new Set(logsForSub.map(l => l.chapter.trim().toLowerCase())).size;
+                const totalChapters = sub.totalChapters || 0;
+
+                if (totalChapters > 0) { // Only showing meaningful stats
+                    stats.push({
+                        classId: cls.id,
+                        subjectId: sub.id,
+                        className: `${cls.name} ${cls.division}`,
+                        subjectName: sub.name,
+                        uniqueChapters,
+                        totalChapters,
+                        percentage: Math.min(Math.round((uniqueChapters / totalChapters) * 100), 100)
+                    });
+                }
+            });
+        });
+
+        return stats;
+    }, [assignedClasses, subjects, logEntries]);
+
+    // Filter Coverage Stats based on current Filter selection
+    const displayedStats = useMemo(() => {
+        return coverageStats.filter(stat => {
+            const matchesClass = filter.classId === 'all' || stat.classId === filter.classId;
+            const matchesSubject = filter.subjectId === 'all' || stat.subjectId === filter.subjectId;
+            return matchesClass && matchesSubject;
+        });
+    }, [coverageStats, filter]);
+
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!formData.classId || !formData.subjectId || !formData.chapter) {
@@ -91,7 +135,6 @@ const LogBook = () => {
             showAlert('Success', 'Class log added successfully.', 'success');
         }
 
-        // Reset fields but keep class/subject helpful for consecutive entry if adding, or reset all if done editing
         if (editingId) {
             setFormData({ classId: '', subjectId: '', chapter: '', heading: '', remarks: '' });
         } else {
@@ -101,9 +144,8 @@ const LogBook = () => {
 
     const handleEdit = (log) => {
         setEditingId(log.id);
-        const logClass = classes.find(c => c.name + " " + c.division === log.className || c.id === log.classId); // Try to find ID if stored, else loose match or use stored ID if available (we started storing ID recently)
+        const logClass = classes.find(c => c.name + " " + c.division === log.className || c.id === log.classId);
 
-        // We are storing classId and subjectId, so we can use them directly
         setFormData({
             classId: log.classId,
             subjectId: log.subjectId,
@@ -112,7 +154,6 @@ const LogBook = () => {
             remarks: log.remarks || ''
         });
 
-        // Scroll to form
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -133,7 +174,6 @@ const LogBook = () => {
         setFormData({ classId: '', subjectId: '', chapter: '', heading: '', remarks: '' });
     };
 
-    // Filtered Logs for Display
     const displayedLogs = useMemo(() => {
         return logEntries.filter(log => {
             const isAssignedClass = assignedClasses.some(c => c.id === log.classId);
@@ -144,6 +184,8 @@ const LogBook = () => {
             return matchesClass && matchesSubject;
         }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }, [logEntries, filter, assignedClasses]);
+
+    const COLORS = ['#4f46e5', '#e5e7eb']; // Indigo vs Gray
 
     return (
         <div className="space-y-6 p-6 max-w-6xl mx-auto">
@@ -163,9 +205,54 @@ const LogBook = () => {
                         <BookOpen className="w-8 h-8 text-indigo-600" />
                         Class Log Book
                     </h1>
-                    <p className="text-gray-500 mt-1">Track daily progress, chapters covered, and remarks for your assigned classes.</p>
+                    <p className="text-gray-500 mt-1">Track daily progress and syllabus coverage for your assigned classes.</p>
                 </div>
             </div>
+
+            {/* Syllabus Coverage Dashboard */}
+            {displayedStats.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-2">
+                    {displayedStats.map((stat, idx) => (
+                        <div key={`${stat.classId}-${stat.subjectId}`} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
+                            <div className="w-16 h-16 shrink-0 relative">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={[
+                                                { name: 'Covered', value: stat.uniqueChapters },
+                                                { name: 'Remaining', value: Math.max(0, stat.totalChapters - stat.uniqueChapters) }
+                                            ]}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={20}
+                                            outerRadius={30}
+                                            fill="#8884d8"
+                                            paddingAngle={0}
+                                            dataKey="value"
+                                            startAngle={90}
+                                            endAngle={-270}
+                                        >
+                                            <Cell key="cell-0" fill="#4f46e5" />
+                                            <Cell key="cell-1" fill="#f3f4f6" />
+                                        </Pie>
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700">
+                                    {stat.percentage}%
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-gray-800 text-sm">{stat.subjectName}</h4>
+                                <p className="text-xs text-gray-500 mb-1">{stat.className}</p>
+                                <p className="text-xs font-medium text-indigo-600">
+                                    {stat.uniqueChapters} / {stat.totalChapters} Chapters
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Entry Form */}
@@ -211,7 +298,7 @@ const LogBook = () => {
                                     >
                                         <option value="">Select Subject</option>
                                         {formSubjects.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                            <option key={s.id} value={s.id}>{s.name} {s.totalChapters > 0 ? `(${s.totalChapters} Ch)` : ''}</option>
                                         ))}
                                     </select>
                                 </div>
