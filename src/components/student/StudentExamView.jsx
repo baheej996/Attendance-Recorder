@@ -279,9 +279,10 @@ const StudentExamView = () => {
 
         const submission = {
             examId: activeExamId,
-            subjectId: selectedSubjectId, // Name
+            subjectId: selectedSubjectId, // This is actually the Name based on handleStartExam
+            subjectName: selectedSubjectId, // Explicitly add Name for hasTaken fallback
             studentId: currentUser.id,
-            answers: answers, // Use state directly for manual
+            answers: answers,
             examName: exams.find(e => e.id === activeExamId)?.name
         };
         submitExam(submission);
