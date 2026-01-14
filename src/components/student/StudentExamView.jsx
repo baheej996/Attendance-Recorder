@@ -15,17 +15,20 @@ const StudentExamView = () => {
     const [attachments, setAttachments] = useState({});
     const [viewingMode, setViewingMode] = useState(false); // false = taking, true = viewing result
 
+    // 1. Resolve Student's Class Name (Moved up for Timer Effect)
+    const studentClass = classes.find(c => c.id === currentUser?.classId);
+
     // Timer State
     const [timeLeft, setTimeLeft] = useState(null); // in seconds
 
     // Timer Effect
     useEffect(() => {
-        if (!activeExamId || !selectedSubjectId || viewingMode) return;
+        if (!activeExamId || !selectedSubjectId || viewingMode || !studentClass) return;
 
         // Find setting for this specific exam/class/subject
         const setting = examSettings.find(s =>
             s.examId === activeExamId &&
-            s.classId === currentUser.classId &&
+            s.classId === studentClass.name && // Using Class Name to match Mentor Settings
             s.subjectId === selectedSubjectId
         );
 
@@ -63,7 +66,7 @@ const StudentExamView = () => {
         } else {
             setTimeLeft(null);
         }
-    }, [activeExamId, selectedSubjectId, viewingMode, examSettings]);
+    }, [activeExamId, selectedSubjectId, viewingMode, examSettings, studentClass]);
 
     const handleAutoSubmit = () => {
         showAlert("Time Up!", "Your exam time has ended. Your answers will be submitted automatically.", "alert");
@@ -163,10 +166,17 @@ const StudentExamView = () => {
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
-    // 1. Resolve Student's Class Name (to match Questions which use Class Name)
-    const studentClass = classes.find(c => c.id === currentUser?.classId);
     if (!studentClass) return <div className="p-8 text-center text-gray-500">Class information not found.</div>;
     const studentClassName = studentClass.name;
+
+    const handleBack = () => {
+        setActiveExamId(null);
+        setSelectedSubjectId(null);
+        setTimeLeft(null);
+        setAnswers({});
+        setAttachments({});
+    };
+
 
     // 2. Get Active Exams (Students can take these, regardless of Publication status)
     const activeExams = exams.filter(e => e.isActive);
@@ -329,8 +339,8 @@ const StudentExamView = () => {
                                     // 1. Admin Exam Active (Checked by activeExams filter)
                                     // 2. Mentor Subject Setting Active (Default to true if not set)
                                     // 3. Time Window (if set)
-                                    // Lookup using Class ID (UUID) for strict division-level isolation
-                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === currentUser.classId && s.subjectId === subj.name) || { isActive: true, isPublished: true, duration: 0 };
+                                    // Lookup using Class Name for strict division-level isolation
+                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === studentClassName && s.subjectId === subj.name) || { isActive: true, isPublished: true, duration: 0 };
 
                                     const now = new Date();
                                     const start = setting.startTime ? new Date(setting.startTime) : null;
@@ -505,7 +515,7 @@ const StudentExamView = () => {
         <div className="max-w-4xl mx-auto pb-12">
             <div className="flex items-center justify-between mb-6">
                 <button
-                    onClick={() => setActiveExamId(null)}
+                    onClick={handleBack}
                     className="text-gray-500 hover:text-gray-900 font-medium"
                 >
                     &larr; Back to Exams
