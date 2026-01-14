@@ -12,6 +12,7 @@ import StudentResultView from '../components/student/StudentResultView';
 import StudentExamView from '../components/student/StudentExamView';
 import Leaderboard from '../components/student/Leaderboard';
 import StudentActivities from '../components/student/StudentActivities';
+import PrayerChart from '../components/student/PrayerChart';
 import Help from './Help';
 
 const COLORS = ['#10B981', '#EF4444'];
@@ -53,6 +54,7 @@ const StudentDashboard = () => {
         { icon: Layers, label: 'Activities', path: '/student/activities', hasNotification: hasPendingActivities },
         { icon: FileText, label: 'Online Exams', path: '/student/exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results' },
+        { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart' },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
         { icon: Info, label: 'Help', path: '/student/help' },
     ];
@@ -252,6 +254,7 @@ const StudentDashboard = () => {
                     } />
                     <Route path="/exams" element={<StudentExamView />} />
                     <Route path="/activities" element={<StudentActivities />} />
+                    <Route path="/prayer-chart" element={<PrayerChart />} />
                     <Route path="/results" element={<StudentResultView />} />
                     <Route path="/leaderboard" element={<Leaderboard />} />
                     <Route path="/help" element={<Help />} />

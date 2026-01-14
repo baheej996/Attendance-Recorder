@@ -611,9 +611,21 @@ export const DataProvider = ({ children }) => {
         }
     });
 
+    // Prayer Chart State
+    const [prayerRecords, setPrayerRecords] = useState(() => {
+        try {
+            const saved = localStorage.getItem('prayerRecords');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error("Error parsing prayerRecords:", e);
+            return [];
+        }
+    });
+
     useEffect(() => localStorage.setItem('activities', JSON.stringify(activities)), [activities]);
     useEffect(() => localStorage.setItem('activitySubmissions', JSON.stringify(activitySubmissions)), [activitySubmissions]);
     useEffect(() => localStorage.setItem('logEntries', JSON.stringify(logEntries)), [logEntries]);
+    useEffect(() => localStorage.setItem('prayerRecords', JSON.stringify(prayerRecords)), [prayerRecords]);
 
     // Activity Actions
     const addActivity = (activity) => {
@@ -670,6 +682,25 @@ export const DataProvider = ({ children }) => {
         setLogEntries(prev => prev.filter(e => e.id !== id));
     };
 
+    // Prayer Chart Actions
+    const addPrayerRecord = (record) => {
+        // record: { studentId, date, prayers: { fajr: bool, dhuhr: bool, ... } }
+        setPrayerRecords(prev => {
+            // Check if record exists for this student and date
+            const existingIndex = prev.findIndex(r => r.studentId === record.studentId && r.date === record.date);
+            if (existingIndex >= 0) {
+                const newRecords = [...prev];
+                newRecords[existingIndex] = { ...newRecords[existingIndex], ...record, timestamp: new Date().toISOString() };
+                return newRecords;
+            }
+            return [...prev, { ...record, id: generateId(), timestamp: new Date().toISOString() }];
+        });
+    };
+
+    const getPrayerRecordsByStudent = (studentId) => {
+        return prayerRecords.filter(r => r.studentId === studentId);
+    };
+
     return (
         <DataContext.Provider value={{
             classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses,
@@ -689,7 +720,9 @@ export const DataProvider = ({ children }) => {
             activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
             activitySubmissions, markActivityAsDone, markActivityAsPending, getStudentActivityPoints,
             // Log Book Exports
-            logEntries, addLogEntry, updateLogEntry, deleteLogEntry
+            logEntries, addLogEntry, updateLogEntry, deleteLogEntry,
+            // Prayer Chart Exports
+            prayerRecords, addPrayerRecord, getPrayerRecordsByStudent
         }}>
             {children}
         </DataContext.Provider>

@@ -10,6 +10,7 @@ import PrintAttendance from '../components/mentor/PrintAttendance';
 import ActivitiesManager from '../components/mentor/ActivitiesManager';
 import LogBook from '../components/mentor/LogBook';
 import Help from './Help';
+import PrayerStats from '../components/mentor/PrayerStats';
 import { useData } from '../contexts/DataContext';
 
 const DashboardHome = () => (
@@ -27,6 +28,7 @@ const MentorDashboard = () => {
         { icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
         { icon: Layers, label: 'Activities', path: '/mentor/activities' },
         { icon: BookOpen, label: 'Class Log Book', path: '/mentor/logbook' },
+        { icon: Calendar, label: 'Prayer Chart', path: '/mentor/prayer-chart' },
         { icon: Printer, label: 'Print Attendance', path: '/mentor/print' },
         { icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
         { icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
@@ -84,6 +86,7 @@ const MentorDashboard = () => {
                     <Route path="/record" element={<AttendanceRecorder />} />
                     <Route path="/activities" element={<ActivitiesManager />} />
                     <Route path="/logbook" element={<LogBook />} />
+                    <Route path="/prayer-chart" element={<PrayerStats />} />
                     <Route path="/print" element={<PrintAttendance />} />
                     <Route path="/questions" element={<QuestionBank />} />
                     <Route path="/marks" element={<MarksEntry />} />
