@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Calendar, CheckCircle, XCircle, ChevronLeft, ChevronRight, Moon, Sun, Sunrise, Sunset, Clock, Save } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, ChevronLeft, ChevronRight, Moon, Sun, Sunrise, Sunset, Clock, Save, Trophy } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, subDays, addDays, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 
@@ -221,8 +221,5 @@ const PrayerChart = () => {
         </div>
     );
 };
-
-/* Helper Component for Trophy Icon (since I used it but forgot to import it in the initial list above, though I imported it in StudentDashboard, better safe) */
-import { Trophy } from 'lucide-react';
 
 export default PrayerChart;
