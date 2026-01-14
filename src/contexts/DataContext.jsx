@@ -499,6 +499,12 @@ export const DataProvider = ({ children }) => {
         ));
     };
 
+    const deleteStudentResponse = (examId, subjectId, studentId) => {
+        setStudentResponses(prev => prev.filter(r =>
+            !(r.examId === examId && r.subjectId === subjectId && r.studentId === studentId)
+        ));
+    };
+
     const recordAttendance = (record) => {
         // Record is { date, records: [{ studentId, status }] }
         // We flatten this to store individual records or keep as sessions. 
@@ -711,7 +717,7 @@ export const DataProvider = ({ children }) => {
             exams, addExam, updateExam, deleteExam, examSettings, updateExamSetting,
             results, recordResult, deleteResultBatch, setResults,
             questions, addQuestion, deleteQuestion, updateQuestion,
-            studentResponses, submitExam,
+            studentResponses, submitExam, deleteStudentResponse,
             currentUser, login, logout,
             resetData,
             institutionSettings, updateInstitutionSettings,

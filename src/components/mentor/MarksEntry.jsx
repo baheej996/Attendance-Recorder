@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar } from 'lucide-react';
+import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
@@ -11,7 +11,7 @@ const MarksEntry = () => {
     const {
         subjects, exams, students, results,
         recordResult, deleteResultBatch, classes, currentUser,
-        examSettings, updateExamSetting
+        examSettings, updateExamSetting, deleteStudentResponse
     } = useData();
     const { showAlert, showConfirm } = useUI();
 
@@ -143,6 +143,26 @@ const MarksEntry = () => {
                 setMarksData({});
                 setHasChanges(false);
                 showAlert('Deleted', 'Marks deleted successfully!', 'success');
+            }
+        );
+    };
+
+    const handleRetake = (studentId) => {
+        showConfirm(
+            'Allow Retake',
+            'Are you sure? This will delete the student\'s submission and marks. They will be able to take the exam again.',
+            () => {
+                // 1. Delete Answer Sheet
+                deleteStudentResponse(selectedExamId, selectedSubjectId, studentId);
+                // 2. Delete Marks/Result
+                deleteResultBatch(selectedExamId, selectedSubjectId, [studentId]);
+
+                // 3. Update Local State
+                const newMarks = { ...marksData };
+                delete newMarks[studentId];
+                setMarksData(newMarks);
+
+                showAlert('Reset Successful', 'Student can now retake the exam.', 'success');
             }
         );
     };
@@ -503,6 +523,15 @@ const MarksEntry = () => {
                                                 }}
                                             >
                                                 View/Grade
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="text-xs px-2 py-1 h-auto ml-2 text-amber-600 border-amber-200 hover:bg-amber-50"
+                                                title="Allow Retake"
+                                                onClick={() => handleRetake(student.id)}
+                                            >
+                                                <RotateCcw className="w-3.5 h-3.5" />
                                             </Button>
                                         </td>
                                     </tr>
