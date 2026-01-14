@@ -661,6 +661,10 @@ export const DataProvider = ({ children }) => {
         setLogEntries(prev => [newEntry, ...prev]);
     };
 
+    const updateLogEntry = (id, updates) => {
+        setLogEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    };
+
     const deleteLogEntry = (id) => {
         setLogEntries(prev => prev.filter(e => e.id !== id));
     };
@@ -684,7 +688,7 @@ export const DataProvider = ({ children }) => {
             activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
             activitySubmissions, markActivityAsDone, markActivityAsPending, getStudentActivityPoints,
             // Log Book Exports
-            logEntries, addLogEntry, deleteLogEntry
+            logEntries, addLogEntry, updateLogEntry, deleteLogEntry
         }}>
             {children}
         </DataContext.Provider>

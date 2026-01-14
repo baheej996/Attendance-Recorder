@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { BookOpen, Save, Trash2, History, Filter, Search } from 'lucide-react';
+import { BookOpen, Save, Trash2, History, Filter, Search, Edit } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 const LogBook = () => {
-    const { classes, subjects, logEntries, addLogEntry, deleteLogEntry, currentUser } = useData();
+    const { classes, subjects, logEntries, addLogEntry, updateLogEntry, deleteLogEntry, currentUser } = useData();
     const { showAlert } = useUI();
 
     const [formData, setFormData] = useState({
@@ -18,15 +19,20 @@ const LogBook = () => {
         remarks: ''
     });
 
+    const [editingId, setEditingId] = useState(null);
+
     const [filter, setFilter] = useState({
         classId: 'all',
         subjectId: 'all'
     });
 
+    const [deleteConfig, setDeleteConfig] = useState({
+        isOpen: false,
+        id: null
+    });
+
     // Filter classes assigned to this mentor
     const assignedClasses = useMemo(() => {
-        // If no currentUser or no assignedClassIds (e.g. admin viewed or data issue), fallback to all or empty?
-        // Assuming mentor context primarily. If currentUser is null/undefined, return empty.
         if (!currentUser || !currentUser.assignedClassIds) return [];
         return classes.filter(c => currentUser.assignedClassIds.includes(c.id));
     }, [classes, currentUser]);
@@ -40,7 +46,6 @@ const LogBook = () => {
     // Filter subjects for the FILTER dropdown
     const filterSubjects = useMemo(() => {
         if (filter.classId === 'all') {
-            // If all classes selected, show subjects from all ASSIGNED classes
             const assignedClassIds = assignedClasses.map(c => c.id);
             return subjects.filter(s => assignedClassIds.includes(s.classId));
         }
@@ -67,29 +72,70 @@ const LogBook = () => {
         const selectedClass = classes.find(c => c.id === formData.classId);
         const selectedSubject = subjects.find(s => s.id === formData.subjectId);
 
-        addLogEntry({
+        const payload = {
             ...formData,
             className: selectedClass ? `${selectedClass.name} ${selectedClass.division}` : 'Unknown',
             subjectName: selectedSubject ? selectedSubject.name : 'Unknown',
-            date: new Date().toISOString().split('T')[0],
             mentorId: currentUser?.id
-        });
+        };
 
-        showAlert('Success', 'Class log updated successfully.', 'success');
-        setFormData(prev => ({ ...prev, chapter: '', heading: '', remarks: '' }));
+        if (editingId) {
+            updateLogEntry(editingId, payload);
+            showAlert('Success', 'Log entry updated successfully.', 'success');
+            setEditingId(null);
+        } else {
+            addLogEntry({
+                ...payload,
+                date: new Date().toISOString().split('T')[0]
+            });
+            showAlert('Success', 'Class log added successfully.', 'success');
+        }
+
+        // Reset fields but keep class/subject helpful for consecutive entry if adding, or reset all if done editing
+        if (editingId) {
+            setFormData({ classId: '', subjectId: '', chapter: '', heading: '', remarks: '' });
+        } else {
+            setFormData(prev => ({ ...prev, chapter: '', heading: '', remarks: '' }));
+        }
     };
 
-    const handleDelete = (id) => {
-        if (window.confirm('Are you sure you want to delete this log entry?')) {
-            deleteLogEntry(id);
+    const handleEdit = (log) => {
+        setEditingId(log.id);
+        const logClass = classes.find(c => c.name + " " + c.division === log.className || c.id === log.classId); // Try to find ID if stored, else loose match or use stored ID if available (we started storing ID recently)
+
+        // We are storing classId and subjectId, so we can use them directly
+        setFormData({
+            classId: log.classId,
+            subjectId: log.subjectId,
+            chapter: log.chapter,
+            heading: log.heading || '',
+            remarks: log.remarks || ''
+        });
+
+        // Scroll to form
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const confirmDelete = (id) => {
+        setDeleteConfig({ isOpen: true, id });
+    };
+
+    const handleDelete = () => {
+        if (deleteConfig.id) {
+            deleteLogEntry(deleteConfig.id);
             showAlert('Deleted', 'Log entry removed.', 'success');
         }
+        setDeleteConfig({ isOpen: false, id: null });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setFormData({ classId: '', subjectId: '', chapter: '', heading: '', remarks: '' });
     };
 
     // Filtered Logs for Display
     const displayedLogs = useMemo(() => {
         return logEntries.filter(log => {
-            // Only show logs for assigned classes
             const isAssignedClass = assignedClasses.some(c => c.id === log.classId);
             if (!isAssignedClass) return false;
 
@@ -101,6 +147,16 @@ const LogBook = () => {
 
     return (
         <div className="space-y-6 p-6 max-w-6xl mx-auto">
+            <ConfirmationModal
+                isOpen={deleteConfig.isOpen}
+                onClose={() => setDeleteConfig({ isOpen: false, id: null })}
+                onConfirm={handleDelete}
+                title="Delete Log Entry"
+                message="Are you sure you want to delete this class log? This action cannot be undone."
+                confirmText="Yes, Delete"
+                isDanger
+            />
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -118,7 +174,7 @@ const LogBook = () => {
                         <div className="p-6 space-y-4">
                             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 border-b pb-2">
                                 <Save className="w-5 h-5 text-indigo-500" />
-                                New Logger
+                                {editingId ? "Update Entry" : "New Log Entry"}
                             </h2>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
@@ -201,9 +257,16 @@ const LogBook = () => {
                                     />
                                 </div>
 
-                                <Button type="submit" variant="primary" className="w-full" disabled={assignedClasses.length === 0}>
-                                    Add Log Entry
-                                </Button>
+                                <div className="flex gap-2">
+                                    {editingId && (
+                                        <Button type="button" onClick={handleCancelEdit} className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 w-1/3">
+                                            Cancel
+                                        </Button>
+                                    )}
+                                    <Button type="submit" variant="primary" className="flex-1" disabled={assignedClasses.length === 0}>
+                                        {editingId ? "Update Log" : "Add Log Entry"}
+                                    </Button>
+                                </div>
                             </form>
                         </div>
                     </Card>
@@ -268,13 +331,22 @@ const LogBook = () => {
                                                 {new Date(log.timestamp).toLocaleDateString()}
                                             </span>
                                         </div>
-                                        <button
-                                            onClick={() => handleDelete(log.id)}
-                                            className="text-gray-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4"
-                                            title="Delete Log"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white pl-2">
+                                            <button
+                                                onClick={() => handleEdit(log)}
+                                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                                title="Edit Log"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => confirmDelete(log.id)}
+                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                title="Delete Log"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-1">
