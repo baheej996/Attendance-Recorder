@@ -277,10 +277,13 @@ const StudentExamView = () => {
         const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
         localStorage.removeItem(storageKey);
 
+        // Lookup correct GUID for subject
+        const realSubject = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);
+
         const submission = {
             examId: activeExamId,
-            subjectId: selectedSubjectId, // This is actually the Name based on handleStartExam
-            subjectName: selectedSubjectId, // Explicitly add Name for hasTaken fallback
+            subjectId: realSubject?.id, // Send GUID to match MarksEntry
+            subjectName: selectedSubjectId, // Send Name for fallback
             studentId: currentUser.id,
             answers: answers,
             examName: exams.find(e => e.id === activeExamId)?.name
