@@ -80,23 +80,8 @@ const StudentExamView = () => {
     }, [activeExamId, selectedSubjectId, viewingMode, examSettings, studentClass]);
 
     const handleAutoSubmit = () => {
-        showAlert("Time Up!", "Your exam time has ended. Your answers will be submitted automatically.", "alert");
-
-        // Construct submission with current state
-        // Note: 'answers' state might be closure-stale inside setInterval if not careful, 
-        // but since we call a function that likely reads refs or we rely on the fact that this defined in the component scope...
-        // Actually, inside the interval, 'answers' will be stale if we don't use a ref.
-        // However, we can just trigger a state update that calls submit. 
-        // OR better: use a Ref for answers to always get latest.
-
-        // For simplicity in this quick implementation, let's just call the submit logic using the available state 
-        // assuming the component re-renders often enough or we force it? 
-        // Actually interval closure traps 'answers'. We NEED a ref for answers.
-
-        // Let's rely on a separate specific specific effect or use a Ref for answers.
-        // I will add the Ref in the next step or assume the user accepts a slight limitation if I don't fix it now.
-        // Better: Make 'answers' a ref as well or just update the submit function to use a ref. 
-        // Let's use a Ref for answers in addition to State to ensure auto-submit captures everything.
+        showAlert("Time Up!", "Your exam time has ended. Submitting automatically...", "alert");
+        confirmSubmit();
     };
 
     // We need a ref for answers to handle auto-submit correctly from the timer closure
@@ -525,8 +510,8 @@ const StudentExamView = () => {
 
     // View: Taking Exam
     return (
-        <div className="max-w-4xl mx-auto pb-12">
-            <div className="flex items-center justify-between mb-6">
+        <div className="max-w-4xl mx-auto pb-12 relative">
+            <div className="sticky top-0 z-30 bg-white/95 backdrop-blur pt-4 pb-4 mb-6 border-b border-gray-100 flex items-center justify-between shadow-sm -mx-4 px-6 rounded-b-xl">
                 <div className="flex items-center gap-6">
                     {viewingMode && (
                         <button
