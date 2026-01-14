@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -15,12 +15,16 @@ const PRAYERS = [
 ];
 
 const PrayerChart = () => {
-    const { currentUser, addPrayerRecord, getPrayerRecordsByStudent } = useData();
+    const { currentUser, addPrayerRecord, prayerRecords } = useData();
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [stats, setStats] = useState({ f: false, d: false, a: false, m: false, i: false });
+    const [stats, setStats] = useState({ fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false });
     const [loading, setLoading] = useState(true);
 
-    const records = getPrayerRecordsByStudent(currentUser?.id || '');
+    // Stable records array to prevent infinite loops in useEffect
+    const records = useMemo(() => {
+        if (!currentUser || !prayerRecords) return [];
+        return prayerRecords.filter(r => r.studentId === currentUser.id);
+    }, [prayerRecords, currentUser]);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -29,15 +33,32 @@ const PrayerChart = () => {
         const record = records.find(r => r.date === dateStr);
 
         if (record && record.prayers) {
-            setStats(record.prayers);
+            // Handle both legacy (single char) and new (full id) keys if migration isn't done
+            setStats(prev => {
+                // Merge with default false to ensure all keys exist
+                const newStats = { fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false };
+
+                // If stored data uses single chars (legacy)
+                if ('f' in record.prayers) {
+                    newStats.fajr = !!record.prayers.f;
+                    newStats.dhuhr = !!record.prayers.d;
+                    newStats.asr = !!record.prayers.a;
+                    newStats.maghrib = !!record.prayers.m;
+                    newStats.isha = !!record.prayers.i;
+                } else {
+                    // Assume full keys
+                    return { ...newStats, ...record.prayers };
+                }
+                return newStats;
+            });
         } else {
-            setStats({ f: false, d: false, a: false, m: false, i: false });
+            setStats({ fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false });
         }
         setLoading(false);
     }, [selectedDate, currentUser, records]);
 
     const handleToggle = (prayerId) => {
-        setStats(prev => ({ ...prev, [prayerId.charAt(0)]: !prev[prayerId.charAt(0)] }));
+        setStats(prev => ({ ...prev, [prayerId]: !prev[prayerId] }));
     };
 
     const handleSave = () => {
@@ -58,7 +79,11 @@ const PrayerChart = () => {
         return days.map(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const record = records.find(r => r.date === dateStr);
-            const count = record ? Object.values(record.prayers).filter(Boolean).length : 0;
+            let count = 0;
+            if (record && record.prayers) {
+                // Count trues regardless of key format
+                count = Object.values(record.prayers).filter(Boolean).length;
+            }
             return { date: day, count };
         });
     };
@@ -109,7 +134,7 @@ const PrayerChart = () => {
                         <div className="grid gap-4">
                             {PRAYERS.map((prayer) => {
                                 const Icon = prayer.icon;
-                                const isCompleted = stats[prayer.id.charAt(0)];
+                                const isCompleted = stats[prayer.id];
                                 return (
                                     <div
                                         key={prayer.id}
@@ -145,10 +170,11 @@ const PrayerChart = () => {
                         </div>
 
                         <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
-                            <Button onClick={handleSave} className="gap-2">
+                            <Button onClick={handleSave} className="flex items-center gap-2">
                                 <Save className="w-4 h-4" />
                                 Save Changes
                             </Button>
+                            {/* Removed redundant text node if any from previous implementation? No, looks clean. */}
                         </div>
                     </Card>
                 </div>
