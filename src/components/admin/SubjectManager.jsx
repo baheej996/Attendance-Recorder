@@ -14,6 +14,7 @@ const SubjectManager = () => {
     const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('all');
     const [editingId, setEditingId] = useState(null);
+    const [editingOriginalName, setEditingOriginalName] = useState('');
 
     // Extract unique grade names (e.g. "1", "2", "3") sorted
     const uniqueGrades = [...new Set(classes.map(c => c.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -28,15 +29,37 @@ const SubjectManager = () => {
         }
 
         if (editingId) {
-            // Updated Logic
-            updateSubject(editingId, {
-                name: newSubject.name,
-                maxMarks: Number(newSubject.maxMarks),
-                passMarks: Number(newSubject.passMarks),
-                totalChapters: Number(newSubject.totalChapters) || 0
+            // --- Batch Update Logic ---
+            // 1. Identify valid classes for this Grade
+            // A grade name is derived from the editing subject's class if not explicitly stored, but here we can rely on newSubject.gradeName (which we set on Edit)
+
+            const targetGradeName = newSubject.gradeName;
+
+            // 2. Find all classes in this Grade
+            const targetClasses = classes.filter(c => c.name === targetGradeName);
+            const targetClassIds = targetClasses.map(c => c.id);
+
+            // 3. Find all peer subjects (same name originally, same grade)
+            // We use editingOriginalName to match what it WAS, so we can rename them all if needed.
+            const subjectsToUpdate = subjects.filter(s =>
+                targetClassIds.includes(s.classId) &&
+                s.name.toLowerCase() === editingOriginalName.toLowerCase()
+            );
+
+            let updatedCount = 0;
+            subjectsToUpdate.forEach(subj => {
+                updateSubject(subj.id, {
+                    name: newSubject.name, // Allow renaming all
+                    maxMarks: Number(newSubject.maxMarks),
+                    passMarks: Number(newSubject.passMarks),
+                    totalChapters: Number(newSubject.totalChapters) || 0
+                });
+                updatedCount++;
             });
-            showAlert('Success', 'Subject updated successfully.', 'success');
+
+            showAlert('Success', `Updated subject across ${updatedCount} classes in Grade ${targetGradeName}.`, 'success');
             setEditingId(null);
+            setEditingOriginalName('');
         } else {
             // Find all classes that match the selected grade name
             const targetClasses = classes.filter(c => c.name === newSubject.gradeName);
@@ -82,6 +105,8 @@ const SubjectManager = () => {
     const handleEdit = (subject) => {
         const cls = classes.find(c => c.id === subject.classId);
         setEditingId(subject.id);
+        setEditingOriginalName(subject.name); // Track original name for batch finding
+
         setNewSubject({
             name: subject.name,
             gradeName: cls ? cls.name : '',
@@ -96,6 +121,7 @@ const SubjectManager = () => {
 
     const handleCancelEdit = () => {
         setEditingId(null);
+        setEditingOriginalName('');
         setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
     };
 
@@ -120,11 +146,15 @@ const SubjectManager = () => {
                 <Card className="p-6" id="subject-form">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         {editingId ? <Edit className="w-5 h-5 text-indigo-600" /> : <Plus className="w-5 h-5 text-indigo-600" />}
-                        {editingId ? "Update Subject" : "Add New Subject"}
+                        {editingId ? "Update Subject Batch" : "Add New Subject"}
                     </h3>
-                    {!editingId && (
+                    {!editingId ? (
                         <p className="text-xs text-gray-500 mb-4">
                             Adding a subject here will assign it to <b>ALL</b> divisions of the selected Grade.
+                        </p>
+                    ) : (
+                        <p className="text-xs text-indigo-500 bg-indigo-50 p-2 rounded mb-4 border border-indigo-100">
+                            <b>Batch Update Mode:</b> Changes will apply to this subject for <b>ALL</b> classes in Grade {newSubject.gradeName}.
                         </p>
                     )}
                     <form onSubmit={handleAdd} className="space-y-4">
@@ -181,7 +211,7 @@ const SubjectManager = () => {
                                 </Button>
                             )}
                             <Button type="submit" variant="primary" className="flex-1">
-                                {editingId ? "Update Subject" : "Add Subject to Grade"}
+                                {editingId ? "Update Batch" : "Add Subject to Grade"}
                             </Button>
                         </div>
                     </form>
