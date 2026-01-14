@@ -7,8 +7,14 @@ import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay }
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const PrayerStats = () => {
-    const { classes, students, prayerRecords } = useData();
-    const [selectedClassId, setSelectedClassId] = useState(classes[0]?.id || '');
+    const { classes, students, prayerRecords, currentUser } = useData();
+
+    // Filter classes if mentor
+    const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
+        ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
+        : classes;
+
+    const [selectedClassId, setSelectedClassId] = useState(availableClasses[0]?.id || '');
     const [timeRange, setTimeRange] = useState('week'); // 'week' or 'month'
 
     // Filter students by class
@@ -54,7 +60,7 @@ const PrayerStats = () => {
         return { leaderboard, dailyTrends };
     }, [selectedClassId, classStudents, prayerRecords]);
 
-    if (classes.length === 0) return <div className="p-8 text-center text-gray-500">No classes found.</div>;
+    if (availableClasses.length === 0) return <div className="p-8 text-center text-gray-500">No classes assigned to you.</div>;
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -72,7 +78,7 @@ const PrayerStats = () => {
                             onChange={(e) => setSelectedClassId(e.target.value)}
                             className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
                         >
-                            {classes.map(c => (
+                            {availableClasses.map(c => (
                                 <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
                             ))}
                         </select>
