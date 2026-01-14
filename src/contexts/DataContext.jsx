@@ -286,6 +286,7 @@ export const DataProvider = ({ children }) => {
 
     // Subject Actions
     const addSubject = (subject) => setSubjects(prev => [...prev, { ...subject, id: generateId() }]);
+    const updateSubject = (id, updated) => setSubjects(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
     const deleteSubject = (id) => setSubjects(prev => prev.filter(s => s.id !== id));
 
     // Exam Actions
@@ -675,7 +676,7 @@ export const DataProvider = ({ children }) => {
             students, addStudent, updateStudent, setStudents, deleteStudent, deleteStudents, deleteAllStudents,
             mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors,
             attendance, recordAttendance, setAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds,
-            subjects, addSubject, deleteSubject,
+            subjects, addSubject, updateSubject, deleteSubject,
             exams, addExam, updateExam, deleteExam, examSettings, updateExamSetting,
             results, recordResult, deleteResultBatch, setResults,
             questions, addQuestion, deleteQuestion, updateQuestion,
