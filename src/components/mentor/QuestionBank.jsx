@@ -4,10 +4,10 @@ import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload } from 'lucide-react';
+import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload, Settings } from 'lucide-react';
 
 const QuestionBank = () => {
-    const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser } = useData();
+    const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser, examSettings, updateExamSetting } = useData();
     const { showAlert, showConfirm } = useUI();
 
     // Mentor specific filtering
@@ -175,6 +175,8 @@ const QuestionBank = () => {
         q.subjectId === context.subjectId
     );
 
+    const [activeTab, setActiveTab] = useState('questions'); // 'questions' | 'settings'
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             {/* Header / Exam Selection */}
@@ -246,14 +248,27 @@ const QuestionBank = () => {
                                             // Count questions for this specific context
                                             const qCount = questions.filter(q => q.examId === selectedExamId && q.classId === className && q.subjectId === subjectName).length;
 
+                                            // Get Settings Status
+                                            const setting = getSetting(selectedExamId, className, subjectName);
+
                                             return (
                                                 <div key={subjectName} className="border border-gray-100 rounded-xl p-5 hover:shadow-md transition-all bg-white group">
                                                     <div className="flex justify-between items-center">
                                                         <div>
                                                             <h4 className="font-bold text-gray-800 text-lg">{subjectName}</h4>
-                                                            <p className="text-xs text-gray-500 mt-1 font-medium bg-gray-100 px-2 py-0.5 rounded-full inline-block">
-                                                                {qCount} Questions
-                                                            </p>
+                                                            <div className="flex gap-2 mt-1">
+                                                                <p className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full inline-block">
+                                                                    {qCount} Questions
+                                                                </p>
+                                                                <p className={`text-xs font-medium px-2 py-0.5 rounded-full inline-block ${setting.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                                    {setting.isActive ? 'Active' : 'Locked'}
+                                                                </p>
+                                                                {setting.duration && (
+                                                                    <p className="text-xs text-blue-700 font-medium bg-blue-100 px-2 py-0.5 rounded-full inline-block">
+                                                                        {setting.duration} mins
+                                                                    </p>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <Button
                                                             size="sm"
@@ -261,7 +276,7 @@ const QuestionBank = () => {
                                                             onClick={(e) => { e.stopPropagation(); openEditor(selectedExamId, className, subjectName); }}
                                                             className="text-xs h-8 flex items-center shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200"
                                                         >
-                                                            <Edit2 className="w-3 h-3 mr-1" /> Manage Questions
+                                                            <Edit2 className="w-3 h-3 mr-1" /> Manage
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -278,182 +293,270 @@ const QuestionBank = () => {
             {/* Questions Modal */}
             {isEditorOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <Card className="w-full max-w-4xl h-[90vh] flex flex-col relative bg-white shadow-2xl">
+                    <Card className="w-full max-w-4xl h-[90vh] flex flex-col relative bg-white shadow-2xl overflow-hidden">
                         <button
                             onClick={() => setIsEditorOpen(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
                         >
                             <X className="w-6 h-6" />
                         </button>
 
-                        <div className="p-6 border-b border-gray-100">
-                            <h3 className="text-xl font-bold text-gray-800">
-                                Managing: {context.subjectId} (Class {context.classId})
-                            </h3>
-                            <p className="text-gray-500 text-sm">Add or edit questions for this subject.</p>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Left: Form */}
-                            <div className="space-y-6">
-                                <h4 className="font-bold text-gray-700 flex items-center gap-2">
-                                    {editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                    {editingId ? 'Edit Question' : 'Add New Question'}
-                                </h4>
-
-                                <form onSubmit={handleSaveQuestion} className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                            <select
-                                                value={qType}
-                                                onChange={e => setQType(e.target.value)}
-                                                className="w-full rounded-lg border-gray-300 shadow-sm p-2 bg-white border text-sm"
-                                            >
-                                                <option value="MCQ">Multiple Choice</option>
-                                                <option value="Short">Short Text</option>
-                                                <option value="Paragraph">Paragraph</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={qMarks}
-                                                onChange={e => setQMarks(e.target.value)}
-                                                className="w-full rounded-lg border-gray-300 shadow-sm p-2 border text-sm"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <Input
-                                        label="Question Text"
-                                        value={qText}
-                                        onChange={e => setQText(e.target.value)}
-                                        placeholder="Enter question text..."
-                                    />
-
-                                    <div className="flex items-end gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Question Image (Optional)</label>
-                                            <div className="flex items-center gap-4">
-                                                <div className="relative">
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={handleImageUpload}
-                                                        className="hidden"
-                                                        id="q-image-upload"
-                                                    />
-                                                    <label
-                                                        htmlFor="q-image-upload"
-                                                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer shadow-sm"
-                                                    >
-                                                        <Upload className="w-4 h-4" />
-                                                        {qImage ? 'Change Image' : 'Upload Image'}
-                                                    </label>
-                                                </div>
-                                                {qImage && (
-                                                    <div className="relative group">
-                                                        <img src={qImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg border border-gray-200" />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setQImage(null)}
-                                                            className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <X className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 mb-[2px]">
-                                            <input
-                                                type="checkbox"
-                                                id="allowAttachments"
-                                                checked={allowAttachments}
-                                                onChange={(e) => setAllowAttachments(e.target.checked)}
-                                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                            />
-                                            <label htmlFor="allowAttachments" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
-                                                Allow Students to Attach Files
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    {qType === 'MCQ' && (
-                                        <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                            <p className="text-sm font-medium text-gray-700">Choices</p>
-                                            {options.map((opt, idx) => (
-                                                <div key={idx} className="flex items-center gap-2">
-                                                    <span className="text-gray-400 text-xs w-4">{String.fromCharCode(65 + idx)}</span>
-                                                    <input
-                                                        type="text"
-                                                        value={opt}
-                                                        onChange={e => updateOption(idx, e.target.value)}
-                                                        className="flex-1 rounded border-gray-300 p-1.5 text-sm"
-                                                        placeholder={`Option ${idx + 1}`}
-                                                        required
-                                                    />
-                                                    <input
-                                                        type="radio"
-                                                        name="correctAnswer"
-                                                        checked={correctAnswer === opt && opt !== ''}
-                                                        onChange={() => setCorrectAnswer(opt)}
-                                                        className="text-indigo-600 focus:ring-indigo-500"
-                                                        disabled={!opt}
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <div className="flex gap-2">
-                                        <Button type="submit" variant="primary" className="flex-1">
-                                            {editingId ? 'Update' : 'Add Question'}
-                                        </Button>
-                                        {editingId && (
-                                            <Button type="button" variant="secondary" onClick={resetForm}>
-                                                Cancel
-                                            </Button>
-                                        )}
-                                    </div>
-                                </form>
+                        <div className="p-6 border-b border-gray-100 bg-white">
+                            <div className="mb-4">
+                                <h3 className="text-xl font-bold text-gray-800">
+                                    {context.subjectId} <span className="text-gray-400 font-normal">/ Class {context.classId}</span>
+                                </h3>
+                                <p className="text-gray-500 text-sm">Manage questions and exam settings for this subject.</p>
                             </div>
 
-                            {/* Right: List */}
-                            <div className="space-y-4 border-l border-gray-100 pl-8">
-                                <h4 className="font-bold text-gray-700">
-                                    Existing Questions ({currentQuestions.length})
-                                </h4>
-                                <div className="space-y-3 h-[500px] overflow-y-auto pr-2">
-                                    {currentQuestions.length === 0 && (
-                                        <p className="text-gray-400 italic text-sm text-center py-10">No questions yet.</p>
-                                    )}
-                                    {currentQuestions.map((q, i) => (
-                                        <div key={q.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative group hover:border-indigo-200">
-                                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-sm rounded">
-                                                <button onClick={() => handleEditQuestion(q)} className="p-1 text-gray-400 hover:text-indigo-600"><Edit2 className="w-3 h-3" /></button>
-                                                <button onClick={() => confirmDelete(q.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                            {/* Tabs */}
+                            <div className="flex gap-4 border-b border-gray-100">
+                                <button
+                                    onClick={() => setActiveTab('questions')}
+                                    className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'questions' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Questions & Content
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('settings')}
+                                    className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'settings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Exam Settings
+                                </button>
+                            </div>
+                        </div>
+
+                        {activeTab === 'questions' ? (
+                            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Left: Form */}
+                                <div className="space-y-6">
+                                    <h4 className="font-bold text-gray-700 flex items-center gap-2">
+                                        {editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                        {editingId ? 'Edit Question' : 'Add New Question'}
+                                    </h4>
+
+                                    <form onSubmit={handleSaveQuestion} className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                                <select
+                                                    value={qType}
+                                                    onChange={e => setQType(e.target.value)}
+                                                    className="w-full rounded-lg border-gray-300 shadow-sm p-2 bg-white border text-sm"
+                                                >
+                                                    <option value="MCQ">Multiple Choice</option>
+                                                    <option value="Short">Short Text</option>
+                                                    <option value="Paragraph">Paragraph</option>
+                                                </select>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <span className="font-bold text-gray-300 text-sm">#{i + 1}</span>
-                                                <div>
-                                                    <p className="text-gray-800 text-sm font-medium">{q.text}</p>
-                                                    <div className="flex gap-2 mt-1">
-                                                        <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">{q.type}</span>
-                                                        <span className="text-[10px] bg-indigo-50 px-1.5 rounded text-indigo-500">{q.marks} m</span>
-                                                        {q.image && <span className="text-[10px] bg-blue-50 px-1.5 rounded text-blue-500 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Image</span>}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    value={qMarks}
+                                                    onChange={e => setQMarks(e.target.value)}
+                                                    className="w-full rounded-lg border-gray-300 shadow-sm p-2 border text-sm"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <Input
+                                            label="Question Text"
+                                            value={qText}
+                                            onChange={e => setQText(e.target.value)}
+                                            placeholder="Enter question text..."
+                                        />
+
+                                        <div className="flex items-end gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Question Image (Optional)</label>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="relative">
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={handleImageUpload}
+                                                            className="hidden"
+                                                            id="q-image-upload"
+                                                        />
+                                                        <label
+                                                            htmlFor="q-image-upload"
+                                                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer shadow-sm"
+                                                        >
+                                                            <Upload className="w-4 h-4" />
+                                                            {qImage ? 'Change Image' : 'Upload Image'}
+                                                        </label>
+                                                    </div>
+                                                    {qImage && (
+                                                        <div className="relative group">
+                                                            <img src={qImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg border border-gray-200" />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setQImage(null)}
+                                                                className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 mb-[2px]">
+                                                <input
+                                                    type="checkbox"
+                                                    id="allowAttachments"
+                                                    checked={allowAttachments}
+                                                    onChange={(e) => setAllowAttachments(e.target.checked)}
+                                                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                                />
+                                                <label htmlFor="allowAttachments" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                                                    Allow Attachments
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        {qType === 'MCQ' && (
+                                            <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                                <p className="text-sm font-medium text-gray-700">Choices</p>
+                                                {options.map((opt, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2">
+                                                        <span className="text-gray-400 text-xs w-4">{String.fromCharCode(65 + idx)}</span>
+                                                        <input
+                                                            type="text"
+                                                            value={opt}
+                                                            onChange={e => updateOption(idx, e.target.value)}
+                                                            className="flex-1 rounded border-gray-300 p-1.5 text-sm"
+                                                            placeholder={`Option ${idx + 1}`}
+                                                            required
+                                                        />
+                                                        <input
+                                                            type="radio"
+                                                            name="correctAnswer"
+                                                            checked={correctAnswer === opt && opt !== ''}
+                                                            onChange={() => setCorrectAnswer(opt)}
+                                                            className="text-indigo-600 focus:ring-indigo-500"
+                                                            disabled={!opt}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-2">
+                                            <Button type="submit" variant="primary" className="flex-1">
+                                                {editingId ? 'Update' : 'Add Question'}
+                                            </Button>
+                                            {editingId && (
+                                                <Button type="button" variant="secondary" onClick={resetForm}>
+                                                    Cancel
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </form>
+                                </div>
+
+                                {/* Right: List */}
+                                <div className="space-y-4 border-l border-gray-100 pl-8">
+                                    <h4 className="font-bold text-gray-700">
+                                        Existing Questions ({currentQuestions.length})
+                                    </h4>
+                                    <div className="space-y-3 h-[500px] overflow-y-auto pr-2">
+                                        {currentQuestions.length === 0 && (
+                                            <p className="text-gray-400 italic text-sm text-center py-10">No questions yet.</p>
+                                        )}
+                                        {currentQuestions.map((q, i) => (
+                                            <div key={q.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative group hover:border-indigo-200">
+                                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-sm rounded">
+                                                    <button onClick={() => handleEditQuestion(q)} className="p-1 text-gray-400 hover:text-indigo-600"><Edit2 className="w-3 h-3" /></button>
+                                                    <button onClick={() => confirmDelete(q.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <span className="font-bold text-gray-300 text-sm">#{i + 1}</span>
+                                                    <div>
+                                                        <p className="text-gray-800 text-sm font-medium">{q.text}</p>
+                                                        <div className="flex gap-2 mt-1">
+                                                            <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">{q.type}</span>
+                                                            <span className="text-[10px] bg-indigo-50 px-1.5 rounded text-indigo-500">{q.marks} m</span>
+                                                            {q.image && <span className="text-[10px] bg-blue-50 px-1.5 rounded text-blue-500 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Image</span>}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="p-8 max-w-2xl mx-auto w-full">
+                                <div className="bg-white border text-card-foreground shadow-sm rounded-xl overflow-hidden">
+                                    <div className="p-6 bg-gray-50 border-b border-gray-100">
+                                        <h3 className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                                            <Settings className="w-5 h-5 text-indigo-600" />
+                                            Settings
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground text-gray-500 mt-2">
+                                            Configure how students experience this exam subject.
+                                        </p>
+                                    </div>
+                                    <div className="p-6 space-y-6">
+                                        {(() => {
+                                            const setting = getSetting(context.examId, context.classId, context.subjectId);
+                                            return (
+                                                <>
+                                                    {/* Activation Toggle */}
+                                                    <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg">
+                                                        <div>
+                                                            <p className="font-semibold text-gray-800">Exam Status</p>
+                                                            <p className="text-sm text-gray-500">
+                                                                {setting.isActive ? 'Students can currently access this exam subject.' : 'Access is currently locked for students.'}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleSettingChange(context.examId, context.classId, context.subjectId, { isActive: !setting.isActive })}
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${setting.isActive ? 'bg-green-500' : 'bg-gray-200'}`}
+                                                        >
+                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${setting.isActive ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Duration Input */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Timed Duration (Minutes)
+                                                        </label>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                value={setting.duration || ''}
+                                                                onChange={(e) => handleSettingChange(context.examId, context.classId, context.subjectId, { duration: e.target.value })}
+                                                                placeholder="e.g. 60"
+                                                                className="w-full rounded-lg border-gray-300 shadow-sm p-2.5 bg-white border text-sm"
+                                                            />
+                                                            <span className="text-gray-500 text-sm whitespace-nowrap">mins</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            Leave empty or 0 for no time limit.
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Additional Info */}
+                                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex gap-3">
+                                                        <HelpCircle className="w-5 h-5 text-blue-600 shrink-0" />
+                                                        <p className="text-sm text-blue-700">
+                                                            Changes are saved automatically. Setting a duration will display a countdown timer for students
+                                                            starting from the moment they click "Take Exam".
+                                                        </p>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </Card >
                 </div >
             )}

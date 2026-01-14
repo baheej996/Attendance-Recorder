@@ -15,6 +15,144 @@ const StudentExamView = () => {
     const [attachments, setAttachments] = useState({});
     const [viewingMode, setViewingMode] = useState(false); // false = taking, true = viewing result
 
+    // Timer State
+    const [timeLeft, setTimeLeft] = useState(null); // in seconds
+
+    // Timer Effect
+    useEffect(() => {
+        if (!activeExamId || !selectedSubjectId || viewingMode) return;
+
+        const setting = examSettings.find(s => s.examId === activeExamId && s.classId === currentUser.classId && s.subjectId === selectedSubjectId);
+        const durationMins = setting?.duration ? parseInt(setting.duration) : 0;
+
+        if (durationMins > 0) {
+            const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
+            const storedStart = localStorage.getItem(storageKey);
+            let startTime = storedStart ? parseInt(storedStart) : Date.now();
+
+            if (!storedStart) {
+                localStorage.setItem(storageKey, startTime.toString());
+            }
+
+            const endTime = startTime + (durationMins * 60 * 1000);
+
+            const interval = setInterval(() => {
+                const now = Date.now();
+                const diff = Math.ceil((endTime - now) / 1000);
+
+                if (diff <= 0) {
+                    setTimeLeft(0);
+                    clearInterval(interval);
+                    handleAutoSubmit();
+                } else {
+                    setTimeLeft(diff);
+                }
+            }, 1000);
+
+            return () => clearInterval(interval);
+        } else {
+            setTimeLeft(null);
+        }
+    }, [activeExamId, selectedSubjectId, viewingMode, examSettings]);
+
+    const handleAutoSubmit = () => {
+        showAlert("Time Up!", "Your exam time has ended. Your answers will be submitted automatically.", "alert");
+
+        // Construct submission with current state
+        // Note: 'answers' state might be closure-stale inside setInterval if not careful, 
+        // but since we call a function that likely reads refs or we rely on the fact that this defined in the component scope...
+        // Actually, inside the interval, 'answers' will be stale if we don't use a ref.
+        // However, we can just trigger a state update that calls submit. 
+        // OR better: use a Ref for answers to always get latest.
+
+        // For simplicity in this quick implementation, let's just call the submit logic using the available state 
+        // assuming the component re-renders often enough or we force it? 
+        // Actually interval closure traps 'answers'. We NEED a ref for answers.
+
+        // Let's rely on a separate specific specific effect or use a Ref for answers.
+        // I will add the Ref in the next step or assume the user accepts a slight limitation if I don't fix it now.
+        // Better: Make 'answers' a ref as well or just update the submit function to use a ref. 
+        // Let's use a Ref for answers in addition to State to ensure auto-submit captures everything.
+    };
+
+    // We need a ref for answers to handle auto-submit correctly from the timer closure
+    const answersRef = React.useRef(answers);
+    const attachmentsRef = React.useRef(attachments);
+
+    useEffect(() => {
+        answersRef.current = answers;
+        attachmentsRef.current = attachments;
+    }, [answers, attachments]);
+
+    // Redefined AutoSubmit using Refs
+    const performAutoSubmit = () => {
+        const realSubject = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);
+        const submissionData = {
+            examId: activeExamId,
+            subjectId: realSubject ? realSubject.id : selectedSubjectId,
+            subjectName: selectedSubjectId,
+            studentId: currentUser.id,
+            answers: answersRef.current,
+            attachments: attachmentsRef.current
+        };
+
+        submitExam(submissionData);
+
+        // Clear Storage
+        const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
+        localStorage.removeItem(storageKey);
+
+        setActiveExamId(null);
+        setSelectedSubjectId(null);
+    };
+
+    // Update the interval to call performAutoSubmit
+    useEffect(() => {
+        if (!activeExamId || !selectedSubjectId || viewingMode) return;
+
+        const setting = examSettings.find(s => s.examId === activeExamId && s.classId === currentUser.classId && s.subjectId === selectedSubjectId);
+        const durationMins = setting?.duration ? parseInt(setting.duration) : 0;
+
+        if (durationMins > 0) {
+            const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
+            const storedStart = localStorage.getItem(storageKey);
+
+            // If we just started (no storage), set it. 
+            // Note: handleStartExam might have set it, but safe to check here.
+            let startTime = storedStart ? parseInt(storedStart) : Date.now();
+            if (!storedStart) {
+                localStorage.setItem(storageKey, startTime.toString());
+            }
+
+            const endTime = startTime + (durationMins * 60 * 1000);
+
+            const timer = setInterval(() => {
+                const now = Date.now();
+                const diff = Math.ceil((endTime - now) / 1000);
+
+                if (diff <= 0) {
+                    setTimeLeft(0);
+                    clearInterval(timer);
+                    showAlert("Time Up!", "Your exam time has ended. Your answers are being submitted.", "warn");
+                    performAutoSubmit();
+                } else {
+                    setTimeLeft(diff);
+                }
+            }, 1000);
+
+            return () => clearInterval(timer);
+        } else {
+            setTimeLeft(null);
+        }
+    }, [activeExamId, selectedSubjectId, viewingMode]); // Removed examSettings from dependency to avoid timer reset if settings update (though they shouldn't mid-exam)
+
+    const formatTime = (seconds) => {
+        if (seconds === null) return "";
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
     // 1. Resolve Student's Class Name (to match Questions which use Class Name)
     const studentClass = classes.find(c => c.id === currentUser?.classId);
     if (!studentClass) return <div className="p-8 text-center text-gray-500">Class information not found.</div>;
@@ -121,6 +259,10 @@ const StudentExamView = () => {
                     answers,
                     attachments
                 });
+
+                // Clear Timer Storage
+                const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
+                localStorage.removeItem(storageKey);
 
                 showAlert("Success", "Exam Submitted Successfully!", "success");
                 setActiveExamId(null);
@@ -276,7 +418,7 @@ const StudentExamView = () => {
                         {examQuestions.map((q, idx) => {
                             const myAns = answers[q.id];
                             const isMCQ = q.type === 'MCQ';
-                            const isCorrect = isMCQ && myAns === q.correctAnswer;
+                            const isCorrect = isMCQ && q.correctAnswer === myAns;
 
                             return (
                                 <div key={q.id} className={clsx(
@@ -356,7 +498,15 @@ const StudentExamView = () => {
                 </button>
                 <div className="text-right">
                     <p className="text-sm text-gray-500">Subject</p>
-                    <p className="text-xl font-bold text-indigo-600">{selectedSubjectId}</p>
+                    <div className="flex items-center gap-3">
+                        <p className="text-xl font-bold text-indigo-600">{selectedSubjectId}</p>
+                        {timeLeft !== null && (
+                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold border ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+                                <Clock className="w-4 h-4" />
+                                <span>{formatTime(timeLeft)}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
