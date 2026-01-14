@@ -174,13 +174,28 @@ const PrayerChart = () => {
                                 <Save className="w-4 h-4" />
                                 Save Changes
                             </Button>
-                            {/* Removed redundant text node if any from previous implementation? No, looks clean. */}
                         </div>
                     </Card>
                 </div>
 
-                {/* Weekly Summary */}
+                {/* Right Column: Streak Master & Weekly Progress */}
                 <div className="space-y-6">
+                    {/* Fun Stats (Streak Master) - Moved to top */}
+                    <Card className="p-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-0">
+                        <div className="flex items-center gap-3 mb-2">
+                            <Trophy className="w-5 h-5 text-yellow-300" />
+                            <h3 className="font-bold">Streak Master</h3>
+                        </div>
+                        <p className="text-indigo-100 text-sm mb-4">You have completed all 5 prayers for {weeklyData.filter(d => d.count === 5).length} days this week!</p>
+                        <div className="w-full bg-white/20 rounded-full h-2">
+                            <div
+                                className="bg-yellow-400 h-2 rounded-full"
+                                style={{ width: `${(weeklyData.filter(d => d.count === 5).length / 7) * 100}%` }}
+                            ></div>
+                        </div>
+                    </Card>
+
+                    {/* Weekly Summary */}
                     <Card className="p-6">
                         <h2 className="text-lg font-bold text-gray-900 mb-6">Weekly Progress</h2>
                         <div className="space-y-4">
@@ -225,21 +240,6 @@ const PrayerChart = () => {
                                     </div>
                                 );
                             })}
-                        </div>
-                    </Card>
-
-                    {/* Fun Stats */}
-                    <Card className="p-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-0">
-                        <div className="flex items-center gap-3 mb-2">
-                            <Trophy className="w-5 h-5 text-yellow-300" />
-                            <h3 className="font-bold">Streak Master</h3>
-                        </div>
-                        <p className="text-indigo-100 text-sm mb-4">You have completed all 5 prayers for {weeklyData.filter(d => d.count === 5).length} days this week!</p>
-                        <div className="w-full bg-white/20 rounded-full h-2">
-                            <div
-                                className="bg-yellow-400 h-2 rounded-full"
-                                style={{ width: `${(weeklyData.filter(d => d.count === 5).length / 7) * 100}%` }}
-                            ></div>
                         </div>
                     </Card>
                 </div>
