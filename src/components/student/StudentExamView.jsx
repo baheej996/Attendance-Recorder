@@ -178,7 +178,7 @@ const StudentExamView = () => {
     };
 
     if (!studentClass) return <div className="p-8 text-center text-gray-500">Class information not found.</div>;
-    // const studentClassName = studentClass.name; // Moved up
+    const studentClassName = studentClass.name; // Restored for Render usage
 
     const handleBack = () => {
         localStorage.removeItem(`active_exam_session_${currentUser.id}`);
