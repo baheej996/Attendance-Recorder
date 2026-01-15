@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle } from 'lucide-react';
+import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 
@@ -15,7 +15,9 @@ const MentorChat = () => {
         chatSettings,
         sendMessage,
         toggleChatForClass,
-        markMessagesAsRead
+        markMessagesAsRead,
+        activities,
+        activitySubmissions
     } = useData();
 
     const [activeTab, setActiveTab] = useState('inbox');
@@ -69,6 +71,29 @@ const MentorChat = () => {
             type: 'text'
         });
         setMessageInput('');
+    };
+
+    const handleReminder = (e) => {
+        e.preventDefault();
+        if (!selectedStudent || !selectedStudentId) return;
+
+        // 1. Find Pending Activities
+        // Active activities for this class where the student has NOT completed the submission
+        const pendingActivities = activities.filter(a =>
+            a.classId === selectedStudent.classId &&
+            a.status === 'Active' &&
+            !activitySubmissions.some(s => s.activityId === a.id && s.studentId === selectedStudentId && s.status === 'Completed')
+        );
+
+        if (pendingActivities.length === 0) {
+            alert("No pending work found for this student!");
+            return;
+        }
+
+        const activityList = pendingActivities.map(a => `• ${a.title}`).join('\n');
+        const reminderMsg = `⚠️ Reminder: You have pending work:\n\nActivities:\n${activityList}\n\nPlease complete them soon.`;
+
+        setMessageInput(reminderMsg);
     };
 
     // Helper to get unread count for a student
@@ -244,6 +269,16 @@ const MentorChat = () => {
                                 </div>
 
                                 <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-100 flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleReminder}
+                                        disabled={!isChatEnabled(selectedStudent.classId)}
+                                        title="Send Pending Work Reminder"
+                                        className="bg-yellow-50 text-yellow-600 border-yellow-100 hover:bg-yellow-100 px-3"
+                                    >
+                                        <Bell className="w-4 h-4" />
+                                    </Button>
                                     <input
                                         type="text"
                                         placeholder={isChatEnabled(selectedStudent.classId) ? "Type a message..." : "Chat is disabled details for this class"}
