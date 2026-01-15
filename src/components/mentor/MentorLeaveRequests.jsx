@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Check, X, Calendar, User, Clock, MessageSquare, AlertCircle } from 'lucide-react';
+import { Check, X, Calendar, User, Clock, MessageSquare, AlertCircle, Trash2, CheckSquare, Square } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { clsx } from 'clsx';
 
 const MentorLeaveRequests = () => {
-    const { leaveRequests, updateLeaveRequest, currentUser, students, classes } = useData();
+    const { leaveRequests, updateLeaveRequest, deleteLeaveRequests, currentUser, students, classes } = useData();
     const [actionId, setActionId] = useState(null);
     const [comment, setComment] = useState('');
+    const [selectedIds, setSelectedIds] = useState([]); // Track selected requests
 
     // Filter requests for mentor's assigned classes
     const assignedClassIds = currentUser?.assignedClassIds || [];
@@ -37,6 +38,46 @@ const MentorLeaveRequests = () => {
         } catch (error) {
             console.error("Failed to update request:", error);
             alert("Failed to update status.");
+        }
+    };
+
+    const toggleSelection = (id) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === filteredRequests.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredRequests.map(r => r.id));
+        }
+    };
+
+    const handleBulkAction = async (action) => {
+        if (selectedIds.length === 0) return;
+        if (!window.confirm(`Are you sure you want to ${action} ${selectedIds.length} requests?`)) return;
+
+        try {
+            if (action === 'delete') {
+                deleteLeaveRequests(selectedIds);
+            } else {
+                const status = action === 'approve' ? 'Approved' : 'Rejected';
+                // Process updates sequentially or promise.all
+                // Since updateLeaveRequest is sync state update, we can just loop
+                selectedIds.forEach(id => {
+                    updateLeaveRequest(id, {
+                        status,
+                        updatedAt: new Date().toISOString(),
+                        updatedBy: currentUser.id
+                    });
+                });
+            }
+            setSelectedIds([]); // Clear selection after action
+        } catch (error) {
+            console.error("Bulk action failed:", error);
+            alert("Failed to perform bulk action.");
         }
     };
 
@@ -69,6 +110,43 @@ const MentorLeaveRequests = () => {
                 <p className="text-gray-500">Manage student leave applications</p>
             </div>
 
+            {/* Bulk Action Toolbar */}
+            {filteredRequests.length > 0 && (
+                <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={toggleSelectAll}
+                            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-indigo-600"
+                        >
+                            {selectedIds.length === filteredRequests.length && filteredRequests.length > 0 ? (
+                                <CheckSquare className="w-5 h-5 text-indigo-600" />
+                            ) : (
+                                <Square className="w-5 h-5 text-gray-400" />
+                            )}
+                            Select All
+                        </button>
+                        <span className="text-sm text-gray-500">
+                            {selectedIds.length} selected
+                        </span>
+                    </div>
+
+                    {selectedIds.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" onClick={() => handleBulkAction('approve')} className="bg-green-600 hover:bg-green-700 text-white gap-2">
+                                <Check className="w-4 h-4" /> Approve ({selectedIds.length})
+                            </Button>
+                            <Button size="sm" onClick={() => handleBulkAction('reject')} className="bg-red-600 hover:bg-red-700 text-white gap-2">
+                                <X className="w-4 h-4" /> Reject ({selectedIds.length})
+                            </Button>
+                            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                            <Button size="sm" onClick={() => handleBulkAction('delete')} variant="danger" className="gap-2">
+                                <Trash2 className="w-4 h-4" /> Delete ({selectedIds.length})
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {filteredRequests.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
                     <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -78,8 +156,18 @@ const MentorLeaveRequests = () => {
             ) : (
                 <div className="grid gap-4">
                     {filteredRequests.map(req => (
-                        <Card key={req.id} className="p-6 transition-all hover:shadow-md">
+                        <Card key={req.id} className={`p-6 transition-all hover:shadow-md ${selectedIds.includes(req.id) ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/10' : ''}`}>
                             <div className="flex flex-col md:flex-row gap-4 justify-between items-start">
+                                {/* Checkbox for Section */}
+                                <div className="pt-1">
+                                    <button onClick={() => toggleSelection(req.id)}>
+                                        {selectedIds.includes(req.id) ? (
+                                            <CheckSquare className="w-5 h-5 text-indigo-600" />
+                                        ) : (
+                                            <Square className="w-5 h-5 text-gray-300 hover:text-indigo-400" />
+                                        )}
+                                    </button>
+                                </div>
                                 <div className="space-y-3 flex-1">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">

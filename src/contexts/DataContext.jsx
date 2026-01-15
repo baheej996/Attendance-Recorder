@@ -739,6 +739,10 @@ export const DataProvider = ({ children }) => {
         setLeaveRequests(prev => prev.filter(r => r.id !== id));
     };
 
+    const deleteLeaveRequests = (ids) => {
+        setLeaveRequests(prev => prev.filter(r => !ids.includes(r.id)));
+    };
+
     return (
         <DataContext.Provider value={{
             classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses,
@@ -762,7 +766,7 @@ export const DataProvider = ({ children }) => {
             // Prayer Chart Exports
             prayerRecords, addPrayerRecord, getPrayerRecordsByStudent,
             // Leave Request Exports
-            leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest
+            leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests
         }}>
             {children}
         </DataContext.Provider>
