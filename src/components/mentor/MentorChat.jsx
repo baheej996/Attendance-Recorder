@@ -88,7 +88,13 @@ const MentorChat = () => {
     const filteredStudents = myStudents.filter(s =>
         s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.registerNo.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    ).sort((a, b) => {
+        const lastMsgA = getLastMessage(a.id);
+        const lastMsgB = getLastMessage(b.id);
+        const timeA = lastMsgA ? new Date(lastMsgA.timestamp).getTime() : 0;
+        const timeB = lastMsgB ? new Date(lastMsgB.timestamp).getTime() : 0;
+        return timeB - timeA;
+    });
 
     const isChatEnabled = (classId) => {
         const setting = chatSettings.find(s => s.classId === classId);

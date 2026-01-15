@@ -24,16 +24,20 @@ const DashboardHome = () => (
 
 const MentorDashboard = () => {
     const location = useLocation();
-    const { logout, currentUser, leaveRequests } = useData();
+    const { logout, currentUser, leaveRequests, chatMessages } = useData();
 
     const pendingLeaves = (leaveRequests || []).filter(r =>
         r.status === 'Pending' && currentUser?.assignedClassIds?.includes(r.classId)
     ).length;
 
+    const unreadChatCount = (chatMessages || []).filter(m =>
+        m.receiverId === currentUser.id && !m.isRead
+    ).length;
+
     const navItems = [
         { icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
         { icon: UserCheck, label: 'Leave Requests', path: '/mentor/leaves', badge: pendingLeaves },
-        { icon: MessageSquare, label: 'Chat', path: '/mentor/chat' },
+        { icon: MessageSquare, label: 'Chat', path: '/mentor/chat', badge: unreadChatCount },
         { icon: Layers, label: 'Activities', path: '/mentor/activities' },
         { icon: BookOpen, label: 'Class Log Book', path: '/mentor/logbook' },
         { icon: Calendar, label: 'Prayer Chart', path: '/mentor/prayer-chart' },
