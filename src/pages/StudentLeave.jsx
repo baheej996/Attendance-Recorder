@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Calendar, Clock, FileText, CheckCircle, XCircle, AlertCircle, Plus } from 'lucide-react';
+import { Calendar, Clock, FileText, CheckCircle, XCircle, AlertCircle, Plus, Edit2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, differenceInDays } from 'date-fns';
 
 const StudentLeave = () => {
-    const { currentUser, leaveRequests, addLeaveRequest } = useData();
+    const { currentUser, leaveRequests, addLeaveRequest, updateLeaveRequest } = useData();
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -37,15 +38,37 @@ const StudentLeave = () => {
         }
 
         try {
-            await addLeaveRequest({
-                studentId: currentUser.id,
-                classId: currentUser.classId,
-                startDate: formData.startDate,
-                endDate: formData.endDate,
-                type: formData.type,
-                reason: formData.reason
-            });
+            if (editingId) {
+                // Concurrency Check: Verify status is still pending right before saving
+                const freshRequest = leaveRequests.find(r => r.id === editingId);
+                if (!freshRequest || freshRequest.status !== 'Pending') {
+                    alert("This request has just been processed by your mentor and cannot be edited anymore.");
+                    setEditingId(null);
+                    setShowForm(false);
+                    return;
+                }
+
+                updateLeaveRequest(editingId, {
+                    startDate: formData.startDate,
+                    endDate: formData.endDate,
+                    type: formData.type,
+                    reason: formData.reason,
+                    updatedAt: new Date().toISOString()
+                });
+                alert("Request updated successfully.");
+            } else {
+                await addLeaveRequest({
+                    studentId: currentUser.id,
+                    classId: currentUser.classId,
+                    startDate: formData.startDate,
+                    endDate: formData.endDate,
+                    type: formData.type,
+                    reason: formData.reason
+                });
+            }
+
             setShowForm(false);
+            setEditingId(null);
             setFormData({
                 startDate: '',
                 endDate: '',
@@ -58,6 +81,33 @@ const StudentLeave = () => {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleEdit = (req) => {
+        if (req.status !== 'Pending') {
+            alert("Only pending requests can be edited.");
+            return;
+        }
+        setEditingId(req.id);
+        setFormData({
+            startDate: req.startDate,
+            endDate: req.endDate,
+            type: req.type,
+            reason: req.reason
+        });
+        setShowForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCancel = () => {
+        setShowForm(false);
+        setEditingId(null);
+        setFormData({
+            startDate: '',
+            endDate: '',
+            type: 'Sick Leave',
+            reason: ''
+        });
     };
 
     const getStatusBadge = (status) => {
@@ -87,7 +137,7 @@ const StudentLeave = () => {
 
             {showForm && (
                 <Card className="p-6 border-l-4 border-l-indigo-500 animate-in fade-in slide-in-from-top-4">
-                    <h3 className="font-bold text-lg mb-4">New Leave Application</h3>
+                    <h3 className="font-bold text-lg mb-4">{editingId ? 'Edit Application' : 'New Leave Application'}</h3>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
                             <div>
@@ -135,8 +185,8 @@ const StudentLeave = () => {
                         </div>
 
                         <div className="flex justify-end gap-3 pt-2">
-                            <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>Cancel</Button>
-                            <Button type="submit" disabled={isSubmitting}>Submit Application</Button>
+                            <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
+                            <Button type="submit" disabled={isSubmitting}>{editingId ? 'Update Application' : 'Submit Application'}</Button>
                         </div>
                     </form>
                 </Card>
@@ -173,7 +223,21 @@ const StudentLeave = () => {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
+                                </div>
+                                <div className="flex flex-col items-end gap-2">
                                     {getStatusBadge(req.status)}
+
+                                    {req.status === 'Pending' && (
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => handleEdit(req)}
+                                            className="text-xs h-7 px-2"
+                                        >
+                                            <Edit2 className="w-3 h-3 mr-1" /> Edit
+                                        </Button>
+                                    )}
+
                                     {req.comment && (
                                         <div className="text-xs text-right max-w-[200px] text-gray-500 bg-gray-50 p-2 rounded">
                                             <span className="font-semibold block text-indigo-700">Mentor Note:</span>
