@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Trash2, Plus, BookOpen, Layers, Edit } from 'lucide-react';
+import { Trash2, Plus, BookOpen, Layers, Edit, Search, ArrowUpDown } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
@@ -13,6 +13,8 @@ const SubjectManager = () => {
     // We now track 'gradeName' instead of specific 'classId'
     const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState(''); // New Search State
+    const [sortBy, setSortBy] = useState('grade'); // New Sort State: 'grade' | 'name'
     const [editingId, setEditingId] = useState(null);
     const [editingOriginalName, setEditingOriginalName] = useState('');
 
@@ -30,17 +32,10 @@ const SubjectManager = () => {
 
         if (editingId) {
             // --- Batch Update Logic ---
-            // 1. Identify valid classes for this Grade
-            // A grade name is derived from the editing subject's class if not explicitly stored, but here we can rely on newSubject.gradeName (which we set on Edit)
-
             const targetGradeName = newSubject.gradeName;
-
-            // 2. Find all classes in this Grade
             const targetClasses = classes.filter(c => c.name === targetGradeName);
             const targetClassIds = targetClasses.map(c => c.id);
 
-            // 3. Find all peer subjects (same name originally, same grade)
-            // We use editingOriginalName to match what it WAS, so we can rename them all if needed.
             const subjectsToUpdate = subjects.filter(s =>
                 targetClassIds.includes(s.classId) &&
                 s.name.toLowerCase() === editingOriginalName.toLowerCase()
@@ -49,7 +44,7 @@ const SubjectManager = () => {
             let updatedCount = 0;
             subjectsToUpdate.forEach(subj => {
                 updateSubject(subj.id, {
-                    name: newSubject.name, // Allow renaming all
+                    name: newSubject.name,
                     maxMarks: Number(newSubject.maxMarks),
                     passMarks: Number(newSubject.passMarks),
                     totalChapters: Number(newSubject.totalChapters) || 0
@@ -61,12 +56,10 @@ const SubjectManager = () => {
             setEditingId(null);
             setEditingOriginalName('');
         } else {
-            // Find all classes that match the selected grade name
             const targetClasses = classes.filter(c => c.name === newSubject.gradeName);
 
             let addedCount = 0;
             targetClasses.forEach(c => {
-                // Check if subject already exists for this class to prevent duplicates
                 const exists = subjects.some(s => s.classId === c.id && s.name.toLowerCase() === newSubject.name.toLowerCase());
 
                 if (!exists) {
@@ -90,14 +83,13 @@ const SubjectManager = () => {
 
         setNewSubject({
             name: '',
-            gradeName: newSubject.gradeName, // Keep grade for convenience
+            gradeName: newSubject.gradeName,
             maxMarks: newSubject.maxMarks,
             passMarks: newSubject.passMarks,
             totalChapters: newSubject.totalChapters
         });
 
         if (editingId) {
-            // Reset everything on edit complete
             setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
         }
     };
@@ -105,7 +97,7 @@ const SubjectManager = () => {
     const handleEdit = (subject) => {
         const cls = classes.find(c => c.id === subject.classId);
         setEditingId(subject.id);
-        setEditingOriginalName(subject.name); // Track original name for batch finding
+        setEditingOriginalName(subject.name);
 
         setNewSubject({
             name: subject.name,
@@ -114,7 +106,6 @@ const SubjectManager = () => {
             passMarks: subject.passMarks || 40,
             totalChapters: subject.totalChapters || 0
         });
-        // Scroll to form
         const formElement = document.getElementById('subject-form');
         if (formElement) formElement.scrollIntoView({ behavior: 'smooth' });
     };
@@ -125,19 +116,47 @@ const SubjectManager = () => {
         setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
     };
 
-    // Filter subjects logic
-    const filteredSubjects = selectedGradeFilter === 'all'
-        ? subjects
-        : subjects.filter(s => {
-            const cls = classes.find(c => c.id === s.classId);
-            return cls && cls.name === selectedGradeFilter;
-        });
-
-    // Group subjects by class for better display
+    // Helper to get class info
     const getClassName = (id) => {
         const c = classes.find(cl => cl.id === id);
         return c ? `${c.name} - ${c.division}` : 'Unknown';
     };
+
+    const getClassObj = (id) => classes.find(c => c.id === id);
+
+    // Filter and Sort Logic
+    const filteredSubjects = subjects
+        .filter(s => {
+            // 1. Grade Filter
+            if (selectedGradeFilter !== 'all') {
+                const cls = classes.find(c => c.id === s.classId);
+                if (!cls || cls.name !== selectedGradeFilter) return false;
+            }
+            // 2. Search Query
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const clsName = getClassName(s.classId).toLowerCase();
+                return s.name.toLowerCase().includes(query) || clsName.includes(query);
+            }
+            return true;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'name') {
+                return a.name.localeCompare(b.name);
+            } else {
+                // Sort by Grade/Class Name then Division
+                const cA = getClassObj(a.classId);
+                const cB = getClassObj(b.classId);
+                if (!cA || !cB) return 0;
+
+                // Compare numeric grade first
+                const gradeCompare = cA.name.localeCompare(cB.name, undefined, { numeric: true });
+                if (gradeCompare !== 0) return gradeCompare;
+
+                // Then division
+                return cA.division.localeCompare(cB.division);
+            }
+        });
 
     return (
         <div className="space-y-6">
@@ -219,22 +238,44 @@ const SubjectManager = () => {
 
                 {/* Subject List */}
                 <div className="space-y-4">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col gap-4">
                         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                             <BookOpen className="w-5 h-5 text-indigo-600" />
                             Existing Subjects
                         </h3>
-                        <div className="w-40">
-                            <select
-                                value={selectedGradeFilter}
-                                onChange={e => setSelectedGradeFilter(e.target.value)}
-                                className="w-full rounded-lg border-gray-300 shadow-sm py-1.5 text-sm"
-                            >
-                                <option value="all">All Grades</option>
-                                {uniqueGrades.map(grade => (
-                                    <option key={grade} value={grade}>Class {grade}</option>
-                                ))}
-                            </select>
+
+                        {/* Search and Sort Filter Bar */}
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search subjects..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <select
+                                    value={selectedGradeFilter}
+                                    onChange={e => setSelectedGradeFilter(e.target.value)}
+                                    className="rounded-lg border-gray-300 shadow-sm py-2 text-sm px-2 bg-white"
+                                >
+                                    <option value="all">All Grades</option>
+                                    {uniqueGrades.map(grade => (
+                                        <option key={grade} value={grade}>Class {grade}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value)}
+                                    className="rounded-lg border-gray-300 shadow-sm py-2 text-sm px-2 bg-white"
+                                >
+                                    <option value="grade">Sort: Grade</option>
+                                    <option value="name">Sort: Name</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
