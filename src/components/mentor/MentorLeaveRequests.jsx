@@ -221,7 +221,7 @@ const MentorLeaveRequests = () => {
                                     )}
                                 </div>
 
-                                {req.status === 'Pending' && (
+                                {req.status === 'Pending' ? (
                                     <div className="flex flex-col gap-2 min-w-[200px] w-full md:w-auto border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-4">
                                         {actionId === req.id ? (
                                             <div className="space-y-2 animate-in fade-in zoom-in-95">
@@ -241,7 +241,7 @@ const MentorLeaveRequests = () => {
                                                         Reject
                                                     </Button>
                                                 </div>
-                                                <button onClick={() => setActionId(null)} className="text-xs text-gray-500 hover:underline w-full text-center">Cancel</button>
+                                                <button onClick={() => { setActionId(null); setComment(''); }} className="text-xs text-gray-500 hover:underline w-full text-center">Cancel</button>
                                             </div>
                                         ) : (
                                             <>
@@ -252,6 +252,42 @@ const MentorLeaveRequests = () => {
                                                     <X className="w-4 h-4" /> Reject
                                                 </Button>
                                             </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2 min-w-[200px] w-full md:w-auto border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-4">
+                                        {actionId === req.id ? (
+                                            <div className="space-y-2 animate-in fade-in zoom-in-95">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Edit comment..."
+                                                    className="w-full text-sm p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                    value={comment}
+                                                    onChange={e => setComment(e.target.value)}
+                                                    autoFocus
+                                                />
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" onClick={() => handleAction(req.id, 'Approved')} className={`flex-1 ${req.status === 'Approved' ? 'bg-green-700 ring-2 ring-offset-1 ring-green-600' : 'bg-green-600 hover:bg-green-700'}`}>
+                                                        Approve
+                                                    </Button>
+                                                    <Button size="sm" onClick={() => handleAction(req.id, 'Rejected')} className={`flex-1 ${req.status === 'Rejected' ? 'bg-red-700 ring-2 ring-offset-1 ring-red-600' : 'bg-red-600 hover:bg-red-700'}`}>
+                                                        Reject
+                                                    </Button>
+                                                </div>
+                                                <button onClick={() => { setActionId(null); setComment(''); }} className="text-xs text-gray-500 hover:underline w-full text-center">Cancel Edit</button>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => {
+                                                    setActionId(req.id);
+                                                    setComment(req.comment || '');
+                                                }}
+                                                className="w-full flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                            >
+                                                Edit Decision
+                                            </Button>
                                         )}
                                     </div>
                                 )}
