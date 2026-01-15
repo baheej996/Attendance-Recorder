@@ -247,8 +247,7 @@ export const DataProvider = ({ children }) => {
     useEffect(() => localStorage.setItem('subjects', JSON.stringify(subjects)), [subjects]);
     useEffect(() => localStorage.setItem('exams', JSON.stringify(exams)), [exams]);
     useEffect(() => localStorage.setItem('results', JSON.stringify(results)), [results]);
-    useEffect(() => localStorage.setItem('questions', JSON.stringify(questions)), [questions]);
-    useEffect(() => localStorage.setItem('studentResponses', JSON.stringify(studentResponses)), [studentResponses]);
+    // Removed questions and studentResponses localStorage sync to avoid conflict with localforage migration logic
     useEffect(() => localStorage.setItem('institutionSettings', JSON.stringify(institutionSettings)), [institutionSettings]);
     useEffect(() => localStorage.setItem('adminCredentials', JSON.stringify(adminCredentials)), [adminCredentials]);
 
