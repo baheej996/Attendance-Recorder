@@ -90,8 +90,8 @@ const MentorChat = () => {
             return;
         }
 
-        const activityList = pendingActivities.map(a => `• ${a.title}`).join('\n');
-        const reminderMsg = `⚠️ Reminder: You have pending work:\n\nActivities:\n${activityList}\n\nPlease complete them soon.`;
+        const activityList = pendingActivities.map((a, index) => `${index + 1}. ${a.title}`).join('\n');
+        const reminderMsg = `🔔 Pending Work Reminder\n\nYou have items that need attention:\n\n${activityList}\n\nPlease complete these at your earliest convenience.`;
 
         setMessageInput(reminderMsg);
     };
