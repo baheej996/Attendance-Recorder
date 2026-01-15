@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Check, X, Calendar, User, Clock, MessageSquare, AlertCircle, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Modal } from '../ui/Modal';
+import { Check, X, Calendar, User, Clock, MessageSquare, AlertCircle, Trash2, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { clsx } from 'clsx';
 
@@ -11,6 +12,7 @@ const MentorLeaveRequests = () => {
     const [actionId, setActionId] = useState(null);
     const [comment, setComment] = useState('');
     const [selectedIds, setSelectedIds] = useState([]); // Track selected requests
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null });
 
     // Filter requests for mentor's assigned classes
     const assignedClassIds = currentUser?.assignedClassIds || [];
@@ -55,17 +57,20 @@ const MentorLeaveRequests = () => {
         }
     };
 
-    const handleBulkAction = async (action) => {
+    const handleBulkAction = (action) => {
         if (selectedIds.length === 0) return;
-        if (!window.confirm(`Are you sure you want to ${action} ${selectedIds.length} requests?`)) return;
+        setConfirmModal({ isOpen: true, action });
+    };
+
+    const executeBulkAction = async () => {
+        const { action } = confirmModal;
+        if (!action) return;
 
         try {
             if (action === 'delete') {
                 deleteLeaveRequests(selectedIds);
             } else {
                 const status = action === 'approve' ? 'Approved' : 'Rejected';
-                // Process updates sequentially or promise.all
-                // Since updateLeaveRequest is sync state update, we can just loop
                 selectedIds.forEach(id => {
                     updateLeaveRequest(id, {
                         status,
@@ -75,6 +80,7 @@ const MentorLeaveRequests = () => {
                 });
             }
             setSelectedIds([]); // Clear selection after action
+            setConfirmModal({ isOpen: false, action: null });
         } catch (error) {
             console.error("Bulk action failed:", error);
             alert("Failed to perform bulk action.");
@@ -248,6 +254,38 @@ const MentorLeaveRequests = () => {
                     ))}
                 </div>
             )}
+            {/* Confirmation Modal */}
+            <Modal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ isOpen: false, action: null })}
+                title={`Confirm ${confirmModal.action === 'delete' ? 'Deletion' : confirmModal.action === 'reject' ? 'Rejection' : 'Approval'}`}
+            >
+                <div className="space-y-4">
+                    <div className="flex items-start gap-4 p-4 bg-orange-50 text-orange-800 rounded-lg">
+                        <AlertTriangle className="w-6 h-6 shrink-0" />
+                        <div>
+                            <p className="font-medium">Are you sure?</p>
+                            <p className="text-sm mt-1 opacity-90">
+                                You are about to <strong>{confirmModal.action}</strong> {selectedIds.length} selected request(s).
+                                {confirmModal.action === 'delete' && " This action cannot be undone."}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="ghost" onClick={() => setConfirmModal({ isOpen: false, action: null })}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant={confirmModal.action === 'approve' ? 'primary' : 'danger'}
+                            onClick={executeBulkAction}
+                            className="capitalize"
+                        >
+                            Confirm {confirmModal.action}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
