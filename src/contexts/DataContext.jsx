@@ -791,6 +791,13 @@ export const DataProvider = ({ children }) => {
         setChatMessages(prev => prev.map(m => messageIds.includes(m.id) ? { ...m, isRead: true } : m));
     };
 
+    const deleteChatConversation = (studentId, mentorId) => {
+        setChatMessages(prev => prev.filter(m =>
+            !((m.senderId === studentId && m.receiverId === mentorId) ||
+                (m.senderId === mentorId && m.receiverId === studentId))
+        ));
+    };
+
     return (
         <DataContext.Provider value={{
             classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses,
@@ -814,9 +821,9 @@ export const DataProvider = ({ children }) => {
             // Prayer Chart Exports
             prayerRecords, addPrayerRecord, getPrayerRecordsByStudent,
             // Leave Request Exports
-            leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests,
+            leaveRequests, setLeaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests,
             // Chat Exports
-            chatMessages, chatSettings, sendMessage, toggleChatForClass, markMessagesAsRead
+            chatMessages, setChatMessages, chatSettings, setChatSettings, sendMessage, toggleChatForClass, markMessagesAsRead, deleteChatConversation
         }}>
             {children}
         </DataContext.Provider>

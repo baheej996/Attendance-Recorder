@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell } from 'lucide-react';
+import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell, Trash2 } from 'lucide-react';
 import { PollCard } from '../chat/PollCard';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
@@ -18,18 +18,25 @@ const MentorChat = () => {
         toggleChatForClass,
         markMessagesAsRead,
         activities,
-        activitySubmissions
+        activitySubmissions,
+        deleteChatConversation
     } = useData();
 
     const [activeTab, setActiveTab] = useState('inbox');
     const [selectedStudentId, setSelectedStudentId] = useState(null);
     const [messageInput, setMessageInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedFilter, setSelectedFilter] = useState('All'); // 'All' or classId
     const scrollRef = useRef(null);
 
     // Filter students belonging to mentor's classes
+    // Filter students belonging to mentor's classes
     const assignedClassIds = currentUser?.assignedClassIds || [];
-    const myStudents = students.filter(s => assignedClassIds.includes(s.classId));
+    const myStudents = students.filter(s => {
+        const inAssignedClass = assignedClassIds.includes(s.classId);
+        const matchesFilter = selectedFilter === 'All' || s.classId === selectedFilter;
+        return inAssignedClass && matchesFilter;
+    });
 
     // Get specific student object
     const selectedStudent = myStudents.find(s => s.id === selectedStudentId);
@@ -105,6 +112,14 @@ const MentorChat = () => {
         });
     };
 
+    const handleDeleteConversation = () => {
+        if (!selectedStudentId) return;
+        if (window.confirm("Are you sure you want to delete this conversation? This cannot be undone.")) {
+            deleteChatConversation(selectedStudentId, currentUser.id);
+            // Optionally clear selected student or stay there (now empty)
+        }
+    };
+
     // Helper to get unread count for a student
     const getUnreadCount = (studentId) => {
         return chatMessages.filter(m => m.senderId === studentId && m.receiverId === currentUser.id && !m.isRead).length;
@@ -162,7 +177,7 @@ const MentorChat = () => {
                 <div className="flex-1 flex gap-4 overflow-hidden bg-white rounded-xl border border-gray-200 shadow-sm">
                     {/* Sidebar */}
                     <div className="w-80 flex flex-col border-r border-gray-100">
-                        <div className="p-4 border-b border-gray-100">
+                        <div className="p-4 border-b border-gray-100 space-y-3">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
@@ -172,6 +187,38 @@ const MentorChat = () => {
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                 />
+                            </div>
+                            {/* Class Filters */}
+                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                <button
+                                    onClick={() => setSelectedFilter('All')}
+                                    className={clsx(
+                                        "px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
+                                        selectedFilter === 'All'
+                                            ? "bg-indigo-600 text-white"
+                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    )}
+                                >
+                                    All
+                                </button>
+                                {assignedClassIds.map(classId => {
+                                    const cls = classes.find(c => c.id === classId);
+                                    if (!cls) return null;
+                                    return (
+                                        <button
+                                            key={classId}
+                                            onClick={() => setSelectedFilter(classId)}
+                                            className={clsx(
+                                                "px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
+                                                selectedFilter === classId
+                                                    ? "bg-indigo-600 text-white"
+                                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                            )}
+                                        >
+                                            {cls.name}-{cls.division}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto">
@@ -210,7 +257,11 @@ const MentorChat = () => {
                                                     )}
                                                 </div>
                                                 <p className={clsx("text-sm truncate", unread > 0 ? "font-medium text-gray-800" : "text-gray-500")}>
-                                                    {lastMsg ? (lastMsg.senderId === currentUser.id ? `You: ${lastMsg.details}` : lastMsg.details) : "No messages yet"}
+                                                    {lastMsg ? (
+                                                        lastMsg.senderId === currentUser.id
+                                                            ? `You: ${lastMsg.type === 'reminder' ? 'Sent a reminder' : lastMsg.details}`
+                                                            : (lastMsg.type === 'reminder' ? 'Sent a reminder' : lastMsg.details)
+                                                    ) : "No messages yet"}
                                                 </p>
                                             </div>
                                         </button>
@@ -236,9 +287,16 @@ const MentorChat = () => {
                                     </div>
                                     {!isChatEnabled(selectedStudent.classId) && (
                                         <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2">
-                                            <XCircle className="w-3 h-3" /> Chat Disabled for this Class
+                                            <XCircle className="w-3 h-3" /> Chat Disabled
                                         </div>
                                     )}
+                                    <button
+                                        onClick={handleDeleteConversation}
+                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Delete Conversation"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" ref={scrollRef}>
