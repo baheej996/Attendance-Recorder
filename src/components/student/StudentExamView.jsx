@@ -349,7 +349,7 @@ const StudentExamView = () => {
                                     // Lookup using Class Name for strict division-level isolation
                                     // Lookup using Class ID (GUID) to match MarksEntry settings
                                     const setting = examSettings.find(s => s.examId === exam.id && s.classId === currentUser.classId && s.subjectId === subj.name)
-                                        || { isActive: true, isPublished: true, duration: 0 };
+                                        || { isActive: false, isPublished: false, duration: 0 };
 
                                     const now = new Date();
                                     const start = setting.startTime ? new Date(setting.startTime) : null;
