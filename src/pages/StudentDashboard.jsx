@@ -14,7 +14,6 @@ import Leaderboard from '../components/student/Leaderboard';
 import StudentActivities from '../components/student/StudentActivities';
 import PrayerChart from '../components/student/PrayerChart';
 import ClassHistory from '../components/student/ClassHistory';
-import ClassHistory from '../components/student/ClassHistory';
 import StudentLeave from './StudentLeave';
 import StudentChat from './StudentChat';
 

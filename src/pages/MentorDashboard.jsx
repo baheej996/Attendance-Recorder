@@ -11,7 +11,6 @@ import ActivitiesManager from '../components/mentor/ActivitiesManager';
 import LogBook from '../components/mentor/LogBook';
 import Help from './Help';
 import PrayerStats from '../components/mentor/PrayerStats';
-import PrayerStats from '../components/mentor/PrayerStats';
 import MentorLeaveRequests from '../components/mentor/MentorLeaveRequests';
 import MentorChat from '../components/mentor/MentorChat';
 import { useData } from '../contexts/DataContext';
