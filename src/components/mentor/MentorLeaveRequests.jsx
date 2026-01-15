@@ -13,6 +13,7 @@ const MentorLeaveRequests = () => {
     const [comment, setComment] = useState('');
     const [selectedIds, setSelectedIds] = useState([]); // Track selected requests
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null });
+    const [bulkComment, setBulkComment] = useState(''); // New: Bulk Comment
 
     // Filter requests for mentor's assigned classes
     const assignedClassIds = currentUser?.assignedClassIds || [];
@@ -59,6 +60,7 @@ const MentorLeaveRequests = () => {
 
     const handleBulkAction = (action) => {
         if (selectedIds.length === 0) return;
+        setBulkComment(''); // Reset comment
         setConfirmModal({ isOpen: true, action });
     };
 
@@ -74,6 +76,7 @@ const MentorLeaveRequests = () => {
                 selectedIds.forEach(id => {
                     updateLeaveRequest(id, {
                         status,
+                        comment: bulkComment, // Include bulk comment
                         updatedAt: new Date().toISOString(),
                         updatedBy: currentUser.id
                     });
@@ -274,6 +277,20 @@ const MentorLeaveRequests = () => {
                             </p>
                         </div>
                     </div>
+
+                    {confirmModal.action !== 'delete' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Add a Comment (Optional)
+                            </label>
+                            <textarea
+                                className="w-full text-sm p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24"
+                                placeholder={`Add a note for all ${selectedIds.length} students...`}
+                                value={bulkComment}
+                                onChange={e => setBulkComment(e.target.value)}
+                            />
+                        </div>
+                    )}
 
                     <div className="flex justify-end gap-3 pt-2">
                         <Button variant="ghost" onClick={() => setConfirmModal({ isOpen: false, action: null })}>
