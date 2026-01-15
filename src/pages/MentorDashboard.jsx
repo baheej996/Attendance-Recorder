@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar } from 'lucide-react';
+import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
@@ -11,6 +11,7 @@ import ActivitiesManager from '../components/mentor/ActivitiesManager';
 import LogBook from '../components/mentor/LogBook';
 import Help from './Help';
 import PrayerStats from '../components/mentor/PrayerStats';
+import MentorLeaveRequests from '../components/mentor/MentorLeaveRequests';
 import { useData } from '../contexts/DataContext';
 
 const DashboardHome = () => (
@@ -22,10 +23,15 @@ const DashboardHome = () => (
 
 const MentorDashboard = () => {
     const location = useLocation();
-    const { logout } = useData();
+    const { logout, currentUser, leaveRequests } = useData();
+
+    const pendingLeaves = (leaveRequests || []).filter(r =>
+        r.status === 'Pending' && currentUser?.assignedClassIds?.includes(r.classId)
+    ).length;
 
     const navItems = [
         { icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
+        { icon: UserCheck, label: 'Leave Requests', path: '/mentor/leaves', badge: pendingLeaves },
         { icon: Layers, label: 'Activities', path: '/mentor/activities' },
         { icon: BookOpen, label: 'Class Log Book', path: '/mentor/logbook' },
         { icon: Calendar, label: 'Prayer Chart', path: '/mentor/prayer-chart' },
@@ -56,14 +62,21 @@ const MentorDashboard = () => {
                                 key={item.path}
                                 to={item.path}
                                 className={clsx(
-                                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium",
+                                    "flex items-center justify-between px-4 py-3 rounded-lg transition-colors font-medium",
                                     isActive
                                         ? "bg-purple-50 text-purple-600"
                                         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                                 )}
                             >
-                                <Icon className="w-5 h-5" />
-                                {item.label}
+                                <div className="flex items-center gap-3">
+                                    <Icon className="w-5 h-5" />
+                                    {item.label}
+                                </div>
+                                {item.badge > 0 && (
+                                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                        {item.badge}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}
@@ -84,6 +97,7 @@ const MentorDashboard = () => {
                 <Routes>
                     <Route path="/" element={<DashboardHome />} />
                     <Route path="/record" element={<AttendanceRecorder />} />
+                    <Route path="/leaves" element={<MentorLeaveRequests />} />
                     <Route path="/activities" element={<ActivitiesManager />} />
                     <Route path="/logbook" element={<LogBook />} />
                     <Route path="/prayer-chart" element={<PrayerStats />} />

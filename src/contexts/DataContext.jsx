@@ -86,6 +86,7 @@ export const DataProvider = ({ children }) => {
 
     const [questions, setQuestions] = useState([]);
     const [studentResponses, setStudentResponses] = useState([]);
+    const [leaveRequests, setLeaveRequests] = useState([]); // New: Leave Requests
     const [isDataLoaded, setIsDataLoaded] = useState(false);
 
     // Load Heavy Data (Questions & Responses) from IndexedDB (localforage)
@@ -117,6 +118,10 @@ export const DataProvider = ({ children }) => {
                     const loadedResponses = await localforage.getItem('studentResponses');
                     if (loadedResponses) setStudentResponses(loadedResponses);
                 }
+
+                // Leave Requests Loading
+                const loadedLeaveRequests = await localforage.getItem('leaveRequests');
+                if (loadedLeaveRequests) setLeaveRequests(loadedLeaveRequests);
             } catch (err) {
                 console.error("Error loading heavy data:", err);
             } finally {
@@ -139,6 +144,13 @@ export const DataProvider = ({ children }) => {
             localforage.setItem('studentResponses', studentResponses).catch(e => console.error("Error saving studentResponses:", e));
         }
     }, [studentResponses, isDataLoaded]);
+
+    // Sync LeaveRequests to localforage
+    useEffect(() => {
+        if (isDataLoaded) {
+            localforage.setItem('leaveRequests', leaveRequests).catch(e => console.error("Error saving leaveRequests:", e));
+        }
+    }, [leaveRequests, isDataLoaded]);
 
     const [institutionSettings, setInstitutionSettings] = useState(() => {
         try {
@@ -706,6 +718,27 @@ export const DataProvider = ({ children }) => {
         return prayerRecords.filter(r => r.studentId === studentId);
     };
 
+    // Leave Request Actions
+    const addLeaveRequest = (request) => {
+        // request: { studentId, classId, startDate, endDate, reason, type }
+        const newRequest = {
+            ...request,
+            id: generateId(),
+            status: 'Pending',
+            createdAt: new Date().toISOString()
+        };
+        setLeaveRequests(prev => [newRequest, ...prev]);
+        return newRequest;
+    };
+
+    const updateLeaveRequest = (id, updates) => {
+        setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+    };
+
+    const deleteLeaveRequest = (id) => {
+        setLeaveRequests(prev => prev.filter(r => r.id !== id));
+    };
+
     return (
         <DataContext.Provider value={{
             classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses,
@@ -727,7 +760,9 @@ export const DataProvider = ({ children }) => {
             // Log Book Exports
             logEntries, addLogEntry, updateLogEntry, deleteLogEntry,
             // Prayer Chart Exports
-            prayerRecords, addPrayerRecord, getPrayerRecordsByStudent
+            prayerRecords, addPrayerRecord, getPrayerRecordsByStudent,
+            // Leave Request Exports
+            leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest
         }}>
             {children}
         </DataContext.Provider>
