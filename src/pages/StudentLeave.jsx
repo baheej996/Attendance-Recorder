@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Calendar, Clock, FileText, CheckCircle, XCircle, AlertCircle, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
+import { Calendar, Clock, FileText, CheckCircle, XCircle, AlertCircle, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, differenceInDays } from 'date-fns';
 
@@ -10,6 +11,7 @@ const StudentLeave = () => {
     const { currentUser, leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest } = useData();
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, requestId: null });
 
     // Form State
     const [formData, setFormData] = useState({
@@ -111,8 +113,13 @@ const StudentLeave = () => {
     };
 
     const handleDelete = (id) => {
-        if (window.confirm("Are you sure you want to delete this leave request?")) {
-            deleteLeaveRequest(id);
+        setDeleteModal({ isOpen: true, requestId: id });
+    };
+
+    const confirmDelete = () => {
+        if (deleteModal.requestId) {
+            deleteLeaveRequest(deleteModal.requestId);
+            setDeleteModal({ isOpen: false, requestId: null });
         }
     };
 
@@ -266,6 +273,33 @@ const StudentLeave = () => {
                     ))
                 )}
             </div>
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, requestId: null })}
+                title="Confirm Deletion"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-start gap-4 p-4 bg-red-50 text-red-800 rounded-lg border border-red-100">
+                        <AlertTriangle className="w-6 h-6 shrink-0" />
+                        <div>
+                            <p className="font-medium">Are you sure?</p>
+                            <p className="text-sm mt-1 opacity-90">
+                                This will permanently delete your leave request. This action cannot be undone.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="ghost" onClick={() => setDeleteModal({ isOpen: false, requestId: null })}>
+                            Cancel
+                        </Button>
+                        <Button variant="danger" onClick={confirmDelete}>
+                            Delete Request
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
