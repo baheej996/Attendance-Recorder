@@ -86,7 +86,17 @@ export const DataProvider = ({ children }) => {
 
     const [questions, setQuestions] = useState([]);
     const [studentResponses, setStudentResponses] = useState([]);
-    const [leaveRequests, setLeaveRequests] = useState([]); // New: Leave Requests
+    const [leaveRequests, setLeaveRequests] = useState([]);
+    const [chatMessages, setChatMessages] = useState([]); // New: Chat Messages
+    const [chatSettings, setChatSettings] = useState(() => { // New: Chat Settings
+        try {
+            const saved = localStorage.getItem('chatSettings');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error("Error parsing chatSettings:", e);
+            return [];
+        }
+    });
     const [isDataLoaded, setIsDataLoaded] = useState(false);
 
     // Load Heavy Data (Questions & Responses) from IndexedDB (localforage)
@@ -122,6 +132,10 @@ export const DataProvider = ({ children }) => {
                 // Leave Requests Loading
                 const loadedLeaveRequests = await localforage.getItem('leaveRequests');
                 if (loadedLeaveRequests) setLeaveRequests(loadedLeaveRequests);
+
+                // Chat Messages Loading
+                const loadedChatMessages = await localforage.getItem('chatMessages');
+                if (loadedChatMessages) setChatMessages(loadedChatMessages);
             } catch (err) {
                 console.error("Error loading heavy data:", err);
             } finally {
@@ -151,6 +165,14 @@ export const DataProvider = ({ children }) => {
             localforage.setItem('leaveRequests', leaveRequests).catch(e => console.error("Error saving leaveRequests:", e));
         }
     }, [leaveRequests, isDataLoaded]);
+
+    useEffect(() => {
+        if (isDataLoaded) {
+            localforage.setItem('chatMessages', chatMessages).catch(e => console.error("Error saving chatMessages:", e));
+        }
+    }, [chatMessages, isDataLoaded]);
+
+    useEffect(() => localStorage.setItem('chatSettings', JSON.stringify(chatSettings)), [chatSettings]);
 
     const [institutionSettings, setInstitutionSettings] = useState(() => {
         try {
@@ -743,6 +765,32 @@ export const DataProvider = ({ children }) => {
         setLeaveRequests(prev => prev.filter(r => !ids.includes(r.id)));
     };
 
+    // Chat Actions
+    const sendMessage = (message) => {
+        const newMessage = {
+            ...message,
+            id: generateId(),
+            timestamp: new Date().toISOString(),
+            isRead: false
+        };
+        setChatMessages(prev => [...prev, newMessage]);
+    };
+
+    const toggleChatForClass = (classId) => {
+        setChatSettings(prev => {
+            const exists = prev.find(s => s.classId === classId);
+            if (exists) {
+                return prev.map(s => s.classId === classId ? { ...s, isEnabled: !s.isEnabled } : s);
+            }
+            return [...prev, { classId, isEnabled: true }];
+        });
+    };
+
+    const markMessagesAsRead = (messageIds) => {
+        if (messageIds.length === 0) return;
+        setChatMessages(prev => prev.map(m => messageIds.includes(m.id) ? { ...m, isRead: true } : m));
+    };
+
     return (
         <DataContext.Provider value={{
             classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses,
@@ -766,7 +814,9 @@ export const DataProvider = ({ children }) => {
             // Prayer Chart Exports
             prayerRecords, addPrayerRecord, getPrayerRecordsByStudent,
             // Leave Request Exports
-            leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests
+            leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests,
+            // Chat Exports
+            chatMessages, chatSettings, sendMessage, toggleChatForClass, markMessagesAsRead
         }}>
             {children}
         </DataContext.Provider>

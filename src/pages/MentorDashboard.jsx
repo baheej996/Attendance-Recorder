@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck } from 'lucide-react';
+import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
@@ -11,7 +11,9 @@ import ActivitiesManager from '../components/mentor/ActivitiesManager';
 import LogBook from '../components/mentor/LogBook';
 import Help from './Help';
 import PrayerStats from '../components/mentor/PrayerStats';
+import PrayerStats from '../components/mentor/PrayerStats';
 import MentorLeaveRequests from '../components/mentor/MentorLeaveRequests';
+import MentorChat from '../components/mentor/MentorChat';
 import { useData } from '../contexts/DataContext';
 
 const DashboardHome = () => (
@@ -32,6 +34,7 @@ const MentorDashboard = () => {
     const navItems = [
         { icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
         { icon: UserCheck, label: 'Leave Requests', path: '/mentor/leaves', badge: pendingLeaves },
+        { icon: MessageSquare, label: 'Chat', path: '/mentor/chat' },
         { icon: Layers, label: 'Activities', path: '/mentor/activities' },
         { icon: BookOpen, label: 'Class Log Book', path: '/mentor/logbook' },
         { icon: Calendar, label: 'Prayer Chart', path: '/mentor/prayer-chart' },
@@ -98,6 +101,7 @@ const MentorDashboard = () => {
                     <Route path="/" element={<DashboardHome />} />
                     <Route path="/record" element={<AttendanceRecorder />} />
                     <Route path="/leaves" element={<MentorLeaveRequests />} />
+                    <Route path="/chat" element={<MentorChat />} />
                     <Route path="/activities" element={<ActivitiesManager />} />
                     <Route path="/logbook" element={<LogBook />} />
                     <Route path="/prayer-chart" element={<PrayerStats />} />

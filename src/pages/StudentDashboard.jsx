@@ -4,7 +4,7 @@ import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers, History } from 'lucide-react';
+import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers, History, MessageSquare } from 'lucide-react';
 import { clsx } from 'clsx';
 
 // Import New Student Components
@@ -14,7 +14,9 @@ import Leaderboard from '../components/student/Leaderboard';
 import StudentActivities from '../components/student/StudentActivities';
 import PrayerChart from '../components/student/PrayerChart';
 import ClassHistory from '../components/student/ClassHistory';
+import ClassHistory from '../components/student/ClassHistory';
 import StudentLeave from './StudentLeave';
+import StudentChat from './StudentChat';
 
 import Help from './Help';
 
@@ -61,7 +63,8 @@ const StudentDashboard = () => {
         { icon: Layers, label: 'Activities', path: '/student/activities', hasNotification: hasPendingActivities },
         { icon: FileText, label: 'Online Exams', path: '/student/exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results' },
-        { icon: Calendar, label: 'Leave Applications', path: '/student/leave' }, // New Item
+        { icon: Calendar, label: 'Leave Applications', path: '/student/leave' },
+        { icon: MessageSquare, label: 'Chat with Mentor', path: '/student/chat' },
         { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart', hidden: !isPrayerChartEnabled },
         { icon: History, label: 'Class History', path: '/student/history' },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
@@ -265,6 +268,7 @@ const StudentDashboard = () => {
                     <Route path="/exams" element={<StudentExamView />} />
                     <Route path="/activities" element={<StudentActivities />} />
                     <Route path="/leave" element={<StudentLeave />} />
+                    <Route path="/chat" element={<StudentChat />} />
                     <Route path="/prayer-chart" element={<PrayerChart />} />
                     <Route path="/history" element={<ClassHistory />} />
                     <Route path="/results" element={<StudentResultView />} />
