@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { MessageSquare, Send, User, Lock, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
+import { PollCard } from '../components/chat/PollCard';
 
 const StudentChat = () => {
     const { currentUser, mentors, chatMessages, chatSettings, sendMessage, markMessagesAsRead } = useData();
@@ -121,7 +122,11 @@ const StudentChat = () => {
                                         : "bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm"
                                 )}
                             >
-                                {msg.details}
+                                {msg.type === 'reminder' ? (
+                                    <PollCard data={msg.details} isSender={msg.senderId === currentUser.id} />
+                                ) : (
+                                    msg.details
+                                )}
                             </div>
                             <span className="text-[10px] text-gray-400 mt-1 px-1">
                                 {format(new Date(msg.timestamp), 'h:mm a')}

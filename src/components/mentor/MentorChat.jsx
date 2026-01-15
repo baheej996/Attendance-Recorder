@@ -3,6 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell } from 'lucide-react';
+import { PollCard } from '../chat/PollCard';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 
@@ -90,10 +91,18 @@ const MentorChat = () => {
             return;
         }
 
-        const activityList = pendingActivities.map((a, index) => `${index + 1}. ${a.title}`).join('\n');
-        const reminderMsg = `🔔 Pending Work Reminder\n\nYou have items that need attention:\n\n${activityList}\n\nPlease complete these at your earliest convenience.`;
+        const details = JSON.stringify({
+            title: "Pending Work",
+            items: pendingActivities.map(a => a.title)
+        });
 
-        setMessageInput(reminderMsg);
+        sendMessage({
+            senderId: currentUser.id,
+            receiverId: selectedStudentId,
+            classId: selectedStudent?.classId,
+            details: details,
+            type: 'reminder'
+        });
     };
 
     // Helper to get unread count for a student
@@ -255,7 +264,11 @@ const MentorChat = () => {
                                                             : "bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm"
                                                     )}
                                                 >
-                                                    {msg.details}
+                                                    {msg.type === 'reminder' ? (
+                                                        <PollCard data={msg.details} isSender={msg.senderId === currentUser.id} />
+                                                    ) : (
+                                                        msg.details
+                                                    )}
                                                 </div>
                                                 <span className="text-[10px] text-gray-400 mt-1 px-1">
                                                     {format(new Date(msg.timestamp), 'h:mm a')}
