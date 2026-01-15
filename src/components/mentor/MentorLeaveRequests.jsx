@@ -132,14 +132,14 @@ const MentorLeaveRequests = () => {
 
                     {selectedIds.length > 0 && (
                         <div className="flex items-center gap-2">
-                            <Button size="sm" onClick={() => handleBulkAction('approve')} className="bg-green-600 hover:bg-green-700 text-white gap-2">
+                            <Button size="sm" onClick={() => handleBulkAction('approve')} className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 whitespace-nowrap">
                                 <Check className="w-4 h-4" /> Approve ({selectedIds.length})
                             </Button>
-                            <Button size="sm" onClick={() => handleBulkAction('reject')} className="bg-red-600 hover:bg-red-700 text-white gap-2">
+                            <Button size="sm" onClick={() => handleBulkAction('reject')} className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 whitespace-nowrap">
                                 <X className="w-4 h-4" /> Reject ({selectedIds.length})
                             </Button>
                             <div className="w-px h-6 bg-gray-300 mx-2"></div>
-                            <Button size="sm" onClick={() => handleBulkAction('delete')} variant="danger" className="gap-2">
+                            <Button size="sm" onClick={() => handleBulkAction('delete')} variant="danger" className="flex items-center gap-2 whitespace-nowrap">
                                 <Trash2 className="w-4 h-4" /> Delete ({selectedIds.length})
                             </Button>
                         </div>
@@ -233,10 +233,10 @@ const MentorLeaveRequests = () => {
                                             </div>
                                         ) : (
                                             <>
-                                                <Button size="sm" onClick={() => setActionId(req.id)} className="bg-green-600 hover:bg-green-700 w-full justify-center gap-2">
+                                                <Button size="sm" onClick={() => setActionId(req.id)} className="bg-green-600 hover:bg-green-700 w-full flex items-center justify-center gap-2">
                                                     <Check className="w-4 h-4" /> Approve
                                                 </Button>
-                                                <Button size="sm" onClick={() => setActionId(req.id)} variant="danger" className="w-full justify-center gap-2">
+                                                <Button size="sm" onClick={() => setActionId(req.id)} variant="danger" className="w-full flex items-center justify-center gap-2">
                                                     <X className="w-4 h-4" /> Reject
                                                 </Button>
                                             </>
