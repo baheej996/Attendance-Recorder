@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Calendar, Clock, FileText, CheckCircle, XCircle, AlertCircle, Plus, Edit2 } from 'lucide-react';
+import { Calendar, Clock, FileText, CheckCircle, XCircle, AlertCircle, Plus, Edit2, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, differenceInDays } from 'date-fns';
 
 const StudentLeave = () => {
-    const { currentUser, leaveRequests, addLeaveRequest, updateLeaveRequest } = useData();
+    const { currentUser, leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest } = useData();
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
@@ -108,6 +108,12 @@ const StudentLeave = () => {
             type: 'Sick Leave',
             reason: ''
         });
+    };
+
+    const handleDelete = (id) => {
+        if (window.confirm("Are you sure you want to delete this leave request?")) {
+            deleteLeaveRequest(id);
+        }
     };
 
     const getStatusBadge = (status) => {
@@ -228,14 +234,24 @@ const StudentLeave = () => {
                                     {getStatusBadge(req.status)}
 
                                     {req.status === 'Pending' && (
-                                        <Button
-                                            size="sm"
-                                            variant="secondary"
-                                            onClick={() => handleEdit(req)}
-                                            className="text-xs h-7 px-2 flex items-center"
-                                        >
-                                            <Edit2 className="w-3 h-3 mr-1" /> Edit
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                onClick={() => handleEdit(req)}
+                                                className="text-xs h-7 px-2 flex items-center"
+                                            >
+                                                <Edit2 className="w-3 h-3 mr-1" /> Edit
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="danger"
+                                                onClick={() => handleDelete(req.id)}
+                                                className="text-xs h-7 px-2 flex items-center"
+                                            >
+                                                <Trash2 className="w-3 h-3 mr-1" /> Delete
+                                            </Button>
+                                        </div>
                                     )}
 
                                     {req.comment && (
