@@ -7,7 +7,7 @@ import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay }
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const PrayerStats = () => {
-    const { classes, students, prayerRecords, currentUser } = useData();
+    const { classes, students, prayerRecords, currentUser, updateClass } = useData();
 
     // Filter classes if mentor
     const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
@@ -16,6 +16,7 @@ const PrayerStats = () => {
 
     const [selectedClassId, setSelectedClassId] = useState(availableClasses[0]?.id || '');
     const [timeRange, setTimeRange] = useState('week'); // 'week' or 'month'
+    const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'settings'
 
     // Filter students by class
     const classStudents = useMemo(() =>
@@ -60,6 +61,21 @@ const PrayerStats = () => {
         return { leaderboard, dailyTrends };
     }, [selectedClassId, classStudents, prayerRecords]);
 
+    const handleToggleFeature = (classId, currentStatus) => {
+        const cls = classes.find(c => c.id === classId);
+        if (!cls) return;
+
+        // Initialize features object if missing
+        const currentFeatures = cls.features || {};
+
+        updateClass(classId, {
+            features: {
+                ...currentFeatures,
+                prayerChart: !currentStatus
+            }
+        });
+    };
+
     if (availableClasses.length === 0) return <div className="p-8 text-center text-gray-500">No classes assigned to you.</div>;
 
     return (
@@ -70,151 +86,218 @@ const PrayerStats = () => {
                     <p className="text-gray-500">Monitor class performance and spiritual habits</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg flex items-center gap-2">
-                        <Filter className="w-4 h-4 text-gray-400" />
-                        <select
-                            value={selectedClassId}
-                            onChange={(e) => setSelectedClassId(e.target.value)}
-                            className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
-                        >
-                            {availableClasses.map(c => (
-                                <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
-                            ))}
-                        </select>
-                    </div>
+                <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+                    <button
+                        onClick={() => setActiveTab('stats')}
+                        className={clsx(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-all",
+                            activeTab === 'stats' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        Statistics
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={clsx(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-all",
+                            activeTab === 'settings' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        Settings
+                    </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Chart */}
-                <Card className="lg:col-span-2 p-6">
-                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                        <BarChart2 className="w-5 h-5 text-indigo-600" />
-                        Class Performance (Last 7 Days)
-                    </h3>
-                    <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats?.dailyTrends || []}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis
-                                    dataKey="date"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#6B7280', fontSize: 12 }}
-                                    dy={10}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#6B7280', fontSize: 12 }}
-                                    unit="%"
-                                />
-                                <Tooltip
-                                    cursor={{ fill: '#EEF2FF' }}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                                />
-                                <Bar
-                                    dataKey="percentage"
-                                    fill="#6366F1"
-                                    radius={[4, 4, 0, 0]}
-                                    barSize={40}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
+            {activeTab === 'stats' ? (
+                <>
+                    <div className="flex justify-end">
+                        <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-gray-400" />
+                            <select
+                                value={selectedClassId}
+                                onChange={(e) => setSelectedClassId(e.target.value)}
+                                className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
+                            >
+                                {availableClasses.map(c => (
+                                    <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                </Card>
 
-                {/* Top Performers */}
-                <Card className="p-0 overflow-hidden flex flex-col h-full">
-                    <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-yellow-50 to-orange-50">
-                        <h3 className="font-bold text-yellow-800 flex items-center gap-2">
-                            <Trophy className="w-5 h-5 text-yellow-600" />
-                            Top Performers
-                        </h3>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2">
-                        {stats?.leaderboard.slice(0, 10).map((student, index) => (
-                            <div key={student.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className={clsx(
-                                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
-                                        index === 0 ? "bg-yellow-100 text-yellow-700" :
-                                            index === 1 ? "bg-gray-100 text-gray-700" :
-                                                index === 2 ? "bg-orange-100 text-orange-700" :
-                                                    "bg-white border border-gray-200 text-gray-500"
-                                    )}>
-                                        {index + 1}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                                        <p className="text-xs text-gray-500">{student.registerNo}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-indigo-600">{student.totalPrayers}</p>
-                                    <p className="text-[10px] text-gray-400 uppercase">Prayers</p>
-                                </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Main Chart */}
+                        <Card className="lg:col-span-2 p-6">
+                            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                <BarChart2 className="w-5 h-5 text-indigo-600" />
+                                Class Performance (Last 7 Days)
+                            </h3>
+                            <div className="h-80">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats?.dailyTrends || []}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                        <XAxis
+                                            dataKey="date"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: '#6B7280', fontSize: 12 }}
+                                            dy={10}
+                                        />
+                                        <YAxis
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: '#6B7280', fontSize: 12 }}
+                                            unit="%"
+                                        />
+                                        <Tooltip
+                                            cursor={{ fill: '#EEF2FF' }}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        />
+                                        <Bar
+                                            dataKey="percentage"
+                                            fill="#6366F1"
+                                            radius={[4, 4, 0, 0]}
+                                            barSize={40}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
-                        ))}
-                    </div>
-                </Card>
-            </div>
+                        </Card>
 
-            {/* Detailed Student List */}
-            <Card className="overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
-                    <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                        <Users className="w-5 h-5 text-gray-400" />
-                        Student Details
-                    </h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
-                                <th className="p-4 font-medium">Student</th>
-                                <th className="p-4 font-medium text-center">Total Prayers</th>
-                                <th className="p-4 font-medium text-center">Avg. Daily</th>
-                                <th className="p-4 font-medium text-right">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 text-sm">
-                            {stats?.leaderboard.map((student) => {
-                                // Calculate detailed stats per student
-                                // Just simple mocking for "Avg Daily" based on total prayers / days with records or total tracked days
-                                // For now, let's keep it simple.
-                                const avg = (student.totalPrayers / 35).toFixed(1); // Assuming 7 days * 5 prayers = 35 max for a week view context, but this is total history. 
-                                // Let's just show total for now.
-                                return (
-                                    <tr key={student.id} className="hover:bg-gray-50 group">
-                                        <td className="p-4">
+                        {/* Top Performers */}
+                        <Card className="p-0 overflow-hidden flex flex-col h-full">
+                            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-yellow-50 to-orange-50">
+                                <h3 className="font-bold text-yellow-800 flex items-center gap-2">
+                                    <Trophy className="w-5 h-5 text-yellow-600" />
+                                    Top Performers
+                                </h3>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2">
+                                {stats?.leaderboard.slice(0, 10).map((student, index) => (
+                                    <div key={student.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className={clsx(
+                                                "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
+                                                index === 0 ? "bg-yellow-100 text-yellow-700" :
+                                                    index === 1 ? "bg-gray-100 text-gray-700" :
+                                                        index === 2 ? "bg-orange-100 text-orange-700" :
+                                                            "bg-white border border-gray-200 text-gray-500"
+                                            )}>
+                                                {index + 1}
+                                            </div>
                                             <div>
-                                                <p className="font-medium text-gray-900">{student.name}</p>
+                                                <p className="text-sm font-medium text-gray-900">{student.name}</p>
                                                 <p className="text-xs text-gray-500">{student.registerNo}</p>
                                             </div>
-                                        </td>
-                                        <td className="p-4 text-center font-medium text-indigo-600">
-                                            {student.totalPrayers}
-                                        </td>
-                                        <td className="p-4 text-center text-gray-600">
-                                            -
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <span className={clsx(
-                                                "px-2 py-1 rounded-full text-xs font-medium",
-                                                student.totalPrayers > 20 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                                            )}>
-                                                {student.totalPrayers > 20 ? "Consistent" : "Needs Imp."}
-                                            </span>
-                                        </td>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-bold text-indigo-600">{student.totalPrayers}</p>
+                                            <p className="text-[10px] text-gray-400 uppercase">Prayers</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Detailed Student List */}
+                    <Card className="overflow-hidden">
+                        <div className="p-6 border-b border-gray-100">
+                            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                <Users className="w-5 h-5 text-gray-400" />
+                                Student Details
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                                        <th className="p-4 font-medium">Student</th>
+                                        <th className="p-4 font-medium text-center">Total Prayers</th>
+                                        <th className="p-4 font-medium text-center">Avg. Daily</th>
+                                        <th className="p-4 font-medium text-right">Status</th>
                                     </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-sm">
+                                    {stats?.leaderboard.map((student) => {
+                                        const avg = (student.totalPrayers / 35).toFixed(1);
+                                        return (
+                                            <tr key={student.id} className="hover:bg-gray-50 group">
+                                                <td className="p-4">
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{student.name}</p>
+                                                        <p className="text-xs text-gray-500">{student.registerNo}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-center font-medium text-indigo-600">
+                                                    {student.totalPrayers}
+                                                </td>
+                                                <td className="p-4 text-center text-gray-600">
+                                                    -
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <span className={clsx(
+                                                        "px-2 py-1 rounded-full text-xs font-medium",
+                                                        student.totalPrayers > 20 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                                                    )}>
+                                                        {student.totalPrayers > 20 ? "Consistent" : "Needs Imp."}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                </>
+            ) : (
+                <div className="max-w-3xl mx-auto">
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-indigo-600" />
+                            Prayer Chart Configuration
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-8 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                            Enable or disable the Prayer Chart feature for your classes. When enabled, students in that class will see the Prayer Chart option in their dashboard and can log their daily prayers.
+                        </p>
+
+                        <div className="space-y-4">
+                            {availableClasses.map(cls => {
+                                const isEnabled = cls.features?.prayerChart ?? false; // Default off or on? User didn't specify, but safer default OFF if new feature. Or ON if legacy. Let's say OFF to force conscious content. But wait, existing users might lose it. Let's Default ON (true) if undefined, to preserve backward compatibility? 
+                                // User said: "if it is not enabled for any class, the students in that class will not be able to access". 
+                                // Let's default to TRUE (enabled) so we don't break existing routine.
+                                const safeEnabled = cls.features?.prayerChart !== false; // Default True
+
+                                return (
+                                    <div key={cls.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                                        <div>
+                                            <h4 className="font-bold text-gray-800">Class {cls.name} - {cls.division}</h4>
+                                            <p className="text-xs text-gray-500">
+                                                {safeEnabled ? 'Students can access Prayer Chart' : 'Prayer Chart hidden from students'}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleToggleFeature(cls.id, safeEnabled)}
+                                            className={clsx(
+                                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
+                                                safeEnabled ? "bg-indigo-600" : "bg-gray-200"
+                                            )}
+                                        >
+                                            <span
+                                                className={clsx(
+                                                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                                    safeEnabled ? "translate-x-6" : "translate-x-1"
+                                                )}
+                                            />
+                                        </button>
+                                    </div>
                                 );
                             })}
-                        </tbody>
-                    </table>
+                        </div>
+                    </Card>
                 </div>
-            </Card>
+            )}
         </div>
     );
 };

@@ -38,7 +38,7 @@ const SidebarItem = ({ icon: Icon, label, path, active, onClick, hasNotification
 
 // 2. Main Student Dashboard Layout
 const StudentDashboard = () => {
-    const { currentUser, logout, activities, activitySubmissions } = useData();
+    const { currentUser, logout, activities, activitySubmissions, classes } = useData(); // Added classes
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -50,16 +50,21 @@ const StudentDashboard = () => {
 
     if (!currentUser) return null;
 
+    // Check feature flags
+    const studentClass = classes.find(c => c.id === currentUser.classId);
+    // Default to true if not set, to maintain backward compatibility
+    const isPrayerChartEnabled = studentClass?.features?.prayerChart !== false;
+
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/student' },
         { icon: Layers, label: 'Activities', path: '/student/activities', hasNotification: hasPendingActivities },
         { icon: FileText, label: 'Online Exams', path: '/student/exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results' },
-        { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart' },
+        { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart', hidden: !isPrayerChartEnabled },
         { icon: History, label: 'Class History', path: '/student/history' },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
         { icon: Info, label: 'Help', path: '/student/help' },
-    ];
+    ].filter(item => !item.hidden);
 
     const isActive = (path) => {
         if (path === '/student' && location.pathname === '/student') return true;

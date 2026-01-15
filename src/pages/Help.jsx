@@ -29,10 +29,14 @@ const FeatureItem = ({ icon: Icon, title, description }) => (
 );
 
 const Readme = () => {
-    const { currentUser } = useData();
+    const { currentUser, classes } = useData();
     const role = currentUser?.role || 'Guest'; // Fallback
 
     const getContent = () => {
+        // Feature Flags for Student
+        const studentClass = currentUser?.role === 'student' ? classes.find(c => c.id === currentUser.classId) : null;
+        const isPrayerChartEnabled = studentClass?.features?.prayerChart !== false;
+
         switch (role) {
             case 'admin':
                 return (
@@ -138,6 +142,7 @@ const Readme = () => {
                                 <div className="mt-4 space-y-3">
                                     <FeatureItem icon={CheckCircle} title="Split View" description="Pending tasks are on the left, Completed history on the right. Never miss a deadline." />
                                     <FeatureItem icon={CheckCircle} title="Subject Tags" description="Every activity shows its subject (e.g., Maths, Science) so you know which notebook to grab." />
+                                    <FeatureItem icon={CheckCircle} title="Attachments" description="You can upload images or files directly to your homework submission." />
                                 </div>
                             </Section>
 
@@ -151,6 +156,13 @@ const Readme = () => {
                             <Section title="Results & Reports" icon={BarChart2}>
                                 <p>View your graded answer sheets and download your detailed Report Card as a PDF.</p>
                             </Section>
+
+                            {/* Conditionally Render Prayer Chart Help */}
+                            {isPrayerChartEnabled && (
+                                <Section title="Prayer Chart" icon={BookOpen}>
+                                    <p>Track your daily prayers. Mark the prayers you have offered each day to maintain your spiritual record.</p>
+                                </Section>
+                            )}
 
                             <Section title="Leaderboard" icon={GraduationCap}>
                                 <p>Check your rank and see how you compare with your peers in different subjects.</p>
