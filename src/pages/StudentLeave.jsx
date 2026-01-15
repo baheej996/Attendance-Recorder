@@ -129,7 +129,7 @@ const StudentLeave = () => {
                     <p className="text-gray-500">Request leave and track status</p>
                 </div>
                 {!showForm && (
-                    <Button onClick={() => setShowForm(true)} className="gap-2">
+                    <Button onClick={() => setShowForm(true)} className="gap-2 flex items-center">
                         <Plus className="w-4 h-4" /> New Application
                     </Button>
                 )}
@@ -232,7 +232,7 @@ const StudentLeave = () => {
                                             size="sm"
                                             variant="secondary"
                                             onClick={() => handleEdit(req)}
-                                            className="text-xs h-7 px-2"
+                                            className="text-xs h-7 px-2 flex items-center"
                                         >
                                             <Edit2 className="w-3 h-3 mr-1" /> Edit
                                         </Button>
