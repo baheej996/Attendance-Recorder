@@ -138,6 +138,9 @@ const MentorLeaveRequests = () => {
 
                     {selectedIds.length > 0 && (
                         <div className="flex items-center gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                                <X className="w-4 h-4" /> Cancel
+                            </Button>
                             <Button size="sm" onClick={() => handleBulkAction('approve')} className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 whitespace-nowrap">
                                 <Check className="w-4 h-4" /> Approve ({selectedIds.length})
                             </Button>
