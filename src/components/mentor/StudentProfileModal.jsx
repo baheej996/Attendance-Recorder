@@ -1,0 +1,390 @@
+import React, { useState, useMemo } from 'react';
+import { useData } from '../../contexts/DataContext';
+import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock } from 'lucide-react';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
+import { clsx } from 'clsx';
+import { Card } from '../ui/Card';
+
+export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
+    const {
+        students,
+        classes,
+        results,
+        exams,
+        subjects,
+        activitySubmissions,
+        activities,
+        prayerRecords,
+        attendance
+    } = useData();
+
+    const [activeTab, setActiveTab] = useState('overview');
+
+    const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
+    const studentClass = useMemo(() => classes.find(c => c.id === student?.classId), [classes, student]);
+
+    if (!student || !isOpen) return null;
+
+    const tabs = [
+        { id: 'overview', label: 'Overview', icon: User },
+        { id: 'exams', label: 'Exams', icon: BookOpen },
+        { id: 'activities', label: 'Activities', icon: Activity },
+        { id: 'prayer', label: 'Prayer Chart', icon: CalendarIcon },
+        { id: 'attendance', label: 'Attendance', icon: Clock },
+    ];
+
+    // --- Data Helpers ---
+
+    // Exam Data
+    const examData = useMemo(() => {
+        // Filter results for this student
+        const studentResults = results.filter(r => r.studentId === studentId);
+
+        // Group by Exam
+        return exams.map(exam => {
+            const examResults = studentResults.filter(r => r.examId === exam.id);
+            if (examResults.length === 0 && exam.status !== 'Published') return null;
+
+            const totalMarks = examResults.reduce((sum, r) => sum + Number(r.marks), 0);
+
+            // Get subjects for this class to calculate total possible marks
+            // Assuming all subjects in class are part of the exam if not specific
+            const classSubjects = subjects.filter(s => s.classId === student.classId && s.isExamSubject);
+            const maxPossible = classSubjects.reduce((sum, s) => sum + Number(s.maxMarks || 100), 0);
+
+            return {
+                id: exam.id,
+                name: exam.name,
+                date: exam.date,
+                score: totalMarks,
+                max: maxPossible,
+                results: examResults.map(r => {
+                    const subject = subjects.find(s => s.id === r.subjectId);
+                    return {
+                        subjectName: subject?.name || 'Unknown Subject',
+                        marks: r.marks,
+                        maxMarks: subject?.maxMarks || 100
+                    };
+                })
+            };
+        }).filter(Boolean);
+    }, [exams, results, subjects, studentId, student]);
+
+    // Activity Data
+    const activityData = useMemo(() => {
+        // Get all activities for student's class
+        const classActivities = activities.filter(a => a.classId === student.classId && a.status === 'Active');
+
+        return classActivities.map(activity => {
+            const submission = activitySubmissions.find(s => s.activityId === activity.id && s.studentId === studentId);
+            return {
+                ...activity,
+                isCompleted: submission?.status === 'Completed',
+                points: submission?.points || 0,
+                completedAt: submission?.timestamp
+            };
+        });
+    }, [activities, activitySubmissions, student, studentId]);
+
+    // Prayer Data (Weekly)
+    const prayerData = useMemo(() => {
+        const today = new Date();
+        const start = startOfWeek(today, { weekStartsOn: 1 });
+        const end = endOfWeek(today, { weekStartsOn: 1 });
+        const days = eachDayOfInterval({ start, end });
+
+        const studentRecords = prayerRecords.filter(r => r.studentId === studentId);
+
+        return days.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const record = studentRecords.find(r => r.date === dateStr);
+            let count = 0;
+            if (record && record.prayers) {
+                count = Object.values(record.prayers).filter(Boolean).length;
+            }
+            return { date: day, count };
+        });
+    }, [prayerRecords, studentId]);
+
+    // Attendance Data
+    const attendanceStats = useMemo(() => {
+        const studentAttendance = attendance.filter(a => a.studentId === studentId);
+        const present = studentAttendance.filter(a => a.status === 'Present').length;
+        const absent = studentAttendance.filter(a => a.status === 'Absent').length;
+        const total = studentAttendance.length;
+        const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+
+        return { present, absent, total, percentage, records: studentAttendance };
+    }, [attendance, studentId]);
+
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-gray-50/50">
+                    <div className="flex gap-4">
+                        <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-2xl font-bold border-4 border-white shadow-sm">
+                            {student.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900">{student.name}</h2>
+                            <p className="text-gray-500">
+                                Class {studentClass?.name}-{studentClass?.division} • {student.registerNo}
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Status: {student.status}
+                                </span>
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    Gender: {student.gender}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex flex-1 overflow-hidden">
+                    {/* Sidebar Tabs */}
+                    <div className="w-64 border-r border-gray-100 bg-gray-50/30 flex flex-col p-4 gap-1 overflow-y-auto shrink-0">
+                        {tabs.map(tab => {
+                            const Icon = tab.icon;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={clsx(
+                                        "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left",
+                                        activeTab === tab.id
+                                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                    )}
+                                >
+                                    <Icon className={clsx("w-5 h-5", activeTab === tab.id ? "text-white" : "text-gray-400")} />
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Content Area */}
+                    <div className="flex-1 overflow-y-auto p-6 bg-white">
+                        {/* Overview Tab */}
+                        {activeTab === 'overview' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Card className="p-4 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0">
+                                        <div className="flex items-center gap-3 mb-2 opacity-90">
+                                            <CalendarIcon className="w-5 h-5" />
+                                            <h3 className="font-semibold">Attendance</h3>
+                                        </div>
+                                        <p className="text-3xl font-bold">{attendanceStats.percentage}%</p>
+                                        <p className="text-sm opacity-80 mt-1">Present Days: {attendanceStats.present}/{attendanceStats.total}</p>
+                                    </Card>
+                                    <Card className="p-4 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0">
+                                        <div className="flex items-center gap-3 mb-2 opacity-90">
+                                            <Award className="w-5 h-5" />
+                                            <h3 className="font-semibold">Activities</h3>
+                                        </div>
+                                        <p className="text-3xl font-bold">
+                                            {activityData.filter(a => a.isCompleted).length}/{activityData.length}
+                                        </p>
+                                        <p className="text-sm opacity-80 mt-1">Completed Tasks</p>
+                                    </Card>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Exams</h3>
+                                    {examData.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {examData.slice(0, 3).map(exam => (
+                                                <div key={exam.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-900">{exam.name}</h4>
+                                                        <p className="text-sm text-gray-500">{format(new Date(exam.date), 'MMM d, yyyy')}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="block text-xl font-bold text-indigo-600">
+                                                            {exam.score} / {exam.max}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-500">No recent exams.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Exams Tab */}
+                        {activeTab === 'exams' && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900">Exam Results</h3>
+                                {examData.length === 0 ? (
+                                    <div className="text-center py-10 text-gray-500">No exam data found.</div>
+                                ) : (
+                                    examData.map(exam => (
+                                        <Card key={exam.id} className="overflow-hidden">
+                                            <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">{exam.name}</h4>
+                                                    <p className="text-xs text-gray-500">{format(new Date(exam.date), 'MMMM d, yyyy')}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-sm font-medium text-gray-500">Total Score</div>
+                                                    <div className="text-xl font-bold text-indigo-600">{exam.score} / {exam.max}</div>
+                                                </div>
+                                            </div>
+                                            <div className="divide-y divide-gray-100">
+                                                {exam.results.length > 0 ? (
+                                                    exam.results.map((r, i) => (
+                                                        <div key={i} className="p-4 flex justify-between items-center hover:bg-gray-50">
+                                                            <span className="font-medium text-gray-700">{r.subjectName}</span>
+                                                            <span className="font-mono font-semibold text-gray-900">{r.marks} / {r.maxMarks}</span>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="p-4 text-center text-sm text-gray-500">No results recorded yet.</div>
+                                                )}
+                                            </div>
+                                        </Card>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {/* Activities Tab */}
+                        {activeTab === 'activities' && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900">Activity Log</h3>
+                                {activityData.length === 0 ? (
+                                    <div className="text-center py-10 text-gray-500">No activities assigned.</div>
+                                ) : (
+                                    <div className="grid gap-4">
+                                        {activityData.map(activity => (
+                                            <div key={activity.id} className={clsx(
+                                                "p-4 rounded-xl border flex items-center justify-between",
+                                                activity.isCompleted ? "bg-green-50 border-green-200" : "bg-white border-gray-200"
+                                            )}>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">{activity.title}</h4>
+                                                    <p className="text-sm text-gray-500">{activity.description}</p>
+                                                    {activity.isCompleted && (
+                                                        <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                                            <Award className="w-3 h-3" />
+                                                            Completed on {format(new Date(activity.completedAt), 'MMM d')} • {activity.points} points
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className={clsx(
+                                                    "px-3 py-1 rounded-full text-xs font-bold",
+                                                    activity.isCompleted ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                                                )}>
+                                                    {activity.isCompleted ? 'Completed' : 'Pending'}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Prayer Tab */}
+                        {activeTab === 'prayer' && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900">Prayer Consistency (This Week)</h3>
+
+                                <Card className="p-6">
+                                    <div className="space-y-4">
+                                        {prayerData.map((day) => {
+                                            const isToday = isSameDay(day.date, new Date());
+                                            return (
+                                                <div
+                                                    key={day.date.toString()}
+                                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={clsx(
+                                                            "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
+                                                            day.count === 5 ? "bg-green-100 text-green-700" :
+                                                                day.count > 0 ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"
+                                                        )}>
+                                                            {format(day.date, 'EE').charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <p className={clsx("text-sm font-medium", isToday ? "text-indigo-600" : "text-gray-900")}>
+                                                                {format(day.date, 'EEEE')}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">{format(day.date, 'MMM d')}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className={clsx(
+                                                                    "w-2 h-6 rounded-full",
+                                                                    i < day.count ? "bg-green-400" : "bg-gray-200"
+                                                                )}
+                                                                title={i < day.count ? "Completed" : "Missed"}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* Attendance Tab */}
+                        {activeTab === 'attendance' && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900">Attendance History</h3>
+
+                                <div className="grid grid-cols-3 gap-4 mb-6">
+                                    <div className="p-4 bg-green-50 rounded-xl text-center border border-green-100">
+                                        <div className="text-2xl font-bold text-green-600">{attendanceStats.present}</div>
+                                        <div className="text-xs text-green-800 uppercase font-semibold tracking-wider">Present</div>
+                                    </div>
+                                    <div className="p-4 bg-red-50 rounded-xl text-center border border-red-100">
+                                        <div className="text-2xl font-bold text-red-600">{attendanceStats.absent}</div>
+                                        <div className="text-xs text-red-800 uppercase font-semibold tracking-wider">Absent</div>
+                                    </div>
+                                    <div className="p-4 bg-blue-50 rounded-xl text-center border border-blue-100">
+                                        <div className="text-2xl font-bold text-blue-600">{attendanceStats.percentage}%</div>
+                                        <div className="text-xs text-blue-800 uppercase font-semibold tracking-wider">Rate</div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {attendanceStats.records.sort((a, b) => new Date(b.date) - new Date(a.date)).map(record => (
+                                        <div key={record.id} className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg border-b border-gray-50">
+                                            <span className="text-sm font-medium text-gray-700">{format(new Date(record.date), 'MMMM d, yyyy')}</span>
+                                            <span className={clsx(
+                                                "px-3 py-1 rounded-full text-xs font-bold",
+                                                record.status === 'Present' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                            )}>
+                                                {record.status}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    {attendanceStats.records.length === 0 && (
+                                        <div className="text-center text-gray-400 py-8">No attendance records found</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};

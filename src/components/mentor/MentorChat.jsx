@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell, Trash2 } from 'lucide-react';
 import { PollCard } from '../chat/PollCard';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { StudentProfileModal } from './StudentProfileModal';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 
@@ -29,6 +30,7 @@ const MentorChat = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('All'); // 'All' or classId
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const scrollRef = useRef(null);
 
     // Filter students belonging to mentor's classes
@@ -281,7 +283,10 @@ const MentorChat = () => {
                         {selectedStudent ? (
                             <>
                                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
+                                    <div
+                                        className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                                        onClick={() => setIsProfileModalOpen(true)}
+                                    >
                                         <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
                                             {selectedStudent.name.charAt(0)}
                                         </div>
@@ -430,6 +435,12 @@ const MentorChat = () => {
                 message={`Are you sure you want to delete the chat history with ${selectedStudent?.name}? This action cannot be undone.`}
                 confirmText="Delete Chat"
                 isDanger={true}
+            />
+
+            <StudentProfileModal
+                studentId={selectedStudentId}
+                isOpen={isProfileModalOpen}
+                onClose={() => setIsProfileModalOpen(false)}
             />
         </div>
     );
