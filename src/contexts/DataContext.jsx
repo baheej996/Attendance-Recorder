@@ -840,7 +840,9 @@ export const DataProvider = ({ children }) => {
             // Leave Request Exports
             leaveRequests, setLeaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests,
             // Chat Exports
-            chatMessages, setChatMessages, chatSettings, setChatSettings, sendMessage, toggleChatForClass, markMessagesAsRead, deleteChatConversation
+            chatMessages, setChatMessages, chatSettings, setChatSettings, sendMessage, toggleChatForClass, markMessagesAsRead, deleteChatConversation,
+            // Mentor Settings
+            mentorSettings, updateMentorSettings
         }}>
             {children}
         </DataContext.Provider>
