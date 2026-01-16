@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { UserPlus, User, Check, Trash2, Edit, BookOpen, Users, X, Plus, Search } from 'lucide-react';
+import { UserPlus, User, Check, Trash2, Edit, BookOpen, Users, X, Plus, Search, Phone } from 'lucide-react';
 import { clsx } from 'clsx';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
@@ -14,7 +14,7 @@ import { Modal } from '../../components/ui/Modal';
 const MentorManagement = () => {
     const { mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors, classes, students } = useData();
     const { showAlert } = useUI();
-    const [formData, setFormData] = useState({ name: '', email: '', password: '', qualification: '', profilePhoto: '', assignedClassIds: [] });
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', qualification: '', contactNumber: '', profilePhoto: '', assignedClassIds: [] });
     const [editingId, setEditingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [error, setError] = useState('');
@@ -66,7 +66,7 @@ const MentorManagement = () => {
     };
 
     const handleOpenModal = () => {
-        setFormData({ name: '', email: '', password: '', qualification: '', profilePhoto: '', assignedClassIds: [] });
+        setFormData({ name: '', email: '', password: '', qualification: '', contactNumber: '', profilePhoto: '', assignedClassIds: [] });
         setEditingId(null);
         setError('');
         setIsModalOpen(true);
@@ -108,6 +108,7 @@ const MentorManagement = () => {
             email: mentor.email,
             password: mentor.password,
             qualification: mentor.qualification || '',
+            contactNumber: mentor.contactNumber || '',
             profilePhoto: mentor.profilePhoto || '',
             assignedClassIds: mentor.assignedClassIds || []
         });
@@ -226,6 +227,13 @@ const MentorManagement = () => {
                             value={formData.password}
                             onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
                         />
+                        <Input
+                            label="Contact Number"
+                            placeholder="e.g. +91 9876543210"
+                            value={formData.contactNumber}
+                            onChange={(e) => setFormData(p => ({ ...p, contactNumber: e.target.value }))}
+                        />
+
                         <Input
                             label="Qualification"
                             placeholder="e.g. M.Sc Mathematics, B.Ed"

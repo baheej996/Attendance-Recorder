@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/Button';
-import { MessageSquare, Send, User, Lock, Info, Award } from 'lucide-react';
+import { MessageSquare, Send, User, Lock, Info, Award, Phone, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { PollCard } from '../components/chat/PollCard';
 
 const StudentChat = () => {
-    const { currentUser, mentors, chatMessages, chatSettings, sendMessage, markMessagesAsRead } = useData();
+    const { currentUser, mentors, chatMessages, chatSettings, sendMessage, markMessagesAsRead, classes } = useData();
     const [messageInput, setMessageInput] = useState('');
     const scrollRef = useRef(null);
 
@@ -124,6 +124,18 @@ const StudentChat = () => {
                                     </div>
                                 )}
 
+                                {myMentor.contactNumber && (
+                                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                                        <div className="p-1.5 bg-white rounded-md shadow-sm text-indigo-600">
+                                            <Phone className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Contact</h4>
+                                            <p className="text-sm font-medium text-gray-800 break-all">{myMentor.contactNumber}</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                                     <div className="p-1.5 bg-white rounded-md shadow-sm text-indigo-600">
                                         <Lock className="w-4 h-4" /> {/* Reusing Lock icon as generic Info for now if Mail not imported, or update imports */}
@@ -133,6 +145,32 @@ const StudentChat = () => {
                                         <p className="text-sm font-medium text-gray-800 break-all">{myMentor.email}</p>
                                     </div>
                                 </div>
+
+                                {myMentor.assignedClassIds && myMentor.assignedClassIds.length > 0 && (
+                                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                                        <div className="p-1.5 bg-white rounded-md shadow-sm text-indigo-600">
+                                            <BookOpen className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Classes Handling</h4>
+                                            <div className="flex flex-wrap gap-1">
+                                                {myMentor.assignedClassIds.map(cid => {
+                                                    const cls = classes.find(c => c.id === cid);
+                                                    return cls ? (
+                                                        <span key={cid} className={clsx(
+                                                            "px-1.5 py-0.5 rounded text-[10px] font-bold border",
+                                                            cid === currentUser.classId
+                                                                ? "bg-indigo-100 text-indigo-700 border-indigo-200"
+                                                                : "bg-white text-gray-500 border-gray-200"
+                                                        )}>
+                                                            {cls.name}-{cls.division}
+                                                        </span>
+                                                    ) : null;
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
