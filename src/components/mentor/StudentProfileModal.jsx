@@ -23,20 +23,11 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
     const studentClass = useMemo(() => classes.find(c => c.id === student?.classId), [classes, student]);
 
-    if (!student || !isOpen) return null;
-
-    const tabs = [
-        { id: 'overview', label: 'Overview', icon: User },
-        { id: 'exams', label: 'Exams', icon: BookOpen },
-        { id: 'activities', label: 'Activities', icon: Activity },
-        { id: 'prayer', label: 'Prayer Chart', icon: CalendarIcon },
-        { id: 'attendance', label: 'Attendance', icon: Clock },
-    ];
-
     // --- Data Helpers ---
 
     // Exam Data
     const examData = useMemo(() => {
+        if (!student) return [];
         // Filter results for this student
         const studentResults = results.filter(r => r.studentId === studentId);
 
@@ -72,6 +63,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
     // Activity Data
     const activityData = useMemo(() => {
+        if (!student) return [];
         // Get all activities for student's class
         const classActivities = activities.filter(a => a.classId === student.classId && a.status === 'Active');
 
@@ -88,6 +80,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
     // Prayer Data (Weekly)
     const prayerData = useMemo(() => {
+        if (!student) return [];
         const today = new Date();
         const start = startOfWeek(today, { weekStartsOn: 1 });
         const end = endOfWeek(today, { weekStartsOn: 1 });
@@ -108,6 +101,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
     // Attendance Data
     const attendanceStats = useMemo(() => {
+        if (!student) return { present: 0, absent: 0, total: 0, percentage: 0, records: [] };
         const studentAttendance = attendance.filter(a => a.studentId === studentId);
         const present = studentAttendance.filter(a => a.status === 'Present').length;
         const absent = studentAttendance.filter(a => a.status === 'Absent').length;
@@ -117,6 +111,15 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
         return { present, absent, total, percentage, records: studentAttendance };
     }, [attendance, studentId]);
 
+    if (!student || !isOpen) return null;
+
+    const tabs = [
+        { id: 'overview', label: 'Overview', icon: User },
+        { id: 'exams', label: 'Exams', icon: BookOpen },
+        { id: 'activities', label: 'Activities', icon: Activity },
+        { id: 'prayer', label: 'Prayer Chart', icon: CalendarIcon },
+        { id: 'attendance', label: 'Attendance', icon: Clock },
+    ];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
