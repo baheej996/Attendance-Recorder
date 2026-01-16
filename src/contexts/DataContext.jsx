@@ -97,6 +97,18 @@ export const DataProvider = ({ children }) => {
             return [];
         }
     });
+
+    // Mentor Panel Settings (Sidebar Order, etc.)
+    const [mentorSettings, setMentorSettings] = useState(() => {
+        try {
+            const saved = localStorage.getItem('mentorSettings');
+            return saved ? JSON.parse(saved) : { sidebarOrder: [] };
+        } catch (e) {
+            console.error("Error parsing mentorSettings:", e);
+            return { sidebarOrder: [] };
+        }
+    });
+
     const [isDataLoaded, setIsDataLoaded] = useState(false);
 
     // Load Heavy Data (Questions & Responses) from IndexedDB (localforage)
@@ -173,6 +185,7 @@ export const DataProvider = ({ children }) => {
     }, [chatMessages, isDataLoaded]);
 
     useEffect(() => localStorage.setItem('chatSettings', JSON.stringify(chatSettings)), [chatSettings]);
+    useEffect(() => localStorage.setItem('mentorSettings', JSON.stringify(mentorSettings)), [mentorSettings]);
 
     const [institutionSettings, setInstitutionSettings] = useState(() => {
         try {
@@ -796,6 +809,10 @@ export const DataProvider = ({ children }) => {
             !((m.senderId === studentId && m.receiverId === mentorId) ||
                 (m.senderId === mentorId && m.receiverId === studentId))
         ));
+    };
+
+    const updateMentorSettings = (settings) => {
+        setMentorSettings(prev => ({ ...prev, ...settings }));
     };
 
     return (

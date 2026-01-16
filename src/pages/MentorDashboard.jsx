@@ -12,8 +12,9 @@ import LogBook from '../components/mentor/LogBook';
 import Help from './Help';
 import PrayerStats from '../components/mentor/PrayerStats';
 import MentorLeaveRequests from '../components/mentor/MentorLeaveRequests';
-import MentorChat from '../components/mentor/MentorChat';
 import Batches from '../components/mentor/Batches';
+import MentorSettings from '../components/mentor/MentorSettings';
+import { MENTOR_NAV_ITEMS } from '../config/mentorNavItems';
 import { useData } from '../contexts/DataContext';
 
 const DashboardHome = () => (
@@ -35,20 +36,34 @@ const MentorDashboard = () => {
         m.receiverId === currentUser.id && !m.isRead
     ).length;
 
-    const navItems = [
-        { icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
-        { icon: UserCheck, label: 'Leave Requests', path: '/mentor/leaves', badge: pendingLeaves },
-        { icon: MessageSquare, label: 'Chat', path: '/mentor/chat', badge: unreadChatCount },
-        { icon: Layers, label: 'Activities', path: '/mentor/activities' },
-        { icon: BookOpen, label: 'Class Log Book', path: '/mentor/logbook' },
-        { icon: Calendar, label: 'Prayer Chart', path: '/mentor/prayer-chart' },
-        { icon: Printer, label: 'Print Attendance', path: '/mentor/print' },
-        { icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
-        { icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
-        { icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
-        { icon: Users, label: 'Batches', path: '/mentor/batches' },
-        { icon: Info, label: 'Help', path: '/mentor/help' },
-    ];
+    const [navItems, setNavItems] = React.useState(MENTOR_NAV_ITEMS);
+
+    const { mentorSettings } = useData();
+
+    React.useEffect(() => {
+        if (mentorSettings?.sidebarOrder && mentorSettings.sidebarOrder.length > 0) {
+            // Sort master list based on saved ID order
+            const ordered = [...MENTOR_NAV_ITEMS].sort((a, b) => {
+                const idxA = mentorSettings.sidebarOrder.indexOf(a.id);
+                const idxB = mentorSettings.sidebarOrder.indexOf(b.id);
+                // If item not found in saved order, append at end
+                const cleanIdxA = idxA === -1 ? 999 : idxA;
+                const cleanIdxB = idxB === -1 ? 999 : idxB;
+                return cleanIdxA - cleanIdxB;
+            });
+            setNavItems(ordered);
+        } else {
+            setNavItems(MENTOR_NAV_ITEMS);
+        }
+    }, [mentorSettings]);
+
+    // Calculate badges
+    const itemsWithBadges = navItems.map(item => {
+        let badge = 0;
+        if (item.id === 'leaves') badge = pendingLeaves;
+        if (item.id === 'chat') badge = unreadChatCount;
+        return { ...item, badge };
+    });
 
     return (
         <div className="flex h-screen bg-gray-50">
@@ -61,8 +76,8 @@ const MentorDashboard = () => {
                     </h1>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-1">
-                    {navItems.map((item) => {
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                    {itemsWithBadges.map((item) => {
                         const Icon = item.icon;
                         const isActive = location.pathname === item.path;
                         return (
@@ -115,6 +130,7 @@ const MentorDashboard = () => {
                     <Route path="/marks" element={<MarksEntry />} />
                     <Route path="/stats" element={<MentorStats />} />
                     <Route path="/batches" element={<Batches />} />
+                    <Route path="/settings" element={<MentorSettings />} />
                     <Route path="/help" element={<Help />} />
                 </Routes>
             </div>
