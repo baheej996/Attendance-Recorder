@@ -4,7 +4,7 @@ import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers, History, MessageSquare } from 'lucide-react';
+import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers, History, MessageSquare, UserCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 
 // Import New Student Components
@@ -14,6 +14,7 @@ import Leaderboard from '../components/student/Leaderboard';
 import StudentActivities from '../components/student/StudentActivities';
 import PrayerChart from '../components/student/PrayerChart';
 import ClassHistory from '../components/student/ClassHistory';
+import StudentMentorView from '../components/student/StudentMentorView';
 import StudentLeave from './StudentLeave';
 import StudentChat from './StudentChat';
 
@@ -63,6 +64,7 @@ const StudentDashboard = () => {
         { icon: FileText, label: 'Online Exams', path: '/student/exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results' },
         { icon: Calendar, label: 'Leave Applications', path: '/student/leave' },
+        { icon: UserCheck, label: 'My Mentor', path: '/student/mentor' },
         { icon: MessageSquare, label: 'Chat with Mentor', path: '/student/chat' },
         { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart', hidden: !isPrayerChartEnabled },
         { icon: History, label: 'Class History', path: '/student/history' },
@@ -266,6 +268,7 @@ const StudentDashboard = () => {
                     } />
                     <Route path="/exams" element={<StudentExamView />} />
                     <Route path="/activities" element={<StudentActivities />} />
+                    <Route path="/mentor" element={<StudentMentorView />} />
                     <Route path="/leave" element={<StudentLeave />} />
                     <Route path="/chat" element={<StudentChat />} />
                     <Route path="/prayer-chart" element={<PrayerChart />} />
