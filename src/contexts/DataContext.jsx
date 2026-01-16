@@ -253,9 +253,9 @@ export const DataProvider = ({ children }) => {
 
             // 3. Seed Subjects
             const initialSubjects = [
-                { id: generateId(), name: "English", classId: id1A, maxMarks: 100, passMarks: 40 },
-                { id: generateId(), name: "Mathematics", classId: id1A, maxMarks: 100, passMarks: 40 },
-                { id: generateId(), name: "Science", classId: id1A, maxMarks: 100, passMarks: 40 }
+                { id: generateId(), name: "English", classId: id1A, maxMarks: 100, passMarks: 40, isExamSubject: true },
+                { id: generateId(), name: "Mathematics", classId: id1A, maxMarks: 100, passMarks: 40, isExamSubject: true },
+                { id: generateId(), name: "Science", classId: id1A, maxMarks: 100, passMarks: 40, isExamSubject: true }
             ];
             setSubjects(initialSubjects);
 

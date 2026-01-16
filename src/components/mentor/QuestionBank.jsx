@@ -21,6 +21,9 @@ const QuestionBank = () => {
             .map(c => c.name)
     )].sort();
 
+    // Filter subjects that are enabled for exams
+    const examSubjects = questions.length >= 0 ? subjects.filter(s => s.isExamSubject !== false) : [];
+
     // Hierarchy State
     const [selectedExamId, setSelectedExamId] = useState('');
     const [expandedClasses, setExpandedClasses] = useState([]); // Array of expanded class names
@@ -97,7 +100,7 @@ const QuestionBank = () => {
 
         // Validation: Max Marks Check
         // 1. Find the Max Marks for this Subject (context.subjectId is Name, context.classId is Class Name)
-        const relevantSubject = subjects.find(s =>
+        const relevantSubject = examSubjects.find(s =>
             s.name === context.subjectId &&
             classes.find(c => c.id === s.classId)?.name === context.classId
         );
@@ -232,7 +235,7 @@ const QuestionBank = () => {
                         const classIdsForName = classes.filter(c => c.name === className).map(c => c.id);
 
                         // 2. Get subjects linked to these Class IDs
-                        const relevantSubjects = subjects.filter(s => classIdsForName.includes(s.classId));
+                        const relevantSubjects = examSubjects.filter(s => classIdsForName.includes(s.classId));
 
                         // 3. Unique Subject Names
                         const uniqueSubjectNames = [...new Set(relevantSubjects.map(s => s.name))];

@@ -322,7 +322,7 @@ const StudentExamView = () => {
 
                             <h4 className="font-semibold text-gray-700 mb-3">Available Subjects:</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                {subjects.filter(s => s.classId === currentUser.classId).map(subj => { // Only show subjects linked to student's specific class ID?
+                                {subjects.filter(s => s.classId === currentUser.classId && s.isExamSubject !== false).map(subj => { // Only show subjects linked to student's specific class ID?
                                     // Actually questions are linked to Class Name.
                                     // But Subjects are linked to Class ID? 
                                     // In DataContext seed: `classId: id1A`.

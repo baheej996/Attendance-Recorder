@@ -66,7 +66,7 @@ const MarksEntry = () => {
         let pending = 0;
 
         availableClasses.forEach(cls => {
-            const clsSubjects = subjects.filter(s => s.classId === cls.id);
+            const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false);
             if (clsSubjects.length === 0) {
                 pending++;
                 return;
@@ -84,7 +84,7 @@ const MarksEntry = () => {
     // Step 3: Subject Stats (for selected Class)
     const subjectStats = useMemo(() => {
         if (!selectedExamId || !selectedClassId) return null;
-        const clsSubjects = subjects.filter(s => s.classId === selectedClassId);
+        const clsSubjects = subjects.filter(s => s.classId === selectedClassId && s.isExamSubject !== false);
         let entered = 0;
 
         clsSubjects.forEach(sub => {
@@ -251,7 +251,7 @@ const MarksEntry = () => {
                 <div className="grid gap-6">
                     {availableClasses.map(cls => {
                         // Determine status for this specific class
-                        const clsSubjects = subjects.filter(s => s.classId === cls.id);
+                        const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false);
                         const isComplete = clsSubjects.length > 0 && clsSubjects.every(sub =>
                             results.some(r => r.examId === selectedExamId && r.subjectId === sub.id)
                         );

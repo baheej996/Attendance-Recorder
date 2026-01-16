@@ -11,7 +11,7 @@ const SubjectManager = () => {
     const { showAlert } = useUI();
 
     // We now track 'gradeName' instead of specific 'classId'
-    const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
+    const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, isExamSubject: true });
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState(''); // New Search State
     const [sortBy, setSortBy] = useState('grade'); // New Sort State: 'grade' | 'name'
@@ -47,7 +47,8 @@ const SubjectManager = () => {
                     name: newSubject.name,
                     maxMarks: Number(newSubject.maxMarks),
                     passMarks: Number(newSubject.passMarks),
-                    totalChapters: Number(newSubject.totalChapters) || 0
+                    totalChapters: Number(newSubject.totalChapters) || 0,
+                    isExamSubject: newSubject.isExamSubject
                 });
                 updatedCount++;
             });
@@ -68,7 +69,8 @@ const SubjectManager = () => {
                         classId: c.id,
                         maxMarks: Number(newSubject.maxMarks),
                         passMarks: Number(newSubject.passMarks),
-                        totalChapters: Number(newSubject.totalChapters) || 0
+                        totalChapters: Number(newSubject.totalChapters) || 0,
+                        isExamSubject: newSubject.isExamSubject
                     });
                     addedCount++;
                 }
@@ -86,11 +88,12 @@ const SubjectManager = () => {
             gradeName: newSubject.gradeName,
             maxMarks: newSubject.maxMarks,
             passMarks: newSubject.passMarks,
-            totalChapters: newSubject.totalChapters
+            totalChapters: newSubject.totalChapters,
+            isExamSubject: newSubject.isExamSubject
         });
 
         if (editingId) {
-            setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
+            setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, isExamSubject: true });
         }
     };
 
@@ -104,7 +107,8 @@ const SubjectManager = () => {
             gradeName: cls ? cls.name : '',
             maxMarks: subject.maxMarks,
             passMarks: subject.passMarks || 40,
-            totalChapters: subject.totalChapters || 0
+            totalChapters: subject.totalChapters || 0,
+            isExamSubject: subject.isExamSubject !== undefined ? subject.isExamSubject : true
         });
         const formElement = document.getElementById('subject-form');
         if (formElement) formElement.scrollIntoView({ behavior: 'smooth' });
@@ -113,7 +117,7 @@ const SubjectManager = () => {
     const handleCancelEdit = () => {
         setEditingId(null);
         setEditingOriginalName('');
-        setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0 });
+        setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, isExamSubject: true });
     };
 
     // Helper to get class info
@@ -223,6 +227,23 @@ const SubjectManager = () => {
                             onChange={e => setNewSubject({ ...newSubject, totalChapters: e.target.value })}
                             placeholder="e.g. 12"
                         />
+                        <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                            <input
+                                type="checkbox"
+                                id="isExamSubject"
+                                checked={newSubject.isExamSubject}
+                                onChange={(e) => setNewSubject({ ...newSubject, isExamSubject: e.target.checked })}
+                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                            />
+                            <div className="flex flex-col">
+                                <label htmlFor="isExamSubject" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                                    Enable for Exams
+                                </label>
+                                <span className="text-xs text-gray-500">
+                                    If unchecked, this subject will NOT appear in Question Bank or Exam Results.
+                                </span>
+                            </div>
+                        </div>
                         <div className="flex gap-2">
                             {editingId && (
                                 <Button type="button" onClick={handleCancelEdit} variant="secondary" className="w-1/3">
@@ -297,7 +318,14 @@ const SubjectManager = () => {
                                             {subject.totalChapters > 0 && (
                                                 <>
                                                     <span className="text-gray-300">|</span>
+                                                    <span className="text-gray-300">|</span>
                                                     {subject.totalChapters} Chaps
+                                                </>
+                                            )}
+                                            {subject.isExamSubject === false && (
+                                                <>
+                                                    <span className="text-gray-300">|</span>
+                                                    <span className="text-amber-600 font-medium">Non-Exam</span>
                                                 </>
                                             )}
                                         </p>
