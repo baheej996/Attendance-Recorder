@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare } from 'lucide-react';
+import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare, Users } from 'lucide-react';
 import { clsx } from 'clsx';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
@@ -13,6 +13,7 @@ import Help from './Help';
 import PrayerStats from '../components/mentor/PrayerStats';
 import MentorLeaveRequests from '../components/mentor/MentorLeaveRequests';
 import MentorChat from '../components/mentor/MentorChat';
+import Batches from '../components/mentor/Batches';
 import { useData } from '../contexts/DataContext';
 
 const DashboardHome = () => (
@@ -45,6 +46,7 @@ const MentorDashboard = () => {
         { icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
         { icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
         { icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
+        { icon: Users, label: 'Batches', path: '/mentor/batches' },
         { icon: Info, label: 'Help', path: '/mentor/help' },
     ];
 
@@ -112,6 +114,7 @@ const MentorDashboard = () => {
                     <Route path="/questions" element={<QuestionBank />} />
                     <Route path="/marks" element={<MarksEntry />} />
                     <Route path="/stats" element={<MentorStats />} />
+                    <Route path="/batches" element={<Batches />} />
                     <Route path="/help" element={<Help />} />
                 </Routes>
             </div>
