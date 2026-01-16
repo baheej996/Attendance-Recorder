@@ -4,6 +4,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell, Trash2 } from 'lucide-react';
 import { PollCard } from '../chat/PollCard';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 
@@ -27,6 +28,7 @@ const MentorChat = () => {
     const [messageInput, setMessageInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('All'); // 'All' or classId
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const scrollRef = useRef(null);
 
     // Filter students belonging to mentor's classes
@@ -114,10 +116,13 @@ const MentorChat = () => {
 
     const handleDeleteConversation = () => {
         if (!selectedStudentId) return;
-        if (window.confirm("Are you sure you want to delete this conversation? This cannot be undone.")) {
-            deleteChatConversation(selectedStudentId, currentUser.id);
-            // Optionally clear selected student or stay there (now empty)
-        }
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (!selectedStudentId) return;
+        deleteChatConversation(selectedStudentId, currentUser.id);
+        setIsDeleteModalOpen(false);
     };
 
     // Helper to get unread count for a student
@@ -415,6 +420,17 @@ const MentorChat = () => {
                     </div>
                 </div>
             )}
+
+
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Conversation"
+                message={`Are you sure you want to delete the chat history with ${selectedStudent?.name}? This action cannot be undone.`}
+                confirmText="Delete Chat"
+                isDanger={true}
+            />
         </div>
     );
 };
