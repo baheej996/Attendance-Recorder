@@ -9,13 +9,13 @@ import { Card } from '../ui/Card';
 const ExamManager = () => {
     const { exams, addExam, updateExam, deleteExam } = useData();
     const { showConfirm } = useUI();
-    const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft' });
+    const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft', instructions: '' });
 
     const handleAdd = (e) => {
         e.preventDefault();
         if (!newExam.name || !newExam.date) return;
         addExam(newExam);
-        setNewExam({ name: '', date: '', status: 'Draft' });
+        setNewExam({ name: '', date: '', status: 'Draft', instructions: '' });
     };
 
     const toggleStatus = (exam) => {
@@ -55,10 +55,19 @@ const ExamManager = () => {
                         <Input
                             label="Start Date"
                             type="date"
-                            value={newExam.date}
                             onChange={e => setNewExam({ ...newExam, date: e.target.value })}
                             required
                         />
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Instructions (Optional)</label>
+                            <textarea
+                                value={newExam.instructions}
+                                onChange={e => setNewExam({ ...newExam, instructions: e.target.value })}
+                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
+                                placeholder="e.g. No calculators allowed. Duration is 2 hours."
+                                rows="3"
+                            />
+                        </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Initial Status</label>
                             <select
@@ -107,6 +116,11 @@ const ExamManager = () => {
                                                 {exam.isActive ? 'Active' : 'Inactive'}
                                             </span>
                                         </p>
+                                        {exam.instructions && (
+                                            <p className="text-xs text-gray-500 mt-1 italic line-clamp-1">
+                                                Note: {exam.instructions}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button

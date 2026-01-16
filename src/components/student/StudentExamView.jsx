@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Upload, FileText, X, Calendar } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Upload, FileText, X, Calendar, Info } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const StudentExamView = () => {
@@ -319,6 +319,16 @@ const StudentExamView = () => {
                                 <Calendar className="w-4 h-4" />
                                 {new Date(exam.date).toLocaleDateString()}
                             </p>
+
+                            {exam.instructions && (
+                                <div className="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
+                                    <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-blue-700 uppercase mb-1">Instructions</p>
+                                        <p className="text-sm text-blue-800 whitespace-pre-line">{exam.instructions}</p>
+                                    </div>
+                                </div>
+                            )}
 
                             <h4 className="font-semibold text-gray-700 mb-3">Available Subjects:</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
