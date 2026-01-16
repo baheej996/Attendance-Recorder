@@ -7,6 +7,8 @@ import { Save, Calendar, CheckCircle, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
+import { StudentProfileModal } from '../../components/mentor/StudentProfileModal';
+import { Eye } from 'lucide-react';
 
 const AttendanceRecorder = () => {
     const { classes, students, attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds, currentUser } = useData();
@@ -22,6 +24,9 @@ const AttendanceRecorder = () => {
         type: null, // 'single' or 'full'
         step: 1 // 1 or 2
     });
+
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [currentPreviewStudentId, setCurrentPreviewStudentId] = useState(null);
 
     // Filter classes for Mentors
     const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
@@ -228,6 +233,7 @@ const AttendanceRecorder = () => {
                                     <tr>
                                         <th className="px-6 py-4 font-semibold text-gray-600">Reg No</th>
                                         <th className="px-6 py-4 font-semibold text-gray-600">Student Name</th>
+                                        <th className="px-6 py-4 font-semibold text-gray-600 text-center">Details</th>
                                         <th className="px-6 py-4 font-semibold text-gray-600 text-center">Mark Attendance</th>
                                     </tr>
                                 </thead>
@@ -236,6 +242,18 @@ const AttendanceRecorder = () => {
                                         <tr key={student.id} className="hover:bg-gray-50/80 transition-colors">
                                             <td className="px-6 py-4 text-gray-500 font-mono text-sm">{student.registerNo}</td>
                                             <td className="px-6 py-4 font-medium text-gray-900">{student.name}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button
+                                                    onClick={() => {
+                                                        setCurrentPreviewStudentId(student.id);
+                                                        setIsProfileModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+                                                    title="View Detailed Profile"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
+                                            </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="inline-flex bg-gray-100 p-1 rounded-lg">
                                                     <button
@@ -287,6 +305,12 @@ const AttendanceRecorder = () => {
                     </div>
                 )}
             </Card>
+
+            <StudentProfileModal
+                studentId={currentPreviewStudentId}
+                isOpen={isProfileModalOpen}
+                onClose={() => setIsProfileModalOpen(false)}
+            />
         </div>
     );
 };
