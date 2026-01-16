@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Trash2, Plus, Calendar, CheckCircle, Eye, EyeOff, Play, PauseCircle } from 'lucide-react';
+import { Trash2, Plus, Calendar, CheckCircle, Eye, EyeOff, Play, PauseCircle, Edit } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
@@ -10,11 +10,33 @@ const ExamManager = () => {
     const { exams, addExam, updateExam, deleteExam } = useData();
     const { showConfirm } = useUI();
     const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft', instructions: '' });
+    const [editingId, setEditingId] = useState(null);
 
     const handleAdd = (e) => {
         e.preventDefault();
         if (!newExam.name || !newExam.date) return;
-        addExam(newExam);
+        if (editingId) {
+            updateExam(editingId, newExam);
+            setEditingId(null);
+            showConfirm("Success", "Exam updated successfully.", null, "success"); // Optional: Feedback
+        } else {
+            addExam(newExam);
+        }
+        setNewExam({ name: '', date: '', status: 'Draft', instructions: '' });
+    };
+
+    const handleEdit = (exam) => {
+        setEditingId(exam.id);
+        setNewExam({
+            name: exam.name,
+            date: exam.date,
+            status: exam.status,
+            instructions: exam.instructions || ''
+        });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
         setNewExam({ name: '', date: '', status: 'Draft', instructions: '' });
     };
 
@@ -41,8 +63,8 @@ const ExamManager = () => {
                 {/* Create Exam Form */}
                 <Card className="p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <Plus className="w-5 h-5 text-indigo-600" />
-                        Create New Exam
+                        {editingId ? <Edit className="w-5 h-5 text-indigo-600" /> : <Plus className="w-5 h-5 text-indigo-600" />}
+                        {editingId ? "Edit Exam" : "Create New Exam"}
                     </h3>
                     <form onSubmit={handleAdd} className="space-y-4">
                         <Input
@@ -79,9 +101,16 @@ const ExamManager = () => {
                                 <option value="Published">Published (Results Visible)</option>
                             </select>
                         </div>
-                        <Button type="submit" variant="primary" className="w-full">
-                            Create Exam
-                        </Button>
+                        <div className="flex gap-2">
+                            {editingId && (
+                                <Button type="button" onClick={handleCancelEdit} variant="secondary" className="w-1/3">
+                                    Cancel
+                                </Button>
+                            )}
+                            <Button type="submit" variant="primary" className="flex-1">
+                                {editingId ? "Update Exam" : "Create Exam"}
+                            </Button>
+                        </div>
                     </form>
                 </Card>
 
@@ -123,6 +152,13 @@ const ExamManager = () => {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleEdit(exam)}
+                                            className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors"
+                                            title="Edit Exam"
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                        </button>
                                         <button
                                             onClick={() => toggleActive(exam)}
                                             className={`p-2 rounded-lg transition-colors ${exam.isActive
