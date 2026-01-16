@@ -14,7 +14,7 @@ import { Modal } from '../../components/ui/Modal';
 const MentorManagement = () => {
     const { mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors, classes, students } = useData();
     const { showAlert } = useUI();
-    const [formData, setFormData] = useState({ name: '', email: '', password: '', assignedClassIds: [] });
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', qualification: '', profilePhoto: '', assignedClassIds: [] });
     const [editingId, setEditingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [error, setError] = useState('');
@@ -66,7 +66,7 @@ const MentorManagement = () => {
     };
 
     const handleOpenModal = () => {
-        setFormData({ name: '', email: '', password: '', assignedClassIds: [] });
+        setFormData({ name: '', email: '', password: '', qualification: '', profilePhoto: '', assignedClassIds: [] });
         setEditingId(null);
         setError('');
         setIsModalOpen(true);
@@ -107,6 +107,8 @@ const MentorManagement = () => {
             name: mentor.name,
             email: mentor.email,
             password: mentor.password,
+            qualification: mentor.qualification || '',
+            profilePhoto: mentor.profilePhoto || '',
             assignedClassIds: mentor.assignedClassIds || []
         });
         setEditingId(mentor.id);
@@ -164,6 +166,17 @@ const MentorManagement = () => {
         });
     };
 
+    const handlePhotoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, profilePhoto: reader.result }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
             <ConfirmationModal
@@ -213,6 +226,33 @@ const MentorManagement = () => {
                             value={formData.password}
                             onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
                         />
+                        <Input
+                            label="Qualification"
+                            placeholder="e.g. M.Sc Mathematics, B.Ed"
+                            value={formData.qualification}
+                            onChange={(e) => setFormData(p => ({ ...p, qualification: e.target.value }))}
+                        />
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo</label>
+                            <div className="flex items-center gap-4">
+                                {formData.profilePhoto && (
+                                    <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                                        <img src={formData.profilePhoto} alt="Preview" className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+                                <div className="flex-1">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handlePhotoUpload}
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Recommended: Square image, max 1MB.</p>
+                                </div>
+                            </div>
+                        </div>
+
                         {error && <p className="text-sm text-red-500">{error}</p>}
 
                         <div>
@@ -354,11 +394,18 @@ const MentorManagement = () => {
                                     </div>
 
                                     <div className="flex items-start gap-4 pl-8">
-                                        <div className="p-2 bg-indigo-100 rounded-full text-indigo-600">
-                                            <User className="w-6 h-6" />
+                                        <div className="w-12 h-12 rounded-full overflow-hidden bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 border border-gray-200">
+                                            {mentor.profilePhoto ? (
+                                                <img src={mentor.profilePhoto} alt={mentor.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <User className="w-6 h-6" />
+                                            )}
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-lg text-gray-900">{mentor.name}</h4>
+                                            {mentor.qualification && (
+                                                <p className="text-xs text-indigo-600 font-medium mb-0.5">{mentor.qualification}</p>
+                                            )}
                                             <p className="text-sm text-gray-500">{mentor.email}</p>
 
                                             <div className="flex gap-4 mt-2 mb-2 text-xs font-medium text-gray-500">
