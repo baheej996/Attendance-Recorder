@@ -204,30 +204,7 @@ const SubjectManager = () => {
                             onChange={e => setNewSubject({ ...newSubject, name: e.target.value })}
                             required
                         />
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Max Marks"
-                                type="number"
-                                value={newSubject.maxMarks}
-                                onChange={e => setNewSubject({ ...newSubject, maxMarks: e.target.value })}
-                                required
-                            />
-                            <Input
-                                label="Pass Marks"
-                                type="number"
-                                value={newSubject.passMarks}
-                                onChange={e => setNewSubject({ ...newSubject, passMarks: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <Input
-                            label="Total Chapters (For Syllabus Tracking)"
-                            type="number"
-                            value={newSubject.totalChapters}
-                            onChange={e => setNewSubject({ ...newSubject, totalChapters: e.target.value })}
-                            placeholder="e.g. 12"
-                        />
-                        <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
                             <input
                                 type="checkbox"
                                 id="isExamSubject"
@@ -244,6 +221,33 @@ const SubjectManager = () => {
                                 </span>
                             </div>
                         </div>
+
+                        {newSubject.isExamSubject && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input
+                                    label="Max Marks"
+                                    type="number"
+                                    value={newSubject.maxMarks}
+                                    onChange={e => setNewSubject({ ...newSubject, maxMarks: e.target.value })}
+                                    required
+                                />
+                                <Input
+                                    label="Pass Marks"
+                                    type="number"
+                                    value={newSubject.passMarks}
+                                    onChange={e => setNewSubject({ ...newSubject, passMarks: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        )}
+                        <Input
+                            label="Total Chapters (For Syllabus Tracking)"
+                            type="number"
+                            value={newSubject.totalChapters}
+                            onChange={e => setNewSubject({ ...newSubject, totalChapters: e.target.value })}
+                            placeholder="e.g. 12"
+                        />
+
                         <div className="flex gap-2">
                             {editingId && (
                                 <Button type="button" onClick={handleCancelEdit} variant="secondary" className="w-1/3">
