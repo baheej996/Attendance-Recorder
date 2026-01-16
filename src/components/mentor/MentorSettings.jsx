@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { MENTOR_NAV_ITEMS } from '../../config/mentorNavItems';
-import { Settings, GripVertical, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
+import { Settings, GripVertical, CheckCircle, RefreshCw } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const MentorSettings = () => {
     const { mentorSettings, updateMentorSettings } = useData();
     const [items, setItems] = useState([]);
+    const [showToast, setShowToast] = useState(false);
+
+    // Drag and Drop Refs
+    const dragItem = useRef(null);
+    const dragOverItem = useRef(null);
 
     useEffect(() => {
         // Initialize local state from saved settings or default config
@@ -28,21 +33,36 @@ const MentorSettings = () => {
         }
     }, [mentorSettings]);
 
-    const handleMove = (index, direction) => {
-        const newItems = [...items];
-        if (direction === 'up' && index > 0) {
-            [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
-        } else if (direction === 'down' && index < newItems.length - 1) {
-            [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
-        }
-        setItems(newItems);
+    // Drag Functions
+    const onDragStart = (e, index) => {
+        dragItem.current = index;
+        e.dataTransfer.effectAllowed = "move";
+        // Ghost image styling logic can go here if needed
+    };
+
+    const onDragEnter = (e, index) => {
+        dragOverItem.current = index;
+    };
+
+    const onDragEnd = () => {
+        const copyListItems = [...items];
+        const dragItemContent = copyListItems[dragItem.current];
+
+        // Remove and insert
+        copyListItems.splice(dragItem.current, 1);
+        copyListItems.splice(dragOverItem.current, 0, dragItemContent);
+
+        dragItem.current = null;
+        dragOverItem.current = null;
+        setItems(copyListItems);
     };
 
     const handleSave = () => {
         const order = items.map(i => i.id);
         updateMentorSettings({ sidebarOrder: order });
-        // Optional: Add toast notification
-        alert("Settings saved successfully!");
+
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
     };
 
     const handleReset = () => {
@@ -53,7 +73,18 @@ const MentorSettings = () => {
     };
 
     return (
-        <div className="p-8 max-w-4xl mx-auto space-y-6">
+        <div className="p-8 max-w-4xl mx-auto space-y-6 relative">
+            {/* Themed Success Toast */}
+            {showToast && (
+                <div className="fixed top-24 right-10 z-50 bg-green-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <CheckCircle className="w-6 h-6" />
+                    <div>
+                        <h4 className="font-bold text-sm uppercase tracking-wider">Success</h4>
+                        <p className="text-sm opacity-90">Settings saved successfully.</p>
+                    </div>
+                </div>
+            )}
+
             <div>
                 <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                     <Settings className="w-6 h-6 text-gray-700" />
@@ -66,60 +97,48 @@ const MentorSettings = () => {
 
             <div className="grid gap-6">
                 <Card className="p-6">
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                         <div>
                             <h2 className="text-lg font-bold text-gray-900">Sidebar Arrangement</h2>
-                            <p className="text-sm text-gray-500">Reorder the navigation items as you wish.</p>
+                            <p className="text-sm text-gray-500">Drag and drop items to reorder your navigation menu.</p>
                         </div>
-                        <Button variant="ghost" onClick={handleReset} className="text-gray-500 hover:text-red-600">
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            Reset Default
+                        <Button
+                            variant="ghost"
+                            onClick={handleReset}
+                            className="flex items-center gap-2 text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            <span>Reset Default</span>
                         </Button>
                     </div>
 
-                    <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                    <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                         {items.map((item, index) => {
                             const Icon = item.icon;
                             return (
                                 <div
                                     key={item.id}
-                                    className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-indigo-300 transition-colors"
+                                    className="group flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-move active:cursor-grabbing"
+                                    draggable
+                                    onDragStart={(e) => onDragStart(e, index)}
+                                    onDragEnter={(e) => onDragEnter(e, index)}
+                                    onDragEnd={onDragEnd}
+                                    onDragOver={(e) => e.preventDefault()}
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className="cursor-grab text-gray-300 hover:text-gray-500">
-                                            <GripVertical className="w-5 h-5" />
-                                        </div>
-                                        <div className="p-2 bg-indigo-50 rounded-md text-indigo-600">
-                                            <Icon className="w-5 h-5" />
-                                        </div>
-                                        <span className="font-medium text-gray-700">{item.label}</span>
+                                    <div className="text-gray-300 group-hover:text-indigo-400">
+                                        <GripVertical className="w-5 h-5" />
                                     </div>
-
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => handleMove(index, 'up')}
-                                            disabled={index === 0}
-                                            className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600"
-                                            title="Move Up"
-                                        >
-                                            <ArrowUp className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleMove(index, 'down')}
-                                            disabled={index === items.length - 1}
-                                            className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-gray-600"
-                                            title="Move Down"
-                                        >
-                                            <ArrowDown className="w-4 h-4" />
-                                        </button>
+                                    <div className="p-2 bg-indigo-50 rounded-md text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                                        <Icon className="w-5 h-5" />
                                     </div>
+                                    <span className="font-medium text-gray-700">{item.label}</span>
                                 </div>
                             );
                         })}
                     </div>
 
                     <div className="mt-6 pt-6 border-t border-gray-100 flex justify-end">
-                        <Button onClick={handleSave} className="bg-indigo-600 text-white">
+                        <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white px-8">
                             Save Changes
                         </Button>
                     </div>
