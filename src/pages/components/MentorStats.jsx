@@ -103,6 +103,7 @@ const StudentStatsModal = ({ student, records, onClose }) => {
 };
 
 const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
+    const { institutionSettings } = useData();
     // Filter results for this specific student and exam
     const studentResults = results.filter(r => r.examId === exam.id && r.studentId === student.id);
 
@@ -160,6 +161,31 @@ const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
             theme: 'grid',
             headStyles: { fillColor: stats.isOverallPassed ? [16, 185, 129] : [239, 68, 68] }
         });
+
+        // Add Signature if available
+        const hasSignature = useData().institutionSettings?.signatureImage; // Accessing directly via hook inside component usually, but here function is inside component
+        // Note: institutionSettings is not destructured in the top component scope of MentorStats, we need to add it.
+        // Wait, MentorStats component scope has access to useData().
+        // Actually this is StudentResultModal, which takes props. We assume institutionSettings is not passed.
+        // We should check if we can access context. Hook calls can't be inside nested functions, but components can use hooks.
+        // StudentResultModal IS a component.
+        // Let's modify the component to get institutionSettings from useData().
+
+        // For now, I'll update the component imports and usage in the next step to be safe, 
+        // OR I can use the trick that this function is inside the component that I can edit.
+        // The component is `StudentResultModal`. I will edit lines above to include `institutionSettings`.
+
+        // Add Signature if available
+        if (institutionSettings?.signatureImage) {
+            try {
+                // Add at bottom right
+                doc.addImage(institutionSettings.signatureImage, 'PNG', 140, 260, 40, 15);
+                doc.setFontSize(10);
+                doc.text("Principal's Signature", 140, 278);
+            } catch (err) {
+                console.error("Error adding signature:", err);
+            }
+        }
 
         doc.save(`${student.name}_${exam.name}_Result.pdf`);
     };
@@ -237,7 +263,7 @@ const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
 }
 
 const MentorStats = () => {
-    const { classes, students, attendance, currentUser, results, exams, subjects } = useData();
+    const { classes, students, attendance, currentUser, results, exams, subjects, institutionSettings } = useData();
     const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'results'
     const [selectedClassId, setSelectedClassId] = useState('');
     const [selectedExamId, setSelectedExamId] = useState('');

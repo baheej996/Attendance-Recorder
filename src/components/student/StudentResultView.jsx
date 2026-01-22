@@ -102,8 +102,18 @@ const StudentResultView = () => {
         doc.text(`Percentage: ${percentage}%`, 20, finalY + 7);
 
         // Footer signature placeholder
-        doc.text("Principal's Signature:", 140, finalY + 30);
-        doc.line(140, finalY + 28, 190, finalY + 28);
+        const hasSignature = institutionSettings?.signatureImage;
+
+        if (hasSignature) {
+            try {
+                doc.addImage(institutionSettings.signatureImage, 'PNG', 140, finalY + 15, 40, 15);
+            } catch (err) {
+                console.error("Error adding signature image:", err);
+            }
+        }
+
+        doc.text("Principal's Signature:", 140, finalY + 35);
+        doc.line(140, finalY + 33, 190, finalY + 33);
 
         doc.save(`${currentUser.registerNo}_${exam ? exam.name.replace(/\s+/g, '_') : 'Report'}.pdf`);
     };
