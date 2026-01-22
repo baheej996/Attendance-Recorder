@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft } from 'lucide-react';
 import { clsx } from 'clsx';
 import ClassManagement from './components/ClassManagement';
 import MentorManagement from './components/MentorManagement';
 import StudentManagement from './components/StudentManagement';
 import SubjectManager from '../components/admin/SubjectManager';
 import ExamManager from '../components/admin/ExamManager';
+import BulkTransfer from '../components/admin/BulkTransfer';
 import SettingsManager from './components/SettingsManager';
 import Help from './Help';
 import { useData } from '../contexts/DataContext';
@@ -122,6 +123,7 @@ const AdminDashboard = () => {
             case 'students': return <StudentManagement />;
             case 'subjects': return <SubjectManager />;
             case 'exams': return <ExamManager />;
+            case 'bulk-transfer': return <BulkTransfer />;
             case 'settings': return <SettingsManager />;
             case 'help': return <Help />;
             default: return <DashboardHome />;
@@ -164,6 +166,7 @@ const AdminDashboard = () => {
                                 <SidebarItem icon={School} label="Classes" active={activeTab === 'classes'} onClick={() => setActiveTab('classes')} />
                                 <SidebarItem icon={Users} label="Mentors" active={activeTab === 'mentors'} onClick={() => setActiveTab('mentors')} />
                                 <SidebarItem icon={UserCheck} label="Students" active={activeTab === 'students'} onClick={() => setActiveTab('students')} />
+                                <SidebarItem icon={ArrowRightLeft} label="Bulk Transfer" active={activeTab === 'bulk-transfer'} onClick={() => setActiveTab('bulk-transfer')} />
                             </nav>
                         </div>
 
