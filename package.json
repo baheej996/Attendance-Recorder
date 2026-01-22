@@ -12,6 +12,7 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "driver.js": "^1.4.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "localforage": "^1.10.0",

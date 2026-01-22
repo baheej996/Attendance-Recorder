@@ -1,6 +1,7 @@
 import React from 'react';
-import { BookOpen, Shield, Users, GraduationCap, ClipboardCheck, FileText, BarChart2, CheckCircle, Info, Printer, Layers } from 'lucide-react';
+import { BookOpen, Shield, Users, GraduationCap, ClipboardCheck, FileText, BarChart2, CheckCircle, Info, Printer, Layers, PlayCircle, HelpCircle } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
+import { useTour } from '../hooks/useTour';
 
 const Section = ({ title, icon: Icon, children }) => (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -30,6 +31,7 @@ const FeatureItem = ({ icon: Icon, title, description }) => (
 
 const Readme = () => {
     const { currentUser, classes } = useData();
+    const { startTour } = useTour();
     const role = currentUser?.role || 'Guest'; // Fallback
 
     const getContent = () => {
@@ -43,9 +45,16 @@ const Readme = () => {
                     <>
                         <div className="mb-12 text-center">
                             <h1 className="text-3xl font-bold text-indigo-900 mb-4">Admin Guide</h1>
-                            <p className="text-gray-600 max-w-2xl mx-auto">
+                            <p className="text-gray-600 max-w-2xl mx-auto mb-6">
                                 Complete control over the system. Manage users, classes, and system settings.
                             </p>
+                            <button
+                                onClick={() => startTour('admin')}
+                                className="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-full font-medium shadow-lg hover:bg-indigo-700 hover:scale-105 transition-all animate-bounce-subtle"
+                            >
+                                <PlayCircle className="w-5 h-5" />
+                                Start Interactive Tour
+                            </button>
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-8">
@@ -81,9 +90,16 @@ const Readme = () => {
                     <>
                         <div className="mb-12 text-center">
                             <h1 className="text-3xl font-bold text-purple-900 mb-4">Mentor Guide</h1>
-                            <p className="text-gray-600 max-w-2xl mx-auto">
+                            <p className="text-gray-600 max-w-2xl mx-auto mb-6">
                                 Manage your class, record attendance, and evaluate student performance.
                             </p>
+                            <button
+                                onClick={() => startTour('mentor')}
+                                className="inline-flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-full font-medium shadow-lg hover:bg-purple-700 hover:scale-105 transition-all"
+                            >
+                                <PlayCircle className="w-5 h-5" />
+                                Guide Me
+                            </button>
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-8">
@@ -131,9 +147,16 @@ const Readme = () => {
                     <>
                         <div className="mb-12 text-center">
                             <h1 className="text-3xl font-bold text-teal-900 mb-4">Student Guide</h1>
-                            <p className="text-gray-600 max-w-2xl mx-auto">
+                            <p className="text-gray-600 max-w-2xl mx-auto mb-6">
                                 Track your progress, take online exams, and view your results.
                             </p>
+                            <button
+                                onClick={() => startTour('student')}
+                                className="inline-flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-full font-medium shadow-lg hover:bg-teal-700 hover:scale-105 transition-all"
+                            >
+                                <PlayCircle className="w-5 h-5" />
+                                Show Me Around
+                            </button>
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-8">
