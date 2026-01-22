@@ -156,6 +156,63 @@ const SettingsManager = () => {
                             </div>
                             <p className="text-xs text-gray-400 mt-1">Used for signatures on reports.</p>
                         </div>
+                        </div>
+
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature</label>
+                            <div className="flex items-center gap-4">
+                                {formData.signatureImage ? (
+                                    <div className="relative group">
+                                        <div className="border border-gray-200 rounded-lg p-2 bg-white">
+                                            <img
+                                                src={formData.signatureImage}
+                                                alt="Signature Preview"
+                                                className="h-16 object-contain"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleChange('signatureImage', null)}
+                                            className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-200"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="h-16 w-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-xs text-gray-400 bg-gray-50">
+                                        No Signature
+                                    </div>
+                                )}
+                                
+                                <div>
+                                    <input
+                                        type="file"
+                                        id="signature-upload"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => {
+                                                    handleChange('signatureImage', reader.result);
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                    />
+                                    <label
+                                        htmlFor="signature-upload"
+                                        className="cursor-pointer px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                                    >
+                                        <UserCog className="w-4 h-4" />
+                                        Upload Image
+                                    </label>
+                                    <p className="text-xs text-gray-400 mt-1">Recommended: Transparent PNG (200x80px)</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">This signature will appear on valid official documents.</p>
+                        </div>
                     </div>
 
                     <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
@@ -280,7 +337,7 @@ const SettingsManager = () => {
                     </div>
                 </form>
             </Card>
-        </div>
+        </div >
     );
 };
 
