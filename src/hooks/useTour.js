@@ -5,9 +5,10 @@ import "driver.js/dist/driver.css";
 export const useTour = () => {
 
     // Helper to create step
-    const step = (element, title, description) => ({
+    const step = (element, title, description, featureKey = null) => ({
         element,
-        popover: { title, description, popoverClass: 'driverjs-theme' }
+        popover: { title, description, popoverClass: 'driverjs-theme' },
+        featureKey // Custom property to track feature dependency
     });
 
     const getSteps = (role) => {
@@ -31,7 +32,7 @@ export const useTour = () => {
             step('[data-tour="sidebar-student-chat"]', 'Student Chat', 'Direct communication channel with your students for doubts and announcements.'),
             step('[data-tour="sidebar-activities"]', 'Activities & Homework', 'Assign homework, projects, and track student submissions.'),
             step('[data-tour="sidebar-log-book"]', 'Daily Log Book', 'Record daily classroom activities and lesson progress.'),
-            step('[data-tour="sidebar-prayer-chart"]', 'Prayer Tracking', 'Monitor the daily prayer records of your students.'),
+            step('[data-tour="sidebar-prayer-chart"]', 'Prayer Tracking', 'Monitor the daily prayer records of your students.', 'prayerChart'),
             step('[data-tour="sidebar-print-attendance"]', 'Reports & Registers', 'Generate and print monthly attendance registers.'),
             step('[data-tour="sidebar-question-bank"]', 'Question Bank', 'Create and manage a repository of questions for exams.'),
             step('[data-tour="sidebar-marks-entry"]', 'Marks Entry', 'Enter and update student marks for offline exams.'),
@@ -49,7 +50,7 @@ export const useTour = () => {
             step('[data-tour="sidebar-report-card"]', 'Report Card', 'Check your exam results and download detailed report cards.'),
             step('[data-tour="sidebar-leave-applications"]', 'Apply for Leave', 'Submit leave requests to your mentor directly from here.'),
             step('[data-tour="sidebar-chat-with-mentor"]', 'Chat with Mentor', 'Message your class teacher for any help or doubts.'),
-            step('[data-tour="sidebar-prayer-chart"]', 'Prayer Chart', 'Log your daily prayers to maintain your spiritual record.'),
+            step('[data-tour="sidebar-prayer-chart"]', 'Prayer Chart', 'Log your daily prayers to maintain your spiritual record.', 'prayerChart'),
             step('[data-tour="sidebar-class-history"]', 'Class History', 'View your academic history and past records.'),
             step('[data-tour="sidebar-help"]', 'Help', 'Access guides on how to use the portal.')
         ];
@@ -62,8 +63,19 @@ export const useTour = () => {
         }
     };
 
-    const startTour = (role) => {
-        const steps = getSteps(role);
+    const startTour = (role, options = {}) => {
+        let steps = getSteps(role);
+
+        // Filter based on features if provided
+        if (options.features) {
+            steps = steps.filter(s => {
+                // If step has no featureKey, keep it
+                if (!s.featureKey) return true;
+                // If it has featureKey, check if it is enabled (default to true if not specified in options, but false usually means disabled explicitly)
+                // We assume features object has boolean values like { prayerChart: false }
+                return options.features[s.featureKey] !== false;
+            });
+        }
 
         const tourDriver = driver({
             showProgress: true,
