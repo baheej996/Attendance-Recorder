@@ -18,6 +18,9 @@ const BulkTransfer = () => {
     const [transferMode, setTransferMode] = useState('exam'); // 'direct' or 'exam'
     const [selectedExamId, setSelectedExamId] = useState('');
 
+    // UI State for All Classes Mode
+    const [selectedStandard, setSelectedStandard] = useState(null);
+
     // Review State
     const [studentsToPromote, setStudentsToPromote] = useState([]); // List of student IDs
     const [processedStudents, setProcessedStudents] = useState([]); // Array of student objects with status
@@ -48,7 +51,7 @@ const BulkTransfer = () => {
     useEffect(() => {
         if (isAllClassesMode) {
             const mappings = classes
-                .sort((a, b) => a.name.localeCompare(b.name))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
                 .map(cls => {
                     const target = findNextClass(cls);
                     const count = students.filter(s => s.classId === cls.id && s.status === 'Active').length;
@@ -62,6 +65,14 @@ const BulkTransfer = () => {
         }
     }, [isAllClassesMode, classes, students]);
 
+    // Auto-select first standard when entering All Classes mode
+    useEffect(() => {
+        if (isAllClassesMode && classMappings.length > 0 && !selectedStandard) {
+            const standards = [...new Set(classMappings.map(m => m.source.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            if (standards.length > 0) setSelectedStandard(standards[0]);
+        }
+    }, [isAllClassesMode, classMappings, selectedStandard]);
+
     // PREPARE DATA FOR REVIEW STEP
     const handleNext = () => {
         if (!isAllClassesMode && (!sourceClassId || !targetClassId)) {
@@ -73,11 +84,11 @@ const BulkTransfer = () => {
             return;
         }
 
-        let studentsToProcess = [];
         let itemsToProcess = [];
 
         if (isAllClassesMode) {
             // Process ONLY classes that have a valid target and students
+            // NOTE: We rely on the global mappings, not just the filtered view
             classMappings.filter(m => m.target && m.studentCount > 0).forEach(mapping => {
                 const classStudents = students.filter(s => s.classId === mapping.source.id && s.status === 'Active');
                 itemsToProcess.push({
@@ -194,14 +205,21 @@ const BulkTransfer = () => {
         setProcessedStudents([]);
     };
 
+    // Helper: Distinct Standards
+    const distinctStandards = useMemo(() => {
+        return [...new Set(classMappings.map(m => m.source.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    }, [classMappings]);
+
+    const filteredMappings = isAllClassesMode && selectedStandard
+        ? classMappings.filter(m => m.source.name === selectedStandard)
+        : classMappings;
+
     if (step === 1) {
         return (
             <div className="max-w-4xl mx-auto space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Bulk Transfer</h2>
-                        <p className="text-gray-500">Promote students to the next academic year or batch.</p>
-                    </div>
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Bulk Transfer</h2>
+                    <p className="text-gray-500">Promote students to the next academic year or batch.</p>
                 </div>
 
                 {/* Mode Toggle */}
@@ -283,6 +301,23 @@ const BulkTransfer = () => {
                 {isAllClassesMode && (
                     <Card className="p-6">
                         <h3 className="font-semibold text-gray-900 mb-4">Academic Year Transition Plan</h3>
+
+                        {/* Standard Badges */}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {distinctStandards.map(std => (
+                                <button
+                                    key={std}
+                                    onClick={() => setSelectedStandard(std)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${selectedStandard === std
+                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                            : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    Class {std}
+                                </button>
+                            ))}
+                        </div>
+
                         <div className="border rounded-lg overflow-hidden">
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50 text-gray-500">
@@ -294,7 +329,7 @@ const BulkTransfer = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {classMappings.map((m, idx) => (
+                                    {filteredMappings.map((m, idx) => (
                                         <tr key={idx} className="hover:bg-gray-50">
                                             <td className="p-3 font-medium">{m.source.name}-{m.source.division}</td>
                                             <td className="p-3">{m.studentCount}</td>
@@ -323,6 +358,13 @@ const BulkTransfer = () => {
                                             </td>
                                         </tr>
                                     ))}
+                                    {filteredMappings.length === 0 && (
+                                        <tr>
+                                            <td colSpan="4" className="p-8 text-center text-gray-400">
+                                                No classes found for this criteria.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -333,7 +375,7 @@ const BulkTransfer = () => {
                 )}
 
                 {/* Configuration (Common) */}
-                {((!isAllClassesMode && sourceClassId && targetClassId) || (isAllClassesMode)) && (
+                {((!isAllClassesMode && sourceClassId && targetClassId) || (isAllClassesMode && classMappings.some(m => m.studentCount > 0))) && (
                     <Card className="p-6 animate-in slide-in-from-bottom-2 duration-300">
                         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                             <Filter className="w-4 h-4 text-gray-500" />
