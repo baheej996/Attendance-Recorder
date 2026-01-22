@@ -156,7 +156,6 @@ const SettingsManager = () => {
                             </div>
                             <p className="text-xs text-gray-400 mt-1">Used for signatures on reports.</p>
                         </div>
-                        </div>
 
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature</label>
@@ -175,7 +174,7 @@ const SettingsManager = () => {
                                             onClick={() => handleChange('signatureImage', null)}
                                             className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-200"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                         </button>
                                     </div>
                                 ) : (
@@ -183,7 +182,7 @@ const SettingsManager = () => {
                                         No Signature
                                     </div>
                                 )}
-                                
+
                                 <div>
                                     <input
                                         type="file"
