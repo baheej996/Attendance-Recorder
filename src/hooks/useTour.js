@@ -28,15 +28,15 @@ export const useTour = () => {
         const mentorSteps = [
             step('header', 'Mentor Dashboard', 'This is your daily workspace for managing your class and students.'),
             step('[data-tour="sidebar-attendance"]', 'Attendance Recorder', 'Mark daily attendance for your students with a single click.'),
-            step('[data-tour="sidebar-leave-requests"]', 'Leave Management', 'Review and approve/reject leave applications from your students.'),
-            step('[data-tour="sidebar-student-chat"]', 'Student Chat', 'Direct communication channel with your students for doubts and announcements.'),
+            step('[data-tour="sidebar-leaves"]', 'Leave Management', 'Review and approve/reject leave applications from your students.'),
+            step('[data-tour="sidebar-chat"]', 'Student Chat', 'Direct communication channel with your students for doubts and announcements.'),
             step('[data-tour="sidebar-activities"]', 'Activities & Homework', 'Assign homework, projects, and track student submissions.'),
-            step('[data-tour="sidebar-log-book"]', 'Daily Log Book', 'Record daily classroom activities and lesson progress.'),
-            step('[data-tour="sidebar-prayer-chart"]', 'Prayer Tracking', 'Monitor the daily prayer records of your students.', 'prayerChart'),
-            step('[data-tour="sidebar-print-attendance"]', 'Reports & Registers', 'Generate and print monthly attendance registers.'),
-            step('[data-tour="sidebar-question-bank"]', 'Question Bank', 'Create and manage a repository of questions for exams.'),
-            step('[data-tour="sidebar-marks-entry"]', 'Marks Entry', 'Enter and update student marks for offline exams.'),
-            step('[data-tour="sidebar-class-stats"]', 'Class Statistics', 'View analytical insights about your class performance.'),
+            step('[data-tour="sidebar-logbook"]', 'Daily Log Book', 'Record daily classroom activities and lesson progress.'),
+            step('[data-tour="sidebar-prayer"]', 'Prayer Tracking', 'Monitor the daily prayer records of your students.', 'prayerChart'),
+            step('[data-tour="sidebar-print"]', 'Reports & Registers', 'Generate and print monthly attendance registers.'),
+            step('[data-tour="sidebar-questions"]', 'Question Bank', 'Create and manage a repository of questions for exams.'),
+            step('[data-tour="sidebar-marks"]', 'Marks Entry', 'Enter and update student marks for offline exams.'),
+            step('[data-tour="sidebar-stats"]', 'Class Statistics', 'View analytical insights about your class performance.'),
             step('[data-tour="sidebar-batches"]', 'Batch Info', 'View details about the batches you handle.'),
             step('[data-tour="sidebar-settings"]', 'Profile Settings', 'Update your profile and application preferences.'),
             step('[data-tour="sidebar-help"]', 'Help Center', 'Need assistance? access guides here.')
@@ -52,6 +52,7 @@ export const useTour = () => {
             step('[data-tour="sidebar-chat-with-mentor"]', 'Chat with Mentor', 'Message your class teacher for any help or doubts.'),
             step('[data-tour="sidebar-prayer-chart"]', 'Prayer Chart', 'Log your daily prayers to maintain your spiritual record.', 'prayerChart'),
             step('[data-tour="sidebar-class-history"]', 'Class History', 'View your academic history and past records.'),
+            step('[data-tour="sidebar-leaderboard"]', 'Leaderboard', 'Check your academic rank and performance compared to peers.'),
             step('[data-tour="sidebar-help"]', 'Help', 'Access guides on how to use the portal.')
         ];
 

@@ -85,7 +85,7 @@ const MentorDashboard = () => {
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                data-tour={`sidebar-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                                data-tour={`sidebar-${item.id}`}
                                 className={clsx(
                                     "flex items-center justify-between px-4 py-3 rounded-lg transition-colors font-medium",
                                     isActive
