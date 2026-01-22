@@ -4,26 +4,54 @@ import "driver.js/dist/driver.css";
 
 export const useTour = () => {
 
+    // Helper to create step
+    const step = (element, title, description) => ({
+        element,
+        popover: { title, description, popoverClass: 'driverjs-theme' }
+    });
+
     const getSteps = (role) => {
         const adminSteps = [
-            { element: 'header', popover: { title: 'Admin Portal', description: 'Welcome to your command center. Access all school management tools here.' } },
-            { element: 'nav', popover: { title: 'Navigation', description: 'Switch between Dashboard, Classes, Mentors, and Settings.' } },
-            { element: '[href*="bulk-transfer"]', popover: { title: 'New: Bulk Transfer', description: 'Promote students to the next academic year in bulk.' } },
-            { element: '.grid-cols-3', popover: { title: 'Quick Stats', description: 'See live counts of Classes, Mentors, and Students.' } },
+            step('header', 'Admin Portal', 'Welcome to the main command center. From here you can oversee the entire institution.'),
+            step('[data-tour="sidebar-overview"]', 'Dashboard Overview', 'View real-time statistics of students, mentors, and classes.'),
+            step('[data-tour="sidebar-classes"]', 'Class Management', 'Create new classes, manage divisions, and assign class teachers.'),
+            step('[data-tour="sidebar-mentors"]', 'Mentor Management', 'Add new mentors, assign them to classes, and track their performance.'),
+            step('[data-tour="sidebar-students"]', 'Student Management', 'Register new students, manage admissions, and update student profiles.'),
+            step('[data-tour="sidebar-bulk-transfer"]', 'Bulk Transfer', 'Promote batches of students to the next academic year (e.g., Class 1 to Class 2).'),
+            step('[data-tour="sidebar-subjects"]', 'Subject Configuration', 'Define the subjects taught in your institution and assign them to classes.'),
+            step('[data-tour="sidebar-exams"]', 'Exam Manager', 'Create exam schedules, publish results, and manage grading systems.'),
+            step('[data-tour="sidebar-settings"]', 'System Settings', 'Configure global application settings and preferences.'),
+            step('[data-tour="sidebar-help"]', 'Help & Support', 'Access guides (like this one!) and troubleshooting resources.')
         ];
 
         const mentorSteps = [
-            { element: 'header', popover: { title: 'Mentor Dashboard', description: 'Manage your class, attendance, and student performance.' } },
-            { element: '[href*="attendance"]', popover: { title: 'Attendance', description: 'Mark daily attendance for your students.' } },
-            { element: '[href*="activities"]', popover: { title: 'Homework & Activities', description: 'Assign and grade homework.' } },
-            { element: '[href*="chat"]', popover: { title: 'Chat', description: 'Communicate with your students directly.' } },
+            step('header', 'Mentor Dashboard', 'This is your daily workspace for managing your class and students.'),
+            step('[data-tour="sidebar-attendance"]', 'Attendance Recorder', 'Mark daily attendance for your students with a single click.'),
+            step('[data-tour="sidebar-leave-requests"]', 'Leave Management', 'Review and approve/reject leave applications from your students.'),
+            step('[data-tour="sidebar-student-chat"]', 'Student Chat', 'Direct communication channel with your students for doubts and announcements.'),
+            step('[data-tour="sidebar-activities"]', 'Activities & Homework', 'Assign homework, projects, and track student submissions.'),
+            step('[data-tour="sidebar-log-book"]', 'Daily Log Book', 'Record daily classroom activities and lesson progress.'),
+            step('[data-tour="sidebar-prayer-chart"]', 'Prayer Tracking', 'Monitor the daily prayer records of your students.'),
+            step('[data-tour="sidebar-print-attendance"]', 'Reports & Registers', 'Generate and print monthly attendance registers.'),
+            step('[data-tour="sidebar-question-bank"]', 'Question Bank', 'Create and manage a repository of questions for exams.'),
+            step('[data-tour="sidebar-marks-entry"]', 'Marks Entry', 'Enter and update student marks for offline exams.'),
+            step('[data-tour="sidebar-class-stats"]', 'Class Statistics', 'View analytical insights about your class performance.'),
+            step('[data-tour="sidebar-batches"]', 'Batch Info', 'View details about the batches you handle.'),
+            step('[data-tour="sidebar-settings"]', 'Profile Settings', 'Update your profile and application preferences.'),
+            step('[data-tour="sidebar-help"]', 'Help Center', 'Need assistance? access guides here.')
         ];
 
         const studentSteps = [
-            { element: 'header', popover: { title: 'Student Portal', description: 'Track your progress and stay updated.' } },
-            { element: '.recharts-responsive-container', popover: { title: 'Attendance Chart', description: 'Monitor your attendance percentage.' } },
-            { element: '[href*="activities"]', popover: { title: 'My Activities', description: 'View pending homework and submit your work.' } },
-            { element: '[href*="exams"]', popover: { title: 'Online Exams', description: 'Take scheduled exams and view results.' } },
+            step('header', 'Student Portal', 'Your personal space to track attendance, homework, and exams.'),
+            step('[data-tour="sidebar-overview"]', 'Dashboard', 'See your attendance percentage, rank, and recent updates at a glance.'),
+            step('[data-tour="sidebar-activities"]', 'Activities', 'View and submit your homework assignments. Check what is pending.'),
+            step('[data-tour="sidebar-online-exams"]', 'Online Exams', 'Participate in scheduled online exams and view past papers.'),
+            step('[data-tour="sidebar-report-card"]', 'Report Card', 'Check your exam results and download detailed report cards.'),
+            step('[data-tour="sidebar-leave-applications"]', 'Apply for Leave', 'Submit leave requests to your mentor directly from here.'),
+            step('[data-tour="sidebar-chat-with-mentor"]', 'Chat with Mentor', 'Message your class teacher for any help or doubts.'),
+            step('[data-tour="sidebar-prayer-chart"]', 'Prayer Chart', 'Log your daily prayers to maintain your spiritual record.'),
+            step('[data-tour="sidebar-class-history"]', 'Class History', 'View your academic history and past records.'),
+            step('[data-tour="sidebar-help"]', 'Help', 'Access guides on how to use the portal.')
         ];
 
         switch (role) {
@@ -40,8 +68,13 @@ export const useTour = () => {
         const tourDriver = driver({
             showProgress: true,
             steps: steps,
-            overlayColor: 'red',
-            onDestroyed: () => console.log('Tour finished') // Optional cleanup
+            overlayColor: 'rgba(0,0,0,0.6)', // Darker overlay
+            animate: true,
+            allowClose: true,
+            doneBtnText: 'Finish',
+            nextBtnText: 'Next',
+            prevBtnText: 'Previous',
+            onDestroyed: () => console.log('Tour finished')
         });
 
         tourDriver.drive();
