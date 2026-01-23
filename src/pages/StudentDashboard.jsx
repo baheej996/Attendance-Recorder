@@ -16,8 +16,10 @@ import PrayerChart from '../components/student/PrayerChart';
 import ClassHistory from '../components/student/ClassHistory';
 import StudentLeave from './StudentLeave';
 import StudentChat from './StudentChat';
+import StudentStarView from '../components/student/StudentStarView';
 
 import Help from './Help';
+import { Star } from 'lucide-react';
 
 const COLORS = ['#10B981', '#EF4444'];
 
@@ -68,6 +70,7 @@ const StudentDashboard = () => {
         { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart', hidden: !isPrayerChartEnabled },
         { icon: History, label: 'Class History', path: '/student/history' },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
+        { icon: Star, label: 'Star of the Month', path: '/student/star-student' },
         { icon: Info, label: 'Help', path: '/student/help' },
     ].filter(item => !item.hidden);
 
@@ -273,6 +276,7 @@ const StudentDashboard = () => {
                     <Route path="/history" element={<ClassHistory />} />
                     <Route path="/results" element={<StudentResultView />} />
                     <Route path="/leaderboard" element={<Leaderboard />} />
+                    <Route path="/star-student" element={<StudentStarView />} />
                     <Route path="/help" element={<Help />} />
                 </Routes>
             </main>

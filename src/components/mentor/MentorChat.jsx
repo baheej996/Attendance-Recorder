@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell, Trash2 } from 'lucide-react';
 import { PollCard } from '../chat/PollCard';
+import { StarCard } from '../chat/StarCard';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { StudentProfileModal } from './StudentProfileModal';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 
 const MentorChat = () => {
+    const location = useLocation();
     const {
         currentUser,
         students,
@@ -27,6 +30,7 @@ const MentorChat = () => {
     const [activeTab, setActiveTab] = useState('inbox');
     const [selectedStudentId, setSelectedStudentId] = useState(null);
     const [messageInput, setMessageInput] = useState('');
+    const [starCardData, setStarCardData] = useState(null); // New state for Star Card
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('All'); // 'All' or classId
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -58,6 +62,21 @@ const MentorChat = () => {
         }
     }, [currentMessages]);
 
+    // Handle initial state from navigation (Encourage feature)
+    useEffect(() => {
+        if (location.state) {
+            if (location.state.selectedStudentId) {
+                setSelectedStudentId(location.state.selectedStudentId);
+            }
+            if (location.state.initialMessage) {
+                setMessageInput(location.state.initialMessage);
+            }
+            if (location.state.starData) {
+                setStarCardData(location.state.starData);
+            }
+        }
+    }, [location.state]);
+
     // Mark messages as read when opening conversation
     useEffect(() => {
         if (selectedStudentId) {
@@ -79,9 +98,21 @@ const MentorChat = () => {
             senderId: currentUser.id,
             receiverId: selectedStudentId,
             classId: selectedStudent?.classId,
-            details: messageInput,
             type: 'text'
         });
+
+        // If there's a Star Card pending, send it as a separate message
+        if (starCardData) {
+            sendMessage({
+                senderId: currentUser.id,
+                receiverId: selectedStudentId,
+                classId: selectedStudent?.classId,
+                details: JSON.stringify(starCardData),
+                type: 'star-card'
+            });
+            setStarCardData(null);
+        }
+
         setMessageInput('');
     };
 
@@ -334,6 +365,8 @@ const MentorChat = () => {
                                                 >
                                                     {msg.type === 'reminder' ? (
                                                         <PollCard data={msg.details} isSender={msg.senderId === currentUser.id} />
+                                                    ) : msg.type === 'star-card' ? (
+                                                        <StarCard data={typeof msg.details === 'string' ? JSON.parse(msg.details) : msg.details} />
                                                     ) : (
                                                         msg.details
                                                     )}
@@ -348,6 +381,30 @@ const MentorChat = () => {
                                         ))
                                     )}
                                 </div>
+
+
+
+                                {/* Preview of Star Card if pending */}
+                                {starCardData && (
+                                    <div className="mx-4 mb-2 p-3 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white rounded-md shadow-sm text-yellow-500">
+                                                <Star className="w-5 h-5 fill-yellow-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-indigo-900">Star Card Attached</p>
+                                                <p className="text-xs text-indigo-600">Will be sent with your message</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setStarCardData(null)}
+                                            className="text-gray-400 hover:text-red-500"
+                                        >
+                                            <XCircle className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
 
                                 <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-100 flex gap-2">
                                     <Button
@@ -424,7 +481,8 @@ const MentorChat = () => {
                         )}
                     </div>
                 </div>
-            )}
+            )
+            }
 
 
             <ConfirmationModal
@@ -442,7 +500,7 @@ const MentorChat = () => {
                 isOpen={isProfileModalOpen}
                 onClose={() => setIsProfileModalOpen(false)}
             />
-        </div>
+        </div >
     );
 };
 

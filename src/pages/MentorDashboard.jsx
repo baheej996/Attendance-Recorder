@@ -15,6 +15,7 @@ import MentorLeaveRequests from '../components/mentor/MentorLeaveRequests';
 import MentorChat from '../components/mentor/MentorChat';
 import Batches from '../components/mentor/Batches';
 import MentorSettings from '../components/mentor/MentorSettings';
+import StarOfTheMonth from '../components/mentor/StarOfTheMonth';
 import { MENTOR_NAV_ITEMS } from '../config/mentorNavItems';
 import { useData } from '../contexts/DataContext';
 
@@ -131,6 +132,7 @@ const MentorDashboard = () => {
                     <Route path="/questions" element={<QuestionBank />} />
                     <Route path="/marks" element={<MarksEntry />} />
                     <Route path="/stats" element={<MentorStats />} />
+                    <Route path="/star-student" element={<StarOfTheMonth />} />
                     <Route path="/batches" element={<Batches />} />
                     <Route path="/settings" element={<MentorSettings />} />
                     <Route path="/help" element={<Help />} />

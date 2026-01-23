@@ -4,7 +4,9 @@ import { Button } from '../components/ui/Button';
 import { MessageSquare, Send, User, Lock, Info, Award, Phone, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
+
 import { PollCard } from '../components/chat/PollCard';
+import { StarCard } from '../components/chat/StarCard';
 
 const StudentChat = () => {
     const { currentUser, mentors, chatMessages, chatSettings, sendMessage, markMessagesAsRead, classes } = useData();
@@ -217,6 +219,8 @@ const StudentChat = () => {
                                     >
                                         {msg.type === 'reminder' ? (
                                             <PollCard data={msg.details} isSender={msg.senderId === currentUser.id} />
+                                        ) : msg.type === 'star-card' ? (
+                                            <StarCard data={typeof msg.details === 'string' ? JSON.parse(msg.details) : msg.details} />
                                         ) : (
                                             msg.details
                                         )}

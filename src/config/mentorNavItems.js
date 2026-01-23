@@ -11,7 +11,8 @@ import {
     CalendarDays,
     Users,
     Info,
-    Settings
+    Settings,
+    Star
 } from 'lucide-react';
 
 export const MENTOR_NAV_ITEMS = [
@@ -24,6 +25,7 @@ export const MENTOR_NAV_ITEMS = [
     { id: 'print', icon: Printer, label: 'Print Attendance', path: '/mentor/print' },
     { id: 'questions', icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
     { id: 'marks', icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
+    { id: 'star-student', icon: Star, label: 'Star of the Month', path: '/mentor/star-student' },
     { id: 'stats', icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
     { id: 'batches', icon: Users, label: 'Batches', path: '/mentor/batches' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/mentor/settings' },
