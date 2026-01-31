@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell, Trash2 } from 'lucide-react';
+import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell, Trash2, Star } from 'lucide-react';
 import { PollCard } from '../chat/PollCard';
 import { StarCard } from '../chat/StarCard';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
@@ -98,6 +98,7 @@ const MentorChat = () => {
             senderId: currentUser.id,
             receiverId: selectedStudentId,
             classId: selectedStudent?.classId,
+            details: messageInput,
             type: 'text'
         });
 

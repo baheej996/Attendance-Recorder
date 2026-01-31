@@ -6,7 +6,10 @@ const Landing = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4">
             <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 max-w-4xl w-full">
-                <div className="text-center mb-12">
+                <div className="text-center mb-12 relative">
+                    <Link to="/" className="absolute left-0 top-0 text-indigo-200 hover:text-white transition-colors flex items-center gap-1 text-sm font-medium">
+                        &larr; Back to Home
+                    </Link>
                     <div className="flex justify-center mb-4">
                         <LayoutGrid className="w-16 h-16 text-indigo-600" />
                     </div>
@@ -15,7 +18,7 @@ const Landing = () => {
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-6">
-                    <Link to="/admin" className="group relative p-6 bg-white rounded-xl border-2 border-transparent hover:border-indigo-500 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Link to="/login-portal?role=admin" className="group relative p-6 bg-white rounded-xl border-2 border-transparent hover:border-indigo-500 shadow-lg hover:shadow-xl transition-all duration-300">
                         <div className="flex flex-col items-center">
                             <div className="p-4 bg-indigo-100 rounded-full mb-4 group-hover:bg-indigo-600 transition-colors">
                                 <UserCog className="w-8 h-8 text-indigo-600 group-hover:text-white" />
@@ -25,7 +28,7 @@ const Landing = () => {
                         </div>
                     </Link>
 
-                    <Link to="/mentor" className="group relative p-6 bg-white rounded-xl border-2 border-transparent hover:border-indigo-500 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Link to="/login-portal?role=mentor" className="group relative p-6 bg-white rounded-xl border-2 border-transparent hover:border-indigo-500 shadow-lg hover:shadow-xl transition-all duration-300">
                         <div className="flex flex-col items-center">
                             <div className="p-4 bg-purple-100 rounded-full mb-4 group-hover:bg-purple-600 transition-colors">
                                 <Users className="w-8 h-8 text-purple-600 group-hover:text-white" />
@@ -35,7 +38,7 @@ const Landing = () => {
                         </div>
                     </Link>
 
-                    <Link to="/student" className="group relative p-6 bg-white rounded-xl border-2 border-transparent hover:border-indigo-500 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Link to="/login-portal?role=student" className="group relative p-6 bg-white rounded-xl border-2 border-transparent hover:border-indigo-500 shadow-lg hover:shadow-xl transition-all duration-300">
                         <div className="flex flex-col items-center">
                             <div className="p-4 bg-pink-100 rounded-full mb-4 group-hover:bg-pink-600 transition-colors">
                                 <GraduationCap className="w-8 h-8 text-pink-600 group-hover:text-white" />

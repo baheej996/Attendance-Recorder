@@ -2,17 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
-import { Star, Calendar, Settings, MessageSquare, Trophy, Award, CheckCircle, XCircle } from 'lucide-react';
+import { Star, Calendar, Settings, MessageSquare, Trophy, Award, CheckCircle, XCircle, Users, Unlock, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isAfter } from 'date-fns';
 
 const StarOfTheMonth = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, classes, institutionSettings, updateInstitutionSettings } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, classes, institutionSettings, updateInstitutionSettings, starDeclarations, toggleStarDeclaration } = useData();
     const navigate = useNavigate();
 
     // State for selectors
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth()); // 0-11
+    const [selectedClassId, setSelectedClassId] = useState('All'); // New: Class Filter
 
     // Config State - Derived from institutionSettings
     const config = institutionSettings?.starConfig || {
@@ -43,7 +44,12 @@ const StarOfTheMonth = () => {
         if (!mentorClassIds.length) return [];
 
         // 1. Filter students in mentor's classes
-        const classStudents = students.filter(s => mentorClassIds.includes(s.classId));
+        let classStudents = students.filter(s => mentorClassIds.includes(s.classId));
+
+        // Apply Class Filter
+        if (selectedClassId !== 'All') {
+            classStudents = classStudents.filter(s => s.classId === selectedClassId);
+        }
 
         // 2. Determine date range for the selected month
         const startDate = startOfMonth(new Date(selectedYear, selectedMonth));
@@ -167,12 +173,59 @@ const StarOfTheMonth = () => {
     const winners = results.filter(r => r.finalScore === maxScore && r.finalScore > 0);
     const others = results.filter(r => r.finalScore < maxScore || r.finalScore === 0);
 
+    // Declaration Logic
+    const isMonthCompleted = isAfter(new Date(), endOfMonth(new Date(selectedYear, selectedMonth)));
+
+    // Check declaration status for the SELECTED class (if specific class selected)
+    const getDeclarationStatus = () => {
+        if (selectedClassId === 'All') return null;
+        const decl = starDeclarations.find(d =>
+            d.classId === selectedClassId &&
+            d.month === selectedMonth &&
+            d.year === selectedYear
+        );
+        // If month is completed, it's auto-declared unless explicitly hidden? 
+        // Requirement: "website will declare it automatically when a month completes"
+        // But mentor needs to declare manually BEFORE finishing.
+
+        const isManuallyDeclared = decl?.status === 'Declared';
+        const isVisible = isMonthCompleted || isManuallyDeclared;
+
+        return { isManuallyDeclared, isVisible, isMonthCompleted };
+    };
+
+    const statusInfo = getDeclarationStatus();
+
+    const handleDeclaration = () => {
+        if (selectedClassId === 'All') return;
+        toggleStarDeclaration(selectedClassId, selectedMonth, selectedYear, 'Declared');
+    };
+
+    const handleUndoDeclaration = () => {
+        if (selectedClassId === 'All') return;
+        toggleStarDeclaration(selectedClassId, selectedMonth, selectedYear, 'Hidden'); // Or remove
+    };
+
     const handleEncourage = (student) => {
+        // Construct Star Data to be shared
+        const starData = {
+            studentName: student.name,
+            className: student.className,
+            scores: {
+                attendance: student.scores.attendance,
+                activities: student.scores.activities,
+                prayer: student.scores.prayer
+            },
+            month: months[selectedMonth],
+            year: selectedYear
+        };
+
         // Navigate to chat with state
         navigate('/mentor/chat', {
             state: {
                 selectedStudentId: student.id,
-                initialMessage: `Congratulations ${student.name}! You are the Star of the Month for ${months[selectedMonth]}! 🌟 Keep it up!`
+                initialMessage: `Congratulations ${student.name}! You are the Star of the Month for ${months[selectedMonth]}! 🌟 Keep it up!`,
+                starData: starData
             }
         });
     };
@@ -190,7 +243,24 @@ const StarOfTheMonth = () => {
                     <p className="text-gray-500">Celebrate your top performing students</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                    {/* Class Filter */}
+                    <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-full sm:w-auto">
+                        <div className="flex items-center px-2 text-gray-500 border-r border-gray-200">
+                            <Users className="w-4 h-4" />
+                        </div>
+                        <select
+                            value={selectedClassId}
+                            onChange={(e) => setSelectedClassId(e.target.value)}
+                            className="p-2 text-sm font-medium text-gray-900 bg-transparent border-none focus:ring-0 cursor-pointer min-w-[150px]"
+                        >
+                            <option value="All">All Classes</option>
+                            {mentorClassIds.map(cid => {
+                                const cls = classes.find(c => c.id === cid);
+                                return cls ? <option key={cid} value={cid}>{cls.name} - {cls.division}</option> : null;
+                            })}
+                        </select>
+                    </div>
                     <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                         <select
                             value={selectedMonth}
@@ -256,6 +326,51 @@ const StarOfTheMonth = () => {
                                 className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
                             />
                         </label>
+                    </div>
+                </div>
+            )}
+
+            {/* Declaration Controls - Only show if a specific class is selected */}
+            {selectedClassId !== 'All' && statusInfo && (
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${statusInfo.isVisible ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                            {statusInfo.isVisible ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">
+                                {statusInfo.isVisible ? 'Results are Visible' : 'Results are Hidden'}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                                {statusInfo.isMonthCompleted
+                                    ? "This month has ended, so results are automatically visible."
+                                    : statusInfo.isManuallyDeclared
+                                        ? "You have manually declared these results."
+                                        : "Students cannot see these results yet."}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {!statusInfo.isMonthCompleted && (
+                            <>
+                                {!statusInfo.isManuallyDeclared ? (
+                                    <button
+                                        onClick={handleDeclaration}
+                                        className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                                    >
+                                        <CheckCircle className="w-4 h-4" /> Declare Results
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={handleUndoDeclaration}
+                                        className="px-4 py-2 bg-white text-red-600 border border-red-200 font-medium rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2"
+                                    >
+                                        <XCircle className="w-4 h-4" /> Undo Declaration
+                                    </button>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -342,9 +457,9 @@ const StarOfTheMonth = () => {
                                 <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                index === 1 ? 'bg-gray-100 text-gray-700' :
-                                                    index === 2 ? 'bg-orange-100 text-orange-700' :
-                                                        'text-gray-500'
+                                            index === 1 ? 'bg-gray-100 text-gray-700' :
+                                                index === 2 ? 'bg-orange-100 text-orange-700' :
+                                                    'text-gray-500'
                                             }`}>
                                             {index + 1}
                                         </div>

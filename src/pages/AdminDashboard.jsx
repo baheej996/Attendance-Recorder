@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell } from 'lucide-react';
 import { clsx } from 'clsx';
 import ClassManagement from './components/ClassManagement';
 import MentorManagement from './components/MentorManagement';
@@ -8,6 +8,7 @@ import StudentManagement from './components/StudentManagement';
 import SubjectManager from '../components/admin/SubjectManager';
 import ExamManager from '../components/admin/ExamManager';
 import BulkTransfer from '../components/admin/BulkTransfer';
+import AdminRequests from './components/AdminRequests'; // New
 import SettingsManager from './components/SettingsManager';
 import Help from './Help';
 import { useData } from '../contexts/DataContext';
@@ -17,7 +18,7 @@ import { AdminAuthModal } from '../components/ui/AdminAuthModal';
 import { Card, CardHeader } from '../components/ui/Card';
 
 const DashboardHome = () => {
-    const { classes, mentors, students, resetData } = useData();
+    const { classes, mentors, students, resetData, adminRequests } = useData();
     const { showAlert } = useUI();
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [isAdminAuthOpen, setIsAdminAuthOpen] = useState(false);
@@ -88,7 +89,16 @@ const DashboardHome = () => {
                         <h3 className="text-2xl font-bold text-gray-900">{students.length}</h3>
                     </div>
                 </Card>
-            </div>
+                <Card className="flex items-center gap-4 border-l-4 border-l-yellow-500">
+                    <div className="p-3 bg-yellow-50 rounded-full text-yellow-600">
+                        <Bell className="w-8 h-8" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-500 font-medium">Pending Requests</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{adminRequests?.filter(r => r.status === 'Pending').length || 0}</h3>
+                    </div>
+                </Card>
+            </div >
 
             <div className="mt-12 bg-red-50 border border-red-100 rounded-xl p-6">
                 <h3 className="text-lg font-bold text-red-700 flex items-center gap-2 mb-2">
@@ -106,7 +116,7 @@ const DashboardHome = () => {
                     Delete All Data
                 </button>
             </div>
-        </div>
+        </div >
     );
 };
 
@@ -123,7 +133,9 @@ const AdminDashboard = () => {
             case 'students': return <StudentManagement />;
             case 'subjects': return <SubjectManager />;
             case 'exams': return <ExamManager />;
+
             case 'bulk-transfer': return <BulkTransfer />;
+            case 'requests': return <AdminRequests />; // New
             case 'settings': return <SettingsManager />;
             case 'help': return <Help />;
             default: return <DashboardHome />;
@@ -167,6 +179,7 @@ const AdminDashboard = () => {
                                 <SidebarItem icon={Users} label="Mentors" active={activeTab === 'mentors'} onClick={() => setActiveTab('mentors')} />
                                 <SidebarItem icon={UserCheck} label="Students" active={activeTab === 'students'} onClick={() => setActiveTab('students')} />
                                 <SidebarItem icon={ArrowRightLeft} label="Bulk Transfer" active={activeTab === 'bulk-transfer'} onClick={() => setActiveTab('bulk-transfer')} />
+                                <SidebarItem icon={Bell} label="Requests" active={activeTab === 'requests'} onClick={() => setActiveTab('requests')} />
                             </nav>
                         </div>
 

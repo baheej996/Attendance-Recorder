@@ -12,7 +12,7 @@ import { clsx } from 'clsx';
 import { Modal } from '../../components/ui/Modal';
 
 const StudentManagement = () => {
-    const { students, addStudent, deleteStudent, deleteStudents, setStudents, classes, updateStudent, deleteAllStudents } = useData();
+    const { students, addStudent, deleteStudent, deleteStudents, classes, updateStudent, deleteAllStudents } = useData();
     const { showAlert } = useUI();
     const [formData, setFormData] = useState({
         name: '',
@@ -158,9 +158,7 @@ const StudentManagement = () => {
 
     const handleTransfer = (studentId, newClassId) => {
         if (!newClassId) return;
-        setStudents(prev => prev.map(s =>
-            s.id === studentId ? { ...s, classId: newClassId } : s
-        ));
+        updateStudent(studentId, { classId: newClassId });
     };
 
     const confirmDelete = (id) => {
@@ -408,7 +406,7 @@ const StudentManagement = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {paginatedStudents.map(student => {
-                                const studentClass = classes.find(c => c.id === student.classId);
+                                const studentClass = classes?.find(c => c.id === student.classId);
                                 const isSelected = selectedIds.includes(student.id);
 
                                 return (

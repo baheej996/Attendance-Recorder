@@ -12,11 +12,15 @@ const LoginPage = () => {
     const location = useLocation();
     const { mentors, students, login, validateAdmin } = useData();
 
-    // Check for ?portal=student query param
+    // Check for ?role=... query param
     const query = new URLSearchParams(location.search);
-    const isStudentPortal = query.get('portal') === 'student';
+    const roleParam = query.get('role');
+    const isStudentPortal = roleParam === 'student'; // Keep for backward compatibility if needed, or update logic
 
-    const [role, setRole] = useState(isStudentPortal ? 'student' : 'admin'); // admin, mentor, student
+    const VALID_ROLES = ['admin', 'mentor', 'student'];
+    const initialRole = VALID_ROLES.includes(roleParam) ? roleParam : 'admin';
+
+    const [role, setRole] = useState(initialRole);
     const [formData, setFormData] = useState({
         username: '',
         password: '',

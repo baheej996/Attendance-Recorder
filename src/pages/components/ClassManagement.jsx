@@ -370,6 +370,12 @@ const ClassManagement = () => {
                                             <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold">
                                                 Div {cls.division}
                                             </span>
+                                            <div className="flex items-center gap-1.5 mt-2 text-gray-500">
+                                                <Users className="w-3.5 h-3.5" />
+                                                <span className="text-xs font-medium">
+                                                    {students.filter(s => s.classId === cls.id).length} Students
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
