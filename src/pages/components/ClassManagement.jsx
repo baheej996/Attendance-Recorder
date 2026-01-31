@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Plus, Trash2, Edit, Users, X, Search } from 'lucide-react';
+import { Plus, Trash2, Edit, Users, X, Search, Settings } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
@@ -76,8 +76,39 @@ const ClassAllotmentModal = ({ isOpen, onClose, classItem, mentors, updateMentor
     );
 };
 
+const ClassSettingsModal = ({ isOpen, onClose, settings, updateSettings }) => {
+    const [limit, setLimit] = useState(settings.maxStudentsPerClass || '');
+
+    const handleSave = () => {
+        updateSettings({ maxStudentsPerClass: limit ? Number(limit) : null });
+        onClose();
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Class Settings">
+            <div className="space-y-4">
+                <p className="text-sm text-gray-500">Configure global settings for classes.</p>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Maximum Students per Class</label>
+                    <Input
+                        type="number"
+                        placeholder="Unlimited"
+                        value={limit}
+                        onChange={(e) => setLimit(e.target.value)}
+                        description="Leave empty for no limit. A warning will be shown if this limit is exceeded."
+                    />
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="secondary" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSave}>Save Settings</Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 const ClassManagement = () => {
-    const { classes, addClass, deleteClass, deleteClasses, deleteAllClasses, updateMentor, mentors, students } = useData();
+    const { classes, addClass, deleteClass, deleteClasses, deleteAllClasses, updateMentor, mentors, students, institutionSettings, updateInstitutionSettings } = useData();
     const { showAlert } = useUI();
     const [formData, setFormData] = useState({ name: '', division: '' });
     const [editingId, setEditingId] = useState(null);
@@ -85,6 +116,7 @@ const ClassManagement = () => {
     const [error, setError] = useState('');
     const [deleteConfig, setDeleteConfig] = useState({ isOpen: false, id: null, type: 'single' });
     const [allotmentConfig, setAllotmentConfig] = useState({ isOpen: false, classItem: null });
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -247,6 +279,13 @@ const ClassManagement = () => {
                 updateMentor={updateMentor}
             />
 
+            <ClassSettingsModal
+                isOpen={settingsOpen}
+                onClose={() => setSettingsOpen(false)}
+                settings={institutionSettings}
+                updateSettings={updateInstitutionSettings}
+            />
+
             <Modal
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
@@ -309,6 +348,9 @@ const ClassManagement = () => {
                             </div>
                             <div className="flex gap-2">
                                 <BulkUploadButton onUploadSuccess={handleBulkUpload} type="class" />
+                                <Button className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200" onClick={() => setSettingsOpen(true)} title="Settings">
+                                    <Settings className="w-4 h-4" />
+                                </Button>
                                 <Button onClick={handleOpenModal} className="flex items-center gap-2 whitespace-nowrap">
                                     <Plus className="w-4 h-4" />
                                     Add Class

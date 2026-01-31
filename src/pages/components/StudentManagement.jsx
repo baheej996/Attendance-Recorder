@@ -12,7 +12,7 @@ import { clsx } from 'clsx';
 import { Modal } from '../../components/ui/Modal';
 
 const StudentManagement = () => {
-    const { students, addStudent, deleteStudent, deleteStudents, classes, updateStudent, deleteAllStudents } = useData();
+    const { students, addStudent, deleteStudent, deleteStudents, classes, updateStudent, deleteAllStudents, institutionSettings } = useData();
     const { showAlert } = useUI();
     const [formData, setFormData] = useState({
         name: '',
@@ -28,6 +28,7 @@ const StudentManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [error, setError] = useState('');
     const [deleteConfig, setDeleteConfig] = useState({ isOpen: false, id: null, type: 'single' });
+    const [warningConfig, setWarningConfig] = useState({ isOpen: false, message: '' }); // New state for warnings
     const [selectedIds, setSelectedIds] = useState([]);
 
     // Pagination State
@@ -65,6 +66,22 @@ const StudentManagement = () => {
             }
 
             const isDup = students.some(s => s.registerNo.toLowerCase() === rowReg.toLowerCase());
+
+            // Check Class Limit
+            const currentClassCount = students.filter(s => s.classId === targetClass.id).length;
+            // We need to account for students added in this very bulk batch too... strictly speaking.
+            // But complex to track state in loop. Let's just check versus initial + added in this loop?
+            // Simplified: check versus current DB state. If user uploads 100 students, it might exceed.
+            // Better: skip if already full.
+            const limit = institutionSettings?.maxStudentsPerClass;
+            const isFull = limit && currentClassCount >= limit;
+
+            if (isFull) {
+                errors++;
+                errorDetails.push(`Row ${rowNum} (${rowName}): Class '${rowClass}-${rowDiv}' is full (Max: ${limit})`);
+                return;
+            }
+
             if (!isDup) {
                 addStudent({
                     name: rowName,
@@ -124,6 +141,33 @@ const StudentManagement = () => {
             return;
         }
 
+        // Check Class Limit
+        // If editing and NOT changing class, skip check (or check if already over? no, allow update)
+        // If editing and changing class, check new class.
+        // If adding, check class.
+
+        let shouldCheckLimit = true;
+        if (editingId) {
+            const originalStudent = students.find(s => s.id === editingId);
+            if (originalStudent && originalStudent.classId === formData.classId) {
+                shouldCheckLimit = false;
+            }
+        }
+
+        if (shouldCheckLimit) {
+            const limit = institutionSettings?.maxStudentsPerClass;
+            if (limit) {
+                const currentCount = students.filter(s => s.classId === formData.classId).length;
+                if (currentCount >= limit) {
+                    setWarningConfig({
+                        isOpen: true,
+                        message: `Cannot add student. The class limit of ${limit} students has been reached for this class.`
+                    });
+                    return;
+                }
+            }
+        }
+
         // Check duplication (exclude self if editing)
         const isDuplicate = students.some(s => s.registerNo === formData.registerNo && s.id !== editingId);
         if (isDuplicate) {
@@ -158,6 +202,19 @@ const StudentManagement = () => {
 
     const handleTransfer = (studentId, newClassId) => {
         if (!newClassId) return;
+
+        const limit = institutionSettings?.maxStudentsPerClass;
+        if (limit) {
+            const currentCount = students.filter(s => s.classId === newClassId).length;
+            if (currentCount >= limit) {
+                setWarningConfig({
+                    isOpen: true,
+                    message: `Cannot transfer student. The destination class limit of ${limit} students has been reached.`
+                });
+                return;
+            }
+        }
+
         updateStudent(studentId, { classId: newClassId });
     };
 
@@ -238,6 +295,17 @@ const StudentManagement = () => {
                 confirmText={deleteConfig.type === 'all' ? "Yes, Delete Everything" : "Yes, Delete"}
                 cancelText="Cancel"
                 isDanger
+            />
+
+            <ConfirmationModal
+                isOpen={warningConfig.isOpen}
+                onClose={() => setWarningConfig({ isOpen: false, message: '' })}
+                onConfirm={() => setWarningConfig({ isOpen: false, message: '' })}
+                title="Class Limit Reached"
+                message={warningConfig.message}
+                confirmText="OK"
+                isDanger={false}
+                cancelText={null}
             />
 
             <Modal
