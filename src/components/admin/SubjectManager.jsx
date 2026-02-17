@@ -311,40 +311,41 @@ const SubjectManager = () => {
                             </div>
                         ) : (
                             filteredSubjects.map(subject => (
-                                <div key={subject.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors group">
-                                    <div>
-                                        <p className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">{subject.name}</p>
-                                        <p className="text-xs text-gray-500 flex items-center gap-2">
-                                            <Layers className="w-3 h-3" />
-                                            {getClassName(subject.classId)}
-                                            <span className="text-gray-300">|</span>
-                                            Max: {subject.maxMarks} • Pass: {subject.passMarks || 40}
+                                <div key={subject.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors group gap-3">
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{subject.name}</p>
+                                        <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2 mt-1">
+                                            <span className="flex items-center gap-1">
+                                                <Layers className="w-3 h-3" />
+                                                {getClassName(subject.classId)}
+                                            </span>
+                                            <span className="hidden sm:inline text-gray-300">|</span>
+                                            <span className="whitespace-nowrap">Max: {subject.maxMarks} • Pass: {subject.passMarks || 40}</span>
                                             {subject.totalChapters > 0 && (
                                                 <>
-                                                    <span className="text-gray-300">|</span>
-                                                    <span className="text-gray-300">|</span>
-                                                    {subject.totalChapters} Chaps
+                                                    <span className="hidden sm:inline text-gray-300">|</span>
+                                                    <span className="whitespace-nowrap">{subject.totalChapters} Chaps</span>
                                                 </>
                                             )}
                                             {subject.isExamSubject === false && (
                                                 <>
-                                                    <span className="text-gray-300">|</span>
-                                                    <span className="text-amber-600 font-medium">Non-Exam</span>
+                                                    <span className="hidden sm:inline text-gray-300">|</span>
+                                                    <span className="text-amber-600 font-medium whitespace-nowrap">Non-Exam</span>
                                                 </>
                                             )}
                                         </p>
                                     </div>
-                                    <div className="flex gap-1">
+                                    <div className="flex gap-2 sm:gap-1 self-end sm:self-auto">
                                         <button
                                             onClick={() => handleEdit(subject)}
-                                            className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors"
+                                            className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors border border-gray-100 sm:border-none"
                                             title="Edit Subject"
                                         >
                                             <Edit className="w-4 h-4" />
                                         </button>
                                         <button
                                             onClick={() => deleteSubject(subject.id)}
-                                            className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                            className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors border border-gray-100 sm:border-none"
                                             title="Delete Subject"
                                         >
                                             <Trash2 className="w-4 h-4" />

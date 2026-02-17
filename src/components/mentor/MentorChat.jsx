@@ -213,9 +213,12 @@ const MentorChat = () => {
             </div>
 
             {activeTab === 'inbox' ? (
-                <div className="flex-1 flex gap-4 overflow-hidden bg-white rounded-xl border border-gray-200 shadow-sm">
-                    {/* Sidebar */}
-                    <div className="w-80 flex flex-col border-r border-gray-100">
+                <div className="flex-1 flex gap-4 overflow-hidden bg-white rounded-xl border border-gray-200 shadow-sm relative">
+                    {/* Sidebar - Hidden on mobile if student selected */}
+                    <div className={clsx(
+                        "w-full md:w-80 flex flex-col border-r border-gray-100 absolute md:relative inset-0 bg-white z-10 transition-transform duration-300 md:translate-x-0",
+                        selectedStudentId ? "-translate-x-full md:translate-x-0" : "translate-x-0"
+                    )}>
                         <div className="p-4 border-b border-gray-100 space-y-3">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -310,28 +313,41 @@ const MentorChat = () => {
                         </div>
                     </div>
 
-                    {/* Chat Area */}
-                    <div className="flex-1 flex flex-col text-sm">
+                    {/* Chat Area - Full width on mobile, shown when student selected */}
+                    <div className={clsx(
+                        "flex-1 flex flex-col text-sm absolute md:relative inset-0 bg-white z-20 transition-transform duration-300 md:translate-x-0",
+                        selectedStudentId ? "translate-x-0" : "translate-x-full md:translate-x-0"
+                    )}>
                         {selectedStudent ? (
                             <>
                                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                                    <div
-                                        className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                                        onClick={() => setIsProfileModalOpen(true)}
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                                            {selectedStudent.name.charAt(0)}
+                                    <div className="flex items-center gap-3">
+                                        {/* Back Button for Mobile */}
+                                        <button
+                                            onClick={() => setSelectedStudentId(null)}
+                                            className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                                        </button>
+
+                                        <div
+                                            className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                                            onClick={() => setIsProfileModalOpen(true)}
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                                {selectedStudent.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">{selectedStudent.name}</h3>
+                                                <span className="text-gray-500 text-xs">Class {classes.find(c => c.id === selectedStudent.classId)?.name} - {classes.find(c => c.id === selectedStudent.classId)?.division}</span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-900">{selectedStudent.name}</h3>
-                                            <span className="text-gray-500 text-xs">Class {classes.find(c => c.id === selectedStudent.classId)?.name} - {classes.find(c => c.id === selectedStudent.classId)?.division}</span>
-                                        </div>
+                                        {!isChatEnabled(selectedStudent.classId) && (
+                                            <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2">
+                                                <XCircle className="w-3 h-3" /> Chat Disabled
+                                            </div>
+                                        )}
                                     </div>
-                                    {!isChatEnabled(selectedStudent.classId) && (
-                                        <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2">
-                                            <XCircle className="w-3 h-3" /> Chat Disabled
-                                        </div>
-                                    )}
                                     <button
                                         onClick={handleDeleteConversation}
                                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"

@@ -3,7 +3,7 @@ import { X, AlertTriangle } from 'lucide-react';
 import { Button } from './Button';
 import { clsx } from 'clsx';
 
-export const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Delete", cancelText = "Cancel", isDanger = false, autoClose = true }) => {
+export const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Delete", cancelText = "Cancel", isDanger = false, autoClose = true, children }) => {
     if (!isOpen) return null;
 
     return (
@@ -27,6 +27,7 @@ export const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, 
                         <div>
                             <h3 className="text-lg font-bold text-gray-900 mb-1">{title}</h3>
                             <p className="text-gray-500 text-sm leading-relaxed">{message}</p>
+                            {children && <div className="mt-3">{children}</div>}
                         </div>
                     </div>
 

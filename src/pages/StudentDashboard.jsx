@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -43,8 +43,9 @@ const SidebarItem = ({ icon: Icon, label, path, active, onClick, hasNotification
 );
 
 const StudentDashboard = () => {
-    const { currentUser, logout, activities, activitySubmissions, classes } = useData(); // Added classes
+    const { currentUser, logout, activities, activitySubmissions, classes, studentFeatureFlags } = useData(); // Added classes, studentFeatureFlags
     const location = useLocation();
+    const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const hasPendingActivities = (activities || []).filter(a =>
@@ -56,28 +57,57 @@ const StudentDashboard = () => {
     if (!currentUser) return null;
 
     // Check feature flags
-    const studentClass = classes.find(c => c.id === currentUser.classId);
-    // Default to true if not set, to maintain backward compatibility
-    const isPrayerChartEnabled = studentClass?.features?.prayerChart !== false;
+    const flags = studentFeatureFlags || {}; // Default to empty obj if not loaded yet, individual checks will be undefined (falsy) but we default to true below.
+
+    const isFeatureEnabled = (key) => flags[key] !== false; // Default to true
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/student' },
-        { icon: Layers, label: 'Activities', path: '/student/activities', hasNotification: hasPendingActivities },
-        { icon: FileText, label: 'Online Exams', path: '/student/exams' },
-        { icon: FileText, label: 'Report Card', path: '/student/results' },
-        { icon: Calendar, label: 'Leave Applications', path: '/student/leave' },
-        { icon: MessageSquare, label: 'Chat with Mentor', path: '/student/chat' },
-        { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart', hidden: !isPrayerChartEnabled },
-        { icon: History, label: 'Class History', path: '/student/history' },
-        { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
-        { icon: Star, label: 'Star of the Month', path: '/student/star-student' },
-        { icon: Info, label: 'Help', path: '/student/help' },
-    ].filter(item => !item.hidden);
+        { icon: Layers, label: 'Activities', path: '/student/activities', key: 'activities', hasNotification: hasPendingActivities },
+        { icon: FileText, label: 'Online Exams', path: '/student/exams', key: 'exams' },
+        { icon: FileText, label: 'Report Card', path: '/student/results', key: 'results' },
+        { icon: Calendar, label: 'Leave Applications', path: '/student/leave', key: 'leave' },
+        { icon: MessageSquare, label: 'Chat with Mentor', path: '/student/chat', key: 'chat' },
+        { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart', key: 'prayer' },
+        { icon: History, label: 'Class History', path: '/student/history', key: 'history' },
+        { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard', key: 'leaderboard' },
+        { icon: Star, label: 'Star of the Month', path: '/student/star-student', key: 'star' },
+        { icon: Info, label: 'Help', path: '/student/help', key: 'help' },
+    ].filter(item => !item.key || isFeatureEnabled(item.key));
 
     const isActive = (path) => {
         if (path === '/student' && location.pathname === '/student') return true;
         return path !== '/student' && location.pathname.startsWith(path);
     };
+
+    // Redirect if on a disabled page
+    useEffect(() => {
+        const currentPath = location.pathname;
+        const currentItem = navItems.find(item => item.path === currentPath);
+
+        // If the path corresponds to a feature but is not in our filtered navItems list (meaning disabled), redirect.
+        // Also check if it's a sub-route (like /student/activities/123), logic might need to be robust.
+        // For now, simple check: if path starts with a feature path that is disabled.
+
+        const allFeatures = [
+            { path: '/student/activities', key: 'activities' },
+            { path: '/student/exams', key: 'exams' },
+            { path: '/student/results', key: 'results' },
+            { path: '/student/leave', key: 'leave' },
+            { path: '/student/chat', key: 'chat' },
+            { path: '/student/prayer-chart', key: 'prayer' },
+            { path: '/student/history', key: 'history' },
+            { path: '/student/leaderboard', key: 'leaderboard' },
+            { path: '/student/star-student', key: 'star' },
+            { path: '/student/help', key: 'help' },
+        ];
+
+        const matchedFeature = allFeatures.find(f => currentPath.startsWith(f.path));
+        if (matchedFeature && !isFeatureEnabled(matchedFeature.key)) {
+            navigate('/student', { replace: true });
+        }
+
+    }, [location.pathname, flags, navigate]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -142,6 +172,56 @@ const StudentDashboard = () => {
                         <LayoutDashboard className="w-6 h-6" />
                     </button>
                 </div>
+
+                {/* Mobile Menu Overlay */}
+                {isMobileMenuOpen && (
+                    <div className="fixed inset-0 z-50 flex md:hidden">
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
+                        <div className="relative bg-white w-64 h-full shadow-xl flex flex-col"> {/* Sidebar Content */}
+                            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 bg-indigo-600 rounded-lg">
+                                        <BookOpen className="w-4 h-4 text-white" />
+                                    </div>
+                                    <span className="font-bold text-gray-900">Menu</span>
+                                </div>
+                                <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-gray-500 hover:bg-gray-100 rounded-full">
+                                    <LogOut className="w-5 h-5 rotate-180" /> {/* Using LogOut as close/back icon or X */}
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                                {navItems.map((item) => (
+                                    <SidebarItem
+                                        key={item.path}
+                                        icon={item.icon}
+                                        label={item.label}
+                                        path={item.path}
+                                        active={isActive(item.path)}
+                                        hasNotification={item.hasNotification}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    />
+                                ))}
+                            </div>
+                            <div className="p-4 border-t border-gray-100 bg-gray-50">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                                        {currentUser.name.charAt(0)}
+                                    </div>
+                                    <div className="overflow-hidden">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={logout}
+                                    className="w-full flex items-center gap-2 text-sm text-red-600 hover:text-red-700 transition-colors"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <Routes>
                     <Route path="/" element={

@@ -383,15 +383,16 @@ const StudentManagement = () => {
                 </div>
             </Modal>
 
-            <div className="sticky top-0 z-10 bg-gray-50 pt-2 pb-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="sticky top-0 z-10 bg-gray-50 pt-2 pb-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Student Management</h2>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <Button
                         onClick={handleOpenModal}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                     >
                         <UserPlus className="w-4 h-4" />
-                        Add Student
+                        <span className="hidden sm:inline">Add Student</span>
+                        <span className="sm:hidden">Add</span>
                     </Button>
                     {selectedIds.length > 0 && (
                         <div className="flex gap-2">
@@ -400,14 +401,15 @@ const StudentManagement = () => {
                                 className="bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
                             >
                                 <X className="w-4 h-4" />
-                                Cancel
+                                <span className="hidden sm:inline">Cancel</span>
                             </Button>
                             <Button
                                 onClick={confirmDeleteSelected}
                                 className="bg-white text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-2"
                             >
                                 <Trash2 className="w-4 h-4" />
-                                Delete ({selectedIds.length})
+                                <span className="hidden sm:inline">Delete ({selectedIds.length})</span>
+                                <span className="sm:hidden">Del ({selectedIds.length})</span>
                             </Button>
                         </div>
                     )}
@@ -417,24 +419,27 @@ const StudentManagement = () => {
                             className="bg-white text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-2"
                         >
                             <Trash2 className="w-4 h-4" />
-                            Delete All
+                            <span className="hidden sm:inline">Delete All</span>
+                            <span className="sm:hidden">Del All</span>
                         </Button>
                     )}
-                    <BulkUploadButton type="student" onUploadSuccess={handleBulkUpload} />
+                    <div className="ml-auto md:ml-0">
+                        <BulkUploadButton type="student" onUploadSuccess={handleBulkUpload} />
+                    </div>
                 </div>
             </div>
 
-            <Card className="flex flex-col h-[800px]">
-                <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
+            <Card className="flex flex-col h-[calc(100vh-200px)] md:h-[800px]">
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-6 p-1">
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900">Student Directory</h3>
                         <p className="text-gray-500 text-sm">Total: {filteredStudents.length} / {students.length}</p>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                         <div className="relative flex-1 sm:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <Input
-                                placeholder="Search students..."
+                                placeholder="Search..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-9 bg-white"
@@ -454,8 +459,9 @@ const StudentManagement = () => {
                 </div>
 
                 <div className="flex-1 overflow-auto border rounded-lg relative">
-                    <table className="w-full text-left text-sm text-gray-600">
-                        <thead className="bg-gray-50 text-gray-900 font-semibold sticky top-0">
+                    {/* Desktop View */}
+                    <table className="w-full text-left text-sm text-gray-600 hidden md:table">
+                        <thead className="bg-gray-50 text-gray-900 font-semibold sticky top-0 z-10">
                             <tr>
                                 <th className="px-4 py-3 w-4">
                                     <input
@@ -548,6 +554,80 @@ const StudentManagement = () => {
                             )}
                         </tbody>
                     </table>
+
+                    {/* Mobile View */}
+                    <div className="md:hidden flex flex-col divide-y divide-gray-100">
+                        {paginatedStudents.map(student => {
+                            const studentClass = classes?.find(c => c.id === student.classId);
+                            const isSelected = selectedIds.includes(student.id);
+
+                            return (
+                                <div key={student.id} className={clsx("p-4 flex flex-col gap-3", isSelected && "bg-indigo-50")}>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => toggleSelection(student.id)}
+                                                className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                            />
+                                            <div>
+                                                <h4 className="font-medium text-gray-900">{student.name}</h4>
+                                                <p className="text-xs text-gray-500">Reg: {student.registerNo} • UID: {student.uid || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                        <span className={clsx(
+                                            "px-2 py-0.5 rounded-full text-xs font-semibold",
+                                            student.status === 'Active' && "bg-green-100 text-green-700",
+                                            student.status === 'Suspended' && "bg-orange-100 text-orange-700",
+                                            student.status === 'Dismissed' && "bg-red-100 text-red-700",
+                                        )}>
+                                            {student.status}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-sm pl-8">
+                                        <span className="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600">
+                                            {studentClass ? `Class: ${studentClass.name}-${studentClass.division}` : 'No Class'}
+                                        </span>
+
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-1">
+                                                <ArrowRightLeft className="w-4 h-4 text-gray-400" />
+                                                <select
+                                                    className="text-xs border-b border-gray-200 bg-transparent outline-none w-20 py-1"
+                                                    onChange={(e) => handleTransfer(student.id, e.target.value)}
+                                                    value=""
+                                                >
+                                                    <option value="" disabled>Transfer</option>
+                                                    {classes.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}-{c.division}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <button
+                                                onClick={() => handleEdit(student)}
+                                                className="text-indigo-600 p-1"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => confirmDelete(student.id)}
+                                                className="text-red-600 p-1"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {filteredStudents.length === 0 && (
+                            <div className="p-8 text-center text-gray-400">
+                                No students found matching criteria.
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Pagination Controls */}

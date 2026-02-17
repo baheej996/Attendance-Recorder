@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Plus, Trash2, Edit, Users, X, Search, Settings } from 'lucide-react';
+import { Plus, Trash2, Edit, Users, X, Search, Settings, Eye } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
@@ -108,7 +108,7 @@ const ClassSettingsModal = ({ isOpen, onClose, settings, updateSettings }) => {
 };
 
 const ClassManagement = () => {
-    const { classes, addClass, deleteClass, deleteClasses, deleteAllClasses, updateMentor, mentors, students, institutionSettings, updateInstitutionSettings } = useData();
+    const { classes, addClass, deleteClass, deleteClasses, deleteAllClasses, updateMentor, mentors, students, updateStudent, deleteStudent, institutionSettings, updateInstitutionSettings } = useData();
     const { showAlert } = useUI();
     const [formData, setFormData] = useState({ name: '', division: '' });
     const [editingId, setEditingId] = useState(null);
@@ -116,6 +116,7 @@ const ClassManagement = () => {
     const [error, setError] = useState('');
     const [deleteConfig, setDeleteConfig] = useState({ isOpen: false, id: null, type: 'single' });
     const [allotmentConfig, setAllotmentConfig] = useState({ isOpen: false, classItem: null });
+    const [studentsModalOpen, setStudentsModalOpen] = useState({ isOpen: false, classItem: null }); // New state for students modal
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -250,8 +251,42 @@ const ClassManagement = () => {
         setAllotmentConfig({ isOpen: true, classItem: cls });
     };
 
+    const openStudentsModal = (cls) => {
+        setStudentsModalOpen({ isOpen: true, classItem: cls });
+    };
+
+    const handleTransferStudent = async (studentId, targetClassId) => {
+        try {
+            await updateStudent(studentId, { classId: targetClassId });
+            showAlert('Success', 'Student transferred successfully', 'success');
+        } catch (error) {
+            console.error("Transfer failed", error);
+            showAlert('Error', 'Failed to transfer student', 'error');
+        }
+    };
+
+    const handleDeleteStudent = async (studentId) => {
+        try {
+            await deleteStudent(studentId);
+            showAlert('Success', 'Student removed successfully', 'success');
+        } catch (error) {
+            console.error("Delete failed", error);
+            showAlert('Error', 'Failed to delete student', 'error');
+        }
+    };
+
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
+            <ClassStudentsModal
+                isOpen={studentsModalOpen.isOpen}
+                onClose={() => setStudentsModalOpen({ isOpen: false, classItem: null })}
+                classItem={studentsModalOpen.classItem}
+                students={students}
+                classes={classes}
+                onTransfer={handleTransferStudent}
+                onDelete={handleDeleteStudent}
+            />
+
             <ConfirmationModal
                 isOpen={deleteConfig.isOpen}
                 onClose={() => setDeleteConfig({ isOpen: false, id: null, type: 'single' })}
@@ -325,18 +360,19 @@ const ClassManagement = () => {
                     <h2 className="text-2xl font-bold text-gray-900">Class Management</h2>
                     <p className="text-sm text-gray-500">Manage classes and divisions</p>
                 </div>
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
                     {selectedIds.length > 0 ? (
                         <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-red-100 shadow-sm animate-in fade-in slide-in-from-top-2 w-full md:w-auto">
                             <span className="text-sm font-medium text-gray-700 whitespace-nowrap px-2">{selectedIds.length} Selected</span>
                             <Button variant="secondary" size="sm" onClick={() => setSelectedIds([])} className="text-gray-500 hover:text-gray-700">Cancel</Button>
                             <Button variant="danger" size="sm" onClick={confirmDeleteSelected} className="flex items-center gap-2">
                                 <Trash2 className="w-4 h-4" />
-                                Delete ({selectedIds.length})
+                                <span className="hidden sm:inline">Delete ({selectedIds.length})</span>
+                                <span className="sm:hidden">Del</span>
                             </Button>
                         </div>
                     ) : (
-                        <div className="flex gap-3 w-full md:w-auto">
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                             <div className="relative flex-1 md:w-64">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                                 <Input
@@ -347,13 +383,15 @@ const ClassManagement = () => {
                                 />
                             </div>
                             <div className="flex gap-2">
-                                <BulkUploadButton onUploadSuccess={handleBulkUpload} type="class" />
-                                <Button className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200" onClick={() => setSettingsOpen(true)} title="Settings">
-                                    <Settings className="w-4 h-4" />
-                                </Button>
-                                <Button onClick={handleOpenModal} className="flex items-center gap-2 whitespace-nowrap">
+                                <div className="flex-1">
+                                    <BulkUploadButton onUploadSuccess={handleBulkUpload} type="class" />
+                                </div>
+                                <Button onClick={handleOpenModal} className="flex items-center justify-center gap-2 whitespace-nowrap flex-1">
                                     <Plus className="w-4 h-4" />
                                     Add Class
+                                </Button>
+                                <Button className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200" onClick={() => setSettingsOpen(true)} title="Settings">
+                                    <Settings className="w-4 h-4" />
                                 </Button>
                             </div>
                         </div>
@@ -419,7 +457,14 @@ const ClassManagement = () => {
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => openStudentsModal(cls)}
+                                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                title="View Students"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={() => handleEdit(cls)}
                                                 className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
@@ -451,13 +496,22 @@ const ClassManagement = () => {
                                             <span className="text-xs text-gray-400 italic">No mentor assigned</span>
                                         )}
 
-                                        <button
-                                            onClick={() => openAllotment(cls)}
-                                            className="w-full mt-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-100 transition-colors flex items-center justify-center gap-1"
-                                        >
-                                            <Users className="w-3 h-3" />
-                                            Manage Allotment
-                                        </button>
+                                        <div className="flex gap-2 mt-3">
+                                            <button
+                                                onClick={() => openStudentsModal(cls)}
+                                                className="flex-1 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-100 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Eye className="w-3 h-3" />
+                                                View Students
+                                            </button>
+                                            <button
+                                                onClick={() => openAllotment(cls)}
+                                                className="flex-1 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-100 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Users className="w-3 h-3" />
+                                                Allotment
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );

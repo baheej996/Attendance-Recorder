@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Trophy, Calendar, Users, Filter, BarChart2 } from 'lucide-react';
+import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 const PrayerStats = () => {
-    const { classes, students, prayerRecords, currentUser, updateClass } = useData();
+    const { classes, students, prayerRecords, currentUser, updateClass, deletePrayerRecordsForStudents } = useData();
 
     // Filter classes if mentor
     const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
@@ -20,6 +21,10 @@ const PrayerStats = () => {
     const [selectedClassId, setSelectedClassId] = useState(enabledClasses[0]?.id || '');
     const [timeRange, setTimeRange] = useState('week'); // 'week' or 'month'
     const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'settings'
+
+    // Add state for delete confirmation
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Effect to ensure valid selection when switching tabs or changing settings
     useEffect(() => {
@@ -89,6 +94,19 @@ const PrayerStats = () => {
         });
     };
 
+    const handleClearData = async () => {
+        setIsDeleting(true);
+        try {
+            const studentIds = classStudents.map(s => s.id);
+            await deletePrayerRecordsForStudents(studentIds);
+            setIsDeleteModalOpen(false);
+        } catch (error) {
+            console.error("Failed to delete records:", error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     if (availableClasses.length === 0) return <div className="p-8 text-center text-gray-500">No classes assigned to you.</div>;
 
     return (
@@ -99,27 +117,41 @@ const PrayerStats = () => {
                     <p className="text-gray-500">Monitor class performance and spiritual habits</p>
                 </div>
 
-                <div className="flex items-center bg-gray-100 p-1 rounded-lg">
-                    <button
-                        onClick={() => setActiveTab('stats')}
-                        className={clsx(
-                            "px-4 py-2 text-sm font-medium rounded-md transition-all",
-                            activeTab === 'stats' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        Statistics
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('settings')}
-                        className={clsx(
-                            "px-4 py-2 text-sm font-medium rounded-md transition-all",
-                            activeTab === 'settings' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        Settings
-                    </button>
+                <div className="flex items-center gap-2">
+                    {/* Removed button from here */}
+                    <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+                        <button
+                            onClick={() => setActiveTab('stats')}
+                            className={clsx(
+                                "px-4 py-2 text-sm font-medium rounded-md transition-all",
+                                activeTab === 'stats' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            Statistics
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('settings')}
+                            className={clsx(
+                                "px-4 py-2 text-sm font-medium rounded-md transition-all",
+                                activeTab === 'settings' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            Settings
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleClearData}
+                title="Clear Prayer Data"
+                message={`Are you sure you want to delete all prayer records for the ${classStudents.length} students in this class? This action cannot be undone.`}
+                confirmText={isDeleting ? "Deleting..." : "Delete All Data"}
+                isDanger={true}
+            />
 
             {activeTab === 'stats' ? (
                 <>
@@ -137,7 +169,14 @@ const PrayerStats = () => {
                         </div>
                     ) : (
                         <>
-                            <div className="flex justify-end">
+                            <div className="flex flex-wrap justify-end gap-3">
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(true)}
+                                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Clear Class Data
+                                </button>
                                 <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg flex items-center gap-2">
                                     <Filter className="w-4 h-4 text-gray-400" />
                                     <select

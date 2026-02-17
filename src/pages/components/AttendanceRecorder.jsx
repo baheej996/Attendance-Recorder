@@ -228,7 +228,8 @@ const AttendanceRecorder = () => {
                 ) : (
                     <div className="p-0">
                         <div className="max-h-[600px] overflow-auto">
-                            <table className="w-full text-left">
+                            {/* Desktop Table View */}
+                            <table className="w-full text-left hidden md:table">
                                 <thead className="bg-white sticky top-0 shadow-sm z-10">
                                     <tr>
                                         <th className="px-6 py-4 font-semibold text-gray-600">Reg No</th>
@@ -284,6 +285,56 @@ const AttendanceRecorder = () => {
                                     ))}
                                 </tbody>
                             </table>
+
+                            {/* Mobile Card View */}
+                            <div className="md:hidden space-y-3 p-4">
+                                {classStudents.map(student => (
+                                    <div key={student.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">{student.name}</h3>
+                                                <p className="text-xs text-gray-500 font-mono">{student.registerNo}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setCurrentPreviewStudentId(student.id);
+                                                    setIsProfileModalOpen(true);
+                                                }}
+                                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full bg-indigo-50"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => handleStatusChange(student.id, 'Present')}
+                                                className={clsx(
+                                                    "py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all",
+                                                    records[student.id] === 'Present'
+                                                        ? "bg-green-100 text-green-700 ring-2 ring-green-500 ring-offset-1"
+                                                        : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                                                )}
+                                            >
+                                                <div className={clsx("w-2 h-2 rounded-full", records[student.id] === 'Present' ? "bg-green-500" : "bg-gray-400")} />
+                                                Present
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusChange(student.id, 'Absent')}
+                                                className={clsx(
+                                                    "py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all",
+                                                    records[student.id] === 'Absent'
+                                                        ? "bg-red-100 text-red-700 ring-2 ring-red-500 ring-offset-1"
+                                                        : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                                                )}
+                                            >
+                                                <div className={clsx("w-2 h-2 rounded-full", records[student.id] === 'Absent' ? "bg-red-500" : "bg-gray-400")} />
+                                                Absent
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex flex-col md:flex-row justify-between gap-4 rounded-b-xl sticky bottom-0">

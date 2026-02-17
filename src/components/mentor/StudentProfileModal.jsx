@@ -151,9 +151,9 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                 </div>
 
                 {/* Body */}
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                     {/* Sidebar Tabs */}
-                    <div className="w-64 border-r border-gray-100 bg-gray-50/30 flex flex-col p-4 gap-1 overflow-y-auto shrink-0">
+                    <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-100 bg-gray-50/30 flex flex-row md:flex-col p-2 md:p-4 gap-1 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto shrink-0 scrollbar-hide">
                         {tabs.map(tab => {
                             const Icon = tab.icon;
                             return (
@@ -161,13 +161,13 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={clsx(
-                                        "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left",
+                                        "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl text-sm font-medium transition-all whitespace-nowrap",
                                         activeTab === tab.id
                                             ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
                                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                                     )}
                                 >
-                                    <Icon className={clsx("w-5 h-5", activeTab === tab.id ? "text-white" : "text-gray-400")} />
+                                    <Icon className={clsx("w-4 h-4 md:w-5 md:h-5", activeTab === tab.id ? "text-white" : "text-gray-400")} />
                                     {tab.label}
                                 </button>
                             );

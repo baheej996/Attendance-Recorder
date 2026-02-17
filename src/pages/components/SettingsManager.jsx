@@ -130,6 +130,20 @@ const SettingsManager = () => {
                             </div>
                         </div>
 
+                        <div className="col-span-2">
+                            <div className="relative">
+                                <Building className="absolute left-3 top-9 text-gray-400 w-5 h-5" />
+                                <Input
+                                    label="Favicon URL"
+                                    placeholder="https://example.com/favicon.ico"
+                                    value={formData.favicon || ''}
+                                    onChange={(e) => handleChange('favicon', e.target.value)}
+                                    className="pl-10"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1 ml-1">Enter a valid URL for the website icon (ICO, PNG, SVG).</p>
+                        </div>
+
                         <div>
                             <div className="relative">
                                 <Calendar className="absolute left-3 top-9 text-gray-400 w-5 h-5" />
@@ -159,7 +173,7 @@ const SettingsManager = () => {
 
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature</label>
-                            <div className="flex items-center gap-4">
+                            <div className="flex flex-col sm:flex-row items-center gap-4">
                                 {formData.signatureImage ? (
                                     <div className="relative group">
                                         <div className="border border-gray-200 rounded-lg p-2 bg-white">
@@ -202,26 +216,26 @@ const SettingsManager = () => {
                                     />
                                     <label
                                         htmlFor="signature-upload"
-                                        className="cursor-pointer px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                                        className="cursor-pointer px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-2 w-full sm:w-auto justify-center"
                                     >
                                         <UserCog className="w-4 h-4" />
                                         Upload Image
                                     </label>
-                                    <p className="text-xs text-gray-400 mt-1">Recommended: Transparent PNG (200x80px)</p>
+                                    <p className="text-xs text-gray-400 mt-1 text-center sm:text-left">Recommended: Transparent PNG (200x80px)</p>
                                 </div>
                             </div>
                             <p className="text-xs text-gray-400 mt-2">This signature will appear on valid official documents.</p>
                         </div>
                     </div>
 
-                    <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                        <div>
+                    <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="w-full sm:w-auto text-center sm:text-left">
                             {message && <span className="text-green-600 font-medium animate-in fade-in slide-in-from-left-2">{message}</span>}
                         </div>
                         <Button
                             type="submit"
                             disabled={!isDirty}
-                            className={`flex items-center gap-2 ${!isDirty ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex items-center justify-center gap-2 w-full sm:w-auto ${!isDirty ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <Save className="w-4 h-4" />
                             Save Changes
@@ -318,8 +332,8 @@ const SettingsManager = () => {
                         </div>
                     </div>
 
-                    <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                        <div>
+                    <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="w-full sm:w-auto text-center sm:text-left">
                             {adminMessage.text && (
                                 <span className={`${adminMessage.type === 'success' ? 'text-green-600' : 'text-red-600'} font-medium animate-in fade-in`}>
                                     {adminMessage.text}
@@ -328,7 +342,7 @@ const SettingsManager = () => {
                         </div>
                         <Button
                             type="submit"
-                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto"
                         >
                             <Save className="w-4 h-4" />
                             Update Credentials

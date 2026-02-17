@@ -321,18 +321,19 @@ const MentorManagement = () => {
                     <h2 className="text-2xl font-bold text-gray-900">Mentor Management</h2>
                     <p className="text-sm text-gray-500">Manage mentors and class assignments</p>
                 </div>
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
                     {selectedIds.length > 0 ? (
                         <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-red-100 shadow-sm animate-in fade-in slide-in-from-top-2 w-full md:w-auto">
                             <span className="text-sm font-medium text-gray-700 whitespace-nowrap px-2">{selectedIds.length} Selected</span>
                             <Button variant="secondary" size="sm" onClick={() => setSelectedIds([])} className="text-gray-500 hover:text-gray-700">Cancel</Button>
                             <Button variant="danger" size="sm" onClick={confirmDeleteSelected} className="flex items-center gap-2">
                                 <Trash2 className="w-4 h-4" />
-                                Delete ({selectedIds.length})
+                                <span className="hidden sm:inline">Delete ({selectedIds.length})</span>
+                                <span className="sm:hidden">Del</span>
                             </Button>
                         </div>
                     ) : (
-                        <div className="flex gap-3 w-full md:w-auto">
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                             <div className="relative flex-1 md:w-64">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                                 <Input
@@ -343,8 +344,10 @@ const MentorManagement = () => {
                                 />
                             </div>
                             <div className="flex gap-2">
-                                <BulkUploadButton onUploadSuccess={handleBulkUpload} type="mentor" />
-                                <Button onClick={handleOpenModal} className="flex items-center gap-2 whitespace-nowrap">
+                                <div className="flex-1">
+                                    <BulkUploadButton onUploadSuccess={handleBulkUpload} type="mentor" />
+                                </div>
+                                <Button onClick={handleOpenModal} className="flex items-center justify-center gap-2 whitespace-nowrap flex-1">
                                     <Plus className="w-4 h-4" />
                                     Add Mentor
                                 </Button>
@@ -388,7 +391,7 @@ const MentorManagement = () => {
                                 <div
                                     key={mentor.id}
                                     className={clsx(
-                                        "relative p-4 rounded-lg border flex items-start justify-between group transition-colors",
+                                        "relative p-4 rounded-lg border flex flex-col sm:flex-row items-start justify-between group transition-colors gap-4",
                                         isSelected ? "bg-indigo-50 border-indigo-200" : "bg-gray-50 border-gray-100 hover:border-indigo-200"
                                     )}
                                 >
@@ -401,7 +404,7 @@ const MentorManagement = () => {
                                         />
                                     </div>
 
-                                    <div className="flex items-start gap-4 pl-8">
+                                    <div className="flex items-start gap-4 pl-8 w-full">
                                         <div className="w-12 h-12 rounded-full overflow-hidden bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 border border-gray-200">
                                             {mentor.profilePhoto ? (
                                                 <img src={mentor.profilePhoto} alt={mentor.name} className="w-full h-full object-cover" />
@@ -409,19 +412,19 @@ const MentorManagement = () => {
                                                 <User className="w-6 h-6" />
                                             )}
                                         </div>
-                                        <div>
-                                            <h4 className="font-bold text-lg text-gray-900">{mentor.name}</h4>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-lg text-gray-900 truncate">{mentor.name}</h4>
                                             {mentor.qualification && (
                                                 <p className="text-xs text-indigo-600 font-medium mb-0.5">{mentor.qualification}</p>
                                             )}
-                                            <p className="text-sm text-gray-500">{mentor.email}</p>
+                                            <p className="text-sm text-gray-500 truncate">{mentor.email}</p>
 
-                                            <div className="flex gap-4 mt-2 mb-2 text-xs font-medium text-gray-500">
-                                                <span className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200 shadow-sm">
+                                            <div className="flex flex-wrap gap-2 mt-2 mb-2 text-xs font-medium text-gray-500">
+                                                <span className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200 shadow-sm whitespace-nowrap">
                                                     <BookOpen className="w-3 h-3 text-indigo-500" />
                                                     {mentor.assignedClassIds.length} Classes
                                                 </span>
-                                                <span className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200 shadow-sm">
+                                                <span className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200 shadow-sm whitespace-nowrap">
                                                     <Users className="w-3 h-3 text-green-500" />
                                                     {totalStudents} Students
                                                 </span>
@@ -444,20 +447,22 @@ const MentorManagement = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex sm:flex-col gap-2 w-full sm:w-auto pl-8 sm:pl-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={() => handleEdit(mentor)}
-                                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                            className="flex-1 sm:flex-none p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border sm:border-0 border-gray-200 flex justify-center items-center"
                                             title="Edit Mentor"
                                         >
                                             <Edit className="w-5 h-5" />
+                                            <span className="ml-2 text-sm sm:hidden">Edit</span>
                                         </button>
                                         <button
                                             onClick={() => confirmDelete(mentor.id)}
-                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            className="flex-1 sm:flex-none p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border sm:border-0 border-gray-200 flex justify-center items-center"
                                             title="Delete Mentor"
                                         >
                                             <Trash2 className="w-5 h-5" />
+                                            <span className="ml-2 text-sm sm:hidden">Delete</span>
                                         </button>
                                     </div>
                                 </div>

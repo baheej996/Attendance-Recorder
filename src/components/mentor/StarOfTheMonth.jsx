@@ -243,16 +243,16 @@ const StarOfTheMonth = () => {
                     <p className="text-gray-500">Celebrate your top performing students</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
                     {/* Class Filter */}
-                    <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-full sm:w-auto">
+                    <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm w-full md:w-auto">
                         <div className="flex items-center px-2 text-gray-500 border-r border-gray-200">
                             <Users className="w-4 h-4" />
                         </div>
                         <select
                             value={selectedClassId}
                             onChange={(e) => setSelectedClassId(e.target.value)}
-                            className="p-2 text-sm font-medium text-gray-900 bg-transparent border-none focus:ring-0 cursor-pointer min-w-[150px]"
+                            className="p-2 text-sm font-medium text-gray-900 bg-transparent border-none focus:ring-0 cursor-pointer w-full md:min-w-[150px]"
                         >
                             <option value="All">All Classes</option>
                             {mentorClassIds.map(cid => {
@@ -261,34 +261,39 @@ const StarOfTheMonth = () => {
                             })}
                         </select>
                     </div>
-                    <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                            className="p-2 text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer"
-                        >
-                            {months.map((m, i) => (
-                                <option key={i} value={i}>{m}</option>
-                            ))}
-                        </select>
-                        <div className="w-px bg-gray-200 my-1"></div>
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(Number(e.target.value))}
-                            className="p-2 text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer"
-                        >
-                            {years.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
-                    </div>
 
-                    <button
-                        onClick={() => setIsConfigOpen(!isConfigOpen)}
-                        className={`p-2 rounded-lg border transition-colors ${isConfigOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                    >
-                        <Settings className="w-5 h-5" />
-                    </button>
+                    <div className="flex gap-3">
+                        {/* Month/Year Selector */}
+                        <div className="flex flex-1 bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                            <select
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                className="p-2 text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer flex-1"
+                            >
+                                {months.map((m, i) => (
+                                    <option key={i} value={i}>{m}</option>
+                                ))}
+                            </select>
+                            <div className="w-px bg-gray-200 my-1"></div>
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                className="p-2 text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer"
+                            >
+                                {years.map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Settings Button */}
+                        <button
+                            onClick={() => setIsConfigOpen(!isConfigOpen)}
+                            className={`p-2 rounded-lg border transition-colors flex items-center justify-center aspect-square ${isConfigOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                        >
+                            <Settings className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             </div>
 

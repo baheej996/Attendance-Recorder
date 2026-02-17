@@ -12,51 +12,77 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import { UIProvider } from './contexts/UIContext';
+import { useData } from './contexts/DataContext'; // Import useData
+import InstallPrompt from './components/pwa/InstallPrompt'; // Import InstallPrompt
 
 function App() {
   return (
     <ErrorBoundary>
       <DataProvider>
         <UIProvider>
-          <Router>
-            <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<PublicHome />} />
-                <Route path="/login" element={<Landing />} />
-
-                {/* Legacy Login Route Redirect */}
-                <Route path="/login-portal" element={<LoginPage />} />
-
-                {/* Protected Routes - Admin */}
-                <Route path="/admin/*" element={
-                  <ProtectedRoute allowedRole="admin">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } />
-
-                {/* Protected Routes - Mentor */}
-                <Route path="/mentor/*" element={
-                  <ProtectedRoute allowedRole="mentor">
-                    <MentorDashboard />
-                  </ProtectedRoute>
-                } />
-
-                {/* Protected Routes - Student */}
-                <Route path="/student/*" element={
-                  <ProtectedRoute allowedRole="student">
-                    <StudentDashboard />
-                  </ProtectedRoute>
-                } />
-
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </div>
-          </Router>
+          <AppContent />
         </UIProvider>
       </DataProvider>
     </ErrorBoundary>
   );
 }
+
+// Extract content to use hooks inside DataProvider
+const AppContent = () => {
+  const { institutionSettings } = useData();
+
+  React.useEffect(() => {
+    if (institutionSettings?.favicon) {
+      const link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        document.head.appendChild(newLink);
+        newLink.href = institutionSettings.favicon;
+      } else {
+        link.href = institutionSettings.favicon;
+      }
+    }
+  }, [institutionSettings?.favicon]);
+
+  return (
+    <Router>
+      <InstallPrompt />
+      <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<PublicHome />} />
+          <Route path="/login" element={<Landing />} />
+
+          {/* Legacy Login Route Redirect */}
+          <Route path="/login-portal" element={<LoginPage />} />
+
+          {/* Protected Routes - Admin */}
+          <Route path="/admin/*" element={
+            <ProtectedRoute allowedRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* Protected Routes - Mentor */}
+          <Route path="/mentor/*" element={
+            <ProtectedRoute allowedRole="mentor">
+              <MentorDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* Protected Routes - Student */}
+          <Route path="/student/*" element={
+            <ProtectedRoute allowedRole="student">
+              <StudentDashboard />
+            </ProtectedRoute>
+          } />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+};
 
 export default App;

@@ -431,7 +431,7 @@ const LogBook = () => {
                                                     {new Date(log.timestamp).toLocaleDateString()}
                                                 </span>
                                             </div>
-                                            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white pl-2">
+                                            <div className="absolute top-4 right-4 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white pl-2">
                                                 <button
                                                     onClick={() => handleEdit(log)}
                                                     className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"

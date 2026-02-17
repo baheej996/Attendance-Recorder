@@ -46,9 +46,22 @@ export const DataProvider = ({ children }) => {
         name: 'Attendance Recorder',
         tagline: 'Track Smart, Act Fast',
         academicYear: '2024-2025',
-        chiefMentor: 'Dr. Principal'
+        chiefMentor: 'Dr. Principal',
+        favicon: '/vite.svg'
     });
     const [adminCredentials, setAdminCredentials] = useState({ username: 'admin', password: 'admin123' });
+    const [studentFeatureFlags, setStudentFeatureFlags] = useState({
+        activities: true,
+        exams: true,
+        results: true,
+        leave: true,
+        chat: true,
+        prayer: true,
+        history: true,
+        leaderboard: true,
+        star: true,
+        help: true
+    });
 
     // Local Session State (No need to sync across devices)
     const [currentUser, setCurrentUser] = useState(() => {
@@ -90,19 +103,23 @@ export const DataProvider = ({ children }) => {
             subscribe('adminRequests', setAdminRequests),
             subscribe('chatSettings', setChatSettings),
             subscribe('examSettings', setExamSettings),
-
-            // Single doc settings - we'll subscribe to the collection and find the doc
-            onSnapshot(collection(db, 'settings'), (snapshot) => {
-                snapshot.docs.forEach(doc => {
-                    if (doc.id === 'institution') setInstitutionSettings(doc.data());
-                    if (doc.id === 'admin') setAdminCredentials(doc.data());
-                    if (doc.id === 'mentorUI') setMentorSettings(doc.data());
-                });
-            })
         ];
 
+        // Single doc settings - we'll subscribe to the collection and find the doc
+        const settingsUnsub = onSnapshot(collection(db, 'settings'), (snapshot) => {
+            snapshot.docs.forEach(doc => {
+                if (doc.id === 'institution') setInstitutionSettings(doc.data());
+                if (doc.id === 'admin') setAdminCredentials(doc.data());
+                if (doc.id === 'mentorUI') setMentorSettings(doc.data());
+                if (doc.id === 'studentFeatures') setStudentFeatureFlags(doc.data());
+            });
+        });
+
         setIsDataLoaded(true); // Technically triggers before first data arrival, but listeners are active
-        return () => unsubs.forEach(unsub => unsub());
+        return () => {
+            unsubs.forEach(u => u());
+            settingsUnsub();
+        };
     }, []);
 
 
@@ -429,6 +446,24 @@ export const DataProvider = ({ children }) => {
     };
     const getPrayerRecordsByStudent = (studentId) => prayerRecords.filter(r => r.studentId === studentId); // Local filter is fine as we sync all
 
+    const deletePrayerRecordsForStudents = async (studentIds) => {
+        const batch = writeBatch(db);
+        // We need to find all records that belong to these students
+        // Since we have all prayerRecords in state (synced), we can filter them here to get IDs
+        // However, for large datasets, a query might be better. But consistent with this app's pattern:
+        const toDelete = prayerRecords.filter(r => studentIds.includes(r.studentId));
+
+        if (toDelete.length === 0) return;
+
+        toDelete.forEach(r => {
+            // The ID in prayerRecords state includes the doc ID? 
+            // Yes, subscribe logic: `snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))`
+            batch.delete(doc(db, 'prayerRecords', r.id));
+        });
+
+        await batch.commit();
+    };
+
     // Leave Requests
     const addLeaveRequest = async (request) => {
         await addDoc(collection(db, 'leaveRequests'), { ...request, status: 'Pending', createdAt: new Date().toISOString() });
@@ -471,6 +506,43 @@ export const DataProvider = ({ children }) => {
     // If we change structure, we break the app. 
     // Let's stick to collection for consistency if it was an array.
 
+    // New Implementation for MentorChat
+    const toggleChatForClass = async (classId) => {
+        const existing = chatSettings.find(s => s.classId === classId);
+        if (existing) {
+            await updateDoc(doc(db, 'chatSettings', existing.id), { isEnabled: !existing.isEnabled });
+        } else {
+            // Default to true if creating for the first time? Or true because we are toggling *on*?
+            // If it was effectively false (not found), we want to make it true.
+            await addDoc(collection(db, 'chatSettings'), { classId, isEnabled: true });
+        }
+    };
+
+    const markMessagesAsRead = async (messageIds) => {
+        if (!messageIds || messageIds.length === 0) return;
+        const batch = writeBatch(db);
+        messageIds.forEach(id => {
+            const ref = doc(db, 'chatMessages', id);
+            batch.update(ref, { isRead: true });
+        });
+        await batch.commit();
+    };
+
+    const deleteChatConversation = async (studentId, mentorId) => {
+        const msgs = chatMessages.filter(m =>
+            (m.senderId === studentId && m.receiverId === mentorId) ||
+            (m.senderId === mentorId && m.receiverId === studentId)
+        );
+
+        if (msgs.length === 0) return;
+
+        const batch = writeBatch(db);
+        msgs.forEach(msg => {
+            batch.delete(doc(db, 'chatMessages', msg.id));
+        });
+        await batch.commit();
+    };
+
     const saveStarDeclaration = async (dec) => await addDoc(collection(db, 'starDeclarations'), dec);
     const deleteStarDeclaration = async (id) => await deleteDoc(doc(db, 'starDeclarations', id));
 
@@ -508,17 +580,21 @@ export const DataProvider = ({ children }) => {
         activitySubmissions, markActivityAsDone, markActivityAsPending, getStudentActivityPoints,
 
         logEntries, addLogEntry, updateLogEntry, deleteLogEntry,
-        prayerRecords, addPrayerRecord, getPrayerRecordsByStudent,
+        prayerRecords, addPrayerRecord, getPrayerRecordsByStudent, deletePrayerRecordsForStudents,
         leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests,
 
         // New / Misc
         starDeclarations, saveStarDeclaration, deleteStarDeclaration,
         adminRequests, addAdminRequest, updateAdminRequest, deleteAdminRequest,
-        chatMessages, sendChatMessage: async (msg) => await addDoc(collection(db, 'chatMessages'), { ...msg, timestamp: new Date().toISOString() }),
+        chatMessages, sendMessage: async (msg) => await addDoc(collection(db, 'chatMessages'), { ...msg, timestamp: new Date().toISOString() }),
+        markMessagesAsRead, deleteChatConversation,
 
         examSettings, updateExamSetting,
+        chatSettings, toggleChatForClass, // Exported to fix crash
 
         mentorSettings, updateMentorSettings: async (s) => await setDoc(doc(db, 'settings', 'mentorUI'), s),
+
+        studentFeatureFlags, updateStudentFeatureFlags: async (flags) => await setDoc(doc(db, 'settings', 'studentFeatures'), flags, { merge: true }),
 
         resetData,
         isDataLoaded

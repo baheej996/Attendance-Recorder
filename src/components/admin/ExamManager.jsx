@@ -127,11 +127,15 @@ const ExamManager = () => {
                             </div>
                         ) : (
                             exams.map(exam => (
-                                <div key={exam.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                    <div>
-                                        <p className="font-medium text-gray-900">{exam.name}</p>
-                                        <p className="text-xs text-gray-500 flex items-center gap-2">
-                                            {new Date(exam.date).toLocaleDateString()}
+                                <div key={exam.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors gap-4">
+                                    <div className="min-w-0 w-full">
+                                        <div className="flex justify-between items-start">
+                                            <p className="font-medium text-gray-900 truncate pr-2">{exam.name}</p>
+                                            {/* Mobile-only date if needed, or keep inline */}
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                            <span className="text-xs text-gray-500">{new Date(exam.date).toLocaleDateString()}</span>
                                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${exam.status === 'Published'
                                                 ? 'bg-green-100 text-green-700'
                                                 : 'bg-yellow-100 text-yellow-700'
@@ -144,14 +148,15 @@ const ExamManager = () => {
                                                 }`}>
                                                 {exam.isActive ? 'Active' : 'Inactive'}
                                             </span>
-                                        </p>
+                                        </div>
+
                                         {exam.instructions && (
-                                            <p className="text-xs text-gray-500 mt-1 italic line-clamp-1">
+                                            <p className="text-xs text-gray-500 mt-2 italic line-clamp-1 bg-gray-50 p-1 rounded border border-gray-100">
                                                 Note: {exam.instructions}
                                             </p>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end sm:justify-start border-t sm:border-t-0 pt-3 sm:pt-0 mt-2 sm:mt-0 border-gray-100">
                                         <button
                                             onClick={() => handleEdit(exam)}
                                             className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors"

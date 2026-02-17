@@ -113,13 +113,15 @@ const AdminRequests = () => {
                         <h3 className="text-lg font-bold text-gray-800 mb-4 text-opacity-70">Request History</h3>
                         <div className="space-y-2 opacity-75 grayscale hover:grayscale-0 transition-all">
                             {historyRequests.map(request => (
-                                <div key={request.id} className="bg-white border border-gray-200 p-4 rounded-lg flex justify-between items-center">
-                                    <div>
-                                        <span className="font-bold text-gray-700">{request.mentorName}</span>
-                                        <span className="mx-2 text-gray-300">|</span>
-                                        <span className="text-gray-500 text-sm truncate max-w-xs inline-block align-bottom">{request.details}</span>
+                                <div key={request.id} className="bg-white border border-gray-200 p-4 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2 mb-1 sm:mb-0">
+                                            <span className="font-bold text-gray-700">{request.mentorName}</span>
+                                            <span className="hidden sm:inline mx-2 text-gray-300">|</span>
+                                        </div>
+                                        <p className="text-gray-500 text-sm truncate sm:max-w-xs">{request.details}</p>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${request.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                                    <div className={`px-3 py-1 rounded-full text-xs font-bold w-fit ${request.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                                         }`}>
                                         {request.status}
                                     </div>

@@ -19,6 +19,8 @@ const ActivitiesManager = () => {
     const [expandedActivityId, setExpandedActivityId] = useState(null);
     const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, activityId: null, isBulk: false });
     const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+    const [isBatchShare, setIsBatchShare] = useState(false); // New state
+    const [isBatchDelete, setIsBatchDelete] = useState(false); // New state for delete
 
     // Filter/Search States
     const [selectedClassId, setSelectedClassId] = useState('all');
@@ -59,7 +61,24 @@ const ActivitiesManager = () => {
         if (editingActivityId) {
             updateActivity(editingActivityId, newActivity);
         } else {
-            addActivity(newActivity);
+            if (isBatchShare) {
+                // Batch Creation Logic
+                const selectedClass = classes.find(c => c.id === newActivity.classId);
+                if (selectedClass) {
+                    // Find all classes with the same Grade Name
+                    const batchClasses = classes.filter(c => c.name === selectedClass.name);
+
+                    batchClasses.forEach(batchClass => {
+                        // Optional: Check strictly for duplicates to avoid spamming? 
+                        // For now, let's just create it. The context might handle ID generation.
+                        // We should reuse the newActivity object but swap the classId.
+                        addActivity({ ...newActivity, classId: batchClass.id });
+                    });
+                }
+            } else {
+                // Single Class Creation
+                addActivity(newActivity);
+            }
         }
 
         closeModal();
@@ -67,6 +86,7 @@ const ActivitiesManager = () => {
 
     const openCreateModal = () => {
         setEditingActivityId(null);
+        setIsBatchShare(false); // Reset
         setNewActivity({
             title: '',
             description: '',
@@ -80,6 +100,7 @@ const ActivitiesManager = () => {
 
     const openEditModal = (activity) => {
         setEditingActivityId(activity.id);
+        setIsBatchShare(false); // N/A for edit usually, or disabled
         setNewActivity({
             title: activity.title,
             description: activity.description,
@@ -94,6 +115,7 @@ const ActivitiesManager = () => {
     const closeModal = () => {
         setIsCreateModalOpen(false);
         setEditingActivityId(null);
+        setIsBatchShare(false);
         setNewActivity({ title: '', description: '', classId: '', subjectId: '', maxPoints: 10, dueDate: '' });
     };
 
@@ -102,9 +124,36 @@ const ActivitiesManager = () => {
             selectedActivityIds.forEach(id => deleteActivity(id));
             setSelectedActivityIds([]);
         } else if (deleteConfirmation.activityId) {
-            deleteActivity(deleteConfirmation.activityId);
+            if (isBatchDelete) {
+                // Batch Delete Logic
+                const activityToDelete = activities.find(a => a.id === deleteConfirmation.activityId);
+                if (activityToDelete) {
+                    const activityClass = classes.find(c => c.id === activityToDelete.classId);
+                    if (activityClass) {
+                        // Find all classes in the same batch (Grade)
+                        const batchClassIds = classes
+                            .filter(c => c.name === activityClass.name)
+                            .map(c => c.id);
+
+                        // Find all activities in these classes with same Title and Subject
+                        const batchActivities = activities.filter(a =>
+                            batchClassIds.includes(a.classId) &&
+                            a.title === activityToDelete.title &&
+                            a.subjectId === activityToDelete.subjectId
+                        );
+
+                        batchActivities.forEach(a => deleteActivity(a.id));
+                    } else {
+                        // Fallback
+                        deleteActivity(deleteConfirmation.activityId);
+                    }
+                }
+            } else {
+                deleteActivity(deleteConfirmation.activityId);
+            }
         }
         setDeleteConfirmation({ isOpen: false, activityId: null, isBulk: false });
+        setIsBatchDelete(false); // Reset
     };
 
     const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
@@ -191,23 +240,23 @@ const ActivitiesManager = () => {
     };
 
     return (
-        <div className="p-8 space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="p-4 md:p-8 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Activity Manager</h1>
                     <p className="text-gray-500">Assign and track class activities</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 self-start md:self-auto w-full md:w-auto">
                     {selectedActivityIds.length > 0 && (
                         <Button
                             variant="danger"
                             onClick={() => setDeleteConfirmation({ isOpen: true, isBulk: true })}
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 flex-1 md:flex-none justify-center"
                         >
                             <Trash2 className="w-4 h-4" /> Delete ({selectedActivityIds.length})
                         </Button>
                     )}
-                    <Button onClick={openCreateModal} className="flex items-center gap-2">
+                    <Button onClick={openCreateModal} className="flex items-center gap-2 flex-1 md:flex-none justify-center">
                         <Plus className="w-4 h-4" /> New Activity
                     </Button>
                 </div>
@@ -285,22 +334,38 @@ const ActivitiesManager = () => {
 
                         return (
                             <Card key={activity.id} className="overflow-hidden">
-                                <div className="p-6 flex items-start gap-4">
-                                    {/* Checkbox */}
-                                    <div className="pt-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedActivityIds.includes(activity.id)}
-                                            onChange={() => toggleSelectActivity(activity.id)}
-                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                        />
+                                <div className="p-4 md:p-6 flex flex-col md:flex-row items-start gap-4">
+                                    {/* Checkbox & Header Mobile Layout Grouping */}
+                                    <div className="flex w-full md:w-auto gap-4">
+                                        {/* Checkbox */}
+                                        <div className="pt-1">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedActivityIds.includes(activity.id)}
+                                                onChange={() => toggleSelectActivity(activity.id)}
+                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                        </div>
+
+                                        {/* Mobile Title View (hidden on desktop) */}
+                                        <div className="md:hidden flex-1">
+                                            <h3 className="text-lg font-bold text-gray-900 mb-1">{activity.title}</h3>
+                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${activity.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                    {activity.status}
+                                                </span>
+                                                <span className="px-2 py-0.5 text-xs font-bold bg-indigo-100 text-indigo-700 rounded-full">
+                                                    {assignedClass ? `${assignedClass.name}-${assignedClass.division}` : 'Unknown Class'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
+                                    <div className="flex-1 w-full md:w-auto pl-8 md:pl-0 -mt-2 md:mt-0">
+                                        {/* Desktop Title View (hidden on mobile) */}
+                                        <div className="hidden md:flex items-center gap-3 mb-2">
                                             <h3 className="text-lg font-bold text-gray-900">{activity.title}</h3>
-                                            <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${activity.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                                                }`}>
+                                            <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${activity.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                                                 {activity.status}
                                             </span>
                                             <span className="px-2 py-0.5 text-xs font-bold bg-indigo-100 text-indigo-700 rounded-full">
@@ -312,16 +377,17 @@ const ActivitiesManager = () => {
                                                 </span>
                                             )}
                                         </div>
+
                                         <p className="text-gray-600 text-sm mb-4">{activity.description}</p>
 
-                                        <div className="flex items-center gap-6 text-sm text-gray-500">
+                                        <div className="flex flex-wrap gap-4 md:gap-6 text-sm text-gray-500">
                                             <span>Max Points: <span className="font-semibold text-gray-900">{activity.maxPoints}</span></span>
                                             <span>Due: <span className="font-semibold text-gray-900">{activity.dueDate || 'No Date'}</span></span>
                                             <span>Submissions: <span className="font-semibold text-gray-900">{stats.submitted}/{stats.total}</span></span>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-end w-full md:w-auto gap-2 mt-2 md:mt-0 pl-8 md:pl-0">
                                         <Button
                                             variant="secondary"
                                             size="sm"
@@ -440,6 +506,27 @@ const ActivitiesManager = () => {
                                     ))}
                                 </select>
                             </div>
+
+                            {!editingActivityId && (
+                                <div className={`flex items-start gap-2 p-3 rounded-lg border ${newActivity.classId ? 'bg-indigo-50 border-indigo-100' : 'bg-gray-50 border-gray-200 opacity-75'}`}>
+                                    <input
+                                        type="checkbox"
+                                        id="batchShare"
+                                        checked={isBatchShare}
+                                        onChange={e => setIsBatchShare(e.target.checked)}
+                                        disabled={!newActivity.classId}
+                                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:cursor-not-allowed"
+                                    />
+                                    <label htmlFor="batchShare" className={`text-sm cursor-pointer select-none ${!newActivity.classId ? 'cursor-not-allowed text-gray-500' : 'text-indigo-900'}`}>
+                                        <span className="font-semibold block">Share with entire batch</span>
+                                        <span className={`text-xs ${!newActivity.classId ? 'text-gray-400' : 'text-indigo-700'}`}>
+                                            {newActivity.classId
+                                                ? <>Create this activity for all <strong>Class {classes.find(c => c.id === newActivity.classId)?.name}</strong> divisions (e.g. A, B, C...).</>
+                                                : "Select a Class above to enable this option."}
+                                        </span>
+                                    </label>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject (Optional)</label>
                                 <select
@@ -481,7 +568,10 @@ const ActivitiesManager = () => {
 
             <ConfirmationModal
                 isOpen={deleteConfirmation.isOpen}
-                onClose={() => setDeleteConfirmation({ isOpen: false, activityId: null, isBulk: false })}
+                onClose={() => {
+                    setDeleteConfirmation({ isOpen: false, activityId: null, isBulk: false });
+                    setIsBatchDelete(false);
+                }}
                 onConfirm={confirmDelete}
                 title={deleteConfirmation.isBulk ? "Delete Multiple Activities" : "Delete Activity"}
                 message={deleteConfirmation.isBulk
@@ -490,7 +580,25 @@ const ActivitiesManager = () => {
                 }
                 confirmText={deleteConfirmation.isBulk ? "Delete All Selected" : "Delete Activity"}
                 isDanger={true}
-            />
+            >
+                {!deleteConfirmation.isBulk && deleteConfirmation.activityId && (
+                    <div className="flex items-start gap-2 p-3 mt-2 bg-red-50 rounded-lg border border-red-100">
+                        <input
+                            type="checkbox"
+                            id="batchDelete"
+                            checked={isBatchDelete}
+                            onChange={e => setIsBatchDelete(e.target.checked)}
+                            className="mt-1 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="batchDelete" className="text-sm text-red-900 cursor-pointer select-none">
+                            <span className="font-semibold block">Delete for entire batch</span>
+                            <span className="text-red-700 text-xs">
+                                Also delete this activity from <strong>all other classes in this grade</strong> (e.g. 10-A, 10-B...).
+                            </span>
+                        </label>
+                    </div>
+                )}
+            </ConfirmationModal>
 
             {/* Duplicate Warning Modal */}
             <ConfirmationModal
