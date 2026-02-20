@@ -43,10 +43,43 @@ const SidebarItem = ({ icon: Icon, label, path, active, onClick, hasNotification
 );
 
 const StudentDashboard = () => {
-    const { currentUser, logout, activities, activitySubmissions, classes, studentFeatureFlags } = useData(); // Added classes, studentFeatureFlags
+    const { currentUser, logout, activities, activitySubmissions, classes, studentFeatureFlags, classFeatureFlags, attendance, exams, results } = useData();
     const location = useLocation();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // --- Dynamic Calculations ---
+
+    // 1. Attendance Calculation
+    const studentAttendance = (attendance || []).filter(r => r.studentId === currentUser.id);
+    const totalDays = studentAttendance.length;
+    const presentDays = studentAttendance.filter(r => r.status === 'Present').length;
+    const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+    const absentPercentage = totalDays > 0 ? 100 - attendancePercentage : 0; // If 0 days, 0 absent.
+
+    // 2. Pending Exams Calculation
+    const classExams = (exams || []).filter(e =>
+        e.classId === currentUser.classId &&
+        e.status === 'Published'
+    );
+    const pendingExamsCount = classExams.filter(e =>
+        !(results || []).some(r => r.examId === e.id && r.studentId === currentUser.id)
+    ).length;
+
+    // 3. Performance (Average Score)
+    const studentResults = (results || []).filter(r => r.studentId === currentUser.id);
+    const totalMarks = studentResults.reduce((sum, r) => sum + (Number(r.marks) || 0), 0);
+    const averageScore = studentResults.length > 0 ? Math.round(totalMarks / studentResults.length) : 0;
+
+    // Pie chart Data
+    const pieData = totalDays > 0
+        ? [
+            { name: 'Present', value: attendancePercentage },
+            { name: 'Absent', value: absentPercentage }
+        ]
+        : [
+            { name: 'No Data', value: 100 }
+        ];
 
     const hasPendingActivities = (activities || []).filter(a =>
         a.classId === currentUser.classId &&
@@ -57,12 +90,17 @@ const StudentDashboard = () => {
     if (!currentUser) return null;
 
     // Check feature flags
-    const flags = studentFeatureFlags || {}; // Default to empty obj if not loaded yet, individual checks will be undefined (falsy) but we default to true below.
+    const globalFlags = studentFeatureFlags || {};
+    const classFlags = classFeatureFlags?.find(f => f.classId === currentUser.classId) || {};
 
-    const isFeatureEnabled = (key) => flags[key] !== false; // Default to true
+    const isFeatureEnabled = (key) => {
+        const isGloballyEnabled = globalFlags[key] !== false; // Default true
+        const isLocallyEnabled = classFlags[key] !== false; // Default true
+        return isGloballyEnabled && isLocallyEnabled;
+    };
 
     const navItems = [
-        { icon: LayoutDashboard, label: 'Overview', path: '/student' },
+        { icon: LayoutDashboard, label: 'Overview', path: '/student', key: 'overview' },
         { icon: Layers, label: 'Activities', path: '/student/activities', key: 'activities', hasNotification: hasPendingActivities },
         { icon: FileText, label: 'Online Exams', path: '/student/exams', key: 'exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results', key: 'results' },
@@ -83,13 +121,17 @@ const StudentDashboard = () => {
     // Redirect if on a disabled page
     useEffect(() => {
         const currentPath = location.pathname;
-        const currentItem = navItems.find(item => item.path === currentPath);
 
-        // If the path corresponds to a feature but is not in our filtered navItems list (meaning disabled), redirect.
-        // Also check if it's a sub-route (like /student/activities/123), logic might need to be robust.
-        // For now, simple check: if path starts with a feature path that is disabled.
+        // Special check for root /student
+        if (currentPath === '/student' && !isFeatureEnabled('overview')) {
+            // Redirect to first available item
+            if (navItems.length > 0) {
+                navigate(navItems[0].path, { replace: true });
+            }
+            return;
+        }
 
-        const allFeatures = [
+        const matchedFeature = [
             { path: '/student/activities', key: 'activities' },
             { path: '/student/exams', key: 'exams' },
             { path: '/student/results', key: 'results' },
@@ -100,14 +142,17 @@ const StudentDashboard = () => {
             { path: '/student/leaderboard', key: 'leaderboard' },
             { path: '/student/star-student', key: 'star' },
             { path: '/student/help', key: 'help' },
-        ];
+        ].find(f => currentPath.startsWith(f.path));
 
-        const matchedFeature = allFeatures.find(f => currentPath.startsWith(f.path));
         if (matchedFeature && !isFeatureEnabled(matchedFeature.key)) {
-            navigate('/student', { replace: true });
+            // Redirect to overview if enabled, else first available
+            if (isFeatureEnabled('overview')) {
+                navigate('/student', { replace: true });
+            } else if (navItems.length > 0) {
+                navigate(navItems[0].path, { replace: true });
+            }
         }
-
-    }, [location.pathname, flags, navigate]);
+    }, [location.pathname, globalFlags, classFlags, currentUser.classId, navigate, navItems]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -177,7 +222,7 @@ const StudentDashboard = () => {
                 {isMobileMenuOpen && (
                     <div className="fixed inset-0 z-50 flex md:hidden">
                         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
-                        <div className="relative bg-white w-64 h-full shadow-xl flex flex-col"> {/* Sidebar Content */}
+                        <div className="relative bg-white w-64 h-full shadow-xl flex flex-col">
                             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <div className="p-1.5 bg-indigo-600 rounded-lg">
@@ -186,7 +231,7 @@ const StudentDashboard = () => {
                                     <span className="font-bold text-gray-900">Menu</span>
                                 </div>
                                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-gray-500 hover:bg-gray-100 rounded-full">
-                                    <LogOut className="w-5 h-5 rotate-180" /> {/* Using LogOut as close/back icon or X */}
+                                    <LogOut className="w-5 h-5 rotate-180" />
                                 </button>
                             </div>
                             <div className="flex-1 overflow-y-auto p-4 space-y-1">
@@ -225,7 +270,6 @@ const StudentDashboard = () => {
 
                 <Routes>
                     <Route path="/" element={
-                        // ... Dashboard ...
                         <div className="space-y-8 max-w-5xl mx-auto">
                             {/* Welcome Section */}
                             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
@@ -247,7 +291,7 @@ const StudentDashboard = () => {
                                         </div>
                                         <span className="text-xs font-bold px-2 py-1 bg-green-100 text-green-700 rounded-full">Overall</span>
                                     </div>
-                                    <h3 className="text-3xl font-bold text-gray-900 mb-1">85%</h3>
+                                    <h3 className="text-3xl font-bold text-gray-900 mb-1">{attendancePercentage}%</h3>
                                     <p className="text-sm text-gray-500 font-medium">Attendance Rate</p>
                                 </Card>
 
@@ -258,7 +302,7 @@ const StudentDashboard = () => {
                                         </div>
                                         <span className="text-xs font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded-full">Active</span>
                                     </div>
-                                    <h3 className="text-3xl font-bold text-gray-900 mb-1">2</h3>
+                                    <h3 className="text-3xl font-bold text-gray-900 mb-1">{pendingExamsCount}</h3>
                                     <p className="text-sm text-gray-500 font-medium">Pending Exams</p>
                                 </Card>
 
@@ -267,14 +311,14 @@ const StudentDashboard = () => {
                                         <div className="p-3 bg-purple-50 rounded-full text-purple-600">
                                             <Trophy className="w-6 h-6" />
                                         </div>
-                                        <span className="text-xs font-bold px-2 py-1 bg-purple-100 text-purple-700 rounded-full">Rank</span>
+                                        <span className="text-xs font-bold px-2 py-1 bg-purple-100 text-purple-700 rounded-full">Avg</span>
                                     </div>
-                                    <h3 className="text-3xl font-bold text-gray-900 mb-1">Top 10%</h3>
-                                    <p className="text-sm text-gray-500 font-medium">Class Performance</p>
+                                    <h3 className="text-3xl font-bold text-gray-900 mb-1">{averageScore > 0 ? averageScore : 'N/A'}</h3>
+                                    <p className="text-sm text-gray-500 font-medium">Average Score</p>
                                 </Card>
                             </div>
 
-                            {/* Recent Activity / Chart - Simplified for now */}
+                            {/* Recent Activity / Chart */}
                             <div className="grid md:grid-cols-2 gap-6">
                                 <Card className="p-6">
                                     <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -285,10 +329,7 @@ const StudentDashboard = () => {
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
-                                                    data={[
-                                                        { name: 'Present', value: 85 },
-                                                        { name: 'Absent', value: 15 }
-                                                    ]}
+                                                    data={pieData}
                                                     cx="50%"
                                                     cy="50%"
                                                     innerRadius={60}
@@ -297,22 +338,28 @@ const StudentDashboard = () => {
                                                     paddingAngle={5}
                                                     dataKey="value"
                                                 >
-                                                    {[{ name: 'Present', value: 85 }, { name: 'Absent', value: 15 }].map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    {pieData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.name === 'No Data' ? '#E5E7EB' : COLORS[index % COLORS.length]} />
                                                     ))}
                                                 </Pie>
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
                                     <div className="flex justify-center gap-6 mt-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                            <span className="text-sm text-gray-600">Present (85%)</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                            <span className="text-sm text-gray-600">Absent (15%)</span>
-                                        </div>
+                                        {totalDays > 0 ? (
+                                            <>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                    <span className="text-sm text-gray-600">Present ({attendancePercentage}%)</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                                    <span className="text-sm text-gray-600">Absent ({absentPercentage}%)</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <span className="text-sm text-gray-400">No attendance records yet</span>
+                                        )}
                                     </div>
                                 </Card>
 

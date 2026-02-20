@@ -30,14 +30,15 @@ const FeatureItem = ({ icon: Icon, title, description }) => (
 );
 
 const Readme = () => {
-    const { currentUser, classes } = useData();
+    const { currentUser, classes, studentFeatureFlags, classFeatureFlags } = useData();
     const { startTour } = useTour();
     const role = currentUser?.role || 'Guest'; // Fallback
 
     const getContent = () => {
         // Feature Flags for Student
-        const studentClass = currentUser?.role === 'student' ? classes.find(c => c.id === currentUser.classId) : null;
-        const isPrayerChartEnabled = studentClass?.features?.prayerChart !== false;
+        const globalFlags = studentFeatureFlags || {};
+        const classFlags = classFeatureFlags?.find(f => f.classId === currentUser?.classId) || {};
+        const isPrayerChartEnabled = (globalFlags.prayer !== false) && (classFlags.prayer !== false);
 
         switch (role) {
             case 'admin':
@@ -151,7 +152,7 @@ const Readme = () => {
                                 Track your progress, take online exams, and view your results.
                             </p>
                             <button
-                                onClick={() => startTour('student', { features: studentClass?.features })}
+                                onClick={() => startTour('student', { features: { prayerChart: isPrayerChartEnabled } })}
                                 className="inline-flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-full font-medium shadow-lg hover:bg-teal-700 hover:scale-105 transition-all"
                             >
                                 <PlayCircle className="w-5 h-5" />

@@ -72,8 +72,7 @@ export const useTour = () => {
             steps = steps.filter(s => {
                 // If step has no featureKey, keep it
                 if (!s.featureKey) return true;
-                // If it has featureKey, check if it is enabled (default to true if not specified in options, but false usually means disabled explicitly)
-                // We assume features object has boolean values like { prayerChart: false }
+                // If it has featureKey, check if it is explicitly set to false
                 return options.features[s.featureKey] !== false;
             });
         }

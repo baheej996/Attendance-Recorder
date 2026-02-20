@@ -34,6 +34,7 @@ export const DataProvider = ({ children }) => {
     const [activitySubmissions, setActivitySubmissions] = useState([]);
     const [logEntries, setLogEntries] = useState([]);
     const [prayerRecords, setPrayerRecords] = useState([]);
+    const [specialPrayers, setSpecialPrayers] = useState([]);
 
     // Settings & Misc
     const [starDeclarations, setStarDeclarations] = useState([]);
@@ -62,6 +63,7 @@ export const DataProvider = ({ children }) => {
         star: true,
         help: true
     });
+    const [classFeatureFlags, setClassFeatureFlags] = useState([]);
 
     // Local Session State (No need to sync across devices)
     const [currentUser, setCurrentUser] = useState(() => {
@@ -98,11 +100,13 @@ export const DataProvider = ({ children }) => {
             subscribe('activitySubmissions', setActivitySubmissions),
             subscribe('logEntries', setLogEntries),
             subscribe('prayerRecords', setPrayerRecords),
+            subscribe('specialPrayers', setSpecialPrayers),
 
             subscribe('starDeclarations', setStarDeclarations),
             subscribe('adminRequests', setAdminRequests),
             subscribe('chatSettings', setChatSettings),
             subscribe('examSettings', setExamSettings),
+            subscribe('classFeatureFlags', setClassFeatureFlags),
         ];
 
         // Single doc settings - we'll subscribe to the collection and find the doc
@@ -595,9 +599,16 @@ export const DataProvider = ({ children }) => {
         mentorSettings, updateMentorSettings: async (s) => await setDoc(doc(db, 'settings', 'mentorUI'), s),
 
         studentFeatureFlags, updateStudentFeatureFlags: async (flags) => await setDoc(doc(db, 'settings', 'studentFeatures'), flags, { merge: true }),
+        classFeatureFlags, updateClassFeatureFlags: async (classId, flags) => await setDoc(doc(db, 'classFeatureFlags', classId), { classId, ...flags }, { merge: true }),
 
         resetData,
-        isDataLoaded
+        isDataLoaded,
+
+        // Special Prayers
+        specialPrayers,
+        addSpecialPrayer: async (p) => await addDoc(collection(db, 'specialPrayers'), { ...p, createdAt: new Date().toISOString() }),
+        updateSpecialPrayer: async (id, u) => await updateDoc(doc(db, 'specialPrayers', id), u),
+        deleteSpecialPrayer: async (id) => await deleteDoc(doc(db, 'specialPrayers', id))
     };
 
     return (

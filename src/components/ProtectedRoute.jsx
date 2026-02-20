@@ -2,11 +2,11 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 
-const ProtectedRoute = ({ children, allowedRole }) => {
+const ProtectedRoute = ({ children, allowedRole, redirectPath = "/login" }) => {
     const { currentUser } = useData();
 
     if (!currentUser) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to={redirectPath} replace />;
     }
 
     if (allowedRole && currentUser.role !== allowedRole) {

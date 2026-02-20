@@ -12,7 +12,8 @@ import {
     Users,
     Info,
     Settings,
-    Star
+    Star,
+    Moon
 } from 'lucide-react';
 
 export const MENTOR_NAV_ITEMS = [

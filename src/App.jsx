@@ -8,6 +8,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import MentorDashboard from './pages/MentorDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import StudentLoginPage from './pages/StudentLoginPage'; // Import StudentLoginPage
 
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -50,6 +51,9 @@ const AppContent = () => {
       <InstallPrompt />
       <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
         <Routes>
+          {/* Dedicated Student Login - Moved to top for priority */}
+          <Route path="/student-login" element={<StudentLoginPage />} />
+
           {/* Public Routes */}
           <Route path="/" element={<PublicHome />} />
           <Route path="/login" element={<Landing />} />
@@ -73,12 +77,20 @@ const AppContent = () => {
 
           {/* Protected Routes - Student */}
           <Route path="/student/*" element={
-            <ProtectedRoute allowedRole="student">
+            <ProtectedRoute allowedRole="student" redirectPath="/student-login">
               <StudentDashboard />
             </ProtectedRoute>
           } />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Debug 404 Page */}
+          <Route path="*" element={
+            <div className="min-h-screen flex items-center justify-center flex-col text-center p-4">
+              <h1 className="text-4xl font-bold text-gray-800 mb-2">404 Not Found</h1>
+              <p className="text-gray-600 mb-4">The page you are looking for does not exist.</p>
+              <p className="text-xs text-gray-400 font-mono mb-6">Current Path: {window.location.pathname}</p>
+              <a href="/" className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Go Home</a>
+            </div>
+          } />
         </Routes>
       </div>
     </Router>

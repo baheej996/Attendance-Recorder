@@ -1,4 +1,4 @@
-// Minimal Service Worker to satisfy PWA installability criteria
+// Minimal Service Worker to satisfy PWA installability criteria (v2)
 self.addEventListener('install', (event) => {
     self.skipWaiting();
 });

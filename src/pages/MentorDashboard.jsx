@@ -16,6 +16,8 @@ import MentorChat from '../components/mentor/MentorChat';
 import Batches from '../components/mentor/Batches';
 import MentorSettings from '../components/mentor/MentorSettings';
 import StarOfTheMonth from '../components/mentor/StarOfTheMonth';
+import SpecialPrayerManager from '../components/mentor/SpecialPrayerManager';
+import MentorPrayerStats from '../components/mentor/MentorPrayerStats';
 import { MENTOR_NAV_ITEMS } from '../config/mentorNavItems';
 import { useData } from '../contexts/DataContext';
 

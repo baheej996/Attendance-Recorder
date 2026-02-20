@@ -1,11 +1,11 @@
 {
-    "name": "Attendance Recorder",
-    "short_name": "Attendance",
-    "start_url": ".",
+    "name": "Student Portal",
+    "short_name": "Student",
+    "start_url": "/student-login",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#7c3aed",
-    "description": "A modern attendance recording application.",
+    "description": "Student Login for Attendance Recorder",
     "icons": [
         {
             "src": "/logo.png",

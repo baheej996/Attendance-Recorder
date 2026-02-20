@@ -1,0 +1,153 @@
+import React, { useState, useMemo } from 'react';
+import { useData } from '../../contexts/DataContext';
+import { Card } from '../ui/Card';
+import { format, isSameDay } from 'date-fns';
+import { Calendar, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
+
+const MentorPrayerStats = () => {
+    const { students, prayerRecords, specialPrayers, currentUser, classes } = useData();
+    const [selectedDate, setSelectedDate] = useState(new Date());
+
+    // Filter classes for mentor
+    const availableClasses = useMemo(() => {
+        return (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
+            ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
+            : classes;
+    }, [classes, currentUser]);
+
+    const [selectedClassId, setSelectedClassId] = useState('');
+
+    // Set default class selection
+    React.useEffect(() => {
+        if (availableClasses.length > 0 && !selectedClassId) {
+            setSelectedClassId(availableClasses[0].id);
+        }
+    }, [availableClasses, selectedClassId]);
+
+    const activeStudents = useMemo(() => {
+        if (!selectedClassId) return [];
+        return students.filter(s => s.status === 'Active' && s.classId === selectedClassId);
+    }, [students, selectedClassId]);
+
+    const activeSpecialPrayers = useMemo(() => {
+        // Show all special prayers to see history even if disabled? 
+        // Or only actively enabled ones? 
+        // "Mentor can ... enable ... and disable individually"
+        // Usually stats should show what was tracked. Let's show all that exist in system.
+        return specialPrayers;
+    }, [specialPrayers]);
+
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+    const stats = useMemo(() => {
+        return activeStudents.map(student => {
+            const record = prayerRecords.find(r => r.studentId === student.id && r.date === dateStr);
+            const prayersDone = record && record.prayers ? record.prayers : {};
+
+            return {
+                ...student,
+                prayersDone
+            };
+        });
+    }, [activeStudents, prayerRecords, dateStr]);
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900">Special Prayer Stats</h2>
+                    <p className="text-sm text-gray-500">Track daily special prayer performance</p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <select
+                        value={selectedClassId}
+                        onChange={(e) => setSelectedClassId(e.target.value)}
+                        className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        {availableClasses.map(cls => (
+                            <option key={cls.id} value={cls.id}>Class {cls.name} - {cls.division}</option>
+                        ))}
+                    </select>
+
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 w-full sm:w-auto">
+                        <button
+                            onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() - 1)))}
+                            className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <div className="flex items-center gap-2 px-4 font-medium text-gray-900 min-w-[140px] justify-center">
+                            <Calendar className="w-4 h-4 text-indigo-600" />
+                            {isSameDay(selectedDate, new Date()) ? 'Today' : format(selectedDate, 'MMM d, yyyy')}
+                        </div>
+                        <button
+                            onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() + 1)))}
+                            className="p-2 hover:bg-gray-100 rounded-md text-gray-600 disabled:opacity-50"
+                            disabled={isSameDay(selectedDate, new Date())}
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                            <tr>
+                                <th className="px-6 py-4 font-bold">Student</th>
+                                {activeSpecialPrayers.map(p => (
+                                    <th key={p.id} className="px-6 py-4 text-center whitespace-nowrap">
+                                        {p.name}
+                                        {!p.isEnabled && <span className="ml-1 text-[10px] text-red-500">(Disabled)</span>}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+
+                        <tbody className="divide-y divide-gray-100">
+                            {stats.length === 0 ? (
+                                <tr>
+                                    <td colSpan={activeSpecialPrayers.length + 1} className="px-6 py-8 text-center text-gray-500">
+                                        No students found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                stats.map(student => (
+                                    <tr key={student.id} className="bg-white hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-medium text-gray-900">
+                                            {student.name}
+                                            <div className="text-xs text-gray-500 font-normal">{student.registerNo}</div>
+                                        </td>
+                                        {activeSpecialPrayers.map(p => {
+                                            const isDone = !!student.prayersDone[p.id];
+                                            return (
+                                                <td key={p.id} className="px-6 py-4 text-center">
+                                                    <div className="flex justify-center">
+                                                        {isDone ? (
+                                                            <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                                                                <Check className="w-4 h-4" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-6 h-6 bg-gray-100 text-gray-300 rounded-full flex items-center justify-center">
+                                                                <X className="w-3 h-3" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card >
+        </div >
+    );
+};
+
+export default MentorPrayerStats;

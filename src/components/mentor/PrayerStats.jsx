@@ -6,9 +6,11 @@ import { clsx } from 'clsx';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import SpecialPrayerManager from './SpecialPrayerManager';
+import MentorPrayerStats from './MentorPrayerStats';
 
 const PrayerStats = () => {
-    const { classes, students, prayerRecords, currentUser, updateClass, deletePrayerRecordsForStudents } = useData();
+    const { classes, students, prayerRecords, currentUser, updateClass, deletePrayerRecordsForStudents, classFeatureFlags, updateClassFeatureFlags, studentFeatureFlags } = useData();
 
     // Filter classes if mentor
     const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
@@ -16,11 +18,16 @@ const PrayerStats = () => {
         : classes;
 
     // Filter for Stats View (only enabled classes)
-    const enabledClasses = availableClasses.filter(c => c.features?.prayerChart !== false);
+    const isPrayerGloballyEnabled = studentFeatureFlags?.prayer !== false;
+    const enabledClasses = availableClasses.filter(c => {
+        const classFlag = classFeatureFlags?.find(f => f.classId === c.id);
+        const isLocallyEnabled = classFlag ? classFlag.prayer !== false : true;
+        return isPrayerGloballyEnabled && isLocallyEnabled;
+    });
 
     const [selectedClassId, setSelectedClassId] = useState(enabledClasses[0]?.id || '');
     const [timeRange, setTimeRange] = useState('week'); // 'week' or 'month'
-    const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'settings'
+    const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'special' | 'settings'
 
     // Add state for delete confirmation
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -28,7 +35,7 @@ const PrayerStats = () => {
 
     // Effect to ensure valid selection when switching tabs or changing settings
     useEffect(() => {
-        if (activeTab === 'stats') {
+        if (activeTab === 'daily') {
             // If current selection is not in enabled list, switch to first enabled
             if (enabledClasses.length > 0 && !enabledClasses.find(c => c.id === selectedClassId)) {
                 setSelectedClassId(enabledClasses[0].id);
@@ -79,19 +86,9 @@ const PrayerStats = () => {
         return { leaderboard, dailyTrends };
     }, [selectedClassId, classStudents, prayerRecords]);
 
-    const handleToggleFeature = (classId, currentStatus) => {
-        const cls = classes.find(c => c.id === classId);
-        if (!cls) return;
-
-        // Initialize features object if missing
-        const currentFeatures = cls.features || {};
-
-        updateClass(classId, {
-            features: {
-                ...currentFeatures,
-                prayerChart: !currentStatus
-            }
-        });
+    const handleToggleFeature = async (classId, currentStatus) => {
+        const newStatus = !currentStatus;
+        await updateClassFeatureFlags(classId, { prayer: newStatus });
     };
 
     const handleClearData = async () => {
@@ -117,28 +114,34 @@ const PrayerStats = () => {
                     <p className="text-gray-500">Monitor class performance and spiritual habits</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    {/* Removed button from here */}
-                    <div className="flex items-center bg-gray-100 p-1 rounded-lg">
-                        <button
-                            onClick={() => setActiveTab('stats')}
-                            className={clsx(
-                                "px-4 py-2 text-sm font-medium rounded-md transition-all",
-                                activeTab === 'stats' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                            )}
-                        >
-                            Statistics
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('settings')}
-                            className={clsx(
-                                "px-4 py-2 text-sm font-medium rounded-md transition-all",
-                                activeTab === 'settings' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                            )}
-                        >
-                            Settings
-                        </button>
-                    </div>
+                <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+                    <button
+                        onClick={() => setActiveTab('daily')}
+                        className={clsx(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2",
+                            activeTab === 'daily' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        <BarChart2 className="w-4 h-4" /> Daily
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('special')}
+                        className={clsx(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2",
+                            activeTab === 'special' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        <BookOpen className="w-4 h-4" /> Special
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={clsx(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2",
+                            activeTab === 'settings' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        <Users className="w-4 h-4" /> Settings
+                    </button>
                 </div>
             </div>
 
@@ -153,7 +156,7 @@ const PrayerStats = () => {
                 isDanger={true}
             />
 
-            {activeTab === 'stats' ? (
+            {activeTab === 'daily' && (
                 <>
                     {enabledClasses.length === 0 ? (
                         <div className="text-center py-20 bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -258,7 +261,7 @@ const PrayerStats = () => {
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-sm font-bold text-indigo-600">{student.totalPrayers}</p>
-                                                    <p className="text-[10px] text-gray-400 uppercase">Prayers</p>
+                                                    <p className="text--[10px] text-gray-400 uppercase">Prayers</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -319,8 +322,16 @@ const PrayerStats = () => {
                         </>
                     )}
                 </>
-            ) : (
-                <div className="max-w-3xl mx-auto">
+            )}
+
+            {activeTab === 'special' && (
+                <MentorPrayerStats />
+            )}
+
+            {activeTab === 'settings' && (
+
+                <div className="max-w-4xl mx-auto space-y-8">
+                    {/* General Configuration */}
                     <Card className="p-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                             <Users className="w-5 h-5 text-indigo-600" />
@@ -332,22 +343,28 @@ const PrayerStats = () => {
 
                         <div className="space-y-4">
                             {availableClasses.map(cls => {
-                                const isEnabled = cls.features?.prayerChart ?? false;
-                                const safeEnabled = cls.features?.prayerChart !== false;
+                                const classFlag = classFeatureFlags?.find(f => f.classId === cls.id);
+                                const isLocallyEnabled = classFlag ? classFlag.prayer !== false : true;
+                                const isGloballyEnabled = studentFeatureFlags?.prayer !== false;
+                                const safeEnabled = isLocallyEnabled && isGloballyEnabled;
 
                                 return (
-                                    <div key={cls.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <div key={cls.id} className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${!isGloballyEnabled ? 'bg-gray-50 border-gray-200 opacity-70 cursor-not-allowed' : 'border-gray-100 hover:bg-gray-50'}`}>
                                         <div>
-                                            <h4 className="font-bold text-gray-800">Class {cls.name} - {cls.division}</h4>
+                                            <h4 className={`font-bold ${!isGloballyEnabled ? 'text-gray-500' : 'text-gray-800'}`}>Class {cls.name} - {cls.division}</h4>
                                             <p className="text-xs text-gray-500">
-                                                {safeEnabled ? 'Students can access Prayer Chart' : 'Prayer Chart hidden from students'}
+                                                {!isGloballyEnabled
+                                                    ? 'Prayer Chart is disabled globally by Administrator'
+                                                    : (safeEnabled ? 'Students can access Prayer Chart' : 'Prayer Chart hidden from students')}
                                             </p>
                                         </div>
                                         <button
-                                            onClick={() => handleToggleFeature(cls.id, safeEnabled)}
+                                            disabled={!isGloballyEnabled}
+                                            onClick={() => handleToggleFeature(cls.id, isLocallyEnabled)}
                                             className={clsx(
                                                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
-                                                safeEnabled ? "bg-indigo-600" : "bg-gray-200"
+                                                safeEnabled ? "bg-indigo-600" : "bg-gray-200",
+                                                !isGloballyEnabled && "opacity-50 cursor-not-allowed"
                                             )}
                                         >
                                             <span
@@ -362,9 +379,13 @@ const PrayerStats = () => {
                             })}
                         </div>
                     </Card>
+
+                    {/* Special Prayers Manager */}
+                    <SpecialPrayerManager />
                 </div>
             )}
-        </div>
+
+        </div >
     );
 };
 

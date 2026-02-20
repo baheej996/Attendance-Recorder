@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Users, BookOpen, GraduationCap, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, ChevronDown, ChevronUp, Eye, Settings } from 'lucide-react';
 import { clsx } from 'clsx';
 import { StudentProfileModal } from './StudentProfileModal';
+import ClassFeatureModal from './ClassFeatureModal';
 
 const Batches = () => {
     const { currentUser, classes, students } = useData();
     const [expandedClasses, setExpandedClasses] = useState({});
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [currentPreviewStudentId, setCurrentPreviewStudentId] = useState(null);
+    const [featureModalData, setFeatureModalData] = useState({ isOpen: false, classId: null, classNameStr: '' });
 
     // Memoize the filtering to avoid recalculation on every render
     const assignedClasses = useMemo(() => {
@@ -94,6 +96,18 @@ const Batches = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFeatureModalData({ isOpen: true, classId: cls.id, classNameStr: `${cls.name}-${cls.division}` });
+                                            }}
+                                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-colors shadow-sm text-sm font-medium"
+                                            title="Class Features Settings"
+                                        >
+                                            <Settings className="w-4 h-4" />
+                                            Features
+                                        </button>
+
                                         <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
                                             Active Batch
                                         </div>
@@ -210,6 +224,13 @@ const Batches = () => {
                 studentId={currentPreviewStudentId}
                 isOpen={isProfileModalOpen}
                 onClose={() => setIsProfileModalOpen(false)}
+            />
+
+            <ClassFeatureModal
+                isOpen={featureModalData.isOpen}
+                onClose={() => setFeatureModalData({ isOpen: false, classId: null, classNameStr: '' })}
+                classId={featureModalData.classId}
+                className={featureModalData.classNameStr}
             />
         </div>
     );

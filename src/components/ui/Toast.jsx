@@ -13,29 +13,30 @@ export const Toast = ({ message, type = 'success', onClose, duration = 3000 }) =
     }, [duration, onClose]);
 
     const icons = {
-        success: <CheckCircle className="w-5 h-5 text-green-500" />,
-        error: <XCircle className="w-5 h-5 text-red-500" />,
-        info: <Info className="w-5 h-5 text-blue-500" />
+        success: <CheckCircle className="w-8 h-8 text-white" />,
+        error: <XCircle className="w-8 h-8 text-white" />,
+        info: <Info className="w-8 h-8 text-white" />
     };
 
     const styles = {
-        success: "bg-white border-green-200 text-gray-800",
-        error: "bg-white border-red-200 text-gray-800",
-        info: "bg-white border-blue-200 text-gray-800"
+        success: "bg-green-600 border-transparent text-white",
+        error: "bg-red-600 border-transparent text-white",
+        info: "bg-blue-600 border-transparent text-white"
     };
 
     return (
         <div className={clsx(
-            "fixed bottom-4 right-4 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-in slide-in-from-bottom-5 fade-in duration-300 z-50",
+            "fixed top-6 left-6 right-6 sm:left-auto sm:right-6 sm:top-6 flex items-center gap-4 px-6 py-4 rounded-xl shadow-2xl border animate-in slide-in-from-top-5 fade-in duration-300 z-[100] max-w-md",
             styles[type]
         )}>
             {icons[type]}
-            <p className="font-medium text-sm">{message}</p>
+            <p className="font-medium text-lg leading-snug text-white">{message}</p>
             <button
                 onClick={onClose}
-                className="ml-2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="ml-auto p-2 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="Close"
             >
-                <X className="w-4 h-4 text-gray-400" />
+                <X className="w-5 h-5 text-white/80" />
             </button>
         </div>
     );

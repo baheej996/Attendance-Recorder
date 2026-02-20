@@ -33,9 +33,17 @@ const StudentActivities = () => {
         // Calculate points for all students in my class
         const classStudents = students.filter(s => s.classId === currentUser.classId);
 
+        // Create a Set of active activity IDs for fast lookup
+        // We only want to count points for activities that currently exist and are Active
+        const activeActivityIds = new Set(myActivities.map(a => a.id));
+
         const studentScores = classStudents.map(student => {
             const points = activitySubmissions
-                .filter(s => s.studentId === student.id && s.status === 'Completed')
+                .filter(s =>
+                    s.studentId === student.id &&
+                    s.status === 'Completed' &&
+                    activeActivityIds.has(s.activityId) // Only count if activity is invalid/active
+                )
                 .reduce((sum, s) => sum + (Number(s.points) || 0), 0);
             return { ...student, points };
         });
@@ -64,37 +72,38 @@ const StudentActivities = () => {
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
             {/* Header / Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="p-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white/20 rounded-xl">
-                            <Trophy className="w-8 h-8 text-yellow-300" />
+            {/* Header / Stats */}
+            <div className="grid grid-cols-3 gap-3 md:gap-6">
+                <Card className="p-3 md:p-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
+                    <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 text-center md:text-left">
+                        <div className="p-2 md:p-3 bg-white/20 rounded-xl">
+                            <Trophy className="w-5 h-5 md:w-8 md:h-8 text-yellow-300" />
                         </div>
                         <div>
-                            <p className="text-indigo-100 font-medium">Class Rank</p>
-                            <h2 className="text-3xl font-bold">#{stats.rank}</h2>
+                            <p className="text-indigo-100 text-[10px] md:text-base font-medium leading-tight">Class Rank</p>
+                            <h2 className="text-lg md:text-3xl font-bold leading-tight">#{stats.rank}</h2>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-6 bg-white border-l-4 border-l-green-500 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-green-50 rounded-xl text-green-600">
-                            <Target className="w-8 h-8" />
+                <Card className="p-3 md:p-6 bg-white border-l-2 md:border-l-4 border-l-green-500 shadow-sm">
+                    <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 text-center md:text-left">
+                        <div className="p-2 md:p-3 bg-green-50 rounded-xl text-green-600">
+                            <Target className="w-5 h-5 md:w-8 md:h-8" />
                         </div>
                         <div>
-                            <p className="text-gray-500 font-medium">Activity Points</p>
-                            <h2 className="text-3xl font-bold text-gray-900">{stats.points}</h2>
+                            <p className="text-gray-500 text-[10px] md:text-base font-medium leading-tight">Points</p>
+                            <h2 className="text-lg md:text-3xl font-bold text-gray-900 leading-tight">{stats.points}</h2>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-6 bg-white border-l-4 border-l-blue-500 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
-                            <CheckCircle className="w-8 h-8" />
+                <Card className="p-3 md:p-6 bg-white border-l-2 md:border-l-4 border-l-blue-500 shadow-sm">
+                    <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 text-center md:text-left">
+                        <div className="p-2 md:p-3 bg-blue-50 rounded-xl text-blue-600">
+                            <CheckCircle className="w-5 h-5 md:w-8 md:h-8" />
                         </div>
                         <div>
-                            <p className="text-gray-500 font-medium">Completion</p>
-                            <h2 className="text-3xl font-bold text-gray-900">{stats.percentage}%</h2>
+                            <p className="text-gray-500 text-[10px] md:text-base font-medium leading-tight">Done</p>
+                            <h2 className="text-lg md:text-3xl font-bold text-gray-900 leading-tight">{stats.percentage}%</h2>
                         </div>
                     </div>
                 </Card>
@@ -112,7 +121,7 @@ const StudentActivities = () => {
                                 <p className="text-gray-500 italic p-4 bg-gray-50 rounded-lg text-center">No pending activities! 🎉</p>
                             ) : (
                                 pending.map(activity => (
-                                    <Card key={activity.id} className="p-4 border-l-4 border-l-orange-400">
+                                    <Card key={activity.id} className="p-4 border-l-4 border-l-orange-500 shadow-md ring-1 ring-orange-100 hover:ring-orange-300 transition-all">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <div className="flex items-center gap-2">
@@ -125,11 +134,11 @@ const StudentActivities = () => {
                                                 </div>
                                                 <p className="text-gray-600 text-sm mt-1">{activity.description}</p>
                                                 <div className="flex gap-4 mt-3 text-xs text-gray-500 font-medium">
-                                                    <span>Max Points: {activity.maxPoints}</span>
-                                                    <span>Due: {activity.dueDate || 'No Date'}</span>
+                                                    <span className="bg-orange-50 px-2 py-1 rounded text-orange-600">Max Points: {activity.maxPoints}</span>
+                                                    <span className="bg-gray-100 px-2 py-1 rounded text-gray-600">Due: {activity.dueDate || 'No Date'}</span>
                                                 </div>
                                             </div>
-                                            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded">Pending</span>
+                                            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded animate-pulse">Pending</span>
                                         </div>
                                     </Card>
                                 ))

@@ -59,6 +59,7 @@ const FeatureControl = () => {
     };
 
     const features = [
+        { key: 'overview', label: 'Overview', description: 'Student dashboard with quick stats.', icon: Calendar },
         { key: 'activities', label: 'Activities', description: 'Assignments and projects for students.', icon: Layers },
         { key: 'exams', label: 'Online Exams', description: 'MCQ based online examinations.', icon: FileText },
         { key: 'results', label: 'Report Card', description: 'View exam results and progress.', icon: FileText },

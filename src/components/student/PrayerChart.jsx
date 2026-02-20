@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Toast } from '../ui/Toast';
-import { Calendar, CheckCircle, XCircle, ChevronLeft, ChevronRight, Moon, Sun, Sunrise, Sunset, Clock, Save, Trophy, BookOpen } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, ChevronLeft, ChevronRight, Moon, Sun, Sunrise, Sunset, Clock, Save, Trophy, BookOpen, Star } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, subDays, addDays, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, subMonths, addMonths, isFuture, isSameYear } from 'date-fns';
 
@@ -16,13 +16,21 @@ const PRAYERS = [
 ];
 
 const PrayerChart = () => {
-    const { currentUser, addPrayerRecord, prayerRecords } = useData();
+    const { currentUser, addPrayerRecord, prayerRecords, specialPrayers } = useData();
     const [showHistory, setShowHistory] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [historyMonth, setHistoryMonth] = useState(new Date());
-    const [stats, setStats] = useState({ fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false });
+    const [stats, setStats] = useState({});
     const [toast, setToast] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    const enabledSpecialPrayers = useMemo(() => {
+        if (!currentUser?.classId) return [];
+        return specialPrayers?.filter(p =>
+            p.isEnabled &&
+            p.assignedClassIds?.includes(currentUser.classId)
+        ) || [];
+    }, [specialPrayers, currentUser]);
 
     // Stable records array to prevent infinite loops in useEffect
     const records = useMemo(() => {
@@ -37,22 +45,11 @@ const PrayerChart = () => {
         const record = records.find(r => r.date === dateStr);
 
         if (record && record.prayers) {
-            // Handle both legacy (single char) and new (full id) keys if migration isn't done
-            setStats(prev => {
-                const newStats = { fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false };
-                if ('f' in record.prayers) {
-                    newStats.fajr = !!record.prayers.f;
-                    newStats.dhuhr = !!record.prayers.d;
-                    newStats.asr = !!record.prayers.a;
-                    newStats.maghrib = !!record.prayers.m;
-                    newStats.isha = !!record.prayers.i;
-                } else {
-                    return { ...newStats, ...record.prayers };
-                }
-                return newStats;
-            });
+            // Load saved state (merges regular + special)
+            setStats(record.prayers);
         } else {
-            setStats({ fajr: false, dhuhr: false, asr: false, maghrib: false, isha: false });
+            // Reset to empty
+            setStats({});
         }
         setLoading(false);
     }, [selectedDate, currentUser, records]);
@@ -295,6 +292,47 @@ const PrayerChart = () => {
                                         </div>
                                     );
                                 })}
+
+                                {/* Special Prayers Section */}
+                                {enabledSpecialPrayers.length > 0 && (
+                                    <>
+                                        <h3 className="text-md font-bold text-indigo-900 mt-4 px-2">Special Prayers</h3>
+                                        {enabledSpecialPrayers.map((prayer) => {
+                                            const isCompleted = stats[prayer.id];
+                                            return (
+                                                <div
+                                                    key={prayer.id}
+                                                    onClick={() => handleToggle(prayer.id)}
+                                                    className={clsx(
+                                                        "flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
+                                                        isCompleted
+                                                            ? "border-indigo-500 bg-indigo-50"
+                                                            : "border-transparent bg-gray-50 hover:bg-gray-100"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
+                                                            <Star className="w-6 h-6" />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-bold text-gray-900">{prayer.name}</h3>
+                                                            <p className="text-xs text-gray-500">
+                                                                {isCompleted ? 'Completed' : 'Not marked yet'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className={clsx(
+                                                        "w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors",
+                                                        isCompleted ? "bg-indigo-500 border-indigo-500" : "border-gray-300"
+                                                    )}>
+                                                        {isCompleted && <CheckCircle className="w-4 h-4 text-white" />}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </>
+                                )}
                             </div>
 
                             <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">

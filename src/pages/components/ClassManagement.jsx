@@ -9,6 +9,7 @@ import { clsx } from 'clsx';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
 import { Modal } from '../../components/ui/Modal';
+import { ClassStudentsModal } from '../../components/admin/ClassStudentsModal';
 
 // Keeping ClassAllotmentModal as it was part of the file logic
 const ClassAllotmentModal = ({ isOpen, onClose, classItem, mentors, updateMentor }) => {
