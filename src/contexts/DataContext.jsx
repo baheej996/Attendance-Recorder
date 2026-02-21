@@ -221,6 +221,11 @@ export const DataProvider = ({ children }) => {
     const addSubject = async (subject) => await addDoc(collection(db, 'subjects'), subject);
     const updateSubject = async (id, updated) => await updateDoc(doc(db, 'subjects', id), updated);
     const deleteSubject = async (id) => await deleteDoc(doc(db, 'subjects', id));
+    const deleteSubjects = async (ids) => {
+        const batch = writeBatch(db);
+        ids.forEach(id => batch.delete(doc(db, 'subjects', id)));
+        await batch.commit();
+    };
 
     // Exams
     const addExam = async (exam) => await addDoc(collection(db, 'exams'), { ...exam, status: 'Draft', isActive: false });
@@ -539,13 +544,12 @@ export const DataProvider = ({ children }) => {
         await setDoc(doc(db, 'examSettings', docId), { examId, classId, subjectId, ...updates }, { merge: true });
     };
 
-
     const value = {
         classes, addClass, updateClass, deleteClass, deleteClasses,
         students, addStudent, updateStudent, deleteStudent, deleteStudents, deleteAllStudents,
         mentors, addMentor, updateMentor, deleteMentor, deleteMentors,
         attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds,
-        subjects, addSubject, updateSubject, deleteSubject,
+        subjects, addSubject, updateSubject, deleteSubject, deleteSubjects,
         exams, addExam, updateExam, deleteExam,
         results, recordResult, deleteResultBatch,
         questions, addQuestion, updateQuestion, deleteQuestion,

@@ -5,9 +5,10 @@ import { Trash2, Plus, BookOpen, Layers, Edit, Search, ArrowUpDown } from 'lucid
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 const SubjectManager = () => {
-    const { classes, subjects, addSubject, updateSubject, deleteSubject } = useData();
+    const { classes, subjects, addSubject, updateSubject, deleteSubject, deleteSubjects } = useData();
     const { showAlert } = useUI();
 
     // We now track 'gradeName' instead of specific 'classId'
@@ -17,6 +18,10 @@ const SubjectManager = () => {
     const [sortBy, setSortBy] = useState('grade'); // New Sort State: 'grade' | 'name'
     const [editingId, setEditingId] = useState(null);
     const [editingOriginalName, setEditingOriginalName] = useState('');
+
+    // Bulk Delete State
+    const [selectedSubjectIds, setSelectedSubjectIds] = useState([]);
+    const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
     // Extract unique grade names (e.g. "1", "2", "3") sorted
     const uniqueGrades = [...new Set(classes.map(c => c.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -127,6 +132,28 @@ const SubjectManager = () => {
     };
 
     const getClassObj = (id) => classes.find(c => c.id === id);
+
+    // Bulk selection handlers
+    const toggleSelectAll = () => {
+        if (selectedSubjectIds.length === filteredSubjects.length && filteredSubjects.length > 0) {
+            setSelectedSubjectIds([]);
+        } else {
+            setSelectedSubjectIds(filteredSubjects.map(s => s.id));
+        }
+    };
+
+    const toggleSelectSubject = (id) => {
+        setSelectedSubjectIds(prev =>
+            prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
+        );
+    };
+
+    const confirmBulkDelete = () => {
+        deleteSubjects(selectedSubjectIds);
+        setSelectedSubjectIds([]);
+        setIsBulkDeleteModalOpen(false);
+        showAlert('Success', `${selectedSubjectIds.length} subjects deleted successfully.`, 'success');
+    };
 
     // Filter and Sort Logic
     const filteredSubjects = subjects
@@ -302,6 +329,33 @@ const SubjectManager = () => {
                                 </select>
                             </div>
                         </div>
+
+                        {/* Bulk Actions Header */}
+                        {filteredSubjects.length > 0 && (
+                            <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <div className="flex items-center gap-3 pl-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedSubjectIds.length === filteredSubjects.length && filteredSubjects.length > 0}
+                                        onChange={toggleSelectAll}
+                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">
+                                        {selectedSubjectIds.length > 0 ? `${selectedSubjectIds.length} selected` : 'Select All'}
+                                    </span>
+                                </div>
+                                {selectedSubjectIds.length > 0 && (
+                                    <Button
+                                        variant="danger"
+                                        size="sm"
+                                        onClick={() => setIsBulkDeleteModalOpen(true)}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Trash2 className="w-4 h-4" /> Delete ({selectedSubjectIds.length})
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
@@ -312,28 +366,38 @@ const SubjectManager = () => {
                         ) : (
                             filteredSubjects.map(subject => (
                                 <div key={subject.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors group gap-3">
-                                    <div className="min-w-0">
-                                        <p className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{subject.name}</p>
-                                        <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2 mt-1">
-                                            <span className="flex items-center gap-1">
-                                                <Layers className="w-3 h-3" />
-                                                {getClassName(subject.classId)}
-                                            </span>
-                                            <span className="hidden sm:inline text-gray-300">|</span>
-                                            <span className="whitespace-nowrap">Max: {subject.maxMarks} • Pass: {subject.passMarks || 40}</span>
-                                            {subject.totalChapters > 0 && (
-                                                <>
-                                                    <span className="hidden sm:inline text-gray-300">|</span>
-                                                    <span className="whitespace-nowrap">{subject.totalChapters} Chaps</span>
-                                                </>
-                                            )}
-                                            {subject.isExamSubject === false && (
-                                                <>
-                                                    <span className="hidden sm:inline text-gray-300">|</span>
-                                                    <span className="text-amber-600 font-medium whitespace-nowrap">Non-Exam</span>
-                                                </>
-                                            )}
-                                        </p>
+                                    <div className="flex items-start sm:items-center gap-3 min-w-0">
+                                        <div className="pt-1 sm:pt-0">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedSubjectIds.includes(subject.id)}
+                                                onChange={() => toggleSelectSubject(subject.id)}
+                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                            />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{subject.name}</p>
+                                            <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2 mt-1">
+                                                <span className="flex items-center gap-1">
+                                                    <Layers className="w-3 h-3" />
+                                                    {getClassName(subject.classId)}
+                                                </span>
+                                                <span className="hidden sm:inline text-gray-300">|</span>
+                                                <span className="whitespace-nowrap">Max: {subject.maxMarks} • Pass: {subject.passMarks || 40}</span>
+                                                {subject.totalChapters > 0 && (
+                                                    <>
+                                                        <span className="hidden sm:inline text-gray-300">|</span>
+                                                        <span className="whitespace-nowrap">{subject.totalChapters} Chaps</span>
+                                                    </>
+                                                )}
+                                                {subject.isExamSubject === false && (
+                                                    <>
+                                                        <span className="hidden sm:inline text-gray-300">|</span>
+                                                        <span className="text-amber-600 font-medium whitespace-nowrap">Non-Exam</span>
+                                                    </>
+                                                )}
+                                            </p>
+                                        </div>
                                     </div>
                                     <div className="flex gap-2 sm:gap-1 self-end sm:self-auto">
                                         <button
@@ -357,6 +421,16 @@ const SubjectManager = () => {
                     </div>
                 </div>
             </div>
+
+            <ConfirmationModal
+                isOpen={isBulkDeleteModalOpen}
+                onClose={() => setIsBulkDeleteModalOpen(false)}
+                onConfirm={confirmBulkDelete}
+                title="Delete Multiple Subjects"
+                message={`Are you sure you want to delete ${selectedSubjectIds.length} subjects? This action cannot be undone.`}
+                confirmText="Delete All Selected"
+                isDanger={true}
+            />
         </div>
     );
 };
