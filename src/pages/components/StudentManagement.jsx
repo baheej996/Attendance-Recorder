@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
-import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
@@ -250,6 +250,27 @@ const StudentManagement = () => {
         return matchesClass && matchesSearch;
     });
 
+    // Detect duplicate registration numbers
+    const duplicateStudents = React.useMemo(() => {
+        const regCount = {};
+        students.forEach(s => {
+            const regNo = (s.registerNo || '').trim().toLowerCase();
+            if (!regNo) return;
+            regCount[regNo] = (regCount[regNo] || 0) + 1;
+        });
+
+        // Get reg numbers that appear more than once
+        const duplicates = Object.keys(regCount).filter(reg => regCount[reg] > 1);
+
+        if (duplicates.length === 0) return [];
+
+        // Return all students that have these duplicate reg numbers
+        return students.filter(s => {
+            const regNo = (s.registerNo || '').trim().toLowerCase();
+            return duplicates.includes(regNo);
+        }).sort((a, b) => a.registerNo.localeCompare(b.registerNo));
+    }, [students]);
+
     // Pagination Logic
     const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -428,6 +449,49 @@ const StudentManagement = () => {
                     </div>
                 </div>
             </div>
+
+            {duplicateStudents.length > 0 && (
+                <Card className="border-red-200 bg-red-50">
+                    <div className="p-4 border-b border-red-100 flex items-center gap-3">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                        <div>
+                            <h3 className="text-red-800 font-bold">Manual Review Requested: Duplicate Registration Numbers</h3>
+                            <p className="text-red-600 text-sm">The following students share identical registration numbers. Please edit them to resolve the conflicts.</p>
+                        </div>
+                    </div>
+                    <div className="p-4 max-h-60 overflow-y-auto">
+                        <div className="space-y-3">
+                            {duplicateStudents.map(student => {
+                                const studentClass = classes?.find(c => c.id === student.classId);
+                                return (
+                                    <div key={student.id} className="flex items-center justify-between p-3 bg-white border border-red-100 rounded-lg shadow-sm">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+                                            <div className="min-w-[120px]">
+                                                <span className="text-xs text-gray-500 block">Reg No</span>
+                                                <span className="font-bold text-red-600">{student.registerNo}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-medium text-gray-900 block">{student.name}</span>
+                                                <span className="text-xs text-gray-500">
+                                                    {studentClass ? `Class: ${studentClass.name}-${studentClass.division}` : 'No Class'} • UID: {student.uid || 'N/A'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            onClick={() => handleEdit(student)}
+                                            size="sm"
+                                            className="bg-red-100 text-red-700 hover:bg-red-200 border-none shrink-0"
+
+                                        >
+                                            <Edit className="w-4 h-4 mr-1" /> Edit
+                                        </Button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </Card>
+            )}
 
             <Card className="flex flex-col h-[calc(100vh-200px)] md:h-[800px]">
                 <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-6 p-1">
