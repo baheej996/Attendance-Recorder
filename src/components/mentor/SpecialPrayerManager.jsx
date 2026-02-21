@@ -18,6 +18,11 @@ const SpecialPrayerManager = () => {
         ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
         : classes;
 
+    // Filter special prayers for the current mentor
+    const mySpecialPrayers = specialPrayers.filter(p =>
+        currentUser?.role === 'admin' || p.mentorId === currentUser?.id
+    );
+
     // Group classes by name (e.g. "1", "2") to allow batch selection if simple
     // For now, let's just list all classes sorted
     const sortedClasses = [...availableClasses].sort((a, b) =>
@@ -43,7 +48,8 @@ const SpecialPrayerManager = () => {
             await updateSpecialPrayer(editingId, payload);
             setEditingId(null);
         } else {
-            await addSpecialPrayer(payload);
+            // Include mentorId on creation
+            await addSpecialPrayer({ ...payload, mentorId: currentUser?.id });
             setIsAdding(false);
         }
         setFormData({ name: '', isEnabled: true, assignedClassIds: [] });
@@ -168,10 +174,10 @@ const SpecialPrayerManager = () => {
             )}
 
             <div className="grid gap-4">
-                {specialPrayers.length === 0 ? (
+                {mySpecialPrayers.length === 0 ? (
                     <p className="text-center text-gray-500 italic py-8">No special prayers added yet.</p>
                 ) : (
-                    specialPrayers.map(prayer => (
+                    mySpecialPrayers.map(prayer => (
                         <Card key={prayer.id} className="p-4 flex items-center justify-between transition-colors hover:bg-gray-50">
                             <div className="flex items-center gap-4">
                                 <button

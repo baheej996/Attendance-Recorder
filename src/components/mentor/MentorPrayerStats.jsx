@@ -30,12 +30,11 @@ const MentorPrayerStats = () => {
     }, [students, selectedClassId]);
 
     const activeSpecialPrayers = useMemo(() => {
-        // Show all special prayers to see history even if disabled? 
-        // Or only actively enabled ones? 
-        // "Mentor can ... enable ... and disable individually"
-        // Usually stats should show what was tracked. Let's show all that exist in system.
-        return specialPrayers;
-    }, [specialPrayers]);
+        // Show special prayers created by this mentor, or all if admin
+        return specialPrayers.filter(p =>
+            currentUser?.role === 'admin' || p.mentorId === currentUser?.id
+        );
+    }, [specialPrayers, currentUser]);
 
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
