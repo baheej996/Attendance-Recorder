@@ -138,29 +138,7 @@ export const DataProvider = ({ children }) => {
             if (snapshot.empty) {
                 console.log("No classes found in Firestore. Seeding demo data...");
 
-                // 1. Seed Classes
-                const class1 = await addDoc(collection(db, 'classes'), { name: "1", division: "A" });
-                const class2 = await addDoc(collection(db, 'classes'), { name: "2", division: "B" });
-
-                // 2. Seed Students
-                await addDoc(collection(db, 'students'), {
-                    name: "SHAHAN AHMED", registerNo: "REG001", uid: "UID123", gender: "Male", status: "Active", classId: class1.id
-                });
-                await addDoc(collection(db, 'students'), {
-                    name: "MUHAMMED IZYAN K", registerNo: "REG002", uid: "UID124", gender: "Male", status: "Active", classId: class2.id
-                });
-
-                // 3. Seed Subjects
-                await addDoc(collection(db, 'subjects'), { name: "English", classId: class1.id, maxMarks: 100, passMarks: 40, isExamSubject: true });
-                await addDoc(collection(db, 'subjects'), { name: "Mathematics", classId: class1.id, maxMarks: 100, passMarks: 40, isExamSubject: true });
-                await addDoc(collection(db, 'subjects'), { name: "Science", classId: class1.id, maxMarks: 100, passMarks: 40, isExamSubject: true });
-
-                // 4. Seed Exams
-                await addDoc(collection(db, 'exams'), {
-                    name: "First Term Examination", date: new Date().toISOString().split('T')[0], status: "Published"
-                });
-
-                // 5. Seed Settings
+                // Only seed essential application settings
                 await setDoc(doc(db, 'settings', 'institution'), {
                     name: 'Attendance Recorder', tagline: 'Track Smart, Act Fast', academicYear: '2024-2025', chiefMentor: 'Dr. Principal'
                 });
