@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings } from 'lucide-react';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 const ActivitiesManager = () => {
@@ -21,6 +21,7 @@ const ActivitiesManager = () => {
     const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
     const [isBatchShare, setIsBatchShare] = useState(false); // New state
     const [isBatchDelete, setIsBatchDelete] = useState(false); // New state for delete
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // Settings Modal
 
     // Filter/Search States
     const [selectedClassId, setSelectedClassId] = useState('all');
@@ -34,7 +35,8 @@ const ActivitiesManager = () => {
         classId: '',
         subjectId: '',
         maxPoints: 10,
-        dueDate: ''
+        dueDate: '',
+        studentCanMarkDone: false // New field
     });
 
     const handleCreateOrUpdate = (e) => {
@@ -87,13 +89,22 @@ const ActivitiesManager = () => {
     const openCreateModal = () => {
         setEditingActivityId(null);
         setIsBatchShare(false); // Reset
+        let defaultStudentMarkDone = false;
+
+        // If a class is already selected, use its default config
+        if (selectedClassId !== 'all') {
+            const classConfig = classFeatureFlags?.find(f => f.classId === selectedClassId);
+            defaultStudentMarkDone = classConfig?.studentCanMarkActivities || false;
+        }
+
         setNewActivity({
             title: '',
             description: '',
             classId: selectedClassId !== 'all' ? selectedClassId : '',
             subjectId: '',
             maxPoints: 10,
-            dueDate: ''
+            dueDate: '',
+            studentCanMarkDone: defaultStudentMarkDone
         });
         setIsCreateModalOpen(true);
     };
@@ -107,7 +118,8 @@ const ActivitiesManager = () => {
             classId: activity.classId,
             subjectId: activity.subjectId || '',
             maxPoints: activity.maxPoints,
-            dueDate: activity.dueDate || ''
+            dueDate: activity.dueDate || '',
+            studentCanMarkDone: activity.studentCanMarkDone || false
         });
         setIsCreateModalOpen(true);
     };
@@ -116,7 +128,7 @@ const ActivitiesManager = () => {
         setIsCreateModalOpen(false);
         setEditingActivityId(null);
         setIsBatchShare(false);
-        setNewActivity({ title: '', description: '', classId: '', subjectId: '', maxPoints: 10, dueDate: '' });
+        setNewActivity({ title: '', description: '', classId: '', subjectId: '', maxPoints: 10, dueDate: '', studentCanMarkDone: false });
     };
 
     const confirmDelete = () => {
@@ -159,6 +171,20 @@ const ActivitiesManager = () => {
     const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
         ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
         : classes, [classes, currentUser]);
+
+    const { classFeatureFlags, updateClassFeatureFlags } = useData();
+
+    const handleClassSettingToggle = async (classId, currentSetting) => {
+        const newSetting = !currentSetting;
+        // Update feature flag
+        await updateClassFeatureFlags(classId, { studentCanMarkActivities: newSetting });
+
+        // Bulk update existing activities for this class
+        const classActivities = activities.filter(a => a.classId === classId);
+        for (const act of classActivities) {
+            await updateActivity(act.id, { studentCanMarkDone: newSetting });
+        }
+    };
 
     // Initialize selected class to first available if 'all' isn't valid context or just preference
     // For now 'all' is fine, or we can default to [0].
@@ -256,6 +282,9 @@ const ActivitiesManager = () => {
                             <Trash2 className="w-4 h-4" /> Delete ({selectedActivityIds.length})
                         </Button>
                     )}
+                    <Button onClick={() => setIsSettingsModalOpen(true)} variant="secondary" className="flex items-center gap-2 flex-1 md:flex-none justify-center">
+                        <Settings className="w-4 h-4" /> Settings
+                    </Button>
                     <Button onClick={openCreateModal} className="flex items-center gap-2 flex-1 md:flex-none justify-center">
                         <Plus className="w-4 h-4" /> New Activity
                     </Button>
@@ -424,9 +453,16 @@ const ActivitiesManager = () => {
                                 {/* Expanded Grading View */}
                                 {isExpanded && (
                                     <div className="border-t border-gray-100 bg-gray-50 p-6">
-                                        <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                            <Trophy className="w-4 h-4 text-yellow-500" />
-                                            Student Tracker
+                                        <h4 className="font-bold text-gray-800 mb-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Trophy className="w-4 h-4 text-yellow-500" />
+                                                Student Tracker
+                                            </div>
+                                            {activity.studentCanMarkDone && (
+                                                <span className="text-xs font-semibold px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full">
+                                                    Self-Marking Enabled
+                                                </span>
+                                            )}
                                         </h4>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {students
@@ -497,7 +533,14 @@ const ActivitiesManager = () => {
                                 <select
                                     className="w-full p-2 border rounded-lg"
                                     value={newActivity.classId}
-                                    onChange={e => setNewActivity({ ...newActivity, classId: e.target.value })}
+                                    onChange={(e) => {
+                                        const cid = e.target.value;
+                                        setNewActivity(prev => {
+                                            const classConfig = classFeatureFlags?.find(f => f.classId === cid);
+                                            const defaultMarkDone = classConfig?.studentCanMarkActivities || false;
+                                            return { ...prev, classId: cid, studentCanMarkDone: defaultMarkDone };
+                                        });
+                                    }}
                                     required
                                 >
                                     <option value="">Select Class</option>
@@ -558,6 +601,21 @@ const ActivitiesManager = () => {
                                     />
                                 </div>
                             </div>
+
+                            <div className="flex items-center gap-2 p-3 rounded-lg border bg-gray-50/50 border-gray-200">
+                                <input
+                                    type="checkbox"
+                                    id="studentCanMarkDone"
+                                    checked={newActivity.studentCanMarkDone}
+                                    onChange={e => setNewActivity({ ...newActivity, studentCanMarkDone: e.target.checked })}
+                                    className="mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="studentCanMarkDone" className="text-sm cursor-pointer select-none text-gray-800 flex-1">
+                                    <span className="font-semibold block">Student can mark as done</span>
+                                    <span className="text-xs text-gray-500">Allow students to self-report completion on their dashboard.</span>
+                                </label>
+                            </div>
+
                             <Button type="submit" className="w-full">
                                 {editingActivityId ? 'Update Activity' : 'Create Activity'}
                             </Button>
@@ -611,6 +669,51 @@ const ActivitiesManager = () => {
                 cancelText={null} // Hide cancel button
                 isDanger={true}
             />
+
+            {/* Main Settings Modal */}
+            {isSettingsModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-lg p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                    <Settings className="w-5 h-5" /> Activity Settings
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1">Configure global activity preferences per class.</p>
+                            </div>
+                            <button onClick={() => setIsSettingsModalOpen(false)}><XCircle className="w-6 h-6 text-gray-400 hover:text-gray-600 transition-colors" /></button>
+                        </div>
+
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                            {availableClasses.map(cls => {
+                                const classConfig = classFeatureFlags?.find(f => f.classId === cls.id);
+                                const isEnabled = classConfig?.studentCanMarkActivities || false;
+
+                                return (
+                                    <div key={cls.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                        <div>
+                                            <h4 className="font-bold text-gray-900">{cls.name}-{cls.division}</h4>
+                                            <p className="text-xs text-gray-500 mt-0.5 max-w-[200px] sm:max-w-xs">
+                                                Allow students to mark activities as completed by themselves.
+                                            </p>
+                                        </div>
+
+                                        <label className="relative inline-flex items-center cursor-pointer shrinks-0">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={isEnabled}
+                                                onChange={() => handleClassSettingToggle(cls.id, isEnabled)}
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                        </label>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 };

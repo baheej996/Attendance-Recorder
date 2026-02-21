@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Layers, CheckCircle, Clock, Trophy, Target } from 'lucide-react';
 
 const StudentActivities = () => {
-    const { currentUser, activities, activitySubmissions, students, subjects } = useData();
+    const { currentUser, activities, activitySubmissions, students, subjects, markActivityAsDone } = useData();
 
     if (!currentUser) return null;
 
@@ -137,8 +137,22 @@ const StudentActivities = () => {
                                                     <span className="bg-orange-50 px-2 py-1 rounded text-orange-600">Max Points: {activity.maxPoints}</span>
                                                     <span className="bg-gray-100 px-2 py-1 rounded text-gray-600">Due: {activity.dueDate || 'No Date'}</span>
                                                 </div>
+                                                {activity.studentCanMarkDone && (
+                                                    <div className="mt-4 pt-3 border-t border-orange-100 space-y-2">
+                                                        <p className="text-xs text-indigo-600 font-medium bg-indigo-50 px-2 py-1 inline-block rounded">
+                                                            Teacher has enabled self-marking 📝
+                                                        </p>
+                                                        <button
+                                                            onClick={() => markActivityAsDone(activity.id, currentUser.id, activity.maxPoints)}
+                                                            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition flex justify-center items-center gap-2"
+                                                        >
+                                                            <CheckCircle className="w-4 h-4" />
+                                                            Mark as Done
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded animate-pulse">Pending</span>
+                                            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded animate-pulse mt-1 shrink-0">Pending</span>
                                         </div>
                                     </Card>
                                 ))
