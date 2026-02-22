@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen } from 'lucide-react';
+import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen, Copy } from 'lucide-react';
 import { clsx } from 'clsx';
-import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import SpecialPrayerManager from './SpecialPrayerManager';
@@ -28,6 +28,7 @@ const PrayerStats = () => {
     const [selectedClassId, setSelectedClassId] = useState(enabledClasses[0]?.id || '');
     const [timeRange, setTimeRange] = useState('week'); // 'week' or 'month'
     const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'special' | 'settings'
+    const [reportDate, setReportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
     // Add state for delete confirmation
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -101,6 +102,94 @@ const PrayerStats = () => {
             console.error("Failed to delete records:", error);
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const generatePrayerReport = async (type) => {
+        if (!selectedClassId) return;
+
+        const currentClass = enabledClasses.find(c => c.id === selectedClassId);
+        const className = currentClass ? `${currentClass.name} - ${currentClass.division}` : '';
+        const standardPrayers = [
+            { id: 'fajr', label: 'Fajr' },
+            { id: 'dhuhr', label: 'Dhuhr' },
+            { id: 'asr', label: 'Asr' },
+            { id: 'maghrib', label: 'Maghrib' },
+            { id: 'isha', label: 'Isha' }
+        ];
+
+        // Sort boys first, then girls, then alphabetically
+        const sortedStudents = [...classStudents].sort((a, b) => {
+            if (a.gender === 'Boy' && b.gender !== 'Boy') return -1;
+            if (a.gender !== 'Boy' && b.gender === 'Boy') return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        const studentIds = sortedStudents.map(s => s.id);
+        const baseDate = new Date(reportDate);
+
+        let startDate, endDate, titlePrefix, displayDate;
+        let isInterval = false;
+
+        if (type === 'daily') {
+            titlePrefix = 'Daily';
+            displayDate = format(baseDate, 'dd MMM yyyy');
+        } else if (type === 'weekly') {
+            startDate = startOfWeek(baseDate, { weekStartsOn: 1 }); // Assuming Monday start
+            endDate = endOfWeek(baseDate, { weekStartsOn: 1 });
+            titlePrefix = 'Weekly';
+            displayDate = `${format(startDate, 'dd MMM')} - ${format(endDate, 'dd MMM yyyy')}`;
+            isInterval = true;
+        } else if (type === 'monthly') {
+            startDate = startOfMonth(baseDate);
+            endDate = endOfMonth(baseDate);
+            titlePrefix = 'Monthly';
+            displayDate = format(baseDate, 'MMMM yyyy');
+            isInterval = true;
+        }
+
+        // Filter relevant records
+        let relevantRecords = [];
+        if (isInterval) {
+            const daysInInterval = eachDayOfInterval({ start: startDate, end: endDate }).map(d => format(d, 'yyyy-MM-dd'));
+            relevantRecords = prayerRecords.filter(r => studentIds.includes(r.studentId) && daysInInterval.includes(r.date));
+        } else {
+            relevantRecords = prayerRecords.filter(r => studentIds.includes(r.studentId) && r.date === reportDate);
+        }
+
+        const formatStudentList = () => {
+            return sortedStudents.map(student => {
+                let statusText = '';
+
+                if (!isInterval) {
+                    // Daily View
+                    const record = relevantRecords.find(r => r.studentId === student.id);
+                    const prayersDone = record && record.prayers ? record.prayers : {};
+                    const completedStandard = standardPrayers.filter(p => prayersDone[p.id]);
+
+                    if (completedStandard.length === 5) statusText = '5/5 ✅';
+                    else if (completedStandard.length === 0) statusText = 'Not Submitted ❌';
+                    else statusText = `(${completedStandard.map(p => p.label).join(', ')})`;
+                } else {
+                    // Weekly/Monthly Aggregation
+                    const studentRecords = relevantRecords.filter(r => r.studentId === student.id);
+                    const totalPrayers = studentRecords.reduce((sum, r) => sum + Object.values(r.prayers || {}).filter(Boolean).length, 0);
+                    const totalPossible = (type === 'weekly' ? 7 : eachDayOfInterval({ start: startDate, end: endDate }).length) * 5;
+                    statusText = `${totalPrayers}/${totalPossible} ✅`;
+                }
+
+                return `• ${student.name} - ${statusText}`;
+            }).join('\n');
+        };
+
+        const reportText = `*${titlePrefix} Prayer Report: Class ${className}*\n*Date:* ${displayDate}\n\n${formatStudentList()}`;
+
+        try {
+            await navigator.clipboard.writeText(reportText);
+            alert(`${titlePrefix} Report copied to clipboard!`);
+        } catch (err) {
+            console.error('Failed to copy report:', err);
+            alert('Failed to copy report to clipboard.');
         }
     };
 
@@ -191,6 +280,38 @@ const PrayerStats = () => {
                                             <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg flex items-center gap-2">
+                                    <input
+                                        type="date"
+                                        value={reportDate}
+                                        onChange={(e) => setReportDate(e.target.value)}
+                                        className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
+                                    />
+                                    <div className="h-4 w-px bg-gray-200 mx-1"></div>
+                                    <div className="flex bg-gray-100 rounded-md overflow-hidden">
+                                        <button
+                                            onClick={() => generatePrayerReport('daily')}
+                                            className="px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                                            title="Copy Daily Report"
+                                        >
+                                            Daily
+                                        </button>
+                                        <button
+                                            onClick={() => generatePrayerReport('weekly')}
+                                            className="px-3 py-1.5 text-xs font-semibold text-gray-700 border-l border-white hover:bg-gray-200"
+                                            title="Copy Weekly Report"
+                                        >
+                                            Weekly
+                                        </button>
+                                        <button
+                                            onClick={() => generatePrayerReport('monthly')}
+                                            className="px-3 py-1.5 text-xs font-semibold text-gray-700 border-l border-white hover:bg-gray-200 flex items-center gap-1.5"
+                                            title="Copy Monthly Report"
+                                        >
+                                            Monthly <Copy className="w-3 h-3" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 

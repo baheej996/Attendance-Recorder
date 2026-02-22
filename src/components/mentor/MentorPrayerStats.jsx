@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { format, isSameDay } from 'date-fns';
-import { Calendar, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
+import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { Calendar, ChevronLeft, ChevronRight, Check, X, Copy } from 'lucide-react';
 
 const MentorPrayerStats = () => {
     const { students, prayerRecords, specialPrayers, currentUser, classes } = useData();
@@ -50,6 +50,101 @@ const MentorPrayerStats = () => {
         });
     }, [activeStudents, prayerRecords, dateStr]);
 
+    const generateSpecialPrayerReport = async (type) => {
+        if (!selectedClassId || activeSpecialPrayers.length === 0) {
+            alert("No class selected or no special prayers available.");
+            return;
+        }
+
+        const assignedClass = classes.find(c => c.id === selectedClassId);
+        const className = assignedClass ? `${assignedClass.name} - ${assignedClass.division}` : '';
+
+        // Sort boys first, then girls, then alphabetically
+        const sortedStudents = [...activeStudents].sort((a, b) => {
+            if (a.gender === 'Boy' && b.gender !== 'Boy') return -1;
+            if (a.gender !== 'Boy' && b.gender === 'Boy') return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        const studentIds = sortedStudents.map(s => s.id);
+        const baseDate = new Date(selectedDate); // Re-use the existing selectedDate state
+
+        let startDate, endDate, titlePrefix, displayDate;
+        let isInterval = false;
+
+        if (type === 'daily') {
+            titlePrefix = 'Daily';
+            displayDate = format(baseDate, 'dd MMM yyyy');
+        } else if (type === 'weekly') {
+            startDate = startOfWeek(baseDate, { weekStartsOn: 1 }); // Monday start
+            endDate = endOfWeek(baseDate, { weekStartsOn: 1 });
+            titlePrefix = 'Weekly';
+            displayDate = `${format(startDate, 'dd MMM')} - ${format(endDate, 'dd MMM yyyy')}`;
+            isInterval = true;
+        } else if (type === 'monthly') {
+            startDate = startOfMonth(baseDate);
+            endDate = endOfMonth(baseDate);
+            titlePrefix = 'Monthly';
+            displayDate = format(baseDate, 'MMMM yyyy');
+            isInterval = true;
+        }
+
+        // Filter relevant records
+        let relevantRecords = [];
+        if (isInterval) {
+            const daysInInterval = eachDayOfInterval({ start: startDate, end: endDate }).map(d => format(d, 'yyyy-MM-dd'));
+            relevantRecords = prayerRecords.filter(r => studentIds.includes(r.studentId) && daysInInterval.includes(r.date));
+        } else {
+            relevantRecords = prayerRecords.filter(r => studentIds.includes(r.studentId) && r.date === dateStr);
+        }
+
+        const formatStudentList = () => {
+            return sortedStudents.map(student => {
+                let statusText = '';
+
+                if (!isInterval) {
+                    // Daily View - Match the current date
+                    const record = relevantRecords.find(r => r.studentId === student.id);
+                    const prayersDone = record && record.prayers ? record.prayers : {};
+                    const completedSpecial = activeSpecialPrayers.filter(p => prayersDone[p.id]);
+
+                    if (completedSpecial.length === activeSpecialPrayers.length) {
+                        statusText = `${activeSpecialPrayers.length}/${activeSpecialPrayers.length} ✅`;
+                    } else if (completedSpecial.length === 0) {
+                        statusText = 'None ❌';
+                    } else {
+                        statusText = `(${completedSpecial.map(p => p.name).join(', ')})`;
+                    }
+                } else {
+                    // Weekly/Monthly Aggregation
+                    const studentRecords = relevantRecords.filter(r => r.studentId === student.id);
+
+                    // Sum up only active special prayers
+                    const totalSpecialPrayers = studentRecords.reduce((sum, r) => {
+                        const prayersDone = r.prayers || {};
+                        const completedCount = activeSpecialPrayers.filter(p => prayersDone[p.id]).length;
+                        return sum + completedCount;
+                    }, 0);
+
+                    const totalPossible = (type === 'weekly' ? 7 : eachDayOfInterval({ start: startDate, end: endDate }).length) * activeSpecialPrayers.length;
+                    statusText = `${totalSpecialPrayers}/${totalPossible} ✅`;
+                }
+
+                return `• ${student.name} - ${statusText}`;
+            }).join('\n');
+        };
+
+        const reportText = `*${titlePrefix} Special Prayer Report: Class ${className}*\n*Date:* ${displayDate}\n\n${formatStudentList()}`;
+
+        try {
+            await navigator.clipboard.writeText(reportText);
+            alert(`${titlePrefix} Special Report copied to clipboard!`);
+        } catch (err) {
+            console.error('Failed to copy report:', err);
+            alert('Failed to copy report to clipboard.');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -86,6 +181,30 @@ const MentorPrayerStats = () => {
                             disabled={isSameDay(selectedDate, new Date())}
                         >
                             <ChevronRight className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="flex bg-white border border-gray-200 rounded-lg overflow-hidden shrink-0">
+                        <button
+                            onClick={() => generateSpecialPrayerReport('daily')}
+                            className="px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex-1"
+                            title="Copy Daily Report"
+                        >
+                            Daily
+                        </button>
+                        <button
+                            onClick={() => generateSpecialPrayerReport('weekly')}
+                            className="px-3 py-2 text-xs font-semibold text-gray-700 border-l border-gray-100 hover:bg-gray-50 flex-1"
+                            title="Copy Weekly Report"
+                        >
+                            Weekly
+                        </button>
+                        <button
+                            onClick={() => generateSpecialPrayerReport('monthly')}
+                            className="px-3 py-2 text-xs font-semibold text-gray-700 border-l border-gray-100 hover:bg-gray-50 flex items-center justify-center gap-1.5 flex-1"
+                            title="Copy Monthly Report"
+                        >
+                            Monthly <Copy className="w-3 h-3" />
                         </button>
                     </div>
                 </div>
