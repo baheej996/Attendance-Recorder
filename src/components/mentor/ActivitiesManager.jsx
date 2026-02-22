@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings, Copy } from 'lucide-react';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 const ActivitiesManager = () => {
@@ -183,6 +183,42 @@ const ActivitiesManager = () => {
         const classActivities = activities.filter(a => a.classId === classId);
         for (const act of classActivities) {
             await updateActivity(act.id, { studentCanMarkDone: newSetting });
+        }
+    };
+
+    const handleCopyActivityReport = async (activity) => {
+        const assignedClass = classes.find(c => c.id === activity.classId);
+        if (!assignedClass) return;
+
+        const classStudents = students.filter(s => s.classId === activity.classId);
+
+        // Sort boys first, then girls, then alphabetically
+        const sortedStudents = [...classStudents].sort((a, b) => {
+            if (a.gender === 'Boy' && b.gender !== 'Boy') return -1;
+            if (a.gender !== 'Boy' && b.gender === 'Boy') return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        const completed = [];
+        const pending = [];
+
+        sortedStudents.forEach(student => {
+            const submission = activitySubmissions.find(sub => sub.activityId === activity.id && sub.studentId === student.id);
+            if (submission?.status === 'Completed') {
+                completed.push(student.name);
+            } else {
+                pending.push(student.name);
+            }
+        });
+
+        const reportText = `*Activity:* ${activity.title}\n*Class:* ${assignedClass.name} - ${assignedClass.division}\n\n*Completed ✅*\n${completed.length > 0 ? completed.map(n => `• ${n}`).join('\n') : 'None'}\n\n*Pending ⏳*\n${pending.length > 0 ? pending.map(n => `• ${n}`).join('\n') : 'None'}`;
+
+        try {
+            await navigator.clipboard.writeText(reportText);
+            alert('Activity Report copied to clipboard!');
+        } catch (err) {
+            console.error('Failed to copy report:', err);
+            alert('Failed to copy report to clipboard.');
         }
     };
 
@@ -458,11 +494,21 @@ const ActivitiesManager = () => {
                                                 <Trophy className="w-4 h-4 text-yellow-500" />
                                                 Student Tracker
                                             </div>
-                                            {activity.studentCanMarkDone && (
-                                                <span className="text-xs font-semibold px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full">
-                                                    Self-Marking Enabled
-                                                </span>
-                                            )}
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => handleCopyActivityReport(activity)}
+                                                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-full transition-colors"
+                                                    title="Copy WhatsApp Report"
+                                                >
+                                                    <Copy className="w-3.5 h-3.5" />
+                                                    WhatsApp Report
+                                                </button>
+                                                {activity.studentCanMarkDone && (
+                                                    <span className="text-xs font-semibold px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full">
+                                                        Self-Marking Enabled
+                                                    </span>
+                                                )}
+                                            </div>
                                         </h4>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {students

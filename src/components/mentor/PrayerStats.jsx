@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen, Copy } from 'lucide-react';
+import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -28,7 +28,6 @@ const PrayerStats = () => {
     const [selectedClassId, setSelectedClassId] = useState(enabledClasses[0]?.id || '');
     const [timeRange, setTimeRange] = useState('week'); // 'week' or 'month'
     const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'special' | 'settings'
-    const [reportDate, setReportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
     // Add state for delete confirmation
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -102,61 +101,6 @@ const PrayerStats = () => {
             console.error("Failed to delete records:", error);
         } finally {
             setIsDeleting(false);
-        }
-    };
-
-    const handleCopyReport = async () => {
-        if (!selectedClassId) return;
-
-        const currentClass = enabledClasses.find(c => c.id === selectedClassId);
-        const className = currentClass ? `${currentClass.name} - ${currentClass.division}` : '';
-        const standardPrayers = [
-            { id: 'fajr', label: 'Fajr' },
-            { id: 'dhuhr', label: 'Dhuhr' },
-            { id: 'asr', label: 'Asr' },
-            { id: 'maghrib', label: 'Maghrib' },
-            { id: 'isha', label: 'Isha' }
-        ];
-
-        // Format Date
-        const formattedDate = format(new Date(reportDate), 'dd MMM yyyy');
-
-        // Get records for that specific date and class
-        const studentIds = classStudents.map(s => s.id);
-        const dateRecords = prayerRecords.filter(r => r.date === reportDate && studentIds.includes(r.studentId));
-
-        // Group by Gender
-        const boys = classStudents.filter(s => s.gender === 'Boy');
-        const girls = classStudents.filter(s => s.gender === 'Girl');
-
-        const formatStudentList = (studentsList) => {
-            return studentsList.map(student => {
-                const record = dateRecords.find(r => r.studentId === student.id);
-                const prayersDone = record && record.prayers ? record.prayers : {};
-
-                const completedStandard = standardPrayers.filter(p => prayersDone[p.id]);
-
-                let statusText = '';
-                if (completedStandard.length === 5) {
-                    statusText = '5/5 ✅';
-                } else if (completedStandard.length === 0) {
-                    statusText = 'Not Submitted ❌';
-                } else {
-                    statusText = `(${completedStandard.map(p => p.label).join(', ')})`;
-                }
-
-                return `• ${student.name} - ${statusText}`;
-            }).join('\n');
-        };
-
-        const reportText = `*Prayer Report: Class ${className}*\n*Date: ${formattedDate}*\n\n*Boys:*\n${formatStudentList(boys)}\n\n*Girls:*\n${formatStudentList(girls)}`;
-
-        try {
-            await navigator.clipboard.writeText(reportText);
-            alert('WhatsApp Report copied to clipboard!');
-        } catch (err) {
-            console.error('Failed to copy report:', err);
-            alert('Failed to copy report to clipboard.');
         }
     };
 
@@ -247,21 +191,6 @@ const PrayerStats = () => {
                                             <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
                                         ))}
                                     </select>
-                                </div>
-                                <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg flex items-center gap-2">
-                                    <input
-                                        type="date"
-                                        value={reportDate}
-                                        onChange={(e) => setReportDate(e.target.value)}
-                                        className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
-                                    />
-                                    <button
-                                        onClick={handleCopyReport}
-                                        title="Copy WhatsApp Report"
-                                        className="ml-2 text-indigo-600 hover:text-indigo-800 transition-colors"
-                                    >
-                                        <Copy className="w-4 h-4" />
-                                    </button>
                                 </div>
                             </div>
 
