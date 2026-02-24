@@ -213,6 +213,18 @@ const MentorChat = () => {
         return setting ? setting.isEnabled : false;
     };
 
+    const unreadMentorsCount = chatMessages.filter(m =>
+        m.receiverId === currentUser.id &&
+        !m.isRead &&
+        mentors.some(mentor => mentor.id === m.senderId)
+    ).length;
+
+    const unreadInboxCount = chatMessages.filter(m =>
+        m.receiverId === currentUser.id &&
+        !m.isRead &&
+        !mentors.some(mentor => mentor.id === m.senderId)
+    ).length;
+
     return (
         <div className="h-[calc(100vh-6rem)] flex flex-col p-4 max-w-6xl mx-auto">
             <div className="flex justify-between items-center mb-4">
@@ -223,15 +235,25 @@ const MentorChat = () => {
                 <div className="flex bg-gray-100 p-1 rounded-lg">
                     <button
                         onClick={() => setActiveTab('inbox')}
-                        className={clsx("px-4 py-2 rounded-md text-sm font-medium transition-all", activeTab === 'inbox' ? "bg-white shadow text-indigo-600" : "text-gray-500 hover:text-gray-700")}
+                        className={clsx("relative px-4 py-2 rounded-md text-sm font-medium transition-all", activeTab === 'inbox' ? "bg-white shadow text-indigo-600" : "text-gray-500 hover:text-gray-700")}
                     >
                         Inbox
+                        {unreadInboxCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                {unreadInboxCount > 99 ? '99+' : unreadInboxCount}
+                            </span>
+                        )}
                     </button>
                     <button
                         onClick={() => setActiveTab('mentors')}
-                        className={clsx("px-4 py-2 rounded-md text-sm font-medium transition-all", activeTab === 'mentors' ? "bg-white shadow text-indigo-600" : "text-gray-500 hover:text-gray-700")}
+                        className={clsx("relative px-4 py-2 rounded-md text-sm font-medium transition-all", activeTab === 'mentors' ? "bg-white shadow text-indigo-600" : "text-gray-500 hover:text-gray-700")}
                     >
                         Mentors
+                        {unreadMentorsCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                {unreadMentorsCount > 99 ? '99+' : unreadMentorsCount}
+                            </span>
+                        )}
                     </button>
                     <button
                         onClick={() => setActiveTab('settings')}
