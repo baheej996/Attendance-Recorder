@@ -242,12 +242,12 @@ const MentorChat = () => {
                 </div>
             </div>
 
-            {activeTab === 'inbox' ? (
+            {activeTab === 'inbox' || activeTab === 'mentors' ? (
                 <div className="flex-1 flex gap-4 overflow-hidden bg-white rounded-xl border border-gray-200 shadow-sm relative">
                     {/* Sidebar - Hidden on mobile if student selected */}
                     <div className={clsx(
                         "w-full md:w-80 flex flex-col border-r border-gray-100 absolute md:relative inset-0 bg-white z-10 transition-transform duration-300 md:translate-x-0",
-                        selectedStudentId ? "-translate-x-full md:translate-x-0" : "translate-x-0"
+                        activeChatId ? "-translate-x-full md:translate-x-0" : "translate-x-0"
                     )}>
                         <div className="p-4 border-b border-gray-100 space-y-3">
                             <div className="relative">
