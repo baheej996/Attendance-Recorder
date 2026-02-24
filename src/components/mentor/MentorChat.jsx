@@ -393,7 +393,7 @@ const MentorChat = () => {
                         </div>
                     </div>
 
-                    {/* Chat Area - Full width on mobile, shown when student selected */}
+                    {/* Chat Area - Full width on mobile, shown when student/mentor selected */}
                     <div className={clsx(
                         "flex-1 flex flex-col text-sm absolute md:relative inset-0 bg-white z-20 transition-transform duration-300 md:translate-x-0",
                         activeChatId ? "translate-x-0" : "translate-x-full md:translate-x-0"
@@ -404,7 +404,10 @@ const MentorChat = () => {
                                     <div className="flex items-center gap-3">
                                         {/* Back Button for Mobile */}
                                         <button
-                                            onClick={() => setSelectedStudentId(null)}
+                                            onClick={() => {
+                                                if (activeTab === 'inbox') setSelectedStudentId(null);
+                                                if (activeTab === 'mentors') setSelectedMentorId(null);
+                                            }}
                                             className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
@@ -593,7 +596,7 @@ const MentorChat = () => {
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={confirmDelete}
                 title="Delete Conversation"
-                message={`Are you sure you want to delete the chat history with ${selectedStudent?.name}? This action cannot be undone.`}
+                message={`Are you sure you want to delete the chat history with ${activeTab === 'inbox' ? selectedStudent?.name : 'Mentor ' + selectedMentor?.name}? This action cannot be undone.`}
                 confirmText="Delete Chat"
                 isDanger={true}
             />
