@@ -9,8 +9,9 @@ import { PollCard } from '../components/chat/PollCard';
 import { StarCard } from '../components/chat/StarCard';
 
 const StudentChat = () => {
-    const { currentUser, mentors, chatMessages, chatSettings, sendMessage, markMessagesAsRead, classes } = useData();
+    const { currentUser, mentors, students, chatMessages, chatSettings, sendMessage, markMessagesAsRead, classes } = useData();
     const [messageInput, setMessageInput] = useState('');
+    const [activeChatView, setActiveChatView] = useState('direct'); // 'direct' or 'group'
     const scrollRef = useRef(null);
 
     // 1. Identify the Mentor for this student's class
@@ -26,9 +27,16 @@ const StudentChat = () => {
     const isEnabled = isChatEnabled();
 
     // 3. Filter Messages
+    const isGroupChat = activeChatView === 'group';
+    const activeChatId = isGroupChat ? `mentor_group_${currentUser.classId}` : myMentor?.id;
+    const currentClassSetting = chatSettings.find(s => s.classId === currentUser.classId);
+    const canSendInGroup = currentClassSetting ? (currentClassSetting.allowStudentGroupChat !== false) : true;
+
     const currentMessages = chatMessages.filter(m =>
-        (m.senderId === currentUser.id && m.receiverId === myMentor?.id) ||
-        (m.senderId === myMentor?.id && m.receiverId === currentUser.id)
+        isGroupChat
+            ? m.receiverId === activeChatId
+            : (m.senderId === currentUser.id && m.receiverId === activeChatId) ||
+            (m.senderId === activeChatId && m.receiverId === currentUser.id)
     ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     // Scroll to bottom
@@ -42,7 +50,7 @@ const StudentChat = () => {
     useEffect(() => {
         if (myMentor) {
             const unreadIds = currentMessages
-                .filter(m => m.receiverId === currentUser.id && !m.isRead)
+                .filter(m => m.receiverId === currentUser.id && !m.isRead) // Does not mark group messages as read to avoid confusing global state
                 .map(m => m.id);
 
             if (unreadIds.length > 0) {
@@ -54,11 +62,12 @@ const StudentChat = () => {
     const handleSend = (e) => {
         e.preventDefault();
         if (!messageInput.trim() || !myMentor || !isEnabled) return;
+        if (isGroupChat && !canSendInGroup) return; // Prevent send if mentor disabled it
 
         sendMessage({
             senderId: currentUser.id,
-            receiverId: myMentor.id,
-            classId: currentUser.classId,
+            receiverId: activeChatId,
+            classId: isGroupChat ? null : currentUser.classId,
             details: messageInput,
             type: 'text'
         });
@@ -181,15 +190,33 @@ const StudentChat = () => {
                 {/* Right Column: Chat Interface */}
                 <div className="lg:col-span-2 flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-full">
                     {/* Header */}
-                    <div className="p-4 border-b border-gray-100 flex items-center gap-3 bg-white shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                            M
+                    <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                {isGroupChat ? 'G' : 'M'}
+                            </div>
+                            <div>
+                                <h1 className="font-bold text-gray-900">{isGroupChat ? 'Class Group' : 'Chat Room'}</h1>
+                                <span className="text-xs text-gray-500 flex items-center gap-1">
+                                    <User className="w-3 h-3" /> {isGroupChat ? 'Broadcasts & Group Chat' : 'Direct Message'}
+                                </span>
+                            </div>
                         </div>
-                        <div>
-                            <h1 className="font-bold text-gray-900">Chat Room</h1>
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                                <User className="w-3 h-3" /> Direct Message
-                            </span>
+
+                        {/* Tabs */}
+                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                            <button
+                                onClick={() => setActiveChatView('direct')}
+                                className={clsx("px-3 py-1.5 rounded-md text-sm font-medium transition-all max-md:text-xs", !isGroupChat ? "bg-white shadow text-indigo-600" : "text-gray-500 hover:text-gray-700")}
+                            >
+                                Direct
+                            </button>
+                            <button
+                                onClick={() => setActiveChatView('group')}
+                                className={clsx("px-3 py-1.5 rounded-md text-sm font-medium transition-all max-md:text-xs", isGroupChat ? "bg-white shadow text-indigo-600" : "text-gray-500 hover:text-gray-700")}
+                            >
+                                Group
+                            </button>
                         </div>
                     </div>
 
@@ -201,38 +228,51 @@ const StudentChat = () => {
                                 <p>Say hello to your mentor!</p>
                             </div>
                         ) : (
-                            currentMessages.map(msg => (
-                                <div
-                                    key={msg.id}
-                                    className={clsx(
-                                        "flex flex-col max-w-[85%]", // Increased width for better reading
-                                        msg.senderId === currentUser.id ? "ml-auto items-end" : "mr-auto items-start"
-                                    )}
-                                >
+                            currentMessages.map(msg => {
+                                const isMe = msg.senderId === currentUser.id;
+                                let senderName = '';
+                                if (isGroupChat && !isMe) {
+                                    const senderStudent = students.find(s => s.id === msg.senderId);
+                                    const senderMentor = mentors.find(m => m.id === msg.senderId);
+                                    senderName = senderStudent ? senderStudent.name : (senderMentor ? `Mentor ${senderMentor.name}` : 'Unknown');
+                                }
+
+                                return (
                                     <div
+                                        key={msg.id}
                                         className={clsx(
-                                            "px-4 py-2 rounded-2xl",
-                                            msg.senderId === currentUser.id
-                                                ? "bg-indigo-600 text-white rounded-br-none"
-                                                : "bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm"
+                                            "flex flex-col max-w-[85%]", // Increased width for better reading
+                                            isMe ? "ml-auto items-end" : "mr-auto items-start"
                                         )}
                                     >
-                                        {msg.type === 'reminder' ? (
-                                            <PollCard data={msg.details} isSender={msg.senderId === currentUser.id} />
-                                        ) : msg.type === 'star-card' ? (
-                                            <StarCard data={typeof msg.details === 'string' ? JSON.parse(msg.details) : msg.details} />
-                                        ) : (
-                                            msg.details
+                                        {isGroupChat && !isMe && (
+                                            <span className="text-xs text-gray-500 mb-1 ml-1 font-medium">{senderName}</span>
                                         )}
+                                        <div
+                                            className={clsx(
+                                                "px-4 py-2 rounded-2xl",
+                                                isMe
+                                                    ? "bg-indigo-600 text-white rounded-br-none"
+                                                    : "bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm"
+                                            )}
+                                        >
+                                            {msg.type === 'reminder' ? (
+                                                <PollCard data={msg.details} isSender={isMe} />
+                                            ) : msg.type === 'star-card' ? (
+                                                <StarCard data={typeof msg.details === 'string' ? JSON.parse(msg.details) : msg.details} />
+                                            ) : (
+                                                msg.details
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] text-gray-400 mt-1 px-1">
+                                            {format(new Date(msg.timestamp), 'h:mm a')}
+                                            {isMe && (
+                                                <span className="ml-1">{msg.isRead ? '• Read' : '• Sent'}</span>
+                                            )}
+                                        </span>
                                     </div>
-                                    <span className="text-[10px] text-gray-400 mt-1 px-1">
-                                        {format(new Date(msg.timestamp), 'h:mm a')}
-                                        {msg.senderId === currentUser.id && (
-                                            <span className="ml-1">{msg.isRead ? '• Read' : '• Sent'}</span>
-                                        )}
-                                    </span>
-                                </div>
-                            ))
+                                )
+                            })
                         )}
                     </div>
 
@@ -240,12 +280,13 @@ const StudentChat = () => {
                     <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-100 flex gap-2 shrink-0">
                         <input
                             type="text"
-                            placeholder="Type a message..."
-                            className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder={isGroupChat && !canSendInGroup ? "Only mentors can send messages to this group" : "Type a message..."}
+                            className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:bg-gray-100"
                             value={messageInput}
                             onChange={e => setMessageInput(e.target.value)}
+                            disabled={isGroupChat && !canSendInGroup}
                         />
-                        <Button type="submit" disabled={!messageInput.trim()}>
+                        <Button type="submit" disabled={!messageInput.trim() || (isGroupChat && !canSendInGroup)}>
                             <Send className="w-4 h-4" />
                         </Button>
                     </form>

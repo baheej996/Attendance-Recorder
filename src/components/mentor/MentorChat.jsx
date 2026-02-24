@@ -21,11 +21,13 @@ const MentorChat = () => {
         chatSettings,
         sendMessage,
         toggleChatForClass,
+        toggleGroupChatForClass,
         markMessagesAsRead,
         activities,
         activitySubmissions,
         deleteChatConversation,
-        mentors
+        mentors,
+        updateMentor
     } = useData();
 
     const [activeTab, setActiveTab] = useState('inbox');
@@ -48,18 +50,25 @@ const MentorChat = () => {
         return inAssignedClass && matchesFilter;
     });
 
+    // Helper IDs
+    const mentorGroupId = `mentor_group_${currentUser.id}`;
+    const allMentorsGroupId = `all_mentors_group`;
+
     // Get specific student object
     const selectedStudent = myStudents.find(s => s.id === selectedStudentId);
 
     // Get specific mentor object
     const selectedMentor = mentors.find(m => m.id === selectedMentorId);
 
-    // Messages for the selected conversation (could be student or mentor)
+    // Messages for the selected conversation (could be student or mentor or group)
     const activeChatId = activeTab === 'mentors' ? selectedMentorId : selectedStudentId;
+    const isGroupChat = activeChatId?.startsWith('mentor_group_') || activeChatId === 'all_mentors_group';
 
     const currentMessages = chatMessages.filter(m =>
-        (m.senderId === currentUser.id && m.receiverId === activeChatId) ||
-        (m.senderId === activeChatId && m.receiverId === currentUser.id)
+        isGroupChat
+            ? m.receiverId === activeChatId
+            : (m.senderId === currentUser.id && m.receiverId === activeChatId) ||
+            (m.senderId === activeChatId && m.receiverId === currentUser.id)
     ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     // Scroll to bottom on new message
@@ -110,13 +119,13 @@ const MentorChat = () => {
         sendMessage({
             senderId: currentUser.id,
             receiverId: activeChatId,
-            classId: activeTab === 'inbox' ? selectedStudent?.classId : null,
+            classId: (activeTab === 'inbox' && !isGroupChat) ? selectedStudent?.classId : null,
             details: messageInput,
             type: 'text'
         });
 
         // If there's a Star Card pending, send it as a separate message
-        if (starCardData && activeTab === 'inbox') {
+        if (starCardData && activeTab === 'inbox' && !isGroupChat) {
             sendMessage({
                 senderId: currentUser.id,
                 receiverId: activeChatId,
@@ -132,7 +141,7 @@ const MentorChat = () => {
 
     const handleReminder = (e) => {
         e.preventDefault();
-        if (activeTab !== 'inbox' || !selectedStudent || !selectedStudentId) return;
+        if (activeTab !== 'inbox' || !selectedStudent || !selectedStudentId || isGroupChat) return;
 
         // 1. Find Pending Activities
         // Active activities for this class where the student has NOT completed the submission
@@ -173,40 +182,65 @@ const MentorChat = () => {
     };
 
     // Helper to get unread count for a student
-    const getUnreadCount = (studentId) => {
-        return chatMessages.filter(m => m.senderId === studentId && m.receiverId === currentUser.id && !m.isRead).length;
+    const getUnreadCount = (chatId, isGroup) => {
+        if (isGroup) return 0; // Simple approach for now
+        return chatMessages.filter(m => m.senderId === chatId && m.receiverId === currentUser.id && !m.isRead).length;
     };
 
     // Helper to get last message
-    const getLastMessage = (studentId) => {
+    const getLastMessage = (chatId, isGroup) => {
+        if (isGroup) {
+            const msgs = chatMessages.filter(m => m.receiverId === chatId)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            return msgs.length > 0 ? msgs[0] : null;
+        }
         const msgs = chatMessages.filter(m =>
-            (m.senderId === currentUser.id && m.receiverId === studentId) ||
-            (m.senderId === studentId && m.receiverId === currentUser.id)
+            (m.senderId === currentUser.id && m.receiverId === chatId) ||
+            (m.senderId === chatId && m.receiverId === currentUser.id)
         ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         return msgs.length > 0 ? msgs[0] : null;
     };
 
-    const filteredStudents = myStudents.filter(s =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.registerNo.toLowerCase().includes(searchQuery.toLowerCase())
-    ).sort((a, b) => {
-        const lastMsgA = getLastMessage(a.id);
-        const lastMsgB = getLastMessage(b.id);
-        const timeA = lastMsgA ? new Date(lastMsgA.timestamp).getTime() : 0;
-        const timeB = lastMsgB ? new Date(lastMsgB.timestamp).getTime() : 0;
-        return timeB - timeA;
+    // Generate Group objects for each assigned class
+    const mentorGroupObjs = (currentUser.assignedClassIds || []).map(classId => {
+        const classInfo = classes?.find(c => c.id === classId);
+        const className = classInfo ? `${classInfo.name}-${classInfo.division}` : 'Unknown Class';
+        return {
+            id: `mentor_group_${classId}`,
+            name: `Group: ${className}`,
+            isGroup: true,
+            classId: classId
+        };
     });
 
-    const filteredMentors = mentors.filter(m =>
-        m.id !== currentUser.id &&
-        m.name.toLowerCase().includes(searchQuery.toLowerCase())
-    ).sort((a, b) => {
-        const lastMsgA = getLastMessage(a.id);
-        const lastMsgB = getLastMessage(b.id);
-        const timeA = lastMsgA ? new Date(lastMsgA.timestamp).getTime() : 0;
-        const timeB = lastMsgB ? new Date(lastMsgB.timestamp).getTime() : 0;
-        return timeB - timeA;
-    });
+    const filteredStudents = [
+        ...mentorGroupObjs.filter(g => g.name.toLowerCase().includes(searchQuery.toLowerCase())),
+        ...myStudents.filter(s =>
+            s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            s.registerNo?.toLowerCase().includes(searchQuery.toLowerCase())
+        ).sort((a, b) => {
+            const lastMsgA = getLastMessage(a.id, false);
+            const lastMsgB = getLastMessage(b.id, false);
+            const timeA = lastMsgA ? new Date(lastMsgA.timestamp).getTime() : 0;
+            const timeB = lastMsgB ? new Date(lastMsgB.timestamp).getTime() : 0;
+            return timeB - timeA;
+        })
+    ];
+
+    const allMentorsGroupObj = { id: allMentorsGroupId, name: 'All Mentors (Group)', isGroup: true };
+    const filteredMentors = [
+        ...(allMentorsGroupObj.name.toLowerCase().includes(searchQuery.toLowerCase()) ? [allMentorsGroupObj] : []),
+        ...mentors.filter(m =>
+            m.id !== currentUser.id &&
+            m.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ).sort((a, b) => {
+            const lastMsgA = getLastMessage(a.id, false);
+            const lastMsgB = getLastMessage(b.id, false);
+            const timeA = lastMsgA ? new Date(lastMsgA.timestamp).getTime() : 0;
+            const timeB = lastMsgB ? new Date(lastMsgB.timestamp).getTime() : 0;
+            return timeB - timeA;
+        })
+    ];
 
     const isChatEnabled = (classId) => {
         const setting = chatSettings.find(s => s.classId === classId);
@@ -436,22 +470,22 @@ const MentorChat = () => {
                                         </button>
 
                                         <div
-                                            className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                                            onClick={() => { if (activeTab === 'inbox') setIsProfileModalOpen(true) }}
+                                            className={clsx("flex items-center gap-3 p-2 rounded-lg transition-colors", !isGroupChat && "cursor-pointer hover:bg-gray-50")}
+                                            onClick={() => { if (activeTab === 'inbox' && !isGroupChat) setIsProfileModalOpen(true) }}
                                         >
                                             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                                                {activeTab === 'inbox' ? selectedStudent.name.charAt(0) : selectedMentor.name.charAt(0)}
+                                                {isGroupChat ? 'G' : (activeTab === 'inbox' ? selectedStudent?.name.charAt(0) : selectedMentor?.name.charAt(0))}
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-gray-900">
-                                                    {activeTab === 'inbox' ? selectedStudent.name : `Mentor ${selectedMentor.name}`}
+                                                    {isGroupChat ? (activeTab === 'inbox' ? 'My Students (Group)' : 'All Mentors (Group)') : (activeTab === 'inbox' ? selectedStudent?.name : `Mentor ${selectedMentor?.name}`)}
                                                 </h3>
-                                                {activeTab === 'inbox' && (
-                                                    <span className="text-gray-500 text-xs">Class {classes.find(c => c.id === selectedStudent.classId)?.name} - {classes.find(c => c.id === selectedStudent.classId)?.division}</span>
+                                                {activeTab === 'inbox' && !isGroupChat && (
+                                                    <span className="text-gray-500 text-xs">Class {classes.find(c => c.id === selectedStudent?.classId)?.name} - {classes.find(c => c.id === selectedStudent?.classId)?.division}</span>
                                                 )}
                                             </div>
                                         </div>
-                                        {activeTab === 'inbox' && !isChatEnabled(selectedStudent.classId) && (
+                                        {activeTab === 'inbox' && !isGroupChat && !isChatEnabled(selectedStudent?.classId) && (
                                             <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2">
                                                 <XCircle className="w-3 h-3" /> Chat Disabled
                                             </div>
@@ -473,38 +507,51 @@ const MentorChat = () => {
                                             <p>No messages yet. Start the conversation!</p>
                                         </div>
                                     ) : (
-                                        currentMessages.map(msg => (
-                                            <div
-                                                key={msg.id}
-                                                className={clsx(
-                                                    "flex flex-col max-w-[70%]",
-                                                    msg.senderId === currentUser.id ? "ml-auto items-end" : "mr-auto items-start"
-                                                )}
-                                            >
+                                        currentMessages.map(msg => {
+                                            const isMe = msg.senderId === currentUser.id;
+                                            let senderName = '';
+                                            if (isGroupChat && !isMe) {
+                                                const senderStudent = students.find(s => s.id === msg.senderId);
+                                                const senderMentor = mentors.find(m => m.id === msg.senderId);
+                                                senderName = senderStudent ? senderStudent.name : (senderMentor ? `Mentor ${senderMentor.name}` : 'Unknown');
+                                            }
+
+                                            return (
                                                 <div
+                                                    key={msg.id}
                                                     className={clsx(
-                                                        "px-4 py-2 rounded-2xl",
-                                                        msg.senderId === currentUser.id
-                                                            ? "bg-indigo-600 text-white rounded-br-none"
-                                                            : "bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm"
+                                                        "flex flex-col max-w-[70%]",
+                                                        isMe ? "ml-auto items-end" : "mr-auto items-start"
                                                     )}
                                                 >
-                                                    {msg.type === 'reminder' ? (
-                                                        <PollCard data={msg.details} isSender={msg.senderId === currentUser.id} />
-                                                    ) : msg.type === 'star-card' ? (
-                                                        <StarCard data={typeof msg.details === 'string' ? JSON.parse(msg.details) : msg.details} />
-                                                    ) : (
-                                                        msg.details
+                                                    {isGroupChat && !isMe && (
+                                                        <span className="text-xs text-gray-500 mb-1 ml-1 font-medium">{senderName}</span>
                                                     )}
+                                                    <div
+                                                        className={clsx(
+                                                            "px-4 py-2 rounded-2xl",
+                                                            isMe
+                                                                ? "bg-indigo-600 text-white rounded-br-none"
+                                                                : "bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm"
+                                                        )}
+                                                    >
+                                                        {msg.type === 'reminder' ? (
+                                                            <PollCard data={msg.details} isSender={isMe} />
+                                                        ) : msg.type === 'star-card' ? (
+                                                            <StarCard data={typeof msg.details === 'string' ? JSON.parse(msg.details) : msg.details} />
+                                                        ) : (
+                                                            msg.details
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] text-gray-400 mt-1 px-1">
+                                                        {format(new Date(msg.timestamp), 'h:mm a')}
+                                                        {isMe && (
+                                                            <span className="ml-1">{msg.isRead ? '• Read' : '• Sent'}</span>
+                                                        )}
+                                                    </span>
                                                 </div>
-                                                <span className="text-[10px] text-gray-400 mt-1 px-1">
-                                                    {format(new Date(msg.timestamp), 'h:mm a')}
-                                                    {msg.senderId === currentUser.id && (
-                                                        <span className="ml-1">{msg.isRead ? '• Read' : '• Sent'}</span>
-                                                    )}
-                                                </span>
-                                            </div>
-                                        ))
+                                            )
+                                        })
                                     )}
                                 </div>
 
@@ -533,7 +580,7 @@ const MentorChat = () => {
                                 )}
 
                                 <form onSubmit={handleSend} className="p-4 bg-white border-t border-gray-100 flex gap-2">
-                                    {activeTab === 'inbox' && (
+                                    {activeTab === 'inbox' && !isGroupChat && (
                                         <Button
                                             type="button"
                                             variant="outline"
@@ -547,13 +594,13 @@ const MentorChat = () => {
                                     )}
                                     <input
                                         type="text"
-                                        placeholder={activeTab === 'inbox' && !isChatEnabled(selectedStudent.classId) ? "Chat is disabled for this class" : "Type a message..."}
+                                        placeholder={activeTab === 'inbox' && !isGroupChat && !isChatEnabled(selectedStudent?.classId) ? "Chat is disabled for this class" : "Type a message..."}
                                         className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                         value={messageInput}
                                         onChange={e => setMessageInput(e.target.value)}
-                                        disabled={activeTab === 'inbox' && !isChatEnabled(selectedStudent.classId)}
+                                        disabled={activeTab === 'inbox' && !isGroupChat && !isChatEnabled(selectedStudent?.classId)}
                                     />
-                                    <Button type="submit" disabled={!messageInput.trim() || (activeTab === 'inbox' && !isChatEnabled(selectedStudent.classId))}>
+                                    <Button type="submit" disabled={!messageInput.trim() || (activeTab === 'inbox' && !isGroupChat && !isChatEnabled(selectedStudent?.classId))}>
                                         <Send className="w-4 h-4" />
                                     </Button>
                                 </form>
@@ -571,42 +618,102 @@ const MentorChat = () => {
                     <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <Settings className="w-5 h-5" /> Chat Settings
                     </h2>
-                    <div className="space-y-4">
-                        {assignedClassIds.map(classId => {
-                            const cls = classes.find(c => c.id === classId);
-                            if (!cls) return null;
-                            const enabled = isChatEnabled(classId);
+                    <div className="space-y-6">
+                        {/* Direct Messages Settings */}
+                        <div>
+                            <div className="mb-4">
+                                <h3 className="text-lg font-bold text-gray-900">Direct Messages</h3>
+                                <p className="text-sm text-gray-500">Control whether students can send you direct messages.</p>
+                            </div>
+                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                                <div className="divide-y divide-gray-100">
+                                    {assignedClassIds.map(classId => {
+                                        const cls = classes.find(c => c.id === classId);
+                                        if (!cls) return null;
+                                        const enabled = isChatEnabled(classId);
 
-                            return (
-                                <div key={classId} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                    <div>
-                                        <h3 className="font-bold text-gray-900">Class {cls.name} - {cls.division}</h3>
-                                        <p className="text-sm text-gray-500">
-                                            {enabled
-                                                ? "Students can currently message you."
-                                                : "Chat is disabled for students in this class."}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => toggleChatForClass(classId)}
-                                        className={clsx(
-                                            "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
-                                            enabled ? "bg-indigo-600" : "bg-gray-200"
-                                        )}
-                                    >
-                                        <span
-                                            className={clsx(
-                                                "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                                                enabled ? "translate-x-6" : "translate-x-1"
-                                            )}
-                                        />
-                                    </button>
+                                        return (
+                                            <div key={classId} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">Class {cls.name} - {cls.division}</h4>
+                                                    <p className="text-xs text-gray-500">
+                                                        {enabled
+                                                            ? "Students can currently message you directly."
+                                                            : "Direct chat is disabled for students in this class."}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => toggleChatForClass(classId)}
+                                                    className={clsx(
+                                                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
+                                                        enabled ? "bg-indigo-600" : "bg-gray-200"
+                                                    )}
+                                                >
+                                                    <span
+                                                        className={clsx(
+                                                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                                            enabled ? "translate-x-6" : "translate-x-1"
+                                                        )}
+                                                    />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {assignedClassIds.length === 0 && (
+                                        <div className="p-4 text-center text-gray-500 text-sm">No classes assigned.</div>
+                                    )}
                                 </div>
-                            );
-                        })}
-                        {assignedClassIds.length === 0 && (
-                            <p className="text-gray-500 text-center py-4">No classes assigned.</p>
-                        )}
+                            </div>
+                        </div>
+
+                        {/* Group Chat Settings */}
+                        <div>
+                            <div className="mb-4">
+                                <h3 className="text-lg font-bold text-gray-900">Group Chat Messages</h3>
+                                <p className="text-sm text-gray-500">Control whether students can send messages in the class group.</p>
+                            </div>
+                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                                <div className="divide-y divide-gray-100">
+                                    {assignedClassIds.map(classId => {
+                                        const cls = classes.find(c => c.id === classId);
+                                        if (!cls) return null;
+
+                                        const classSetting = chatSettings.find(s => s.classId === classId);
+                                        const groupEnabled = classSetting ? (classSetting.allowStudentGroupChat !== false) : true;
+
+                                        return (
+                                            <div key={classId} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">Class {cls.name} - {cls.division}</h4>
+                                                    <p className="text-xs text-gray-500">
+                                                        {groupEnabled
+                                                            ? "Students can currently send messages in the class group."
+                                                            : "Only you can send messages to the group. Students can only read."}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => toggleGroupChatForClass(classId)}
+                                                    className={clsx(
+                                                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
+                                                        groupEnabled ? "bg-indigo-600" : "bg-gray-200"
+                                                    )}
+                                                >
+                                                    <span
+                                                        className={clsx(
+                                                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                                            groupEnabled ? "translate-x-6" : "translate-x-1"
+                                                        )}
+                                                    />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {assignedClassIds.length === 0 && (
+                                        <div className="p-4 text-center text-gray-500 text-sm">No classes assigned.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )

@@ -499,9 +499,22 @@ export const DataProvider = ({ children }) => {
         if (existing) {
             await updateDoc(doc(db, 'chatSettings', existing.id), { isEnabled: !existing.isEnabled });
         } else {
-            // Default to true if creating for the first time? Or true because we are toggling *on*?
-            // If it was effectively false (not found), we want to make it true.
-            await addDoc(collection(db, 'chatSettings'), { classId, isEnabled: true });
+            // Default to true if creating for the first time
+            await addDoc(collection(db, 'chatSettings'), { classId, isEnabled: true, allowStudentGroupChat: true });
+        }
+    };
+
+    const toggleGroupChatForClass = async (classId) => {
+        const existing = chatSettings.find(s => s.classId === classId);
+        if (existing) {
+            // If the field doesn't exist yet, it defaults to undefined which becomes true when toggled initially? 
+            // Better to explicitly check. It should default to true.
+            const currentVal = existing.allowStudentGroupChat !== undefined ? existing.allowStudentGroupChat : true;
+            await updateDoc(doc(db, 'chatSettings', existing.id), { allowStudentGroupChat: !currentVal });
+        } else {
+            // If setting doesn't exist at all, create it with DM off (since toggleChat wasn't called) but group toggled appropriately.
+            // Actually, if it doesn't exist, toggling group chat off means it should be false.
+            await addDoc(collection(db, 'chatSettings'), { classId, isEnabled: false, allowStudentGroupChat: false });
         }
     };
 
@@ -576,7 +589,7 @@ export const DataProvider = ({ children }) => {
         markMessagesAsRead, deleteChatConversation,
 
         examSettings, updateExamSetting,
-        chatSettings, toggleChatForClass, // Exported to fix crash
+        chatSettings, toggleChatForClass, toggleGroupChatForClass, // Exported to fix crash
 
         mentorSettings, updateMentorSettings: async (s) => await setDoc(doc(db, 'settings', 'mentorUI'), s),
 
