@@ -275,32 +275,32 @@ const PrayerStats = () => {
                         </div>
                     ) : (
                         <>
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                                <div className="flex bg-gray-100 px-3 py-2 rounded-lg items-center gap-2 w-full sm:w-auto">
-                                    <Filter className="w-4 h-4 text-gray-400" />
+                            <div className="flex items-center justify-between gap-3 overflow-x-auto bg-white p-2 sm:p-3 rounded-xl border border-gray-100 shadow-sm scrollbar-hide">
+                                <div className="flex bg-gray-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg items-center gap-2 shrink-0">
+                                    <Filter className="w-4 h-4 text-gray-400 shrink-0" />
                                     <select
                                         value={selectedClassId}
                                         onChange={(e) => setSelectedClassId(e.target.value)}
-                                        className="bg-transparent border-none outline-none text-sm font-medium text-gray-700 w-full"
+                                        className="bg-transparent border-none outline-none text-xs sm:text-sm font-medium text-gray-700 min-w-[80px]"
                                     >
                                         {enabledClasses.map(c => (
                                             <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
                                         ))}
                                     </select>
                                 </div>
-                                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                                    <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg flex items-center gap-2 flex-grow sm:flex-grow-0 justify-center">
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <div className="bg-white px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-200 rounded-lg flex items-center shrink-0">
                                         <input
                                             type="date"
                                             value={reportDate}
                                             onChange={(e) => setReportDate(e.target.value)}
-                                            className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
+                                            className="bg-transparent border-none outline-none text-xs sm:text-sm font-medium text-gray-700"
                                         />
                                     </div>
                                     <div className="relative shrink-0">
                                         <button
                                             onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
-                                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors border border-indigo-100 w-full justify-center"
+                                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors border border-indigo-100 max-h-full"
                                         >
                                             Report <ChevronDown className="w-4 h-4" />
                                         </button>
