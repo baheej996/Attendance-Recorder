@@ -2,11 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
-import { Calendar, ChevronLeft, ChevronRight, Check, X, Copy } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Check, X, Copy, ChevronDown } from 'lucide-react';
 
 const MentorPrayerStats = () => {
     const { students, prayerRecords, specialPrayers, currentUser, classes } = useData();
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false);
 
     // Filter classes for mentor
     const availableClasses = useMemo(() => {
@@ -184,28 +185,42 @@ const MentorPrayerStats = () => {
                         </button>
                     </div>
 
-                    <div className="flex bg-white border border-gray-200 rounded-lg overflow-hidden shrink-0">
+                    <div className="relative shrink-0 flex">
                         <button
-                            onClick={() => generateSpecialPrayerReport('daily')}
-                            className="px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex-1"
-                            title="Copy Daily Report"
+                            onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
+                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors border border-indigo-100 w-full sm:w-auto justify-center"
                         >
-                            Daily
+                            Report <ChevronDown className="w-4 h-4" />
                         </button>
-                        <button
-                            onClick={() => generateSpecialPrayerReport('weekly')}
-                            className="px-3 py-2 text-xs font-semibold text-gray-700 border-l border-gray-100 hover:bg-gray-50 flex-1"
-                            title="Copy Weekly Report"
-                        >
-                            Weekly
-                        </button>
-                        <button
-                            onClick={() => generateSpecialPrayerReport('monthly')}
-                            className="px-3 py-2 text-xs font-semibold text-gray-700 border-l border-gray-100 hover:bg-gray-50 flex items-center justify-center gap-1.5 flex-1"
-                            title="Copy Monthly Report"
-                        >
-                            Monthly <Copy className="w-3 h-3" />
-                        </button>
+
+                        {isReportDropdownOpen && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setIsReportDropdownOpen(false)}
+                                ></div>
+                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 flex flex-col">
+                                    <button
+                                        onClick={() => { generateSpecialPrayerReport('daily'); setIsReportDropdownOpen(false); }}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                    >
+                                        <Calendar className="w-4 h-4 text-gray-400" /> Daily
+                                    </button>
+                                    <button
+                                        onClick={() => { generateSpecialPrayerReport('weekly'); setIsReportDropdownOpen(false); }}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                    >
+                                        <Calendar className="w-4 h-4 text-gray-400" /> Weekly
+                                    </button>
+                                    <button
+                                        onClick={() => { generateSpecialPrayerReport('monthly'); setIsReportDropdownOpen(false); }}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                    >
+                                        <Copy className="w-4 h-4 text-gray-400" /> Monthly
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

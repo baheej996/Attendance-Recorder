@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen, Copy } from 'lucide-react';
+import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen, Copy, ChevronDown } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -29,6 +29,7 @@ const PrayerStats = () => {
     const [timeRange, setTimeRange] = useState('week'); // 'week' or 'month'
     const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'special' | 'settings'
     const [reportDate, setReportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false);
 
     // Add state for delete confirmation
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -288,30 +289,43 @@ const PrayerStats = () => {
                                         onChange={(e) => setReportDate(e.target.value)}
                                         className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
                                     />
-                                    <div className="h-4 w-px bg-gray-200 mx-1"></div>
-                                    <div className="flex bg-gray-100 rounded-md overflow-hidden">
-                                        <button
-                                            onClick={() => generatePrayerReport('daily')}
-                                            className="px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
-                                            title="Copy Daily Report"
-                                        >
-                                            Daily
-                                        </button>
-                                        <button
-                                            onClick={() => generatePrayerReport('weekly')}
-                                            className="px-3 py-1.5 text-xs font-semibold text-gray-700 border-l border-white hover:bg-gray-200"
-                                            title="Copy Weekly Report"
-                                        >
-                                            Weekly
-                                        </button>
-                                        <button
-                                            onClick={() => generatePrayerReport('monthly')}
-                                            className="px-3 py-1.5 text-xs font-semibold text-gray-700 border-l border-white hover:bg-gray-200 flex items-center gap-1.5"
-                                            title="Copy Monthly Report"
-                                        >
-                                            Monthly <Copy className="w-3 h-3" />
-                                        </button>
-                                    </div>
+                                </div>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
+                                        className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors border border-indigo-100"
+                                    >
+                                        Report <ChevronDown className="w-4 h-4" />
+                                    </button>
+
+                                    {isReportDropdownOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-10"
+                                                onClick={() => setIsReportDropdownOpen(false)}
+                                            ></div>
+                                            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 flex flex-col">
+                                                <button
+                                                    onClick={() => { generatePrayerReport('daily'); setIsReportDropdownOpen(false); }}
+                                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                                >
+                                                    <Calendar className="w-4 h-4 text-gray-400" /> Daily
+                                                </button>
+                                                <button
+                                                    onClick={() => { generatePrayerReport('weekly'); setIsReportDropdownOpen(false); }}
+                                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                                >
+                                                    <Calendar className="w-4 h-4 text-gray-400" /> Weekly
+                                                </button>
+                                                <button
+                                                    onClick={() => { generatePrayerReport('monthly'); setIsReportDropdownOpen(false); }}
+                                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                                >
+                                                    <Copy className="w-4 h-4 text-gray-400" /> Monthly
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
