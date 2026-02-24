@@ -275,7 +275,7 @@ const PrayerStats = () => {
                         </div>
                     ) : (
                         <>
-                            <div className="flex items-center justify-between gap-3 overflow-x-auto bg-white p-2 sm:p-3 rounded-xl border border-gray-100 shadow-sm scrollbar-hide">
+                            <div className="flex items-center justify-between gap-3 bg-white p-2 sm:p-3 rounded-xl border border-gray-100 shadow-sm">
                                 <div className="flex bg-gray-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg items-center gap-2 shrink-0">
                                     <Filter className="w-4 h-4 text-gray-400 shrink-0" />
                                     <select
