@@ -158,69 +158,71 @@ const MentorPrayerStats = () => {
                     <select
                         value={selectedClassId}
                         onChange={(e) => setSelectedClassId(e.target.value)}
-                        className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto"
                     >
                         {availableClasses.map(cls => (
                             <option key={cls.id} value={cls.id}>Class {cls.name} - {cls.division}</option>
                         ))}
                     </select>
 
-                    <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 w-full sm:w-auto">
-                        <button
-                            onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() - 1)))}
-                            className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <div className="flex items-center gap-2 px-4 font-medium text-gray-900 min-w-[140px] justify-center">
-                            <Calendar className="w-4 h-4 text-indigo-600" />
-                            {isSameDay(selectedDate, new Date()) ? 'Today' : format(selectedDate, 'MMM d, yyyy')}
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 flex-grow sm:flex-grow-0 justify-center">
+                            <button
+                                onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() - 1)))}
+                                className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <div className="flex items-center gap-2 px-2 sm:px-4 font-medium text-gray-900 min-w-[120px] sm:min-w-[140px] justify-center">
+                                <Calendar className="w-4 h-4 text-indigo-600" />
+                                {isSameDay(selectedDate, new Date()) ? 'Today' : format(selectedDate, 'MMM d, yyyy')}
+                            </div>
+                            <button
+                                onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() + 1)))}
+                                className="p-2 hover:bg-gray-100 rounded-md text-gray-600 disabled:opacity-50"
+                                disabled={isSameDay(selectedDate, new Date())}
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() + 1)))}
-                            className="p-2 hover:bg-gray-100 rounded-md text-gray-600 disabled:opacity-50"
-                            disabled={isSameDay(selectedDate, new Date())}
-                        >
-                            <ChevronRight className="w-5 h-5" />
-                        </button>
-                    </div>
 
-                    <div className="relative shrink-0 flex">
-                        <button
-                            onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
-                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors border border-indigo-100 w-full sm:w-auto justify-center"
-                        >
-                            Report <ChevronDown className="w-4 h-4" />
-                        </button>
+                        <div className="relative shrink-0 flex">
+                            <button
+                                onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
+                                className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors border border-indigo-100 w-full sm:w-auto justify-center h-full min-h-[42px]"
+                            >
+                                Report <ChevronDown className="w-4 h-4" />
+                            </button>
 
-                        {isReportDropdownOpen && (
-                            <>
-                                <div
-                                    className="fixed inset-0 z-10"
-                                    onClick={() => setIsReportDropdownOpen(false)}
-                                ></div>
-                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 flex flex-col">
-                                    <button
-                                        onClick={() => { generateSpecialPrayerReport('daily'); setIsReportDropdownOpen(false); }}
-                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                    >
-                                        <Calendar className="w-4 h-4 text-gray-400" /> Daily
-                                    </button>
-                                    <button
-                                        onClick={() => { generateSpecialPrayerReport('weekly'); setIsReportDropdownOpen(false); }}
-                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                    >
-                                        <Calendar className="w-4 h-4 text-gray-400" /> Weekly
-                                    </button>
-                                    <button
-                                        onClick={() => { generateSpecialPrayerReport('monthly'); setIsReportDropdownOpen(false); }}
-                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                    >
-                                        <Copy className="w-4 h-4 text-gray-400" /> Monthly
-                                    </button>
-                                </div>
-                            </>
-                        )}
+                            {isReportDropdownOpen && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-10"
+                                        onClick={() => setIsReportDropdownOpen(false)}
+                                    ></div>
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 flex flex-col">
+                                        <button
+                                            onClick={() => { generateSpecialPrayerReport('daily'); setIsReportDropdownOpen(false); }}
+                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                        >
+                                            <Calendar className="w-4 h-4 text-gray-400" /> Daily
+                                        </button>
+                                        <button
+                                            onClick={() => { generateSpecialPrayerReport('weekly'); setIsReportDropdownOpen(false); }}
+                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                        >
+                                            <Calendar className="w-4 h-4 text-gray-400" /> Weekly
+                                        </button>
+                                        <button
+                                            onClick={() => { generateSpecialPrayerReport('monthly'); setIsReportDropdownOpen(false); }}
+                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
+                                        >
+                                            <Copy className="w-4 h-4 text-gray-400" /> Monthly
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
