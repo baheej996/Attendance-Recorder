@@ -34,6 +34,7 @@ const PrayerStats = () => {
     // Add state for delete confirmation
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteClassSelection, setDeleteClassSelection] = useState('all');
 
     // Effect to ensure valid selection when switching tabs or changing settings
     useEffect(() => {
@@ -96,9 +97,21 @@ const PrayerStats = () => {
     const handleClearData = async () => {
         setIsDeleting(true);
         try {
-            const studentIds = classStudents.map(s => s.id);
-            await deletePrayerRecordsForStudents(studentIds);
+            let studentIds = [];
+            if (deleteClassSelection === 'all') {
+                // Get all students across all available classes for this mentor
+                const allAvailableClassIds = availableClasses.map(c => c.id);
+                studentIds = students.filter(s => allAvailableClassIds.includes(s.classId)).map(s => s.id);
+            } else {
+                // Get students for specific selected class
+                studentIds = students.filter(s => s.classId === deleteClassSelection).map(s => s.id);
+            }
+
+            if (studentIds.length > 0) {
+                await deletePrayerRecordsForStudents(studentIds);
+            }
             setIsDeleteModalOpen(false);
+            setDeleteClassSelection('all'); // Reset selection
         } catch (error) {
             console.error("Failed to delete records:", error);
         } finally {
@@ -241,7 +254,7 @@ const PrayerStats = () => {
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleClearData}
                 title="Clear Prayer Data"
-                message={`Are you sure you want to delete all prayer records for the ${classStudents.length} students in this class? This action cannot be undone.`}
+                message={`Are you sure you want to delete all prayer records for ${deleteClassSelection === 'all' ? 'ALL assigned classes' : `Class ${availableClasses.find(c => c.id === deleteClassSelection)?.name || 'selected'}`}? This action cannot be undone.`}
                 confirmText={isDeleting ? "Deleting..." : "Delete All Data"}
                 isDanger={true}
             />
@@ -262,20 +275,13 @@ const PrayerStats = () => {
                         </div>
                     ) : (
                         <>
-                            <div className="flex flex-wrap justify-end gap-3">
-                                <button
-                                    onClick={() => setIsDeleteModalOpen(true)}
-                                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    Clear Class Data
-                                </button>
-                                <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg flex items-center gap-2">
+                            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                                <div className="flex bg-gray-100 px-3 py-2 rounded-lg items-center gap-2">
                                     <Filter className="w-4 h-4 text-gray-400" />
                                     <select
                                         value={selectedClassId}
                                         onChange={(e) => setSelectedClassId(e.target.value)}
-                                        className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
+                                        className="bg-transparent border-none outline-none text-sm font-medium text-gray-700 w-full"
                                     >
                                         {enabledClasses.map(c => (
                                             <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
@@ -517,6 +523,37 @@ const PrayerStats = () => {
 
                     {/* Special Prayers Manager */}
                     <SpecialPrayerManager />
+
+                    <Card className="p-6 border border-red-100">
+                        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                            <Trash2 className="w-5 h-5 text-red-500" />
+                            Data Management
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-6">
+                            Permanently delete all prayer records for the selected classes. This action cannot be undone.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row items-center gap-4 bg-red-50 p-4 rounded-xl border border-red-100">
+                            <select
+                                value={deleteClassSelection}
+                                onChange={(e) => setDeleteClassSelection(e.target.value)}
+                                className="w-full sm:w-auto px-4 py-2 border border-red-200 bg-white rounded-lg text-sm font-medium text-gray-700 outline-none focus:border-red-500"
+                            >
+                                <option value="all">All Assigned Classes</option>
+                                {availableClasses.map(c => (
+                                    <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
+                                ))}
+                            </select>
+
+                            <button
+                                onClick={() => setIsDeleteModalOpen(true)}
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Clear Records
+                            </button>
+                        </div>
+                    </Card>
                 </div>
             )}
 
