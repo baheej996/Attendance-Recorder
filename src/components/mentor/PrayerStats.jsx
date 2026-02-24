@@ -275,65 +275,68 @@ const PrayerStats = () => {
                         </div>
                     ) : (
                         <>
-                            <div className="flex items-center justify-between gap-3 bg-white p-2 sm:p-3 rounded-xl border border-gray-100 shadow-sm">
-                                <div className="flex bg-gray-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg items-center gap-2 shrink-0">
-                                    <Filter className="w-4 h-4 text-gray-400 shrink-0" />
+                            <div className="flex flex-row items-center justify-between gap-1.5 sm:gap-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm w-full">
+                                {/* Class Selector */}
+                                <div className="flex bg-gray-100 px-2 py-1.5 rounded-lg items-center gap-1.5 flex-1 min-w-0">
+                                    <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0 hidden sm:block" />
                                     <select
                                         value={selectedClassId}
                                         onChange={(e) => setSelectedClassId(e.target.value)}
-                                        className="bg-transparent border-none outline-none text-xs sm:text-sm font-medium text-gray-700 min-w-[80px]"
+                                        className="bg-transparent border-none outline-none text-[11px] sm:text-sm font-medium text-gray-700 w-full truncate cursor-pointer p-0"
                                     >
                                         {enabledClasses.map(c => (
                                             <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
                                         ))}
                                     </select>
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <div className="bg-white px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-200 rounded-lg flex items-center shrink-0">
-                                        <input
-                                            type="date"
-                                            value={reportDate}
-                                            onChange={(e) => setReportDate(e.target.value)}
-                                            className="bg-transparent border-none outline-none text-xs sm:text-sm font-medium text-gray-700"
-                                        />
-                                    </div>
-                                    <div className="relative shrink-0">
-                                        <button
-                                            onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
-                                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors border border-indigo-100 max-h-full"
-                                        >
-                                            Report <ChevronDown className="w-4 h-4" />
-                                        </button>
 
-                                        {isReportDropdownOpen && (
-                                            <>
-                                                <div
-                                                    className="fixed inset-0 z-10"
-                                                    onClick={() => setIsReportDropdownOpen(false)}
-                                                ></div>
-                                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 flex flex-col">
-                                                    <button
-                                                        onClick={() => { generatePrayerReport('daily'); setIsReportDropdownOpen(false); }}
-                                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                                    >
-                                                        <Calendar className="w-4 h-4 text-gray-400" /> Daily
-                                                    </button>
-                                                    <button
-                                                        onClick={() => { generatePrayerReport('weekly'); setIsReportDropdownOpen(false); }}
-                                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                                    >
-                                                        <Calendar className="w-4 h-4 text-gray-400" /> Weekly
-                                                    </button>
-                                                    <button
-                                                        onClick={() => { generatePrayerReport('monthly'); setIsReportDropdownOpen(false); }}
-                                                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                                    >
-                                                        <Copy className="w-4 h-4 text-gray-400" /> Monthly
-                                                    </button>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
+                                {/* Date Picker */}
+                                <div className="flex items-center bg-white px-1 sm:px-2 py-1.5 border border-gray-200 rounded-lg shrink-0">
+                                    <input
+                                        type="date"
+                                        value={reportDate}
+                                        onChange={(e) => setReportDate(e.target.value)}
+                                        className="bg-transparent border-none outline-none text-[11px] sm:text-sm font-medium text-gray-700 w-[100px] sm:w-[125px] p-0 cursor-pointer"
+                                    />
+                                </div>
+
+                                {/* Report Dropdown */}
+                                <div className="relative shrink-0">
+                                    <button
+                                        onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
+                                        className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2 sm:px-4 py-1.5 rounded-lg text-[11px] sm:text-sm font-semibold flex items-center gap-1 transition-colors border border-indigo-100 h-full whitespace-nowrap"
+                                    >
+                                        Report <ChevronDown className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {isReportDropdownOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-10"
+                                                onClick={() => setIsReportDropdownOpen(false)}
+                                            ></div>
+                                            <div className="absolute right-0 top-full mt-2 w-32 sm:w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 flex flex-col">
+                                                <button
+                                                    onClick={() => { generatePrayerReport('daily'); setIsReportDropdownOpen(false); }}
+                                                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-2 sm:gap-3"
+                                                >
+                                                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" /> Daily
+                                                </button>
+                                                <button
+                                                    onClick={() => { generatePrayerReport('weekly'); setIsReportDropdownOpen(false); }}
+                                                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-2 sm:gap-3"
+                                                >
+                                                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" /> Weekly
+                                                </button>
+                                                <button
+                                                    onClick={() => { generatePrayerReport('monthly'); setIsReportDropdownOpen(false); }}
+                                                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-2 sm:gap-3"
+                                                >
+                                                    <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" /> Monthly
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -465,99 +468,104 @@ const PrayerStats = () => {
                         </>
                     )}
                 </>
-            )}
+            )
+            }
 
-            {activeTab === 'special' && (
-                <MentorPrayerStats />
-            )}
+            {
+                activeTab === 'special' && (
+                    <MentorPrayerStats />
+                )
+            }
 
-            {activeTab === 'settings' && (
+            {
+                activeTab === 'settings' && (
 
-                <div className="max-w-4xl mx-auto space-y-8">
-                    {/* General Configuration */}
-                    <Card className="p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                            <Users className="w-5 h-5 text-indigo-600" />
-                            Prayer Chart Configuration
-                        </h3>
-                        <p className="text-sm text-gray-500 mb-8 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                            Enable or disable the Prayer Chart feature for your classes. When enabled, students in that class will see the Prayer Chart option in their dashboard and can log their daily prayers.
-                        </p>
+                    <div className="max-w-4xl mx-auto space-y-8">
+                        {/* General Configuration */}
+                        <Card className="p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <Users className="w-5 h-5 text-indigo-600" />
+                                Prayer Chart Configuration
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-8 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                Enable or disable the Prayer Chart feature for your classes. When enabled, students in that class will see the Prayer Chart option in their dashboard and can log their daily prayers.
+                            </p>
 
-                        <div className="space-y-4">
-                            {availableClasses.map(cls => {
-                                const classFlag = classFeatureFlags?.find(f => f.classId === cls.id);
-                                const isLocallyEnabled = classFlag ? classFlag.prayer !== false : true;
-                                const isGloballyEnabled = studentFeatureFlags?.prayer !== false;
-                                const safeEnabled = isLocallyEnabled && isGloballyEnabled;
+                            <div className="space-y-4">
+                                {availableClasses.map(cls => {
+                                    const classFlag = classFeatureFlags?.find(f => f.classId === cls.id);
+                                    const isLocallyEnabled = classFlag ? classFlag.prayer !== false : true;
+                                    const isGloballyEnabled = studentFeatureFlags?.prayer !== false;
+                                    const safeEnabled = isLocallyEnabled && isGloballyEnabled;
 
-                                return (
-                                    <div key={cls.id} className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${!isGloballyEnabled ? 'bg-gray-50 border-gray-200 opacity-70 cursor-not-allowed' : 'border-gray-100 hover:bg-gray-50'}`}>
-                                        <div>
-                                            <h4 className={`font-bold ${!isGloballyEnabled ? 'text-gray-500' : 'text-gray-800'}`}>Class {cls.name} - {cls.division}</h4>
-                                            <p className="text-xs text-gray-500">
-                                                {!isGloballyEnabled
-                                                    ? 'Prayer Chart is disabled globally by Administrator'
-                                                    : (safeEnabled ? 'Students can access Prayer Chart' : 'Prayer Chart hidden from students')}
-                                            </p>
-                                        </div>
-                                        <button
-                                            disabled={!isGloballyEnabled}
-                                            onClick={() => handleToggleFeature(cls.id, isLocallyEnabled)}
-                                            className={clsx(
-                                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
-                                                safeEnabled ? "bg-indigo-600" : "bg-gray-200",
-                                                !isGloballyEnabled && "opacity-50 cursor-not-allowed"
-                                            )}
-                                        >
-                                            <span
+                                    return (
+                                        <div key={cls.id} className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${!isGloballyEnabled ? 'bg-gray-50 border-gray-200 opacity-70 cursor-not-allowed' : 'border-gray-100 hover:bg-gray-50'}`}>
+                                            <div>
+                                                <h4 className={`font-bold ${!isGloballyEnabled ? 'text-gray-500' : 'text-gray-800'}`}>Class {cls.name} - {cls.division}</h4>
+                                                <p className="text-xs text-gray-500">
+                                                    {!isGloballyEnabled
+                                                        ? 'Prayer Chart is disabled globally by Administrator'
+                                                        : (safeEnabled ? 'Students can access Prayer Chart' : 'Prayer Chart hidden from students')}
+                                                </p>
+                                            </div>
+                                            <button
+                                                disabled={!isGloballyEnabled}
+                                                onClick={() => handleToggleFeature(cls.id, isLocallyEnabled)}
                                                 className={clsx(
-                                                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                                                    safeEnabled ? "translate-x-6" : "translate-x-1"
+                                                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
+                                                    safeEnabled ? "bg-indigo-600" : "bg-gray-200",
+                                                    !isGloballyEnabled && "opacity-50 cursor-not-allowed"
                                                 )}
-                                            />
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </Card>
+                                            >
+                                                <span
+                                                    className={clsx(
+                                                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                                        safeEnabled ? "translate-x-6" : "translate-x-1"
+                                                    )}
+                                                />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Card>
 
-                    {/* Special Prayers Manager */}
-                    <SpecialPrayerManager />
+                        {/* Special Prayers Manager */}
+                        <SpecialPrayerManager />
 
-                    <Card className="p-6 border border-red-100">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                            <Trash2 className="w-5 h-5 text-red-500" />
-                            Data Management
-                        </h3>
-                        <p className="text-sm text-gray-500 mb-6">
-                            Permanently delete all prayer records for the selected classes. This action cannot be undone.
-                        </p>
+                        <Card className="p-6 border border-red-100">
+                            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <Trash2 className="w-5 h-5 text-red-500" />
+                                Data Management
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Permanently delete all prayer records for the selected classes. This action cannot be undone.
+                            </p>
 
-                        <div className="flex flex-col sm:flex-row items-center gap-4 bg-red-50 p-4 rounded-xl border border-red-100">
-                            <select
-                                value={deleteClassSelection}
-                                onChange={(e) => setDeleteClassSelection(e.target.value)}
-                                className="w-full sm:w-auto px-4 py-2 border border-red-200 bg-white rounded-lg text-sm font-medium text-gray-700 outline-none focus:border-red-500"
-                            >
-                                <option value="all">All Assigned Classes</option>
-                                {availableClasses.map(c => (
-                                    <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
-                                ))}
-                            </select>
+                            <div className="flex flex-col sm:flex-row items-center gap-4 bg-red-50 p-4 rounded-xl border border-red-100">
+                                <select
+                                    value={deleteClassSelection}
+                                    onChange={(e) => setDeleteClassSelection(e.target.value)}
+                                    className="w-full sm:w-auto px-4 py-2 border border-red-200 bg-white rounded-lg text-sm font-medium text-gray-700 outline-none focus:border-red-500"
+                                >
+                                    <option value="all">All Assigned Classes</option>
+                                    {availableClasses.map(c => (
+                                        <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
+                                    ))}
+                                </select>
 
-                            <button
-                                onClick={() => setIsDeleteModalOpen(true)}
-                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Clear Records
-                            </button>
-                        </div>
-                    </Card>
-                </div>
-            )}
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(true)}
+                                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Clear Records
+                                </button>
+                            </div>
+                        </Card>
+                    </div>
+                )
+            }
 
         </div >
     );

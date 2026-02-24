@@ -154,12 +154,13 @@ const MentorPrayerStats = () => {
                     <p className="text-sm text-gray-500">Track daily special prayer performance</p>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 bg-white p-2 sm:p-3 rounded-xl border border-gray-100 shadow-sm">
-                    <div className="flex bg-gray-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg items-center gap-2 shrink-0">
+                <div className="flex flex-row items-center justify-between gap-1.5 sm:gap-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm w-full">
+                    {/* Class Selector */}
+                    <div className="flex bg-gray-100 px-2 py-1.5 rounded-lg items-center gap-1.5 flex-1 min-w-0">
                         <select
                             value={selectedClassId}
                             onChange={(e) => setSelectedClassId(e.target.value)}
-                            className="bg-transparent border-none outline-none text-xs sm:text-sm font-medium text-gray-700 min-w-[80px]"
+                            className="bg-transparent border-none outline-none text-[11px] sm:text-sm font-medium text-gray-700 w-full truncate cursor-pointer p-0"
                         >
                             {availableClasses.map(cls => (
                                 <option key={cls.id} value={cls.id}>Class {cls.name} - {cls.division}</option>
@@ -167,64 +168,64 @@ const MentorPrayerStats = () => {
                         </select>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-gray-200 shrink-0">
-                            <button
-                                onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() - 1)))}
-                                className="p-1 hover:bg-gray-100 rounded-md text-gray-600"
-                            >
-                                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                            </button>
-                            <div className="flex items-center gap-1.5 px-2 font-medium text-gray-900 text-xs sm:text-sm min-w-[100px] justify-center">
-                                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
-                                {isSameDay(selectedDate, new Date()) ? 'Today' : format(selectedDate, 'MMM d, yy')}
-                            </div>
-                            <button
-                                onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() + 1)))}
-                                className="p-1 hover:bg-gray-100 rounded-md text-gray-600 disabled:opacity-50"
-                                disabled={isSameDay(selectedDate, new Date())}
-                            >
-                                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                            </button>
+                    {/* Date Picker */}
+                    <div className="flex items-center gap-0.5 sm:gap-1 bg-white px-0.5 py-0.5 sm:p-1 rounded-lg border border-gray-200 shrink-0">
+                        <button
+                            onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() - 1)))}
+                            className="p-1 hover:bg-gray-100 rounded-md text-gray-600"
+                        >
+                            <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </button>
+                        <div className="flex items-center gap-1 sm:gap-1.5 px-0.5 sm:px-2 font-medium text-gray-900 text-[10px] sm:text-sm min-w-[70px] sm:min-w-[100px] justify-center">
+                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-600 hidden sm:block" />
+                            {isSameDay(selectedDate, new Date()) ? 'Today' : format(selectedDate, 'MMM d')}
                         </div>
+                        <button
+                            onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() + 1)))}
+                            className="p-1 hover:bg-gray-100 rounded-md text-gray-600 disabled:opacity-50"
+                            disabled={isSameDay(selectedDate, new Date())}
+                        >
+                            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </button>
+                    </div>
 
-                        <div className="relative shrink-0 flex">
-                            <button
-                                onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
-                                className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-colors border border-indigo-100 max-h-full"
-                            >
-                                Report <ChevronDown className="w-4 h-4" />
-                            </button>
+                    {/* Report Dropdown */}
+                    <div className="relative shrink-0 flex">
+                        <button
+                            onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
+                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2 sm:px-4 py-1.5 rounded-lg text-[11px] sm:text-sm font-semibold flex items-center gap-1 transition-colors border border-indigo-100 h-full whitespace-nowrap"
+                        >
+                            Report <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
 
-                            {isReportDropdownOpen && (
-                                <>
-                                    <div
-                                        className="fixed inset-0 z-10"
-                                        onClick={() => setIsReportDropdownOpen(false)}
-                                    ></div>
-                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 flex flex-col">
-                                        <button
-                                            onClick={() => { generateSpecialPrayerReport('daily'); setIsReportDropdownOpen(false); }}
-                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                        >
-                                            <Calendar className="w-4 h-4 text-gray-400" /> Daily
-                                        </button>
-                                        <button
-                                            onClick={() => { generateSpecialPrayerReport('weekly'); setIsReportDropdownOpen(false); }}
-                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                        >
-                                            <Calendar className="w-4 h-4 text-gray-400" /> Weekly
-                                        </button>
-                                        <button
-                                            onClick={() => { generateSpecialPrayerReport('monthly'); setIsReportDropdownOpen(false); }}
-                                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-3"
-                                        >
-                                            <Copy className="w-4 h-4 text-gray-400" /> Monthly
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                        {isReportDropdownOpen && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setIsReportDropdownOpen(false)}
+                                ></div>
+                                <div className="absolute right-0 top-full mt-2 w-32 sm:w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 flex flex-col">
+                                    <button
+                                        onClick={() => { generateSpecialPrayerReport('daily'); setIsReportDropdownOpen(false); }}
+                                        className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-2 sm:gap-3"
+                                    >
+                                        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" /> Daily
+                                    </button>
+                                    <button
+                                        onClick={() => { generateSpecialPrayerReport('weekly'); setIsReportDropdownOpen(false); }}
+                                        className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-2 sm:gap-3"
+                                    >
+                                        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" /> Weekly
+                                    </button>
+                                    <button
+                                        onClick={() => { generateSpecialPrayerReport('monthly'); setIsReportDropdownOpen(false); }}
+                                        className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-indigo-600 text-left flex items-center gap-2 sm:gap-3"
+                                    >
+                                        <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" /> Monthly
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
