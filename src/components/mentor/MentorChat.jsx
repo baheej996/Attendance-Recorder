@@ -636,11 +636,6 @@ const MentorChat = () => {
                                             <div key={classId} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
                                                 <div>
                                                     <h4 className="font-bold text-gray-900">Class {cls.name} - {cls.division}</h4>
-                                                    <p className="text-xs text-gray-500">
-                                                        {enabled
-                                                            ? "Students can currently message you directly."
-                                                            : "Direct chat is disabled for students in this class."}
-                                                    </p>
                                                 </div>
                                                 <button
                                                     onClick={() => toggleChatForClass(classId)}
@@ -685,11 +680,6 @@ const MentorChat = () => {
                                             <div key={classId} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
                                                 <div>
                                                     <h4 className="font-bold text-gray-900">Class {cls.name} - {cls.division}</h4>
-                                                    <p className="text-xs text-gray-500">
-                                                        {groupEnabled
-                                                            ? "Students can currently send messages in the class group."
-                                                            : "Only you can send messages to the group. Students can only read."}
-                                                    </p>
                                                 </div>
                                                 <button
                                                     onClick={() => toggleGroupChatForClass(classId)}
