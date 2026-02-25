@@ -543,7 +543,7 @@ const ActivitiesManager = () => {
                     </div>
 
                     <Button onClick={openCreateModal} className="flex items-center gap-2 flex-1 md:flex-none justify-center">
-                        <Plus className="w-4 h-4" /> New Activity
+                        <Plus className="w-4 h-4" /> New <span className="hidden md:inline">Activity</span>
                     </Button>
                 </div>
             </div>
