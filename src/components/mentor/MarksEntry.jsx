@@ -169,43 +169,50 @@ const MarksEntry = () => {
 
     // --- Bulk CSV Logic ---
     const handleDownloadTemplate = () => {
-        // 1. Gather all students in available classes
-        const targetStudents = students.filter(s => availableClasses.some(c => c.id === s.classId));
+        if (!selectedClassId) return;
 
-        // 2. Determine all subjects applicable to these classes
+        const currentClass = availableClasses.find(c => c.id === selectedClassId);
+        if (!currentClass) return;
+
+        // 1. Gather students in THIS class and sort them: Boys first, then by name
+        let targetStudents = students.filter(s => s.classId === selectedClassId);
+        targetStudents.sort((a, b) => {
+            const aIsBoy = (a.gender || '').toLowerCase() === 'male' || (a.gender || '').toLowerCase() === 'boy';
+            const bIsBoy = (b.gender || '').toLowerCase() === 'male' || (b.gender || '').toLowerCase() === 'boy';
+            if (aIsBoy && !bIsBoy) return -1;
+            if (!aIsBoy && bIsBoy) return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        // 2. Determine subjects applicable to THIS class
         const applicableSubjects = subjects.filter(s =>
-            s.isExamSubject !== false && availableClasses.some(c => c.id === s.classId)
+            s.isExamSubject !== false && s.classId === selectedClassId
         );
 
         // 3. Construct CSV Header
-        const baseHeaders = ['Student ID', 'Register No', 'Student Name', 'Class', 'Division'];
+        const baseHeaders = ['Student ID', 'Register No', 'Student Name', 'Gender', 'Class', 'Division'];
         const subjectHeaders = applicableSubjects.map(sub => `[${sub.id}] ${sub.name}`);
         const csvRows = [baseHeaders.concat(subjectHeaders).join(',')];
 
         // 4. Construct Rows
         targetStudents.forEach(student => {
-            const cls = availableClasses.find(c => c.id === student.classId);
             const row = [
                 student.id,
                 student.registerNo,
                 `"${student.name}"`,
-                cls.name,
-                cls.division
+                student.gender || '',
+                currentClass.name,
+                currentClass.division
             ];
 
             // For each subject, check if there's an existing mark, else empty
             applicableSubjects.forEach(sub => {
-                // Determine if this subject applies to this student's class
-                if (sub.classId !== student.classId) {
-                    row.push('N/A'); // Subject not applicable for this class
-                } else {
-                    const existingResult = results.find(r =>
-                        r.examId === selectedExamId &&
-                        r.subjectId === sub.id &&
-                        r.studentId === student.id
-                    );
-                    row.push(existingResult ? existingResult.marks : '');
-                }
+                const existingResult = results.find(r =>
+                    r.examId === selectedExamId &&
+                    r.subjectId === sub.id &&
+                    r.studentId === student.id
+                );
+                row.push(existingResult ? existingResult.marks : '');
             });
 
             csvRows.push(row.join(','));
@@ -216,7 +223,7 @@ const MarksEntry = () => {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Exam_Marks_${selectedExamId}.csv`);
+        link.setAttribute("download", `Class_${currentClass.name}_${currentClass.division}_Marks.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -353,34 +360,9 @@ const MarksEntry = () => {
                     <Button variant="secondary" onClick={() => resetSelection('exam')} className="p-2 h-auto rounded-full hover:bg-gray-200">
                         <ArrowLeft className="w-6 h-6" />
                     </Button>
-                    <div className="flex-1">
+                    <div>
                         <h2 className="text-3xl font-bold text-gray-900">Select Class</h2>
                         <p className="text-gray-500 mt-1">Exam: {exams.find(e => e.id === selectedExamId)?.name}</p>
-                    </div>
-
-                    {/* CSV Actions */}
-                    <div className="flex gap-3">
-                        <Button
-                            variant="secondary"
-                            onClick={handleDownloadTemplate}
-                            className="flex items-center gap-2 bg-white"
-                        >
-                            <Download className="w-4 h-4" />
-                            <span className="hidden sm:inline">Download Template</span>
-                        </Button>
-                        <div className="relative">
-                            <input
-                                type="file"
-                                accept=".csv"
-                                onChange={handleUploadCSV}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                title="Upload CSV"
-                            />
-                            <Button variant="primary" className="flex items-center gap-2">
-                                <Upload className="w-4 h-4" />
-                                <span className="hidden sm:inline">Upload marks CSV</span>
-                            </Button>
-                        </div>
                     </div>
                 </div>
 
@@ -450,11 +432,36 @@ const MarksEntry = () => {
                     <Button variant="secondary" onClick={() => resetSelection('class')} className="p-2 h-auto rounded-full hover:bg-gray-200">
                         <ArrowLeft className="w-6 h-6" />
                     </Button>
-                    <div>
+                    <div className="flex-1">
                         <h2 className="text-3xl font-bold text-gray-900">Select Subject</h2>
                         <p className="text-gray-500 mt-1">
                             {exams.find(e => e.id === selectedExamId)?.name} • Class {availableClasses.find(c => c.id === selectedClassId)?.name}-{availableClasses.find(c => c.id === selectedClassId)?.division}
                         </p>
+                    </div>
+
+                    {/* CSV Actions */}
+                    <div className="flex gap-3">
+                        <Button
+                            variant="secondary"
+                            onClick={handleDownloadTemplate}
+                            className="flex items-center gap-2 bg-white"
+                        >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">Download Template</span>
+                        </Button>
+                        <div className="relative">
+                            <input
+                                type="file"
+                                accept=".csv"
+                                onChange={handleUploadCSV}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                title="Upload CSV"
+                            />
+                            <Button variant="primary" className="flex items-center gap-2">
+                                <Upload className="w-4 h-4" />
+                                <span className="hidden sm:inline">Upload marks CSV</span>
+                            </Button>
+                        </div>
                     </div>
                 </div>
 

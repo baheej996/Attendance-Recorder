@@ -13,7 +13,8 @@ import {
     Info,
     Settings,
     Star,
-    Moon
+    Moon,
+    Trophy
 } from 'lucide-react';
 
 export const MENTOR_NAV_ITEMS = [
@@ -28,6 +29,7 @@ export const MENTOR_NAV_ITEMS = [
     { id: 'marks', icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
     { id: 'star-student', icon: Star, label: 'Star of the Month', path: '/mentor/star-student' },
     { id: 'stats', icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
+    { id: 'leaderboard', icon: Trophy, label: 'Leaderboard', path: '/mentor/leaderboard' },
     { id: 'batches', icon: Users, label: 'Batches', path: '/mentor/batches' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/mentor/settings' },
     { id: 'help', icon: Info, label: 'Help', path: '/mentor/help' },
