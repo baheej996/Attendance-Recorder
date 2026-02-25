@@ -361,12 +361,22 @@ const ActivitiesManager = () => {
             doc.text(`Period: ${periodName}`, 14, 28);
             doc.text(`Total Activities: ${periodActivities.length}`, 14, 34);
 
-            const tableData = studentStats.map(stat => [
-                stat.name,
-                stat.completedCount.toString(),
-                (stat.totalActivities - stat.completedCount).toString(),
-                `${Math.round((stat.completedCount / stat.totalActivities) * 100)}%`
-            ]);
+            const tableData = studentStats.map(stat => {
+                const completedText = stat.completedCount > 0
+                    ? `${stat.completedCount}\n(${stat.completedActivities.join(', ')})`
+                    : '0';
+
+                const pendingText = stat.pendingActivities.length > 0
+                    ? `${stat.totalActivities - stat.completedCount}\n(${stat.pendingActivities.join(', ')})`
+                    : '0';
+
+                return [
+                    stat.name,
+                    completedText,
+                    pendingText,
+                    `${Math.round((stat.completedCount / stat.totalActivities) * 100)}%`
+                ];
+            });
 
             autoTable(doc, {
                 startY: 40,
@@ -374,7 +384,13 @@ const ActivitiesManager = () => {
                 body: tableData,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
-                styles: { fontSize: 9 }
+                styles: { fontSize: 9, cellPadding: 3 },
+                columnStyles: {
+                    0: { cellWidth: 40 }, // Name
+                    1: { cellWidth: 60 }, // Completed
+                    2: { cellWidth: 60 }, // Pending
+                    3: { cellWidth: 20 }  // %
+                }
             });
 
             doc.save(`Activity_Report_${assignedClass.name}_${timeframe}.pdf`);
