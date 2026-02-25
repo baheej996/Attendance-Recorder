@@ -155,6 +155,23 @@ const SubjectManager = () => {
         showAlert('Success', `${selectedSubjectIds.length} subjects deleted successfully.`, 'success');
     };
 
+    const handleDeleteGroup = (subjectIds) => {
+        if (window.confirm("Are you sure you want to delete this subject from all divisions in this batch?")) {
+            deleteSubjects(subjectIds);
+            showAlert('Success', `Deleted from ${subjectIds.length} divisions.`, 'success');
+        }
+    };
+
+    const toggleSelectGroup = (subjectIds) => {
+        const allSelected = subjectIds.every(id => selectedSubjectIds.includes(id));
+        if (allSelected) {
+            setSelectedSubjectIds(prev => prev.filter(id => !subjectIds.includes(id)));
+        } else {
+            const missing = subjectIds.filter(id => !selectedSubjectIds.includes(id));
+            setSelectedSubjectIds(prev => [...prev, ...missing]);
+        }
+    };
+
     // Filter and Sort Logic
     const filteredSubjects = subjects
         .filter(s => {
@@ -188,6 +205,32 @@ const SubjectManager = () => {
                 return cA.division.localeCompare(cB.division);
             }
         });
+
+    const groupedSubjects = [];
+    filteredSubjects.forEach(s => {
+        const cls = getClassObj(s.classId);
+        if (!cls) return;
+        const groupKey = `${s.name}-${cls.name}`;
+
+        const existing = groupedSubjects.find(g => g.key === groupKey);
+        if (existing) {
+            existing.subjectIds.push(s.id);
+            existing.divisions.push(cls.division);
+        } else {
+            groupedSubjects.push({
+                key: groupKey,
+                name: s.name,
+                gradeName: cls.name,
+                maxMarks: s.maxMarks,
+                passMarks: s.passMarks,
+                totalChapters: s.totalChapters,
+                isExamSubject: s.isExamSubject,
+                subjectIds: [s.id],
+                divisions: [cls.division],
+                sampleSubject: s
+            });
+        }
+    });
 
     return (
         <div className="space-y-6">
@@ -359,64 +402,69 @@ const SubjectManager = () => {
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-                        {filteredSubjects.length === 0 ? (
+                        {groupedSubjects.length === 0 ? (
                             <div className="p-8 text-center text-gray-500">
                                 No subjects found.
                             </div>
                         ) : (
-                            filteredSubjects.map(subject => (
-                                <div key={subject.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors group gap-3">
-                                    <div className="flex items-start sm:items-center gap-3 min-w-0">
-                                        <div className="pt-1 sm:pt-0">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedSubjectIds.includes(subject.id)}
-                                                onChange={() => toggleSelectSubject(subject.id)}
-                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                                            />
+                            groupedSubjects.map(group => {
+                                const isGroupSelected = group.subjectIds.every(id => selectedSubjectIds.includes(id));
+
+                                return (
+                                    <div key={group.key} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition-colors group-hover gap-3">
+                                        <div className="flex items-start sm:items-center gap-3 min-w-0">
+                                            <div className="pt-1 sm:pt-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isGroupSelected}
+                                                    onChange={() => toggleSelectGroup(group.subjectIds)}
+                                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                                />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{group.name}</p>
+                                                <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2 mt-1">
+                                                    <span className="flex items-center gap-1 font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                                                        <Layers className="w-3 h-3" />
+                                                        Class {group.gradeName}
+                                                        <span className="font-normal text-gray-500 ml-1">({group.divisions.length} Divisions)</span>
+                                                    </span>
+                                                    <span className="hidden sm:inline text-gray-300">|</span>
+                                                    <span className="whitespace-nowrap">Max: {group.maxMarks} • Pass: {group.passMarks || 40}</span>
+                                                    {group.totalChapters > 0 && (
+                                                        <>
+                                                            <span className="hidden sm:inline text-gray-300">|</span>
+                                                            <span className="whitespace-nowrap">{group.totalChapters} Chaps</span>
+                                                        </>
+                                                    )}
+                                                    {group.isExamSubject === false && (
+                                                        <>
+                                                            <span className="hidden sm:inline text-gray-300">|</span>
+                                                            <span className="text-amber-600 font-medium whitespace-nowrap">Non-Exam</span>
+                                                        </>
+                                                    )}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="min-w-0">
-                                            <p className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{subject.name}</p>
-                                            <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2 mt-1">
-                                                <span className="flex items-center gap-1">
-                                                    <Layers className="w-3 h-3" />
-                                                    {getClassName(subject.classId)}
-                                                </span>
-                                                <span className="hidden sm:inline text-gray-300">|</span>
-                                                <span className="whitespace-nowrap">Max: {subject.maxMarks} • Pass: {subject.passMarks || 40}</span>
-                                                {subject.totalChapters > 0 && (
-                                                    <>
-                                                        <span className="hidden sm:inline text-gray-300">|</span>
-                                                        <span className="whitespace-nowrap">{subject.totalChapters} Chaps</span>
-                                                    </>
-                                                )}
-                                                {subject.isExamSubject === false && (
-                                                    <>
-                                                        <span className="hidden sm:inline text-gray-300">|</span>
-                                                        <span className="text-amber-600 font-medium whitespace-nowrap">Non-Exam</span>
-                                                    </>
-                                                )}
-                                            </p>
+                                        <div className="flex gap-2 sm:gap-1 self-end sm:self-auto opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100">
+                                            <button
+                                                onClick={() => handleEdit(group.sampleSubject)}
+                                                className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors border border-gray-100 sm:border-none"
+                                                title="Edit Batch Subject"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteGroup(group.subjectIds)}
+                                                className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors border border-gray-100 sm:border-none"
+                                                title="Delete Batch Subject"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2 sm:gap-1 self-end sm:self-auto">
-                                        <button
-                                            onClick={() => handleEdit(subject)}
-                                            className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors border border-gray-100 sm:border-none"
-                                            title="Edit Subject"
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => deleteSubject(subject.id)}
-                                            className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors border border-gray-100 sm:border-none"
-                                            title="Delete Subject"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
