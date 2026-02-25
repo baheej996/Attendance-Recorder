@@ -228,13 +228,19 @@ const ActivitiesManager = () => {
     };
 
     const generateCommonActivityReport = async (timeframe, reportFormat) => {
-        if (selectedClassId === 'all') {
-            alert("Please select a specific class to generate a common report.");
-            return;
-        }
+        let targetClasses = [];
 
-        const assignedClass = classes.find(c => c.id === selectedClassId);
-        if (!assignedClass) return;
+        if (selectedClassId === 'all') {
+            if (!availableClasses || availableClasses.length === 0) {
+                alert("You have no assigned classes to generate reports for.");
+                return;
+            }
+            targetClasses = availableClasses;
+        } else {
+            const assignedClass = classes.find(c => c.id === selectedClassId);
+            if (!assignedClass) return;
+            targetClasses = [assignedClass];
+        }
 
         const now = new Date();
         let startDate, endDate, periodName;
@@ -264,85 +270,100 @@ const ActivitiesManager = () => {
                 return;
         }
 
-        // 1. Filter Activities in this timeframe
-        const classActivities = activities.filter(a => a.classId === selectedClassId);
+        const reportDataByClass = [];
 
-        const periodActivities = classActivities.filter(a => {
-            // Use dueDate if exists, else fallback to createdAt
-            const activityDate = a.dueDate ? new Date(a.dueDate) : new Date(a.createdAt || now);
-            try {
-                return isWithinInterval(activityDate, { start: startDate, end: endDate });
-            } catch (e) {
-                return false;
-            }
-        });
+        for (const targetClass of targetClasses) {
+            // 1. Filter Activities in this timeframe for this class
+            const classActivities = activities.filter(a => a.classId === targetClass.id);
 
-        if (periodActivities.length === 0) {
-            alert(`No activities found for ${assignedClass.name} - ${assignedClass.division} in the selected timeframe (${timeframe}).`);
+            const periodActivities = classActivities.filter(a => {
+                const activityDate = a.dueDate ? new Date(a.dueDate) : new Date(a.createdAt || now);
+                try {
+                    return isWithinInterval(activityDate, { start: startDate, end: endDate });
+                } catch (e) {
+                    return false;
+                }
+            });
+
+            if (periodActivities.length === 0) continue; // Skip classes with no activities in this timeframe
+
+            // 2. Fetch students and prepare stats
+            const classStudents = students.filter(s => s.classId === targetClass.id);
+            const sortedStudents = [...classStudents].sort((a, b) => {
+                if (a.gender === 'Boy' && b.gender !== 'Boy') return -1;
+                if (a.gender !== 'Boy' && b.gender === 'Boy') return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            const studentStats = sortedStudents.map(student => {
+                let completedCount = 0;
+                const completedActivities = [];
+                const pendingActivities = [];
+
+                periodActivities.forEach(activity => {
+                    const isCompleted = activitySubmissions.some(
+                        sub => sub.activityId === activity.id && sub.studentId === student.id && sub.status === 'Completed'
+                    );
+                    if (isCompleted) {
+                        completedCount++;
+                        completedActivities.push(activity.title);
+                    } else {
+                        pendingActivities.push(activity.title);
+                    }
+                });
+                return {
+                    ...student,
+                    completedCount,
+                    totalActivities: periodActivities.length,
+                    completedActivities,
+                    pendingActivities
+                };
+            });
+
+            reportDataByClass.push({
+                cls: targetClass,
+                activitiesCount: periodActivities.length,
+                studentStats
+            });
+        }
+
+        if (reportDataByClass.length === 0) {
+            alert(`No activities found in the selected timeframe (${timeframe}).`);
             return;
         }
 
-        // 2. Fetch students and prepare stats
-        const classStudents = students.filter(s => s.classId === selectedClassId);
-        const sortedStudents = [...classStudents].sort((a, b) => {
-            if (a.gender === 'Boy' && b.gender !== 'Boy') return -1;
-            if (a.gender !== 'Boy' && b.gender === 'Boy') return 1;
-            return a.name.localeCompare(b.name);
-        });
-
-        const studentStats = sortedStudents.map(student => {
-            let completedCount = 0;
-            const completedActivities = [];
-            const pendingActivities = [];
-
-            periodActivities.forEach(activity => {
-                const isCompleted = activitySubmissions.some(
-                    sub => sub.activityId === activity.id && sub.studentId === student.id && sub.status === 'Completed'
-                );
-                if (isCompleted) {
-                    completedCount++;
-                    completedActivities.push(activity.title);
-                } else {
-                    pendingActivities.push(activity.title);
-                }
-            });
-            return {
-                ...student,
-                completedCount,
-                totalActivities: periodActivities.length,
-                completedActivities,
-                pendingActivities
-            };
-        });
-
         if (reportFormat === 'copy') {
-            const fullyCompletedList = [];
-            const partiallyCompletedList = [];
-            const notStartedList = [];
+            const classBlocks = reportDataByClass.map(data => {
+                const fullyCompletedList = [];
+                const partiallyCompletedList = [];
+                const notStartedList = [];
 
-            studentStats.forEach(stat => {
-                const isFullyCompleted = stat.completedCount === stat.totalActivities;
-                const isNotStarted = stat.completedCount === 0;
+                data.studentStats.forEach(stat => {
+                    const isFullyCompleted = stat.completedCount === stat.totalActivities;
+                    const isNotStarted = stat.completedCount === 0;
 
-                let entry = `• ${stat.name}`;
+                    let entry = `• ${stat.name}`;
+                    if (isFullyCompleted) {
+                        entry += `\n  Completed: ${stat.completedActivities.join(', ')}`;
+                        fullyCompletedList.push(entry);
+                    } else if (isNotStarted) {
+                        entry += `\n  Pending: ${stat.pendingActivities.join(', ')}`;
+                        notStartedList.push(entry);
+                    } else {
+                        entry += `\n  Completed: ${stat.completedActivities.join(', ')}\n  Pending: ${stat.pendingActivities.join(', ')}`;
+                        partiallyCompletedList.push(entry);
+                    }
+                });
 
-                if (isFullyCompleted) {
-                    entry += `\n  Completed: ${stat.completedActivities.join(', ')}`;
-                    fullyCompletedList.push(entry);
-                } else if (isNotStarted) {
-                    entry += `\n  Pending: ${stat.pendingActivities.join(', ')}`;
-                    notStartedList.push(entry);
-                } else {
-                    entry += `\n  Completed: ${stat.completedActivities.join(', ')}\n  Pending: ${stat.pendingActivities.join(', ')}`;
-                    partiallyCompletedList.push(entry);
-                }
+                const fullyCompletedText = fullyCompletedList.length > 0 ? fullyCompletedList.join('\n\n') : 'None';
+                const partiallyCompletedText = partiallyCompletedList.length > 0 ? partiallyCompletedList.join('\n\n') : 'None';
+                const notStartedText = notStartedList.length > 0 ? notStartedList.join('\n\n') : 'None';
+
+                return `*Class:* ${data.cls.name} - ${data.cls.division}\n*Total Activities:* ${data.activitiesCount}\n\n*Fully Completed ✅*\n${fullyCompletedText}\n\n*Partially Completed ⚠️*\n${partiallyCompletedText}\n\n*Not Started ⏳*\n${notStartedText}`;
             });
 
-            const fullyCompletedText = fullyCompletedList.length > 0 ? fullyCompletedList.join('\n\n') : 'None';
-            const partiallyCompletedText = partiallyCompletedList.length > 0 ? partiallyCompletedList.join('\n\n') : 'None';
-            const notStartedText = notStartedList.length > 0 ? notStartedList.join('\n\n') : 'None';
-
-            const reportText = `*Report: ${periodName}*\n*Class:* ${assignedClass.name} - ${assignedClass.division}\n*Total Activities:* ${periodActivities.length}\n\n*Fully Completed ✅*\n${fullyCompletedText}\n\n*Partially Completed ⚠️*\n${partiallyCompletedText}\n\n*Not Started ⏳*\n${notStartedText}`;
+            const titleHeader = `*Report: ${periodName}*\n`;
+            const reportText = titleHeader + classBlocks.join('\n\n====================\n\n');
 
             try {
                 await navigator.clipboard.writeText(reportText);
@@ -353,47 +374,54 @@ const ActivitiesManager = () => {
         } else if (reportFormat === 'pdf') {
             const doc = new jsPDF();
 
-            // PDF Header
-            doc.setFontSize(16);
-            doc.text(`Activity Report`, 14, 15);
-            doc.setFontSize(11);
-            doc.text(`Class: ${assignedClass.name} - ${assignedClass.division}`, 14, 22);
-            doc.text(`Period: ${periodName}`, 14, 28);
-            doc.text(`Total Activities: ${periodActivities.length}`, 14, 34);
-
-            const tableData = studentStats.map(stat => {
-                const completedText = stat.completedCount > 0
-                    ? `${stat.completedCount}\n(${stat.completedActivities.join(', ')})`
-                    : '0';
-
-                const pendingText = stat.pendingActivities.length > 0
-                    ? `${stat.totalActivities - stat.completedCount}\n(${stat.pendingActivities.join(', ')})`
-                    : '0';
-
-                return [
-                    stat.name,
-                    completedText,
-                    pendingText,
-                    `${Math.round((stat.completedCount / stat.totalActivities) * 100)}%`
-                ];
-            });
-
-            autoTable(doc, {
-                startY: 40,
-                head: [['Student Name', 'Completed', 'Pending', 'Completion %']],
-                body: tableData,
-                theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
-                styles: { fontSize: 9, cellPadding: 3 },
-                columnStyles: {
-                    0: { cellWidth: 40 }, // Name
-                    1: { cellWidth: 60 }, // Completed
-                    2: { cellWidth: 60 }, // Pending
-                    3: { cellWidth: 20 }  // %
+            reportDataByClass.forEach((data, index) => {
+                if (index > 0) {
+                    doc.addPage();
                 }
+
+                // PDF Header
+                doc.setFontSize(16);
+                doc.text(`Activity Report`, 14, 15);
+                doc.setFontSize(11);
+                doc.text(`Class: ${data.cls.name} - ${data.cls.division}`, 14, 22);
+                doc.text(`Period: ${periodName}`, 14, 28);
+                doc.text(`Total Activities: ${data.activitiesCount}`, 14, 34);
+
+                const tableData = data.studentStats.map(stat => {
+                    const completedText = stat.completedCount > 0
+                        ? `${stat.completedCount}\n(${stat.completedActivities.join(', ')})`
+                        : '0';
+
+                    const pendingText = stat.pendingActivities.length > 0
+                        ? `${stat.totalActivities - stat.completedCount}\n(${stat.pendingActivities.join(', ')})`
+                        : '0';
+
+                    return [
+                        stat.name,
+                        completedText,
+                        pendingText,
+                        `${Math.round((stat.completedCount / stat.totalActivities) * 100)}%`
+                    ];
+                });
+
+                autoTable(doc, {
+                    startY: 40,
+                    head: [['Student Name', 'Completed', 'Pending', 'Completion %']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
+                    styles: { fontSize: 9, cellPadding: 3 },
+                    columnStyles: {
+                        0: { cellWidth: 40 }, // Name
+                        1: { cellWidth: 60 }, // Completed
+                        2: { cellWidth: 60 }, // Pending
+                        3: { cellWidth: 20 }  // %
+                    }
+                });
             });
 
-            doc.save(`Activity_Report_${assignedClass.name}_${timeframe}.pdf`);
+            const fileNameScope = selectedClassId === 'all' ? 'All_Classes' : `${reportDataByClass[0].cls.name}`;
+            doc.save(`Activity_Report_${fileNameScope}_${timeframe}.pdf`);
         }
 
         setIsReportDropdownOpen(false); // Close dropdown after action
