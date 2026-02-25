@@ -71,14 +71,12 @@ const MentorLeaderboard = () => {
     const [viewMode, setViewMode] = useState('assigned'); // assigned, global
     const [showConfetti, setShowConfetti] = useState(true);
 
-    const publishedExams = exams.filter(e => e.status === 'Published');
-
-    // Auto-select the last published exam on mount
+    // Auto-select the last exam on mount
     useEffect(() => {
-        if (publishedExams.length > 0 && !selectedExamId) {
-            setSelectedExamId(publishedExams[publishedExams.length - 1].id);
+        if (exams.length > 0 && !selectedExamId) {
+            setSelectedExamId(exams[exams.length - 1].id);
         }
-    }, [publishedExams]);
+    }, [exams]);
 
     // Trigger confetti on mount
     useEffect(() => {
@@ -161,8 +159,8 @@ const MentorLeaderboard = () => {
                     className="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
                 >
                     <option value="">Select Exam to view</option>
-                    {publishedExams.map(e => (
-                        <option key={e.id} value={e.id}>{e.name}</option>
+                    {exams.map(e => (
+                        <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>
                     ))}
                 </select>
             </div>

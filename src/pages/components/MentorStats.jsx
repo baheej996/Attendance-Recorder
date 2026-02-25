@@ -277,7 +277,6 @@ const MentorStats = () => {
     // Derived Data
     const classStudents = useMemo(() => students.filter(s => s.classId === selectedClassId && s.status === 'Active'), [students, selectedClassId]);
     const classSubjects = useMemo(() => subjects.filter(s => s.classId === selectedClassId), [subjects, selectedClassId]);
-    const publishedExams = useMemo(() => exams.filter(e => e.status === 'Published'), [exams]);
 
     // --- ATTENDANCE STATS ---
     const getAttendanceStats = (studentId) => {
@@ -403,7 +402,7 @@ const MentorStats = () => {
                         <div className="w-full md:w-64">
                             <Select value={selectedExamId} onChange={(e) => setSelectedExamId(e.target.value)} className="bg-white">
                                 <option value="" disabled>Select Exam</option>
-                                {publishedExams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                                {exams.map(e => <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>)}
                             </Select>
                         </div>
                     )}
