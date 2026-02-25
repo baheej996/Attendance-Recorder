@@ -68,8 +68,13 @@ const ConfettiExplosion = () => {
 const MentorLeaderboard = () => {
     const { currentUser, exams, subjects, results, students, classes } = useData();
     const [selectedExamId, setSelectedExamId] = useState('');
-    const [viewMode, setViewMode] = useState('assigned'); // assigned, global
+    const [selectedClassId, setSelectedClassId] = useState('');
+    const [viewMode, setViewMode] = useState('class'); // class, batch, assigned, global
     const [showConfetti, setShowConfetti] = useState(true);
+
+    const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
+        ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
+        : classes, [classes, currentUser]);
 
     // Auto-select the last exam on mount
     useEffect(() => {
@@ -77,6 +82,13 @@ const MentorLeaderboard = () => {
             setSelectedExamId(exams[exams.length - 1].id);
         }
     }, [exams]);
+
+    // Auto-select the first available class on mount
+    useEffect(() => {
+        if (availableClasses.length > 0 && !selectedClassId) {
+            setSelectedClassId(availableClasses[0].id);
+        }
+    }, [availableClasses]);
 
     // Trigger confetti on mount
     useEffect(() => {
@@ -102,7 +114,16 @@ const MentorLeaderboard = () => {
         if (!selectedExamId) return [];
         let filteredStudents = [];
 
-        if (viewMode === 'assigned') {
+        if (viewMode === 'class') {
+            if (!selectedClassId) return [];
+            filteredStudents = students.filter(s => s.classId === selectedClassId);
+        } else if (viewMode === 'batch') {
+            if (!selectedClassId) return [];
+            const selectedClass = classes.find(c => c.id === selectedClassId);
+            if (!selectedClass) return [];
+            const batchClassIds = classes.filter(c => c.name === selectedClass.name).map(c => c.id);
+            filteredStudents = students.filter(s => batchClassIds.includes(s.classId));
+        } else if (viewMode === 'assigned') {
             const myClassIds = currentUser?.assignedClassIds || [];
             filteredStudents = students.filter(s => myClassIds.includes(s.classId));
         } else {
@@ -110,7 +131,7 @@ const MentorLeaderboard = () => {
         }
 
         return getAggregatedScores(filteredStudents);
-    }, [selectedExamId, viewMode, students, results, currentUser]);
+    }, [selectedExamId, selectedClassId, viewMode, students, results, currentUser, classes]);
 
     const getRankDisplay = (index) => {
         const rank = index + 1;
@@ -133,36 +154,51 @@ const MentorLeaderboard = () => {
                     </div>
                 </div>
 
-                <div className="flex bg-white p-1 rounded-lg border border-gray-200">
-                    {['assigned', 'global'].map((mode) => (
+                <div className="flex bg-white p-1 rounded-lg border border-gray-200 overflow-x-auto whitespace-nowrap hide-scrollbar">
+                    {['class', 'batch', 'assigned', 'global'].map((mode) => (
                         <button
                             key={mode}
                             onClick={() => setViewMode(mode)}
                             className={clsx(
-                                "px-6 py-2.5 text-sm font-semibold rounded-md transition-all",
+                                "px-4 sm:px-6 py-2.5 text-sm font-semibold rounded-md transition-all",
                                 viewMode === mode
                                     ? "bg-purple-50 text-purple-700 shadow-sm"
                                     : "text-gray-600 hover:bg-gray-50"
                             )}
                         >
-                            {mode === 'assigned' ? 'My Classes' : 'All Students'}
+                            {mode === 'class' ? 'This Class' :
+                                mode === 'batch' ? 'This Batch' :
+                                    mode === 'assigned' ? 'My Classes' : 'This School'}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Exam Selector */}
-            <div className="max-w-xs">
+            {/* Selectors */}
+            <div className="flex flex-col sm:flex-row gap-4">
                 <select
                     value={selectedExamId}
                     onChange={(e) => setSelectedExamId(e.target.value)}
-                    className="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
+                    className="w-full sm:max-w-xs bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
                 >
                     <option value="">Select Exam to view</option>
                     {exams.map(e => (
                         <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>
                     ))}
                 </select>
+
+                {(viewMode === 'class' || viewMode === 'batch') && (
+                    <select
+                        value={selectedClassId}
+                        onChange={(e) => setSelectedClassId(e.target.value)}
+                        className="w-full sm:max-w-xs bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
+                    >
+                        <option value="">Select Class</option>
+                        {availableClasses.map(c => (
+                            <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
+                        ))}
+                    </select>
+                )}
             </div>
 
             {/* Leaderboard List */}
