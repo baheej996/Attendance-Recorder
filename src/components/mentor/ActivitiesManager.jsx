@@ -5,8 +5,8 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings, Copy, Download, FileText, Calendar } from 'lucide-react';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 
 const ActivitiesManager = () => {
@@ -292,36 +292,61 @@ const ActivitiesManager = () => {
 
         const studentStats = sortedStudents.map(student => {
             let completedCount = 0;
+            const completedActivities = [];
+            const pendingActivities = [];
+
             periodActivities.forEach(activity => {
                 const isCompleted = activitySubmissions.some(
                     sub => sub.activityId === activity.id && sub.studentId === student.id && sub.status === 'Completed'
                 );
-                if (isCompleted) completedCount++;
+                if (isCompleted) {
+                    completedCount++;
+                    completedActivities.push(activity.title);
+                } else {
+                    pendingActivities.push(activity.title);
+                }
             });
             return {
                 ...student,
                 completedCount,
-                totalActivities: periodActivities.length
+                totalActivities: periodActivities.length,
+                completedActivities,
+                pendingActivities
             };
         });
 
         if (reportFormat === 'copy') {
-            const completedList = [];
-            const partialList = [];
-            const pendingList = [];
+            const fullyCompletedList = [];
+            const partiallyCompletedList = [];
+            const notStartedList = [];
 
             studentStats.forEach(stat => {
-                const entry = `${stat.name} (${stat.completedCount}/${stat.totalActivities})`;
-                if (stat.completedCount === stat.totalActivities) completedList.push(entry);
-                else if (stat.completedCount === 0) pendingList.push(entry);
-                else partialList.push(entry);
+                const isFullyCompleted = stat.completedCount === stat.totalActivities;
+                const isNotStarted = stat.completedCount === 0;
+
+                let entry = `• ${stat.name}`;
+
+                if (isFullyCompleted) {
+                    entry += `\n  Completed: ${stat.completedActivities.join(', ')}`;
+                    fullyCompletedList.push(entry);
+                } else if (isNotStarted) {
+                    entry += `\n  Pending: ${stat.pendingActivities.join(', ')}`;
+                    notStartedList.push(entry);
+                } else {
+                    entry += `\n  Completed: ${stat.completedActivities.join(', ')}\n  Pending: ${stat.pendingActivities.join(', ')}`;
+                    partiallyCompletedList.push(entry);
+                }
             });
 
-            const reportText = `*Common Activity Report: ${periodName}*\n*Class:* ${assignedClass.name} - ${assignedClass.division}\n*Total Activities:* ${periodActivities.length}\n\n*Fully Completed ✅*\n${completedList.length > 0 ? completedList.map(n => `• ${n}`).join('\n') : 'None'}\n\n*Partially Completed ⚠️*\n${partialList.length > 0 ? partialList.map(n => `• ${n}`).join('\n') : 'None'}\n\n*Not Started ⏳*\n${pendingList.length > 0 ? pendingList.map(n => `• ${n}`).join('\n') : 'None'}`;
+            const fullyCompletedText = fullyCompletedList.length > 0 ? fullyCompletedList.join('\n\n') : 'None';
+            const partiallyCompletedText = partiallyCompletedList.length > 0 ? partiallyCompletedList.join('\n\n') : 'None';
+            const notStartedText = notStartedList.length > 0 ? notStartedList.join('\n\n') : 'None';
+
+            const reportText = `*Report: ${periodName}*\n*Class:* ${assignedClass.name} - ${assignedClass.division}\n*Total Activities:* ${periodActivities.length}\n\n*Fully Completed ✅*\n${fullyCompletedText}\n\n*Partially Completed ⚠️*\n${partiallyCompletedText}\n\n*Not Started ⏳*\n${notStartedText}`;
 
             try {
                 await navigator.clipboard.writeText(reportText);
-                alert(`${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Common Activity Report copied to clipboard!`);
+                alert(`${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Report copied to clipboard!`);
             } catch (err) {
                 alert('Failed to copy report.');
             }
@@ -330,7 +355,7 @@ const ActivitiesManager = () => {
 
             // PDF Header
             doc.setFontSize(16);
-            doc.text(`Common Activity Report`, 14, 15);
+            doc.text(`Activity Report`, 14, 15);
             doc.setFontSize(11);
             doc.text(`Class: ${assignedClass.name} - ${assignedClass.division}`, 14, 22);
             doc.text(`Period: ${periodName}`, 14, 28);
@@ -343,7 +368,7 @@ const ActivitiesManager = () => {
                 `${Math.round((stat.completedCount / stat.totalActivities) * 100)}%`
             ]);
 
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 40,
                 head: [['Student Name', 'Completed', 'Pending', 'Completion %']],
                 body: tableData,
