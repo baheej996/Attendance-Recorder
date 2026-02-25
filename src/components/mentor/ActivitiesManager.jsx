@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -27,6 +27,23 @@ const ActivitiesManager = () => {
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // Settings Modal
     const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false); // Report Dropdown State
     const [expandedReportType, setExpandedReportType] = useState(null); // Mobile report row expansion
+    const reportDropdownRef = useRef(null);
+
+    // Close Report Dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (reportDropdownRef.current && !reportDropdownRef.current.contains(event.target)) {
+                setIsReportDropdownOpen(false);
+            }
+        };
+
+        if (isReportDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isReportDropdownOpen]);
 
     // Filter/Search States
     const [selectedClassId, setSelectedClassId] = useState('all');
@@ -528,7 +545,7 @@ const ActivitiesManager = () => {
                     </Button>
 
                     {/* Common Report Dropdown */}
-                    <div className="relative">
+                    <div className="relative" ref={reportDropdownRef}>
                         <Button
                             variant="secondary"
                             className="flex items-center gap-2 flex-1 md:flex-none justify-center"
