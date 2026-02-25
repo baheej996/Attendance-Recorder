@@ -358,7 +358,57 @@ const MentorStats = () => {
             return [s.registerNo, s.name, stats.total, stats.present, `${stats.percentage.toFixed(1)}%`];
         });
         autoTable(doc, { startY: 40, head: [['Reg No', 'Name', 'Total Day', 'Present', '%']], body: tableData });
+        autoTable(doc, { startY: 40, head: [['Reg No', 'Name', 'Total Day', 'Present', '%']], body: tableData });
         doc.save(`Attendance_${cls.name}.pdf`);
+    };
+
+    const generateExamReport = () => {
+        if (!examStats || !selectedClassId || !selectedExamId) return;
+        const cls = classes.find(c => c.id === selectedClassId);
+        const exam = exams.find(e => e.id === selectedExamId);
+
+        const doc = new jsPDF();
+
+        // Header
+        doc.setFontSize(18);
+        doc.setTextColor(79, 70, 229);
+        doc.text(`Exam Results Report`, 14, 20);
+
+        doc.setFontSize(12);
+        doc.setTextColor(107, 114, 128);
+        doc.text(`Class: ${cls?.name} ${cls?.division}  |  Exam: ${exam?.name}`, 14, 28);
+        doc.text(`Class Average: ${examStats.classAvg}%  |  Pass: ${examStats.passPercentage}%`, 14, 34);
+
+        // Sort students best to worst
+        const sortedStudents = [...examStats.studentPerformances].sort((a, b) => b.pct - a.pct);
+
+        const tableData = sortedStudents.map((perf, index) => {
+            return [
+                index + 1,
+                perf.student.registerNo,
+                perf.student.name,
+                `${perf.obtained} / ${perf.max}`,
+                `${perf.pct.toFixed(1)}%`,
+                perf.isPassed ? 'Pass' : 'Fail'
+            ];
+        });
+
+        autoTable(doc, {
+            startY: 42,
+            head: [['Rank', 'Reg No', 'Name', 'Marks', 'Percentage', 'Status']],
+            body: tableData,
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] },
+            didParseCell: function (data) {
+                // Color passed and failed tags
+                if (data.section === 'body' && data.column.index === 5) {
+                    if (data.cell.raw === 'Pass') data.cell.styles.textColor = [16, 185, 129];
+                    if (data.cell.raw === 'Fail') data.cell.styles.textColor = [239, 68, 68];
+                }
+            }
+        });
+
+        doc.save(`Results_${cls?.name.replace(' ', '_')}_${exam?.name.replace(' ', '_')}.pdf`);
     };
 
     return (
@@ -530,7 +580,12 @@ const MentorStats = () => {
 
                                     {/* Student List */}
                                     <div>
-                                        <h3 className="text-xl font-bold text-gray-800 mb-6">Detailed Student Results</h3>
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="text-xl font-bold text-gray-800">Detailed Student Results</h3>
+                                            <Button onClick={generateExamReport} size="sm" variant="secondary" className="text-sm shadow-sm border border-gray-200 bg-white hover:bg-gray-50 text-gray-700">
+                                                <Download className="w-4 h-4 mr-2" /> Export PDF
+                                            </Button>
+                                        </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {examStats.studentPerformances.sort((a, b) => b.pct - a.pct).map(({ student, obtained, max, pct, isPassed }, idx) => (
                                                 <div
