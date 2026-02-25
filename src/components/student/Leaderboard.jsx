@@ -94,13 +94,24 @@ const Leaderboard = () => {
         return studentList.map(student => {
             const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId);
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
+            const totalMaxMarks = studentResults.reduce((sum, r) => {
+                const subject = subjects.find(s => s.id === r.subjectId);
+                return sum + (subject ? Number(subject.maxMarks) : 0);
+            }, 0);
+            const marksMissed = totalMaxMarks - totalMarks;
+
             return {
                 ...student,
                 totalMarks,
+                totalMaxMarks,
+                marksMissed,
                 resultCount: studentResults.length
             };
         }).filter(s => s.resultCount > 0)
-            .sort((a, b) => b.totalMarks - a.totalMarks);
+            .sort((a, b) => {
+                if (a.marksMissed !== b.marksMissed) return a.marksMissed - b.marksMissed;
+                return b.totalMarks - a.totalMarks;
+            });
     };
 
     const leaderboardData = useMemo(() => {
@@ -186,8 +197,9 @@ const Leaderboard = () => {
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-3xl font-bold">{myRankData.totalMarks}</p>
-                            <p className="text-indigo-200 text-xs uppercase tracking-wider">Total Points</p>
+                            <p className="text-3xl font-bold text-red-100">-{myRankData.marksMissed}</p>
+                            <p className="text-indigo-200 text-xs uppercase tracking-wider">Marks Missed</p>
+                            <p className="text-indigo-100/70 text-xs mt-1">{myRankData.totalMarks} / {myRankData.totalMaxMarks} Points</p>
                         </div>
                     </div>
                 </Card>
@@ -209,6 +221,7 @@ const Leaderboard = () => {
                             <tr>
                                 <th className="p-4 w-16 text-center">Rank</th>
                                 <th className="p-4">Student</th>
+                                <th className="p-4 text-right">Missed</th>
                                 <th className="p-4 text-right">Points</th>
                             </tr>
                         </thead>
@@ -237,8 +250,12 @@ const Leaderboard = () => {
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="p-4 text-right font-medium text-gray-900">
-                                            {student.totalMarks}
+                                        <td className="p-4 text-right font-bold text-red-500">
+                                            -{student.marksMissed}
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <span className="font-medium text-gray-900">{student.totalMarks}</span>
+                                            <span className="text-xs text-gray-500 ml-1">/ {student.totalMaxMarks}</span>
                                         </td>
                                     </tr>
                                 );

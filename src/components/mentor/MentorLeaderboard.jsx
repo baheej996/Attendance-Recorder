@@ -101,13 +101,24 @@ const MentorLeaderboard = () => {
         return studentList.map(student => {
             const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId);
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
+            const totalMaxMarks = studentResults.reduce((sum, r) => {
+                const subject = subjects.find(s => s.id === r.subjectId);
+                return sum + (subject ? Number(subject.maxMarks) : 0);
+            }, 0);
+            const marksMissed = totalMaxMarks - totalMarks;
+
             return {
                 ...student,
                 totalMarks,
+                totalMaxMarks,
+                marksMissed,
                 resultCount: studentResults.length
             };
         }).filter(s => s.resultCount > 0)
-            .sort((a, b) => b.totalMarks - a.totalMarks);
+            .sort((a, b) => {
+                if (a.marksMissed !== b.marksMissed) return a.marksMissed - b.marksMissed;
+                return b.totalMarks - a.totalMarks;
+            });
     };
 
     const leaderboardData = useMemo(() => {
@@ -224,6 +235,7 @@ const MentorLeaderboard = () => {
                                 <th className="p-5 w-24 text-center">Rank</th>
                                 <th className="p-5">Student</th>
                                 <th className="p-5 hidden sm:table-cell">Class</th>
+                                <th className="p-5 text-right w-32">Missed</th>
                                 <th className="p-5 text-right w-32">Total Marks</th>
                             </tr>
                         </thead>
@@ -268,7 +280,13 @@ const MentorLeaderboard = () => {
                                         </td>
                                         <td className="p-5 text-right">
                                             <div className="inline-flex items-center justify-end gap-2">
+                                                <span className="text-lg font-bold text-red-500">-{student.marksMissed}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-5 text-right">
+                                            <div className="inline-flex items-center justify-end gap-1">
                                                 <span className="text-xl font-extrabold text-gray-900">{student.totalMarks}</span>
+                                                <span className="text-sm font-medium text-gray-400">/ {student.totalMaxMarks}</span>
                                             </div>
                                         </td>
                                     </tr>
