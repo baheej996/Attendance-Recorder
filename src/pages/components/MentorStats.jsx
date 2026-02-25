@@ -464,18 +464,18 @@ const MentorStats = () => {
                         <Button
                             onClick={generateAttendanceReport}
                             variant="secondary"
-                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap"
+                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
                         >
-                            <Download className="w-4 h-4 mr-2" /> Export PDF
+                            <Download className="w-4 h-4" /> Export PDF
                         </Button>
                     )}
                     {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
                         <Button
                             onClick={generateExamReport}
                             variant="secondary"
-                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap"
+                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
                         >
-                            <Download className="w-4 h-4 mr-2" /> Export PDF
+                            <Download className="w-4 h-4" /> Export PDF
                         </Button>
                     )}
                 </div>
