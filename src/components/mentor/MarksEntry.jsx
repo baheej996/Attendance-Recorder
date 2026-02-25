@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar, RotateCcw } from 'lucide-react';
+import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar, RotateCcw, Upload, Download } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
@@ -167,7 +167,133 @@ const MarksEntry = () => {
         );
     };
 
-    // --- Render Steps ---
+    // --- Bulk CSV Logic ---
+    const handleDownloadTemplate = () => {
+        // 1. Gather all students in available classes
+        const targetStudents = students.filter(s => availableClasses.some(c => c.id === s.classId));
+
+        // 2. Determine all subjects applicable to these classes
+        const applicableSubjects = subjects.filter(s =>
+            s.isExamSubject !== false && availableClasses.some(c => c.id === s.classId)
+        );
+
+        // 3. Construct CSV Header
+        const baseHeaders = ['Student ID', 'Register No', 'Student Name', 'Class', 'Division'];
+        const subjectHeaders = applicableSubjects.map(sub => `[${sub.id}] ${sub.name}`);
+        const csvRows = [baseHeaders.concat(subjectHeaders).join(',')];
+
+        // 4. Construct Rows
+        targetStudents.forEach(student => {
+            const cls = availableClasses.find(c => c.id === student.classId);
+            const row = [
+                student.id,
+                student.registerNo,
+                `"${student.name}"`,
+                cls.name,
+                cls.division
+            ];
+
+            // For each subject, check if there's an existing mark, else empty
+            applicableSubjects.forEach(sub => {
+                // Determine if this subject applies to this student's class
+                if (sub.classId !== student.classId) {
+                    row.push('N/A'); // Subject not applicable for this class
+                } else {
+                    const existingResult = results.find(r =>
+                        r.examId === selectedExamId &&
+                        r.subjectId === sub.id &&
+                        r.studentId === student.id
+                    );
+                    row.push(existingResult ? existingResult.marks : '');
+                }
+            });
+
+            csvRows.push(row.join(','));
+        });
+
+        // 5. Trigger Download
+        const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Exam_Marks_${selectedExamId}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleUploadCSV = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const csv = event.target.result;
+            const lines = csv.split('\n');
+            if (lines.length < 2) return;
+
+            const headers = lines[0].split(',');
+            // Extract Subject IDs from Headers: "[subjectId] SubjectName"
+            const subjectHeaderInfo = [];
+            headers.forEach((h, index) => {
+                const match = h.match(/\[(.*?)\]/);
+                if (match) {
+                    subjectHeaderInfo.push({ id: match[1], index });
+                }
+            });
+
+            if (subjectHeaderInfo.length === 0) {
+                showAlert('Format Error', 'Could not detect Subject IDs in the CSV headers. Please use the downloaded template.', 'error');
+                return;
+            }
+
+            const subjectUpdates = {}; // { subjectId: [ { studentId, marks } ] }
+
+            // Parse Rows
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                // Basic CSV parsing splitting by comma, allowing commas inside quotes if we implement a complex regex, 
+                // but since our generated template puts quotes only around names, and marks are numbers, simple split works mostly.
+                // A better split: match commas not inside quotes:
+                const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
+                if (row.length < headers.length) continue;
+
+                const studentId = row[0].replace(/['"]+/g, '').trim();
+
+                subjectHeaderInfo.forEach(info => {
+                    let cellVal = row[info.index];
+                    if (cellVal) cellVal = cellVal.replace(/['"]+/g, '').trim();
+
+                    if (cellVal && cellVal !== 'N/A' && !isNaN(cellVal)) {
+                        if (!subjectUpdates[info.id]) {
+                            subjectUpdates[info.id] = [];
+                        }
+                        subjectUpdates[info.id].push({
+                            studentId,
+                            marks: Number(cellVal)
+                        });
+                    }
+                });
+            }
+
+            // Save to DB
+            let subjectsProcessed = 0;
+            let totalMarksImported = 0;
+            Object.keys(subjectUpdates).forEach(subjectId => {
+                const records = subjectUpdates[subjectId];
+                if (records.length > 0) {
+                    recordResult({ examId: selectedExamId, subjectId, records });
+                    subjectsProcessed++;
+                    totalMarksImported += records.length;
+                }
+            });
+
+            showAlert('Import Complete', `Successfully imported ${totalMarksImported} marks across ${subjectsProcessed} subjects!`, 'success');
+            // Reset file input
+            e.target.value = null;
+        };
+        reader.readAsText(file);
+    };
 
     // 1. Exam Selection
     if (!selectedExamId) {
@@ -227,9 +353,34 @@ const MarksEntry = () => {
                     <Button variant="secondary" onClick={() => resetSelection('exam')} className="p-2 h-auto rounded-full hover:bg-gray-200">
                         <ArrowLeft className="w-6 h-6" />
                     </Button>
-                    <div>
+                    <div className="flex-1">
                         <h2 className="text-3xl font-bold text-gray-900">Select Class</h2>
                         <p className="text-gray-500 mt-1">Exam: {exams.find(e => e.id === selectedExamId)?.name}</p>
+                    </div>
+
+                    {/* CSV Actions */}
+                    <div className="flex gap-3">
+                        <Button
+                            variant="secondary"
+                            onClick={handleDownloadTemplate}
+                            className="flex items-center gap-2 bg-white"
+                        >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">Download Template</span>
+                        </Button>
+                        <div className="relative">
+                            <input
+                                type="file"
+                                accept=".csv"
+                                onChange={handleUploadCSV}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                title="Upload CSV"
+                            />
+                            <Button variant="primary" className="flex items-center gap-2">
+                                <Upload className="w-4 h-4" />
+                                <span className="hidden sm:inline">Upload marks CSV</span>
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
