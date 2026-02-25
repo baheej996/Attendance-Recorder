@@ -26,6 +26,7 @@ const ActivitiesManager = () => {
     const [isBatchDelete, setIsBatchDelete] = useState(false); // New state for delete
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // Settings Modal
     const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false); // Report Dropdown State
+    const [expandedReportType, setExpandedReportType] = useState(null); // Mobile report row expansion
 
     // Filter/Search States
     const [selectedClassId, setSelectedClassId] = useState('all');
@@ -464,16 +465,20 @@ const ActivitiesManager = () => {
                             className="flex items-center gap-2 flex-1 md:flex-none justify-center"
                             onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
                         >
-                            <Calendar className="w-4 h-4" /> Common Report <ChevronDown className="w-4 h-4" />
+                            <Calendar className="w-4 h-4" /> Report <ChevronDown className="w-4 h-4" />
                         </Button>
 
                         {isReportDropdownOpen && (
                             <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
                                 {['daily', 'weekly', 'monthly', 'annually'].map((type) => (
-                                    <div key={type} className="group relative border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                                        <div className="px-4 py-3 text-sm font-medium text-gray-700 capitalize w-full flex justify-between items-center cursor-default">
+                                    <div
+                                        key={type}
+                                        className="group relative border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
+                                        onClick={() => setExpandedReportType(expandedReportType === type ? null : type)}
+                                    >
+                                        <div className="px-4 py-3 text-sm font-medium text-gray-700 capitalize w-full flex justify-between items-center cursor-pointer md:cursor-default">
                                             {type}
-                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className={`flex gap-2 transition-opacity ${expandedReportType === type ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100'}`}>
                                                 <button
                                                     onClick={() => generateCommonActivityReport(type, 'copy')}
                                                     className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"
