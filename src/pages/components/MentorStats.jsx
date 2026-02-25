@@ -440,21 +440,43 @@ const MentorStats = () => {
             </div>
 
             <Card>
-                <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row gap-4 items-center bg-gray-50/50">
-                    <div className="w-full md:w-64">
-                        <Select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="bg-white">
-                            <option value="" disabled>Select Class</option>
-                            {availableClasses.map(c => <option key={c.id} value={c.id}>{c.name} - {c.division}</option>)}
-                        </Select>
-                    </div>
-
-                    {activeTab === 'results' && selectedClassId && (
+                <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between bg-gray-50/50">
+                    <div className="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
                         <div className="w-full md:w-64">
-                            <Select value={selectedExamId} onChange={(e) => setSelectedExamId(e.target.value)} className="bg-white">
-                                <option value="" disabled>Select Exam</option>
-                                {exams.map(e => <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>)}
+                            <Select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="bg-white">
+                                <option value="" disabled>Select Class</option>
+                                {availableClasses.map(c => <option key={c.id} value={c.id}>{c.name} - {c.division}</option>)}
                             </Select>
                         </div>
+
+                        {activeTab === 'results' && selectedClassId && (
+                            <div className="w-full md:w-64">
+                                <Select value={selectedExamId} onChange={(e) => setSelectedExamId(e.target.value)} className="bg-white">
+                                    <option value="" disabled>Select Exam</option>
+                                    {exams.map(e => <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>)}
+                                </Select>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Export Buttons */}
+                    {activeTab === 'attendance' && selectedClassId && classStudents.length > 0 && (
+                        <Button
+                            onClick={generateAttendanceReport}
+                            variant="secondary"
+                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap"
+                        >
+                            <Download className="w-4 h-4 mr-2" /> Export PDF
+                        </Button>
+                    )}
+                    {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
+                        <Button
+                            onClick={generateExamReport}
+                            variant="secondary"
+                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap"
+                        >
+                            <Download className="w-4 h-4 mr-2" /> Export PDF
+                        </Button>
                     )}
                 </div>
 
@@ -496,9 +518,6 @@ const MentorStats = () => {
                                 <div>
                                     <div className="flex justify-between items-center mb-6">
                                         <h3 className="text-xl font-bold text-gray-800">Student Attendance List</h3>
-                                        <Button onClick={generateAttendanceReport} size="sm" variant="secondary" className="text-sm">
-                                            <Download className="w-4 h-4 mr-2" /> Export PDF
-                                        </Button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {classStudents.map(student => {
@@ -582,9 +601,6 @@ const MentorStats = () => {
                                     <div>
                                         <div className="flex justify-between items-center mb-6">
                                             <h3 className="text-xl font-bold text-gray-800">Detailed Student Results</h3>
-                                            <Button onClick={generateExamReport} size="sm" variant="secondary" className="text-sm shadow-sm border border-gray-200 bg-white hover:bg-gray-50 text-gray-700">
-                                                <Download className="w-4 h-4 mr-2" /> Export PDF
-                                            </Button>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {examStats.studentPerformances.sort((a, b) => b.pct - a.pct).map(({ student, obtained, max, pct, isPassed }, idx) => (
