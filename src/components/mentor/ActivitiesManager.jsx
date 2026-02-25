@@ -3,8 +3,11 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings, Copy } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings, Copy, Download, FileText, Calendar } from 'lucide-react';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 
 const ActivitiesManager = () => {
     const {
@@ -22,6 +25,7 @@ const ActivitiesManager = () => {
     const [isBatchShare, setIsBatchShare] = useState(false); // New state
     const [isBatchDelete, setIsBatchDelete] = useState(false); // New state for delete
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // Settings Modal
+    const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false); // Report Dropdown State
 
     // Filter/Search States
     const [selectedClassId, setSelectedClassId] = useState('all');
@@ -222,6 +226,137 @@ const ActivitiesManager = () => {
         }
     };
 
+    const generateCommonActivityReport = async (timeframe, reportFormat) => {
+        if (selectedClassId === 'all') {
+            alert("Please select a specific class to generate a common report.");
+            return;
+        }
+
+        const assignedClass = classes.find(c => c.id === selectedClassId);
+        if (!assignedClass) return;
+
+        const now = new Date();
+        let startDate, endDate, periodName;
+
+        switch (timeframe) {
+            case 'daily':
+                startDate = startOfDay(now);
+                endDate = endOfDay(now);
+                periodName = `Daily Report (${format(now, 'MMM dd, yyyy')})`;
+                break;
+            case 'weekly':
+                startDate = startOfWeek(now, { weekStartsOn: 1 });
+                endDate = endOfWeek(now, { weekStartsOn: 1 });
+                periodName = `Weekly Report (${format(startDate, 'MMM dd')} - ${format(endDate, 'MMM dd, yyyy')})`;
+                break;
+            case 'monthly':
+                startDate = startOfMonth(now);
+                endDate = endOfMonth(now);
+                periodName = `Monthly Report (${format(now, 'MMMM yyyy')})`;
+                break;
+            case 'annually':
+                startDate = startOfYear(now);
+                endDate = endOfYear(now);
+                periodName = `Annual Report (${format(now, 'yyyy')})`;
+                break;
+            default:
+                return;
+        }
+
+        // 1. Filter Activities in this timeframe
+        const classActivities = activities.filter(a => a.classId === selectedClassId);
+
+        const periodActivities = classActivities.filter(a => {
+            // Use dueDate if exists, else fallback to createdAt
+            const activityDate = a.dueDate ? new Date(a.dueDate) : new Date(a.createdAt || now);
+            try {
+                return isWithinInterval(activityDate, { start: startDate, end: endDate });
+            } catch (e) {
+                return false;
+            }
+        });
+
+        if (periodActivities.length === 0) {
+            alert(`No activities found for ${assignedClass.name} - ${assignedClass.division} in the selected timeframe (${timeframe}).`);
+            return;
+        }
+
+        // 2. Fetch students and prepare stats
+        const classStudents = students.filter(s => s.classId === selectedClassId);
+        const sortedStudents = [...classStudents].sort((a, b) => {
+            if (a.gender === 'Boy' && b.gender !== 'Boy') return -1;
+            if (a.gender !== 'Boy' && b.gender === 'Boy') return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        const studentStats = sortedStudents.map(student => {
+            let completedCount = 0;
+            periodActivities.forEach(activity => {
+                const isCompleted = activitySubmissions.some(
+                    sub => sub.activityId === activity.id && sub.studentId === student.id && sub.status === 'Completed'
+                );
+                if (isCompleted) completedCount++;
+            });
+            return {
+                ...student,
+                completedCount,
+                totalActivities: periodActivities.length
+            };
+        });
+
+        if (reportFormat === 'copy') {
+            const completedList = [];
+            const partialList = [];
+            const pendingList = [];
+
+            studentStats.forEach(stat => {
+                const entry = `${stat.name} (${stat.completedCount}/${stat.totalActivities})`;
+                if (stat.completedCount === stat.totalActivities) completedList.push(entry);
+                else if (stat.completedCount === 0) pendingList.push(entry);
+                else partialList.push(entry);
+            });
+
+            const reportText = `*Common Activity Report: ${periodName}*\n*Class:* ${assignedClass.name} - ${assignedClass.division}\n*Total Activities:* ${periodActivities.length}\n\n*Fully Completed ✅*\n${completedList.length > 0 ? completedList.map(n => `• ${n}`).join('\n') : 'None'}\n\n*Partially Completed ⚠️*\n${partialList.length > 0 ? partialList.map(n => `• ${n}`).join('\n') : 'None'}\n\n*Not Started ⏳*\n${pendingList.length > 0 ? pendingList.map(n => `• ${n}`).join('\n') : 'None'}`;
+
+            try {
+                await navigator.clipboard.writeText(reportText);
+                alert(`${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Common Activity Report copied to clipboard!`);
+            } catch (err) {
+                alert('Failed to copy report.');
+            }
+        } else if (reportFormat === 'pdf') {
+            const doc = new jsPDF();
+
+            // PDF Header
+            doc.setFontSize(16);
+            doc.text(`Common Activity Report`, 14, 15);
+            doc.setFontSize(11);
+            doc.text(`Class: ${assignedClass.name} - ${assignedClass.division}`, 14, 22);
+            doc.text(`Period: ${periodName}`, 14, 28);
+            doc.text(`Total Activities: ${periodActivities.length}`, 14, 34);
+
+            const tableData = studentStats.map(stat => [
+                stat.name,
+                stat.completedCount.toString(),
+                (stat.totalActivities - stat.completedCount).toString(),
+                `${Math.round((stat.completedCount / stat.totalActivities) * 100)}%`
+            ]);
+
+            doc.autoTable({
+                startY: 40,
+                head: [['Student Name', 'Completed', 'Pending', 'Completion %']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
+                styles: { fontSize: 9 }
+            });
+
+            doc.save(`Activity_Report_${assignedClass.name}_${timeframe}.pdf`);
+        }
+
+        setIsReportDropdownOpen(false); // Close dropdown after action
+    };
+
     // Initialize selected class to first available if 'all' isn't valid context or just preference
     // For now 'all' is fine, or we can default to [0].
 
@@ -321,6 +456,46 @@ const ActivitiesManager = () => {
                     <Button onClick={() => setIsSettingsModalOpen(true)} variant="secondary" className="flex items-center gap-2 flex-1 md:flex-none justify-center">
                         <Settings className="w-4 h-4" /> Settings
                     </Button>
+
+                    {/* Common Report Dropdown */}
+                    <div className="relative">
+                        <Button
+                            variant="secondary"
+                            className="flex items-center gap-2 flex-1 md:flex-none justify-center"
+                            onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
+                        >
+                            <Calendar className="w-4 h-4" /> Common Report <ChevronDown className="w-4 h-4" />
+                        </Button>
+
+                        {isReportDropdownOpen && (
+                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
+                                {['daily', 'weekly', 'monthly', 'annually'].map((type) => (
+                                    <div key={type} className="group relative border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                                        <div className="px-4 py-3 text-sm font-medium text-gray-700 capitalize w-full flex justify-between items-center cursor-default">
+                                            {type}
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => generateCommonActivityReport(type, 'copy')}
+                                                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"
+                                                    title="Copy to WhatsApp"
+                                                >
+                                                    <Copy className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => generateCommonActivityReport(type, 'pdf')}
+                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                                                    title="Download PDF"
+                                                >
+                                                    <FileText className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     <Button onClick={openCreateModal} className="flex items-center gap-2 flex-1 md:flex-none justify-center">
                         <Plus className="w-4 h-4" /> New Activity
                     </Button>
