@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Trophy, Medal, Crown, Search, Filter } from 'lucide-react';
+import { Trophy, Medal, Crown, Search, Filter, Download } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Button } from '../ui/Button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Simple Confetti Component
 const ConfettiExplosion = () => {
@@ -144,6 +146,55 @@ const MentorLeaderboard = () => {
         return getAggregatedScores(filteredStudents);
     }, [selectedExamId, selectedClassId, viewMode, students, results, currentUser, classes]);
 
+    const generateLeaderboardPDF = () => {
+        if (!selectedExamId || leaderboardData.length === 0) return;
+        const exam = exams.find(e => e.id === selectedExamId);
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(18);
+        doc.setTextColor(79, 70, 229);
+        doc.text(`Exam Leaderboard - ${exam?.name || 'Report'}`, 14, 20);
+
+        // Subtitle based on viewMode
+        let viewLabel = "All Students";
+        if (viewMode === 'class' && selectedClassId) {
+            const cls = classes.find(c => c.id === selectedClassId);
+            viewLabel = `Class: ${cls?.name} ${cls?.division}`;
+        } else if (viewMode === 'batch' && selectedClassId) {
+            const cls = classes.find(c => c.id === selectedClassId);
+            viewLabel = `Batch: ${cls?.name}`;
+        } else if (viewMode === 'assigned') {
+            viewLabel = "My Assigned Classes";
+        }
+
+        doc.setFontSize(12);
+        doc.setTextColor(107, 114, 128);
+        doc.text(`Scope: ${viewLabel}`, 14, 30);
+
+        const tableData = leaderboardData.map((student, index) => {
+            const cls = classes.find(c => c.id === student.classId);
+            return [
+                index + 1,
+                student.registerNo,
+                student.name,
+                cls ? `${cls.name} ${cls.division}` : 'N/A',
+                `-${student.marksMissed}`,
+                `${student.totalMarks} / ${student.totalMaxMarks}`
+            ];
+        });
+
+        autoTable(doc, {
+            startY: 40,
+            head: [['Rank', 'Register No', 'Name', 'Class', 'Marks Missed', 'Total Marks']],
+            body: tableData,
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229] }
+        });
+
+        doc.save(`Leaderboard_${exam?.name || 'Export'}_${new Date().getTime()}.pdf`);
+    };
+
     const getRankDisplay = (index) => {
         const rank = index + 1;
         if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
@@ -185,31 +236,41 @@ const MentorLeaderboard = () => {
                 </div>
             </div>
 
-            {/* Selectors */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <select
-                    value={selectedExamId}
-                    onChange={(e) => setSelectedExamId(e.target.value)}
-                    className="w-full sm:max-w-xs bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
-                >
-                    <option value="">Select Exam to view</option>
-                    {exams.map(e => (
-                        <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>
-                    ))}
-                </select>
-
-                {(viewMode === 'class' || viewMode === 'batch') && (
+            {/* Selectors and Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
                     <select
-                        value={selectedClassId}
-                        onChange={(e) => setSelectedClassId(e.target.value)}
-                        className="w-full sm:max-w-xs bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
+                        value={selectedExamId}
+                        onChange={(e) => setSelectedExamId(e.target.value)}
+                        className="w-full sm:min-w-[200px] bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
                     >
-                        <option value="">Select Class</option>
-                        {availableClasses.map(c => (
-                            <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
+                        <option value="">Select Exam to view</option>
+                        {exams.map(e => (
+                            <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>
                         ))}
                     </select>
-                )}
+
+                    {(viewMode === 'class' || viewMode === 'batch') && (
+                        <select
+                            value={selectedClassId}
+                            onChange={(e) => setSelectedClassId(e.target.value)}
+                            className="w-full sm:min-w-[200px] bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
+                        >
+                            <option value="">Select Class</option>
+                            {availableClasses.map(c => (
+                                <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+
+                <Button
+                    onClick={generateLeaderboardPDF}
+                    disabled={!selectedExamId || leaderboardData.length === 0}
+                    className="w-full md:w-auto flex items-center justify-center gap-2"
+                >
+                    <Download className="w-4 h-4" /> Export PDF
+                </Button>
             </div>
 
             {/* Leaderboard List */}
