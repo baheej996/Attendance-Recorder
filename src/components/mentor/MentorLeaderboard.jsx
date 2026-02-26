@@ -216,13 +216,13 @@ const MentorLeaderboard = () => {
                     </div>
                 </div>
 
-                <div className="flex bg-white p-1 rounded-lg border border-gray-200 overflow-x-auto whitespace-nowrap hide-scrollbar">
+                <div className="flex w-full md:w-auto bg-white p-1 rounded-lg border border-gray-200 overflow-hidden">
                     {['class', 'batch', 'assigned', 'global'].map((mode) => (
                         <button
                             key={mode}
                             onClick={() => setViewMode(mode)}
                             className={clsx(
-                                "px-4 sm:px-6 py-2.5 text-sm font-semibold rounded-md transition-all",
+                                "flex-1 px-1 sm:px-6 py-2 sm:py-2.5 text-[11px] sm:text-sm font-semibold rounded-md transition-all whitespace-nowrap",
                                 viewMode === mode
                                     ? "bg-purple-50 text-purple-700 shadow-sm"
                                     : "text-gray-600 hover:bg-gray-50"
@@ -274,7 +274,7 @@ const MentorLeaderboard = () => {
             </div>
 
             {/* Leaderboard List */}
-            <Card className="overflow-hidden border border-gray-100 shadow-sm mt-8">
+            <Card className="border border-gray-100 shadow-sm mt-8 overflow-hidden">
                 {!selectedExamId ? (
                     <div className="p-16 text-center text-gray-500">
                         <Crown className="w-16 h-16 mx-auto mb-4 text-gray-200" />
@@ -290,71 +290,73 @@ const MentorLeaderboard = () => {
                         <p>There are no results published for this exam in the current view.</p>
                     </div>
                 ) : (
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
-                            <tr>
-                                <th className="p-5 w-24 text-center">Rank</th>
-                                <th className="p-5">Student</th>
-                                <th className="p-5 hidden sm:table-cell">Class</th>
-                                <th className="p-5 text-right w-32">Missed</th>
-                                <th className="p-5 text-right w-32">Total Marks</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100/60 text-sm">
-                            {leaderboardData.map((student, index) => {
-                                const cls = classes.find(c => c.id === student.classId);
-                                const isTop3 = index < 3;
-                                return (
-                                    <tr
-                                        key={student.id}
-                                        className={clsx(
-                                            "hover:bg-purple-50/50 transition-colors cursor-default",
-                                            isTop3 ? "bg-amber-50/10" : "bg-white"
-                                        )}
-                                    >
-                                        <td className="p-5 text-center flex justify-center items-center">
-                                            {getRankDisplay(index)}
-                                        </td>
-                                        <td className="p-5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center font-bold text-purple-700 shadow-sm border border-purple-200/50">
-                                                    {student.name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-gray-900 text-base">
-                                                        {student.name}
+                    <div className="overflow-x-auto w-full hide-scrollbar">
+                        <table className="w-full min-w-[650px] text-left border-collapse">
+                            <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
+                                <tr>
+                                    <th className="p-5 w-24 text-center">Rank</th>
+                                    <th className="p-5">Student</th>
+                                    <th className="p-5 hidden sm:table-cell">Class</th>
+                                    <th className="p-5 text-right w-32">Missed</th>
+                                    <th className="p-5 text-right w-32">Total Marks</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100/60 text-sm">
+                                {leaderboardData.map((student, index) => {
+                                    const cls = classes.find(c => c.id === student.classId);
+                                    const isTop3 = index < 3;
+                                    return (
+                                        <tr
+                                            key={student.id}
+                                            className={clsx(
+                                                "hover:bg-purple-50/50 transition-colors cursor-default",
+                                                isTop3 ? "bg-amber-50/10" : "bg-white"
+                                            )}
+                                        >
+                                            <td className="p-5 text-center flex justify-center items-center">
+                                                {getRankDisplay(index)}
+                                            </td>
+                                            <td className="p-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center font-bold text-purple-700 shadow-sm border border-purple-200/50">
+                                                        {student.name.charAt(0)}
                                                     </div>
-                                                    <div className="text-xs text-gray-500 font-mono">
-                                                        {student.registerNo}
+                                                    <div>
+                                                        <div className="font-bold text-gray-900 text-base">
+                                                            {student.name}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 font-mono">
+                                                            {student.registerNo}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            {/* Mobile specific class view */}
-                                            <div className="sm:hidden text-xs text-gray-500 mt-2 font-medium bg-gray-50 inline-block px-2 py-1 rounded">
-                                                {cls ? `${cls.name} - ${cls.division}` : 'Unknown'}
-                                            </div>
-                                        </td>
-                                        <td className="p-5 hidden sm:table-cell">
-                                            <div className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700">
-                                                {cls ? `${cls.name} - ${cls.division}` : 'Unknown'}
-                                            </div>
-                                        </td>
-                                        <td className="p-5 text-right">
-                                            <div className="inline-flex items-center justify-end gap-2">
-                                                <span className="text-lg font-bold text-red-500">-{student.marksMissed}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-5 text-right">
-                                            <div className="inline-flex items-center justify-end gap-1">
-                                                <span className="text-xl font-extrabold text-gray-900">{student.totalMarks}</span>
-                                                <span className="text-sm font-medium text-gray-400">/ {student.totalMaxMarks}</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                                {/* Mobile specific class view */}
+                                                <div className="sm:hidden text-xs text-gray-500 mt-2 font-medium bg-gray-50 inline-block px-2 py-1 rounded">
+                                                    {cls ? `${cls.name} - ${cls.division}` : 'Unknown'}
+                                                </div>
+                                            </td>
+                                            <td className="p-5 hidden sm:table-cell">
+                                                <div className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700">
+                                                    {cls ? `${cls.name} - ${cls.division}` : 'Unknown'}
+                                                </div>
+                                            </td>
+                                            <td className="p-5 text-right">
+                                                <div className="inline-flex items-center justify-end gap-2">
+                                                    <span className="text-lg font-bold text-red-500">-{student.marksMissed}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-5 text-right">
+                                                <div className="inline-flex items-center justify-end gap-1">
+                                                    <span className="text-xl font-extrabold text-gray-900">{student.totalMarks}</span>
+                                                    <span className="text-sm font-medium text-gray-400">/ {student.totalMaxMarks}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </Card>
         </div>
