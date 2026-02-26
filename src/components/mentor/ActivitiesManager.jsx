@@ -421,33 +421,73 @@ const ActivitiesManager = () => {
         } else if (reportFormat === 'pdf') {
             const doc = new jsPDF();
 
-            reportDataByClass.forEach((data, index) => {
-                if (index > 0) {
-                    doc.addPage();
-                }
-
-                // PDF Header
+            if (detailLevel === 'short') {
+                // Short Report: Print all classes on a continuous set of pages
                 doc.setFontSize(16);
-                doc.text(`Activity Report ${detailLevel === 'short' ? '(Short)' : '(Detailed)'}`, 14, 15);
+                doc.text('Activity Report (Short Overview)', 14, 15);
                 doc.setFontSize(11);
-                doc.text(`Class: ${data.cls.name} - ${data.cls.division}`, 14, 22);
-                doc.text(`Period: ${periodName}`, 14, 28);
-                doc.text(`Total Activities: ${data.activitiesCount}`, 14, 34);
+                doc.text(`Period: ${periodName}`, 14, 22);
 
-                // Class Completion Metric
-                doc.setFont(undefined, 'bold');
-                doc.setFontSize(12);
-                doc.text(`Overall Class Completion: ${data.classCompletionPercentage}%`, 130, 22);
-                doc.setFont(undefined, 'normal');
+                let currentY = 35;
+                const pageHeight = doc.internal.pageSize.getHeight();
 
-                if (detailLevel === 'short') {
+                reportDataByClass.forEach((data, index) => {
+                    // Check if we need a new page for this block (approx 30 units tall)
+                    if (currentY + 30 > pageHeight - 15) {
+                        doc.addPage();
+                        currentY = 20;
+                    }
+
+                    // Class Header
+                    doc.setFont(undefined, 'bold');
+                    doc.setFontSize(12);
+                    doc.text(`${data.cls.name} - ${data.cls.division}`, 14, currentY);
+
+                    // Completion Metric aligned right
+                    doc.text(`Class Completion: ${data.classCompletionPercentage}%`, 130, currentY);
+
+                    // Details
+                    doc.setFont(undefined, 'normal');
+                    doc.setFontSize(10);
+                    currentY += 6;
+
                     const classTotalPossible = data.activitiesCount * data.studentStats.length;
                     const totalPendingCount = data.studentStats.reduce((sum, stat) => sum + (stat.totalActivities - stat.completedCount), 0);
                     const percentPending = classTotalPossible > 0 ? Math.round((totalPendingCount / classTotalPossible) * 100) : 0;
 
-                    doc.text(`Total Students: ${data.studentStats.length}`, 14, 40);
-                    doc.text(`Pending: ${percentPending}%`, 130, 28);
-                } else {
+                    doc.text(`Total Students: ${data.studentStats.length}  |  Total Activities: ${data.activitiesCount}`, 14, currentY);
+                    doc.text(`Pending: ${percentPending}%`, 130, currentY);
+
+                    // Add spacing for next class
+                    currentY += 15;
+
+                    // Add a separator line if not the last item
+                    if (index < reportDataByClass.length - 1) {
+                        doc.setDrawColor(200, 200, 200);
+                        doc.line(14, currentY - 7, 196, currentY - 7);
+                    }
+                });
+            } else {
+                // Detailed Report: One page (or more) per class
+                reportDataByClass.forEach((data, index) => {
+                    if (index > 0) {
+                        doc.addPage();
+                    }
+
+                    // PDF Header
+                    doc.setFontSize(16);
+                    doc.text(`Activity Report (Detailed)`, 14, 15);
+                    doc.setFontSize(11);
+                    doc.text(`Class: ${data.cls.name} - ${data.cls.division}`, 14, 22);
+                    doc.text(`Period: ${periodName}`, 14, 28);
+                    doc.text(`Total Activities: ${data.activitiesCount}`, 14, 34);
+
+                    // Class Completion Metric
+                    doc.setFont(undefined, 'bold');
+                    doc.setFontSize(12);
+                    doc.text(`Overall Class Completion: ${data.classCompletionPercentage}%`, 130, 22);
+                    doc.setFont(undefined, 'normal');
+
                     const tableData = data.studentStats.map(stat => {
                         const completedText = stat.completedCount > 0
                             ? `${stat.completedCount}\n(${stat.completedActivities.join(', ')})`
@@ -479,8 +519,8 @@ const ActivitiesManager = () => {
                             3: { cellWidth: 20 }  // %
                         }
                     });
-                }
-            });
+                });
+            }
 
             const fileNameScope = selectedClassId === 'all' ? 'All_Classes' : `${reportDataByClass[0].cls.name}`;
             doc.save(`Activity_Report_${fileNameScope}_${timeframe}.pdf`);
