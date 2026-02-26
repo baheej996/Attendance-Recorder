@@ -369,9 +369,9 @@ const PrayerStats = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
                                 {/* Main Table Area */}
-                                <Card className="lg:col-span-2 overflow-hidden flex flex-col">
+                                <Card className="xl:col-span-3 overflow-hidden flex flex-col">
                                     <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <h3 className="font-bold text-gray-800 flex items-center gap-2">
                                             <Calendar className="w-5 h-5 text-indigo-600" />
@@ -399,31 +399,40 @@ const PrayerStats = () => {
                                                 <h2 className="text-lg font-bold text-gray-900">Prayer Register - Class {enabledClasses.find(c => c.id === selectedClassId)?.name}</h2>
                                                 <p className="text-sm text-gray-500">{format(new Date(reportDate), 'EEEE, MMMM do, yyyy')}</p>
                                             </div>
-                                            <table className="w-full text-left border-collapse border border-gray-200">
+                                            <table className="w-full text-left border-collapse">
                                                 <thead>
-                                                    <tr className="bg-gray-50 text-gray-700 text-xs uppercase tracking-wider">
-                                                        <th className="p-3 border border-gray-200 font-semibold w-6 text-center">No</th>
-                                                        <th className="p-3 border border-gray-200 font-semibold">Student Name</th>
+                                                    <tr className="bg-white text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                                                        <th className="p-4 font-semibold w-16 text-center">No</th>
+                                                        <th className="p-4 font-semibold">Student Name</th>
                                                         {standardPrayers.map((prayer) => (
-                                                            <th key={prayer.id} className="p-3 border border-gray-200 font-semibold text-center w-16">{prayer.label}</th>
+                                                            <th key={prayer.id} className="p-4 font-semibold text-center w-16">{prayer.label}</th>
                                                         ))}
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-gray-200 text-sm">
+                                                <tbody className="divide-y divide-gray-50 text-sm">
                                                     {displaySortedStudents.map((student, idx) => {
                                                         const record = prayerRecords.find(r => r.studentId === student.id && r.date === reportDate);
                                                         const prayersDone = record && record.prayers ? record.prayers : {};
 
                                                         return (
-                                                            <tr key={student.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                                                                <td className="p-2.5 border border-gray-200 text-center text-gray-500 text-xs">{idx + 1}</td>
-                                                                <td className="p-2.5 border border-gray-200 font-medium text-gray-900 border-r">{student.name}</td>
+                                                            <tr key={student.id} className="hover:bg-gray-50 group transition-colors">
+                                                                <td className="p-4 text-center align-middle">
+                                                                    <div className="mx-auto w-8 h-8 rounded-full bg-gray-50 text-gray-500 border border-gray-200 flex items-center justify-center font-bold text-sm">
+                                                                        {idx + 1}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-4">
+                                                                    <div>
+                                                                        <p className="font-bold text-gray-900">{student.name}</p>
+                                                                        <p className="text-xs text-gray-500">{student.registerNo}</p>
+                                                                    </div>
+                                                                </td>
                                                                 {standardPrayers.map((prayer) => (
-                                                                    <td key={prayer.id} className="p-2.5 border border-gray-200 text-center">
+                                                                    <td key={prayer.id} className="p-4 text-center">
                                                                         {prayersDone[prayer.id] ? (
-                                                                            <span className="text-green-600 font-bold block text-center">✓</span>
+                                                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold text-sm">✓</span>
                                                                         ) : (
-                                                                            <span className="text-gray-300 block text-center">-</span>
+                                                                            <span className="text-gray-300 font-medium">-</span>
                                                                         )}
                                                                     </td>
                                                                 ))}
