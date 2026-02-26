@@ -377,20 +377,6 @@ const PrayerStats = () => {
                                             <Calendar className="w-5 h-5 text-indigo-600" />
                                             Daily Register - {format(new Date(reportDate), 'dd MMM yyyy')}
                                         </h3>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => generatePrayerReport('daily')}
-                                                className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 flex items-center gap-2 rounded-lg text-sm font-medium transition-colors border border-gray-200"
-                                            >
-                                                <Copy className="w-4 h-4" /> Copy Text
-                                            </button>
-                                            <button
-                                                onClick={copyTableAsImage}
-                                                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center gap-2 rounded-lg text-sm font-medium transition-colors border border-indigo-200"
-                                            >
-                                                <Copy className="w-4 h-4" /> Copy Image
-                                            </button>
-                                        </div>
                                     </div>
 
                                     <div className="overflow-x-auto" ref={tableRef}>
