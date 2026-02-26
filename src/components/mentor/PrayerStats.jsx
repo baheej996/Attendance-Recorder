@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen, Copy, ChevronDown } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import html2canvas from 'html2canvas';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import SpecialPrayerManager from './SpecialPrayerManager';
 import MentorPrayerStats from './MentorPrayerStats';
@@ -17,7 +17,6 @@ const PrayerStats = () => {
         ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
         : classes;
 
-    // Filter for Stats View (only enabled classes)
     const isPrayerGloballyEnabled = studentFeatureFlags?.prayer !== false;
     const enabledClasses = availableClasses.filter(c => {
         const classFlag = classFeatureFlags?.find(f => f.classId === c.id);
@@ -30,6 +29,9 @@ const PrayerStats = () => {
     const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'special' | 'settings'
     const [reportDate, setReportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false);
+
+    // Add refs for image export
+    const tableRef = React.useRef(null);
 
     // Add state for delete confirmation
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -68,25 +70,7 @@ const PrayerStats = () => {
             return { ...student, totalPrayers };
         }).sort((a, b) => b.totalPrayers - a.totalPrayers);
 
-        // 2. Daily Class Average (Last 7 Days)
-        const last7Days = eachDayOfInterval({
-            start: subDays(new Date(), 6),
-            end: new Date()
-        });
-
-        const dailyTrends = last7Days.map(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const dayRecords = filteredRecords.filter(r => r.date === dateStr);
-            const totalPossible = classStudents.length * 5;
-            const totalOffered = dayRecords.reduce((sum, r) => sum + Object.values(r.prayers || {}).filter(Boolean).length, 0);
-
-            return {
-                date: format(day, 'MMM d'),
-                percentage: totalPossible > 0 ? Math.round((totalOffered / totalPossible) * 100) : 0
-            };
-        });
-
-        return { leaderboard, dailyTrends };
+        return { leaderboard };
     }, [selectedClassId, classStudents, prayerRecords]);
 
     const handleToggleFeature = async (classId, currentStatus) => {
@@ -206,14 +190,47 @@ const PrayerStats = () => {
             alert('Failed to copy report to clipboard.');
         }
     };
+    const copyTableAsImage = async () => {
+        if (!tableRef.current) return;
+        try {
+            const canvas = await html2canvas(tableRef.current, { backgroundColor: '#ffffff', scale: 2 });
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    alert('Failed to generate image.');
+                    return;
+                }
+                const item = new ClipboardItem({ 'image/png': blob });
+                await navigator.clipboard.write([item]);
+                alert('Table image copied to clipboard! You can now paste it into WhatsApp.');
+            });
+        } catch (error) {
+            console.error('Error copying image:', error);
+            alert('Could not copy table as image. Please try again.');
+        }
+    };
 
     if (availableClasses.length === 0) return <div className="p-8 text-center text-gray-500">No classes assigned to you.</div>;
+
+    const standardPrayers = [
+        { id: 'fajr', label: 'Fajr' },
+        { id: 'dhuhr', label: 'Dhuhr' },
+        { id: 'asr', label: 'Asr' },
+        { id: 'maghrib', label: 'Maghrib' },
+        { id: 'isha', label: 'Isha' }
+    ];
+
+    // Get strictly sorted students for table render
+    const displaySortedStudents = classStudents.sort((a, b) => {
+        if (a.gender === 'Boy' && b.gender !== 'Boy') return -1;
+        if (a.gender !== 'Boy' && b.gender === 'Boy') return 1;
+        return a.name.localeCompare(b.name);
+    });
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Prayer Statistics</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Daily Prayers</h1>
                     <p className="text-gray-500">Monitor class performance and spiritual habits</p>
                 </div>
 
@@ -340,80 +357,106 @@ const PrayerStats = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* Main Chart */}
-                                <Card className="lg:col-span-2 p-6">
-                                    <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                        <BarChart2 className="w-5 h-5 text-indigo-600" />
-                                        Class Performance (Last 7 Days)
+                            {/* Main Table Area */}
+                            <Card className="lg:col-span-2">
+                                <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                                        <Calendar className="w-5 h-5 text-indigo-600" />
+                                        Daily Register - {format(new Date(reportDate), 'dd MMM yyyy')}
                                     </h3>
-                                    <div className="h-80">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={stats?.dailyTrends || []}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                                <XAxis
-                                                    dataKey="date"
-                                                    axisLine={false}
-                                                    tickLine={false}
-                                                    tick={{ fill: '#6B7280', fontSize: 12 }}
-                                                    dy={10}
-                                                />
-                                                <YAxis
-                                                    axisLine={false}
-                                                    tickLine={false}
-                                                    tick={{ fill: '#6B7280', fontSize: 12 }}
-                                                    unit="%"
-                                                />
-                                                <Tooltip
-                                                    cursor={{ fill: '#EEF2FF' }}
-                                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                                                />
-                                                <Bar
-                                                    dataKey="percentage"
-                                                    fill="#6366F1"
-                                                    radius={[4, 4, 0, 0]}
-                                                    barSize={40}
-                                                />
-                                            </BarChart>
-                                        </ResponsiveContainer>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => generatePrayerReport('daily')}
+                                            className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 flex items-center gap-2 rounded-lg text-sm font-medium transition-colors border border-gray-200"
+                                        >
+                                            <Copy className="w-4 h-4" /> Copy Text
+                                        </button>
+                                        <button
+                                            onClick={copyTableAsImage}
+                                            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center gap-2 rounded-lg text-sm font-medium transition-colors border border-indigo-200"
+                                        >
+                                            <Copy className="w-4 h-4" /> Copy Image
+                                        </button>
                                     </div>
-                                </Card>
+                                </div>
 
-                                {/* Top Performers */}
-                                <Card className="p-0 overflow-hidden flex flex-col h-full">
-                                    <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-yellow-50 to-orange-50">
-                                        <h3 className="font-bold text-yellow-800 flex items-center gap-2">
-                                            <Trophy className="w-5 h-5 text-yellow-600" />
-                                            Top Performers
-                                        </h3>
+                                <div className="overflow-x-auto" ref={tableRef}>
+                                    <div className="p-4 bg-white min-w-[600px]"> {/* Add padding inside ref for cleaner image bounds */}
+                                        <div className="mb-4 text-center pb-2 border-b border-gray-100">
+                                            <h2 className="text-lg font-bold text-gray-900">Prayer Register - Class {enabledClasses.find(c => c.id === selectedClassId)?.name}</h2>
+                                            <p className="text-sm text-gray-500">{format(new Date(reportDate), 'EEEE, MMMM do, yyyy')}</p>
+                                        </div>
+                                        <table className="w-full text-left border-collapse border border-gray-200">
+                                            <thead>
+                                                <tr className="bg-gray-50 text-gray-700 text-xs uppercase tracking-wider">
+                                                    <th className="p-3 border border-gray-200 font-semibold w-6 text-center">No</th>
+                                                    <th className="p-3 border border-gray-200 font-semibold">Student Name</th>
+                                                    {standardPrayers.map((prayer) => (
+                                                        <th key={prayer.id} className="p-3 border border-gray-200 font-semibold text-center w-16">{prayer.label}</th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200 text-sm">
+                                                {displaySortedStudents.map((student, idx) => {
+                                                    const record = prayerRecords.find(r => r.studentId === student.id && r.date === reportDate);
+                                                    const prayersDone = record && record.prayers ? record.prayers : {};
+
+                                                    return (
+                                                        <tr key={student.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                                                            <td className="p-2.5 border border-gray-200 text-center text-gray-500 text-xs">{idx + 1}</td>
+                                                            <td className="p-2.5 border border-gray-200 font-medium text-gray-900 border-r">{student.name}</td>
+                                                            {standardPrayers.map((prayer) => (
+                                                                <td key={prayer.id} className="p-2.5 border border-gray-200 text-center">
+                                                                    {prayersDone[prayer.id] ? (
+                                                                        <span className="text-green-600 font-bold block text-center">✓</span>
+                                                                    ) : (
+                                                                        <span className="text-gray-300 block text-center">-</span>
+                                                                    )}
+                                                                </td>
+                                                            ))}
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <div className="flex-1 overflow-y-auto p-2">
-                                        {stats?.leaderboard.slice(0, 10).map((student, index) => (
-                                            <div key={student.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={clsx(
-                                                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
-                                                        index === 0 ? "bg-yellow-100 text-yellow-700" :
-                                                            index === 1 ? "bg-gray-100 text-gray-700" :
-                                                                index === 2 ? "bg-orange-100 text-orange-700" :
-                                                                    "bg-white border border-gray-200 text-gray-500"
-                                                    )}>
-                                                        {index + 1}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                                                        <p className="text-xs text-gray-500">{student.registerNo}</p>
-                                                    </div>
+                                </div>
+                            </Card>
+
+                            {/* Top Performers */}
+                            <Card className="p-0 overflow-hidden flex flex-col h-full">
+                                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-yellow-50 to-orange-50">
+                                    <h3 className="font-bold text-yellow-800 flex items-center gap-2">
+                                        <Trophy className="w-5 h-5 text-yellow-600" />
+                                        Top Performers
+                                    </h3>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-2">
+                                    {stats?.leaderboard.slice(0, 10).map((student, index) => (
+                                        <div key={student.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className={clsx(
+                                                    "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
+                                                    index === 0 ? "bg-yellow-100 text-yellow-700" :
+                                                        index === 1 ? "bg-gray-100 text-gray-700" :
+                                                            index === 2 ? "bg-orange-100 text-orange-700" :
+                                                                "bg-white border border-gray-200 text-gray-500"
+                                                )}>
+                                                    {index + 1}
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-bold text-indigo-600">{student.totalPrayers}</p>
-                                                    <p className="text--[10px] text-gray-400 uppercase">Prayers</p>
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-900">{student.name}</p>
+                                                    <p className="text-xs text-gray-500">{student.registerNo}</p>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                </Card>
-                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-bold text-indigo-600">{student.totalPrayers}</p>
+                                                <p className="text--[10px] text-gray-400 uppercase">Prayers</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
 
                             {/* Detailed Student List */}
                             <Card className="overflow-hidden">
@@ -468,106 +511,99 @@ const PrayerStats = () => {
                         </>
                     )}
                 </>
-            )
-            }
+            )}
 
-            {
-                activeTab === 'special' && (
-                    <MentorPrayerStats />
-                )
-            }
+            {activeTab === 'special' && (
+                <MentorPrayerStats />
+            )}
 
-            {
-                activeTab === 'settings' && (
+            {activeTab === 'settings' && (
+                <div className="max-w-4xl mx-auto space-y-8">
+                    {/* General Configuration */}
+                    <Card className="p-6">
+                        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-indigo-600" />
+                            Prayer Chart Configuration
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-8 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                            Enable or disable the Prayer Chart feature for your classes. When enabled, students in that class will see the Prayer Chart option in their dashboard and can log their daily prayers.
+                        </p>
 
-                    <div className="max-w-4xl mx-auto space-y-8">
-                        {/* General Configuration */}
-                        <Card className="p-6">
-                            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <Users className="w-5 h-5 text-indigo-600" />
-                                Prayer Chart Configuration
-                            </h3>
-                            <p className="text-sm text-gray-500 mb-8 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                                Enable or disable the Prayer Chart feature for your classes. When enabled, students in that class will see the Prayer Chart option in their dashboard and can log their daily prayers.
-                            </p>
+                        <div className="space-y-4">
+                            {availableClasses.map(cls => {
+                                const classFlag = classFeatureFlags?.find(f => f.classId === cls.id);
+                                const isLocallyEnabled = classFlag ? classFlag.prayer !== false : true;
+                                const isGloballyEnabled = studentFeatureFlags?.prayer !== false;
+                                const safeEnabled = isLocallyEnabled && isGloballyEnabled;
 
-                            <div className="space-y-4">
-                                {availableClasses.map(cls => {
-                                    const classFlag = classFeatureFlags?.find(f => f.classId === cls.id);
-                                    const isLocallyEnabled = classFlag ? classFlag.prayer !== false : true;
-                                    const isGloballyEnabled = studentFeatureFlags?.prayer !== false;
-                                    const safeEnabled = isLocallyEnabled && isGloballyEnabled;
-
-                                    return (
-                                        <div key={cls.id} className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${!isGloballyEnabled ? 'bg-gray-50 border-gray-200 opacity-70 cursor-not-allowed' : 'border-gray-100 hover:bg-gray-50'}`}>
-                                            <div>
-                                                <h4 className={`font-bold ${!isGloballyEnabled ? 'text-gray-500' : 'text-gray-800'}`}>Class {cls.name} - {cls.division}</h4>
-                                                <p className="text-xs text-gray-500">
-                                                    {!isGloballyEnabled
-                                                        ? 'Prayer Chart is disabled globally by Administrator'
-                                                        : (safeEnabled ? 'Students can access Prayer Chart' : 'Prayer Chart hidden from students')}
-                                                </p>
-                                            </div>
-                                            <button
-                                                disabled={!isGloballyEnabled}
-                                                onClick={() => handleToggleFeature(cls.id, isLocallyEnabled)}
-                                                className={clsx(
-                                                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
-                                                    safeEnabled ? "bg-indigo-600" : "bg-gray-200",
-                                                    !isGloballyEnabled && "opacity-50 cursor-not-allowed"
-                                                )}
-                                            >
-                                                <span
-                                                    className={clsx(
-                                                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                                                        safeEnabled ? "translate-x-6" : "translate-x-1"
-                                                    )}
-                                                />
-                                            </button>
+                                return (
+                                    <div key={cls.id} className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${!isGloballyEnabled ? 'bg-gray-50 border-gray-200 opacity-70 cursor-not-allowed' : 'border-gray-100 hover:bg-gray-50'}`}>
+                                        <div>
+                                            <h4 className={`font-bold ${!isGloballyEnabled ? 'text-gray-500' : 'text-gray-800'}`}>Class {cls.name} - {cls.division}</h4>
+                                            <p className="text-xs text-gray-500">
+                                                {!isGloballyEnabled
+                                                    ? 'Prayer Chart is disabled globally by Administrator'
+                                                    : (safeEnabled ? 'Students can access Prayer Chart' : 'Prayer Chart hidden from students')}
+                                            </p>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </Card>
+                                        <button
+                                            disabled={!isGloballyEnabled}
+                                            onClick={() => handleToggleFeature(cls.id, isLocallyEnabled)}
+                                            className={clsx(
+                                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
+                                                safeEnabled ? "bg-indigo-600" : "bg-gray-200",
+                                                !isGloballyEnabled && "opacity-50 cursor-not-allowed"
+                                            )}
+                                        >
+                                            <span
+                                                className={clsx(
+                                                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                                    safeEnabled ? "translate-x-6" : "translate-x-1"
+                                                )}
+                                            />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Card>
 
-                        {/* Special Prayers Manager */}
-                        <SpecialPrayerManager />
+                    {/* Special Prayers Manager */}
+                    <SpecialPrayerManager />
 
-                        <Card className="p-6 border border-red-100">
-                            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <Trash2 className="w-5 h-5 text-red-500" />
-                                Data Management
-                            </h3>
-                            <p className="text-sm text-gray-500 mb-6">
-                                Permanently delete all prayer records for the selected classes. This action cannot be undone.
-                            </p>
+                    <Card className="p-6 border border-red-100">
+                        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                            <Trash2 className="w-5 h-5 text-red-500" />
+                            Data Management
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-6">
+                            Permanently delete all prayer records for the selected classes. This action cannot be undone.
+                        </p>
 
-                            <div className="flex flex-col sm:flex-row items-center gap-4 bg-red-50 p-4 rounded-xl border border-red-100">
-                                <select
-                                    value={deleteClassSelection}
-                                    onChange={(e) => setDeleteClassSelection(e.target.value)}
-                                    className="w-full sm:w-auto px-4 py-2 border border-red-200 bg-white rounded-lg text-sm font-medium text-gray-700 outline-none focus:border-red-500"
-                                >
-                                    <option value="all">All Assigned Classes</option>
-                                    {availableClasses.map(c => (
-                                        <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
-                                    ))}
-                                </select>
+                        <div className="flex flex-col sm:flex-row items-center gap-4 bg-red-50 p-4 rounded-xl border border-red-100">
+                            <select
+                                value={deleteClassSelection}
+                                onChange={(e) => setDeleteClassSelection(e.target.value)}
+                                className="w-full sm:w-auto px-4 py-2 border border-red-200 bg-white rounded-lg text-sm font-medium text-gray-700 outline-none focus:border-red-500"
+                            >
+                                <option value="all">All Assigned Classes</option>
+                                {availableClasses.map(c => (
+                                    <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
+                                ))}
+                            </select>
 
-                                <button
-                                    onClick={() => setIsDeleteModalOpen(true)}
-                                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    Clear Records
-                                </button>
-                            </div>
-                        </Card>
-                    </div>
-                )
-            }
-
-        </div >
+                            <button
+                                onClick={() => setIsDeleteModalOpen(true)}
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Clear Records
+                            </button>
+                        </div>
+                    </Card>
+                </div>
+            )}
+        </div>
     );
 };
 
