@@ -49,6 +49,7 @@ const ActivitiesManager = () => {
     const [selectedClassId, setSelectedClassId] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedActivityIds, setSelectedActivityIds] = useState([]);
+    const [sortOrder, setSortOrder] = useState('newest');
 
     // Form State
     const [newActivity, setNewActivity] = useState({
@@ -468,8 +469,15 @@ const ActivitiesManager = () => {
             );
         }
 
+        // 3. Sort
+        result = [...result].sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+        });
+
         return result;
-    }, [activities, selectedClassId, searchQuery, availableClasses, currentUser]);
+    }, [activities, selectedClassId, searchQuery, availableClasses, currentUser, sortOrder]);
 
 
     // Bulk Selection Handlers
@@ -636,14 +644,29 @@ const ActivitiesManager = () => {
 
             {/* Bulk Actions Header (if items exist) */}
             {filteredActivities.length > 0 && (
-                <div className="flex items-center gap-3 px-2">
-                    <input
-                        type="checkbox"
-                        checked={selectedActivityIds.length === filteredActivities.length && filteredActivities.length > 0}
-                        onChange={toggleSelectAll}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm text-gray-500">Select All</span>
+                <div className="flex items-center justify-between px-2 mb-4">
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="checkbox"
+                            checked={selectedActivityIds.length === filteredActivities.length && filteredActivities.length > 0}
+                            onChange={toggleSelectAll}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4"
+                        />
+                        <span className="text-sm font-medium text-gray-700 select-none cursor-pointer" onClick={toggleSelectAll}>Select All</span>
+                    </div>
+
+                    {/* Sort Dropdown */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 hidden sm:inline">Sort by:</span>
+                        <select
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value)}
+                            className="text-sm border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 cursor-pointer py-1.5 pl-3 pr-8"
+                        >
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
+                        </select>
+                    </div>
                 </div>
             )}
 
