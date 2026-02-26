@@ -17,6 +17,7 @@ import ClassHistory from '../components/student/ClassHistory';
 import StudentLeave from './StudentLeave';
 import StudentChat from './StudentChat';
 import StudentStarView from '../components/student/StudentStarView';
+import StudentRamadan from '../components/student/StudentRamadan';
 
 import Help from './Help';
 import { Star } from 'lucide-react';
@@ -107,6 +108,7 @@ const StudentDashboard = () => {
         { icon: Calendar, label: 'Leave Applications', path: '/student/leave', key: 'leave' },
         { icon: MessageSquare, label: 'Chat with Mentor', path: '/student/chat', key: 'chat' },
         { icon: BookOpen, label: 'Prayer Chart', path: '/student/prayer-chart', key: 'prayer' },
+        { icon: Moon, label: 'Ramadan', path: '/student/ramadan', key: 'ramadan' },
         { icon: History, label: 'Class History', path: '/student/history', key: 'history' },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard', key: 'leaderboard' },
         { icon: Star, label: 'Star of the Month', path: '/student/star-student', key: 'star' },
@@ -138,6 +140,7 @@ const StudentDashboard = () => {
             { path: '/student/leave', key: 'leave' },
             { path: '/student/chat', key: 'chat' },
             { path: '/student/prayer-chart', key: 'prayer' },
+            { path: '/student/ramadan', key: 'ramadan' },
             { path: '/student/history', key: 'history' },
             { path: '/student/leaderboard', key: 'leaderboard' },
             { path: '/student/star-student', key: 'star' },
@@ -400,6 +403,7 @@ const StudentDashboard = () => {
                     <Route path="/leave" element={<StudentLeave />} />
                     <Route path="/chat" element={<StudentChat />} />
                     <Route path="/prayer-chart" element={<PrayerChart />} />
+                    <Route path="/ramadan" element={<StudentRamadan />} />
                     <Route path="/history" element={<ClassHistory />} />
                     <Route path="/results" element={<StudentResultView />} />
                     <Route path="/leaderboard" element={<Leaderboard />} />

@@ -36,6 +36,10 @@ export const DataProvider = ({ children }) => {
     const [prayerRecords, setPrayerRecords] = useState([]);
     const [specialPrayers, setSpecialPrayers] = useState([]);
 
+    // Ramadan Feature
+    const [ramadanLogs, setRamadanLogs] = useState([]);
+    const [quranProgress, setQuranProgress] = useState([]);
+
     // Settings & Misc
     const [starDeclarations, setStarDeclarations] = useState([]);
     const [adminRequests, setAdminRequests] = useState([]);
@@ -101,6 +105,8 @@ export const DataProvider = ({ children }) => {
             subscribe('logEntries', setLogEntries),
             subscribe('prayerRecords', setPrayerRecords),
             subscribe('specialPrayers', setSpecialPrayers),
+            subscribe('ramadanLogs', setRamadanLogs),
+            subscribe('quranProgress', setQuranProgress),
 
             subscribe('starDeclarations', setStarDeclarations),
             subscribe('adminRequests', setAdminRequests),
@@ -603,7 +609,22 @@ export const DataProvider = ({ children }) => {
         specialPrayers,
         addSpecialPrayer: async (p) => await addDoc(collection(db, 'specialPrayers'), { ...p, createdAt: new Date().toISOString() }),
         updateSpecialPrayer: async (id, u) => await updateDoc(doc(db, 'specialPrayers', id), u),
-        deleteSpecialPrayer: async (id) => await deleteDoc(doc(db, 'specialPrayers', id))
+        deleteSpecialPrayer: async (id) => await deleteDoc(doc(db, 'specialPrayers', id)),
+
+        // Ramadan & Quran Tracking
+        ramadanLogs,
+        addRamadanLog: async (log) => await addDoc(collection(db, 'ramadanLogs'), { ...log, timestamp: new Date().toISOString() }),
+        updateRamadanLog: async (id, u) => await updateDoc(doc(db, 'ramadanLogs', id), u),
+
+        quranProgress,
+        updateQuranProgress: async (studentId, data) => {
+            const existing = quranProgress.find(q => q.studentId === studentId);
+            if (existing) {
+                await updateDoc(doc(db, 'quranProgress', existing.id), { ...data, lastUpdated: new Date().toISOString() });
+            } else {
+                await addDoc(collection(db, 'quranProgress'), { studentId, ...data, lastUpdated: new Date().toISOString() });
+            }
+        }
     };
 
     return (
