@@ -446,7 +446,7 @@ const PrayerStats = () => {
                                 </Card>
 
                                 {/* Unified Monthly Leaderboard & Student Details */}
-                                <Card className="overflow-hidden lg:col-span-1 flex flex-col">
+                                <Card className="overflow-hidden xl:col-span-2 flex flex-col">
                                     <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-blue-50">
                                         <h3 className="font-bold text-indigo-900 flex items-center gap-2">
                                             <Trophy className="w-5 h-5 text-indigo-600" />
@@ -459,7 +459,7 @@ const PrayerStats = () => {
                                                 <tr className="bg-white text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
                                                     <th className="p-4 font-semibold w-16 text-center">Rank</th>
                                                     <th className="p-4 font-semibold">Student</th>
-                                                    <th className="p-4 font-semibold text-center hidden xl:table-cell">Total</th>
+                                                    <th className="p-4 font-semibold text-center">Total</th>
                                                     <th className="p-4 font-semibold text-right">Status</th>
                                                 </tr>
                                             </thead>
@@ -485,7 +485,7 @@ const PrayerStats = () => {
                                                                     <p className="text-xs text-gray-500">{student.registerNo}</p>
                                                                 </div>
                                                             </td>
-                                                            <td className="p-4 text-center font-bold text-indigo-600 text-base hidden xl:table-cell">
+                                                            <td className="p-4 text-center font-bold text-indigo-600 text-base">
                                                                 {student.totalPrayers}
                                                             </td>
                                                             <td className="p-4 text-right">
