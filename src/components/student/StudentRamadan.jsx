@@ -178,56 +178,43 @@ const StudentRamadan = () => {
                 {/* Day Selection Action Panel */}
                 {selectedDay && (
                     <>
-                        {/* Mobile Backdrop */}
+                        {/* Mobile Backdrop - NO BLUR */}
                         <div
-                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden animate-fadeIn"
+                            className="fixed inset-0 bg-black/40 z-40 animate-fadeIn"
                             onClick={() => setSelectedDay(null)}
                         />
 
-                        <div className={clsx(
-                            "fixed md:relative inset-x-0 bottom-0 md:bottom-auto z-50 md:z-auto",
-                            "bg-white md:bg-indigo-50 border-t md:border-t-0 md:border border-indigo-100",
-                            "rounded-t-3xl md:rounded-2xl p-6 md:p-6 pb-8 md:pb-6 mt-0 md:mt-8",
-                            "shadow-2xl md:shadow-none animate-slideUp md:animate-fadeIn",
-                            "max-h-[85vh] overflow-y-auto"
-                        )}>
-                            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4 md:hidden" />
-                            <h3 className="font-bold text-xl md:text-lg text-indigo-900 mb-6 md:mb-4 flex items-center justify-between">
-                                <span>Update Status for Day {selectedDay}</span>
-                                <button className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-full" onClick={() => setSelectedDay(null)}>
+                        <div className="fixed inset-x-4 bottom-6 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-50 bg-white rounded-3xl p-5 shadow-2xl animate-slideUp max-w-[340px] mx-auto border border-gray-100">
+                            <h3 className="font-bold text-[17px] text-gray-800 mb-5 flex items-center justify-between px-1">
+                                <span>Update status for Day {selectedDay}</span>
+                                <button className="p-1.5 bg-gray-200 text-gray-600 hover:bg-gray-300 rounded-full transition-colors" onClick={() => setSelectedDay(null)}>
                                     <X className="w-5 h-5" />
                                 </button>
                             </h3>
-                            <div className="flex flex-col md:flex-row flex-wrap gap-3 md:gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={() => handleFastingSubmit(selectedDay, 'Fasting')}
-                                    className="flex-1 py-3.5 md:py-3 px-4 bg-white border-2 border-green-500 text-green-700 hover:bg-green-50 font-bold rounded-xl transition-colors"
+                                    className="py-3 px-2 bg-[#fdfdfd] border-2 border-[#10B981] text-[#10B981] font-semibold text-sm rounded-xl shadow-[0_4px_14px_0_rgba(16,185,129,0.25)] active:scale-95 transition-all outline-none"
                                 >
-                                    I am Fasting
+                                    I'm Fasting
                                 </button>
                                 <button
                                     onClick={() => handleFastingSubmit(selectedDay, 'Not Fasting')}
-                                    className="flex-1 py-3.5 md:py-3 px-4 bg-white border-2 border-red-500 text-red-700 hover:bg-red-50 font-bold rounded-xl transition-colors"
+                                    className="py-3 px-2 bg-[#fdfdfd] border-2 border-[#EF4444] text-[#EF4444] font-semibold text-sm rounded-xl shadow-[0_4px_14px_0_rgba(239,68,68,0.25)] active:scale-95 transition-all outline-none"
                                 >
                                     Not Fasting
                                 </button>
                                 <button
                                     onClick={() => handleFastingSubmit(selectedDay, 'Excused')}
-                                    className="flex-1 py-3.5 md:py-3 px-4 bg-white border-2 border-yellow-400 text-yellow-700 hover:bg-yellow-50 font-bold rounded-xl transition-colors"
+                                    className="py-3 px-2 bg-[#fdfdfd] border-2 border-[#F59E0B] text-[#F59E0B] font-semibold text-sm rounded-xl shadow-[0_4px_14px_0_rgba(245,158,11,0.25)] active:scale-95 transition-all outline-none"
                                 >
                                     Excused
                                 </button>
                                 <button
                                     onClick={() => handleFastingSubmit(selectedDay, 'Clear')}
-                                    className="flex-1 py-3.5 md:py-3 px-4 bg-white border-2 border-gray-300 text-gray-600 hover:bg-gray-50 font-bold rounded-xl transition-colors"
+                                    className="py-3 px-2 bg-[#fdfdfd] border-2 border-[#6B7280] text-[#4B5563] font-semibold text-sm rounded-xl shadow-[0_4px_14px_0_rgba(107,114,128,0.25)] active:scale-95 transition-all outline-none"
                                 >
                                     Clear
-                                </button>
-                                <button
-                                    onClick={() => setSelectedDay(null)}
-                                    className="w-full md:w-auto py-3.5 md:py-3 px-6 bg-gray-100 text-gray-700 hover:bg-gray-200 font-bold rounded-xl transition-colors"
-                                >
-                                    Cancel
                                 </button>
                             </div>
                         </div>
