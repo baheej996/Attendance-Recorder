@@ -49,7 +49,7 @@ const MentorRamadan = () => {
 
     // View Helpers
     const getStudentFastingLog = (studentId, day) => {
-        return ramadanLogs.find(log => log.studentId === studentId && log.dayNumber === day);
+        return ramadanLogs.find(log => log.studentId === studentId && parseInt(log.dayNumber) === parseInt(day));
     };
 
     const getStudentQuranProgress = (studentId) => {
@@ -223,7 +223,7 @@ const MentorRamadan = () => {
                                     {RAMADAN_DAYS.map(day => (
                                         <button
                                             key={day}
-                                            onClick={() => setSelectedDay(day)}
+                                            onClick={() => setSelectedDay(parseInt(day))}
                                             className={clsx(
                                                 "w-10 h-10 rounded-lg font-medium text-sm flex items-center justify-center transition-colors",
                                                 selectedDay === day

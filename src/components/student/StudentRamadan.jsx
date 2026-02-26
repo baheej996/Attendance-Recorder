@@ -40,7 +40,7 @@ const StudentRamadan = () => {
         if (!currentUser) return;
 
         const dateStr = new Date().toISOString().split('T')[0]; // Current date as record date
-        const existingLog = ramadanLogs.find(log => log.studentId === currentUser.id && log.dayNumber === day);
+        const existingLog = ramadanLogs.find(log => log.studentId === currentUser.id && parseInt(log.dayNumber) === parseInt(day));
 
         if (existingLog) {
             await updateRamadanLog(existingLog.id, { status, date: dateStr });
@@ -57,7 +57,7 @@ const StudentRamadan = () => {
 
     // Get Log for a specific day
     const getLogForDay = (day) => {
-        return ramadanLogs.find(log => log.studentId === currentUser?.id && log.dayNumber === day);
+        return ramadanLogs.find(log => log.studentId === currentUser?.id && parseInt(log.dayNumber) === parseInt(day));
     };
 
     // Handle Quran Page Update
@@ -154,7 +154,7 @@ const StudentRamadan = () => {
                         return (
                             <button
                                 key={day}
-                                onClick={() => setSelectedDay(day)}
+                                onClick={() => setSelectedDay(parseInt(day))}
                                 className={clsx(
                                     "aspect-square flex flex-col items-center justify-center rounded-xl border transition-all duration-200",
                                     bgClass
