@@ -395,10 +395,6 @@ const PrayerStats = () => {
 
                                     <div className="overflow-x-auto" ref={tableRef}>
                                         <div className="p-4 bg-white min-w-[600px]"> {/* Add padding inside ref for cleaner image bounds */}
-                                            <div className="mb-4 text-center pb-2 border-b border-gray-100">
-                                                <h2 className="text-lg font-bold text-gray-900">Prayer Register - Class {enabledClasses.find(c => c.id === selectedClassId)?.name}</h2>
-                                                <p className="text-sm text-gray-500">{format(new Date(reportDate), 'EEEE, MMMM do, yyyy')}</p>
-                                            </div>
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
                                                     <tr className="bg-white text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
