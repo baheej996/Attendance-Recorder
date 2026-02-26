@@ -435,82 +435,60 @@ const PrayerStats = () => {
                                 </div>
                             </Card>
 
-                            {/* Top Performers */}
-                            <Card className="p-0 overflow-hidden flex flex-col h-full">
-                                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-yellow-50 to-orange-50">
-                                    <h3 className="font-bold text-yellow-800 flex items-center gap-2">
-                                        <Trophy className="w-5 h-5 text-yellow-600" />
-                                        Top Performers
-                                    </h3>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-2">
-                                    {stats?.leaderboard.slice(0, 10).map((student, index) => (
-                                        <div key={student.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={clsx(
-                                                    "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
-                                                    index === 0 ? "bg-yellow-100 text-yellow-700" :
-                                                        index === 1 ? "bg-gray-100 text-gray-700" :
-                                                            index === 2 ? "bg-orange-100 text-orange-700" :
-                                                                "bg-white border border-gray-200 text-gray-500"
-                                                )}>
-                                                    {index + 1}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                                                    <p className="text-xs text-gray-500">{student.registerNo}</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-sm font-bold text-indigo-600">{student.totalPrayers}</p>
-                                                <p className="text--[10px] text-gray-400 uppercase">Prayers</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </Card>
-
-                            {/* Detailed Student List */}
+                            {/* Unified Monthly Leaderboard & Student Details */}
                             <Card className="overflow-hidden">
-                                <div className="p-6 border-b border-gray-100">
-                                    <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                                        <Users className="w-5 h-5 text-gray-400" />
-                                        Student Details
+                                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-blue-50">
+                                    <h3 className="font-bold text-indigo-900 flex items-center gap-2">
+                                        <Trophy className="w-5 h-5 text-indigo-600" />
+                                        Monthly Leaderboard & Details
                                     </h3>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
-                                            <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
-                                                <th className="p-4 font-medium">Student</th>
-                                                <th className="p-4 font-medium text-center">Total Prayers</th>
-                                                <th className="p-4 font-medium text-center">Avg. Daily</th>
-                                                <th className="p-4 font-medium text-right">Status</th>
+                                            <tr className="bg-white text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                                                <th className="p-4 font-semibold w-16 text-center">Rank</th>
+                                                <th className="p-4 font-semibold">Student Details</th>
+                                                <th className="p-4 font-semibold text-center">Total Prayers</th>
+                                                <th className="p-4 font-semibold text-center">Avg. Daily</th>
+                                                <th className="p-4 font-semibold text-right">Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100 text-sm">
-                                            {stats?.leaderboard.map((student) => {
-                                                const avg = (student.totalPrayers / 35).toFixed(1);
+                                        <tbody className="divide-y divide-gray-50 text-sm">
+                                            {stats?.leaderboard.map((student, index) => {
+                                                const rank = index + 1;
+                                                const avg = (student.totalPrayers / 30).toFixed(1); // Approximate monthly basis
                                                 return (
-                                                    <tr key={student.id} className="hover:bg-gray-50 group">
+                                                    <tr key={student.id} className="hover:bg-gray-50 group transition-colors">
+                                                        <td className="p-4 text-center align-middle">
+                                                            <div className={clsx(
+                                                                "mx-auto w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
+                                                                rank === 1 ? "bg-yellow-100 text-yellow-700 ring-2 ring-yellow-400 ring-offset-1" :
+                                                                    rank === 2 ? "bg-gray-100 text-gray-700 ring-2 ring-gray-300 ring-offset-1" :
+                                                                        rank === 3 ? "bg-orange-100 text-orange-700 ring-2 ring-orange-300 ring-offset-1" :
+                                                                            "bg-gray-50 text-gray-500 font-medium"
+                                                            )}>
+                                                                {rank}
+                                                            </div>
+                                                        </td>
                                                         <td className="p-4">
                                                             <div>
-                                                                <p className="font-medium text-gray-900">{student.name}</p>
+                                                                <p className="font-bold text-gray-900">{student.name}</p>
                                                                 <p className="text-xs text-gray-500">{student.registerNo}</p>
                                                             </div>
                                                         </td>
-                                                        <td className="p-4 text-center font-medium text-indigo-600">
+                                                        <td className="p-4 text-center font-bold text-indigo-600 text-base">
                                                             {student.totalPrayers}
                                                         </td>
-                                                        <td className="p-4 text-center text-gray-600">
-                                                            -
+                                                        <td className="p-4 text-center font-medium text-gray-500">
+                                                            {avg}
                                                         </td>
                                                         <td className="p-4 text-right">
                                                             <span className={clsx(
-                                                                "px-2 py-1 rounded-full text-xs font-medium",
-                                                                student.totalPrayers > 20 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                                                                "px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase",
+                                                                student.totalPrayers >= 20 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                                                             )}>
-                                                                {student.totalPrayers > 20 ? "Consistent" : "Needs Imp."}
+                                                                {student.totalPrayers >= 20 ? "Consistent" : "Needs Imp."}
                                                             </span>
                                                         </td>
                                                     </tr>
