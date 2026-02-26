@@ -394,7 +394,7 @@ const PrayerStats = () => {
                                     </div>
 
                                     <div className="overflow-x-auto" ref={tableRef}>
-                                        <div className="p-4 bg-white min-w-[600px]"> {/* Add padding inside ref for cleaner image bounds */}
+                                        <div className="min-w-[600px]"> {/* Wraps content horizontally */}
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
                                                     <tr className="bg-white text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
