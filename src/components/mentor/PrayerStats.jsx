@@ -217,7 +217,7 @@ const PrayerStats = () => {
             }
         } catch (error) {
             console.error('Error copying image:', error);
-            alert('Could not copy table as image. Please try again.');
+            alert(`Could not copy table as image:\n\n${error?.message || error}\n\nPlease try again.`);
         }
     };
 
