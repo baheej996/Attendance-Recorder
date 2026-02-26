@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen, Copy, ChevronDown } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
-import { toBlob } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import SpecialPrayerManager from './SpecialPrayerManager';
 import MentorPrayerStats from './MentorPrayerStats';
@@ -193,10 +193,15 @@ const PrayerStats = () => {
     const copyTableAsImage = async () => {
         if (!tableRef.current) return;
         try {
-            // Add a small delay to ensure rendering is complete
-            await new Promise(resolve => setTimeout(resolve, 100));
+            const canvas = await html2canvas(tableRef.current, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                logging: false,
+                useCORS: true
+            });
 
-            const blob = await toBlob(tableRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
             if (!blob) {
                 alert('Failed to generate image.');
                 return;
