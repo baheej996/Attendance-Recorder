@@ -8,7 +8,7 @@ import { clsx } from 'clsx';
 import { X, Download, AlertTriangle, FileText, GraduationCap, CheckCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
+
 
 const COLORS = ['#10B981', '#EF4444']; // Green, Red
 const BAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e'];
@@ -144,20 +144,23 @@ const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
                 return;
             }
             try {
-                const canvas = await html2canvas(printRef.current, {
-                    scale: 2,
-                    useCORS: true,
-                    backgroundColor: '#ffffff'
+                const { toPng } = await import('html-to-image');
+                const imgData = await toPng(printRef.current, {
+                    cacheBust: true,
+                    backgroundColor: '#ffffff',
+                    pixelRatio: 2
                 });
-                const imgData = canvas.toDataURL('image/png');
 
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                // Get element dimensions to maintain aspect ratio
+                const elWidth = printRef.current.offsetWidth || 1;
+                const elHeight = printRef.current.offsetHeight || 1;
 
                 const margin = 10;
                 const printWidth = pdfWidth - (margin * 2);
-                const printHeight = (canvas.height * printWidth) / canvas.width;
+                const printHeight = (elHeight * printWidth) / elWidth;
 
                 pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
 
