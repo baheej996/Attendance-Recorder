@@ -72,17 +72,19 @@ const StarOfTheMonth = () => {
             const workingDays = classAttendanceDates.size || 1; // Avoid division by zero
 
             // Calculate Total Active Activities
-            const activeActivities = activities.filter(a =>
+            const activeActivityList = activities.filter(a =>
                 a.classId === classId && a.status === 'Active' // We could filter by date created, but Active is simpler
-            ).length || 1;
+            );
+            const activeActivities = activeActivityList.length || 1;
+            const activeActivityIds = activeActivityList.map(a => a.id);
 
-            classStats[classId] = { workingDays, activeActivities };
+            classStats[classId] = { workingDays, activeActivities, activeActivityIds };
         });
 
         // 3. Process each student
         const processed = classStudents.map(student => {
             const classId = student.classId;
-            const stats = classStats[classId] || { workingDays: 1, activeActivities: 1 };
+            const stats = classStats[classId] || { workingDays: 1, activeActivities: 1, activeActivityIds: [] };
 
             // --- Attendance Score ---
             let attendanceScore = 0;
@@ -101,9 +103,11 @@ const StarOfTheMonth = () => {
             let activityScore = 0;
             let completedCount = 0;
             if (config.activities) {
+                const activeIds = stats.activeActivityIds || [];
                 const studentSubmissions = activitySubmissions.filter(s =>
                     s.studentId === student.id &&
-                    s.status === 'Completed'
+                    s.status === 'Completed' &&
+                    activeIds.includes(s.activityId)
                 );
                 const monthSubmissions = studentSubmissions.filter(s =>
                     isSameMonth(new Date(s.timestamp), startDate) &&

@@ -52,9 +52,11 @@ const StudentStarView = () => {
         );
         const workingDays = classAttendanceDates.size || 1;
 
-        const activeActivities = activities.filter(a =>
+        const activeActivityList = activities.filter(a =>
             a.classId === classId && a.status === 'Active'
-        ).length || 1;
+        );
+        const activeActivities = activeActivityList.length || 1;
+        const activeActivityIds = activeActivityList.map(a => a.id);
 
         const processed = classStudents.map(student => {
             let attendanceScore = 0;
@@ -74,7 +76,8 @@ const StudentStarView = () => {
             if (config.activities) {
                 const studentSubmissions = activitySubmissions.filter(s =>
                     s.studentId === student.id &&
-                    s.status === 'Completed'
+                    s.status === 'Completed' &&
+                    activeActivityIds.includes(s.activityId)
                 );
                 const monthSubmissions = studentSubmissions.filter(s =>
                     isSameMonth(new Date(s.timestamp), startDate) &&
