@@ -580,21 +580,23 @@ const MentorStats = () => {
                                     </div>
 
                                     {/* Chart */}
-                                    <div className="h-80 w-full bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                        <h4 className="text-lg font-bold text-gray-800 mb-6">Subject-wise Average Marks</h4>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={examStats.subjectAverages} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
-                                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
-                                                <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                                <Bar dataKey="avg" radius={[6, 6, 0, 0]} barSize={40}>
-                                                    {examStats.subjectAverages.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
-                                                    ))}
-                                                </Bar>
-                                            </BarChart>
-                                        </ResponsiveContainer>
+                                    <div className="h-64 sm:h-80 w-full bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm">
+                                        <h4 className="text-sm sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">Subject-wise Average Marks</h4>
+                                        <div className="h-[180px] sm:h-[calc(100%-2rem)]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={examStats.subjectAverages} margin={{ top: 5, right: 10, left: -20, bottom: 20 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 10 }} dy={10} interval={0} angle={-30} textAnchor="end" />
+                                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                    <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                                    <Bar dataKey="avg" radius={[6, 6, 0, 0]} barSize={20} maxBarSize={40}>
+                                                        {examStats.subjectAverages.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+                                                        ))}
+                                                    </Bar>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                     </div>
 
                                     {/* Student List */}
