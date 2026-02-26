@@ -755,37 +755,52 @@ const ActivitiesManager = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-end w-full md:w-auto gap-2 mt-2 md:mt-0 pl-8 md:pl-0">
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => openEditModal(activity)}
-                                        >
-                                            <Pencil className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => toggleActivityStatus(activity.id)}
-                                        >
-                                            {activity.status === 'Active' ? 'Deactivate' : 'Activate'}
-                                        </Button>
-                                        <Button
-                                            variant="danger"
-                                            size="sm"
-                                            onClick={() => {
-                                                setDeleteConfirmation({ isOpen: true, activityId: activity.id });
-                                            }}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setExpandedActivityId(isExpanded ? null : activity.id)}
-                                        >
-                                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                        </Button>
+                                    <div className="flex flex-col justify-center items-end w-full md:w-auto gap-2 mt-4 md:mt-0 pl-8 md:pl-0 min-w-[180px]">
+                                        {/* Animated Progress Bar */}
+                                        <div className="w-full flex items-center gap-2 mb-1 px-1">
+                                            <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden flex-1">
+                                                <div
+                                                    className={`h-1.5 rounded-full transition-all duration-1000 ease-out ${stats.total > 0 && (stats.submitted === stats.total) ? 'bg-green-500' : 'bg-indigo-600'}`}
+                                                    style={{ width: `${stats.total > 0 ? Math.round((stats.submitted / stats.total) * 100) : 0}%` }}
+                                                ></div>
+                                            </div>
+                                            <span className="text-xs font-bold text-gray-600 min-w-[28px] text-right">
+                                                {stats.total > 0 ? Math.round((stats.submitted / stats.total) * 100) : 0}%
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-end gap-2 w-full">
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => openEditModal(activity)}
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => toggleActivityStatus(activity.id)}
+                                            >
+                                                {activity.status === 'Active' ? 'Deactivate' : 'Activate'}
+                                            </Button>
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setDeleteConfirmation({ isOpen: true, activityId: activity.id });
+                                                }}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setExpandedActivityId(isExpanded ? null : activity.id)}
+                                            >
+                                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
 
