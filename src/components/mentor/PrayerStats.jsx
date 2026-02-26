@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Trophy, Calendar, Users, Filter, BarChart2, Trash2, BookOpen, Copy, ChevronDown } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
-import html2canvas from 'html2canvas';
+import { toBlob } from 'html-to-image';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import SpecialPrayerManager from './SpecialPrayerManager';
 import MentorPrayerStats from './MentorPrayerStats';
@@ -193,16 +193,23 @@ const PrayerStats = () => {
     const copyTableAsImage = async () => {
         if (!tableRef.current) return;
         try {
-            const canvas = await html2canvas(tableRef.current, { backgroundColor: '#ffffff', scale: 2 });
-            canvas.toBlob(async (blob) => {
-                if (!blob) {
-                    alert('Failed to generate image.');
-                    return;
-                }
+            // Add a small delay to ensure rendering is complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const blob = await toBlob(tableRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 });
+            if (!blob) {
+                alert('Failed to generate image.');
+                return;
+            }
+
+            try {
                 const item = new ClipboardItem({ 'image/png': blob });
                 await navigator.clipboard.write([item]);
                 alert('Table image copied to clipboard! You can now paste it into WhatsApp.');
-            });
+            } catch (clipboardError) {
+                console.error('Clipboard error:', clipboardError);
+                alert('Browser prevented direct clipboard access. Please use Chrome/Edge or right-click to copy.');
+            }
         } catch (error) {
             console.error('Error copying image:', error);
             alert('Could not copy table as image. Please try again.');
