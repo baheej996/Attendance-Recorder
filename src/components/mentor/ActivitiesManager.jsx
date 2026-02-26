@@ -27,6 +27,7 @@ const ActivitiesManager = () => {
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // Settings Modal
     const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false); // Report Dropdown State
     const [expandedReportType, setExpandedReportType] = useState(null); // Mobile report row expansion
+    const [pendingReportConfig, setPendingReportConfig] = useState(null); // { timeframe: string, format: 'copy' | 'pdf' }
     const reportDropdownRef = useRef(null);
 
     // Close Report Dropdown on outside click
@@ -245,7 +246,18 @@ const ActivitiesManager = () => {
         }
     };
 
-    const generateCommonActivityReport = async (timeframe, reportFormat) => {
+    const handleReportIconClick = (timeframe, format) => {
+        setPendingReportConfig({ timeframe, format });
+        setIsReportDropdownOpen(false); // optionally close the dropdown
+    };
+
+    const confirmGenerateReport = (detailLevel) => {
+        if (!pendingReportConfig) return;
+        generateCommonActivityReport(pendingReportConfig.timeframe, pendingReportConfig.format, detailLevel);
+        setPendingReportConfig(null);
+    };
+
+    const generateCommonActivityReport = async (timeframe, reportFormat, detailLevel = 'detailed') => {
         let targetClasses = [];
 
         if (selectedClassId === 'all') {
@@ -360,6 +372,15 @@ const ActivitiesManager = () => {
 
         if (reportFormat === 'copy') {
             const classBlocks = reportDataByClass.map(data => {
+                const totalPendingCount = data.studentStats.reduce((sum, stat) => sum + (stat.totalActivities - stat.completedCount), 0);
+                const totalCompletedCount = data.studentStats.reduce((sum, stat) => sum + stat.completedCount, 0);
+                const classTotalPossible = data.activitiesCount * data.studentStats.length;
+                const percentPending = classTotalPossible > 0 ? Math.round((totalPendingCount / classTotalPossible) * 100) : 0;
+
+                if (detailLevel === 'short') {
+                    return `*Class:* ${data.cls.name} - ${data.cls.division}\n*Total Students:* ${data.studentStats.length}\n*Total Activities:* ${data.activitiesCount}\n*Completed:* ${data.classCompletionPercentage}%\n*Pending:* ${percentPending}%`;
+                }
+
                 const fullyCompletedList = [];
                 const partiallyCompletedList = [];
                 const notStartedList = [];
@@ -407,7 +428,7 @@ const ActivitiesManager = () => {
 
                 // PDF Header
                 doc.setFontSize(16);
-                doc.text(`Activity Report`, 14, 15);
+                doc.text(`Activity Report ${detailLevel === 'short' ? '(Short)' : '(Detailed)'}`, 14, 15);
                 doc.setFontSize(11);
                 doc.text(`Class: ${data.cls.name} - ${data.cls.division}`, 14, 22);
                 doc.text(`Period: ${periodName}`, 14, 28);
@@ -419,37 +440,46 @@ const ActivitiesManager = () => {
                 doc.text(`Overall Class Completion: ${data.classCompletionPercentage}%`, 130, 22);
                 doc.setFont(undefined, 'normal');
 
-                const tableData = data.studentStats.map(stat => {
-                    const completedText = stat.completedCount > 0
-                        ? `${stat.completedCount}\n(${stat.completedActivities.join(', ')})`
-                        : '0';
+                if (detailLevel === 'short') {
+                    const classTotalPossible = data.activitiesCount * data.studentStats.length;
+                    const totalPendingCount = data.studentStats.reduce((sum, stat) => sum + (stat.totalActivities - stat.completedCount), 0);
+                    const percentPending = classTotalPossible > 0 ? Math.round((totalPendingCount / classTotalPossible) * 100) : 0;
 
-                    const pendingText = stat.pendingActivities.length > 0
-                        ? `${stat.totalActivities - stat.completedCount}\n(${stat.pendingActivities.join(', ')})`
-                        : '0';
+                    doc.text(`Total Students: ${data.studentStats.length}`, 14, 40);
+                    doc.text(`Pending: ${percentPending}%`, 130, 28);
+                } else {
+                    const tableData = data.studentStats.map(stat => {
+                        const completedText = stat.completedCount > 0
+                            ? `${stat.completedCount}\n(${stat.completedActivities.join(', ')})`
+                            : '0';
 
-                    return [
-                        stat.name,
-                        completedText,
-                        pendingText,
-                        `${Math.round((stat.completedCount / stat.totalActivities) * 100)}%`
-                    ];
-                });
+                        const pendingText = stat.pendingActivities.length > 0
+                            ? `${stat.totalActivities - stat.completedCount}\n(${stat.pendingActivities.join(', ')})`
+                            : '0';
 
-                autoTable(doc, {
-                    startY: 40,
-                    head: [['Student Name', 'Completed', 'Pending', 'Completion %']],
-                    body: tableData,
-                    theme: 'grid',
-                    headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
-                    styles: { fontSize: 9, cellPadding: 3 },
-                    columnStyles: {
-                        0: { cellWidth: 40 }, // Name
-                        1: { cellWidth: 60 }, // Completed
-                        2: { cellWidth: 60 }, // Pending
-                        3: { cellWidth: 20 }  // %
-                    }
-                });
+                        return [
+                            stat.name,
+                            completedText,
+                            pendingText,
+                            `${Math.round((stat.completedCount / stat.totalActivities) * 100)}%`
+                        ];
+                    });
+
+                    autoTable(doc, {
+                        startY: 40,
+                        head: [['Student Name', 'Completed', 'Pending', 'Completion %']],
+                        body: tableData,
+                        theme: 'grid',
+                        headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
+                        styles: { fontSize: 9, cellPadding: 3 },
+                        columnStyles: {
+                            0: { cellWidth: 40 }, // Name
+                            1: { cellWidth: 60 }, // Completed
+                            2: { cellWidth: 60 }, // Pending
+                            3: { cellWidth: 20 }  // %
+                        }
+                    });
+                }
             });
 
             const fileNameScope = selectedClassId === 'all' ? 'All_Classes' : `${reportDataByClass[0].cls.name}`;
@@ -588,14 +618,14 @@ const ActivitiesManager = () => {
                                             {type}
                                             <div className={`flex gap-2 transition-opacity ${expandedReportType === type ? 'opacity-100' : 'opacity-0 md:group-hover:opacity-100'}`}>
                                                 <button
-                                                    onClick={() => generateCommonActivityReport(type, 'copy')}
+                                                    onClick={() => handleReportIconClick(type, 'copy')}
                                                     className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"
                                                     title="Copy to WhatsApp"
                                                 >
                                                     <Copy className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => generateCommonActivityReport(type, 'pdf')}
+                                                    onClick={() => handleReportIconClick(type, 'pdf')}
                                                     className="p-1.5 text-red-600 hover:bg-red-50 rounded"
                                                     title="Download PDF"
                                                 >
@@ -1033,6 +1063,50 @@ const ActivitiesManager = () => {
                 cancelText={null} // Hide cancel button
                 isDanger={true}
             />
+            {/* Report Type Selection Modal */}
+            {pendingReportConfig && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+                    <Card className="w-full max-w-sm p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-indigo-600" />
+                                Report Type
+                            </h2>
+                            <button onClick={() => setPendingReportConfig(null)}>
+                                <XCircle className="w-6 h-6 text-gray-400 hover:text-gray-600 transition-colors" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => confirmGenerateReport('short')}
+                                className="w-full text-left p-4 border border-gray-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-colors group relative"
+                            >
+                                <div className="font-bold text-gray-900 group-hover:text-indigo-700">Short Report</div>
+                                <div className="text-sm text-gray-500 mt-1 pr-6 hover:text-indigo-600/90">
+                                    Summary overview showing only the total students, completion percentage, and pending percentage for the class.
+                                </div>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <ChevronUp className="w-5 h-5 text-indigo-500 rotate-90" />
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => confirmGenerateReport('detailed')}
+                                className="w-full text-left p-4 border border-gray-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-colors group relative"
+                            >
+                                <div className="font-bold text-gray-900 group-hover:text-indigo-700">Detailed Report</div>
+                                <div className="text-sm text-gray-500 mt-1 pr-6 hover:text-indigo-600/90">
+                                    Comprehensive breakdown listing every individual student alongside their specific completed and pending tasks.
+                                </div>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <ChevronUp className="w-5 h-5 text-indigo-500 rotate-90" />
+                                </div>
+                            </button>
+                        </div>
+                    </Card>
+                </div>
+            )}
 
             {/* Main Settings Modal */}
             {isSettingsModalOpen && (
