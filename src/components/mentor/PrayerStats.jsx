@@ -239,7 +239,7 @@ const PrayerStats = () => {
     });
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4 md:space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Daily Prayers</h1>
@@ -303,8 +303,8 @@ const PrayerStats = () => {
                             </button>
                         </div>
                     ) : (
-                        <>
-                            <div className="flex flex-row items-center justify-between gap-1.5 sm:gap-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm w-full">
+                        <div className="space-y-4 md:space-y-6">
+                            <div className="flex flex-row items-center justify-between gap-1.5 sm:gap-3 bg-white p-2 md:p-4 rounded-xl border border-gray-100 shadow-sm w-full">
                                 {/* Class Selector */}
                                 <div className="flex bg-gray-100 px-2 py-1.5 rounded-lg items-center gap-1.5 flex-1 min-w-0">
                                     <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0 hidden sm:block" />
@@ -369,7 +369,7 @@ const PrayerStats = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+                            <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 md:gap-6 items-start">
                                 {/* Main Table Area */}
                                 <Card className="xl:col-span-3 overflow-hidden flex flex-col">
                                     <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -494,7 +494,7 @@ const PrayerStats = () => {
                                     </div>
                                 </Card>
                             </div>
-                        </>
+                        </div>
                     )}
                 </>
             )}
