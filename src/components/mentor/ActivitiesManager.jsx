@@ -291,8 +291,8 @@ const ActivitiesManager = () => {
         const reportDataByClass = [];
 
         for (const targetClass of targetClasses) {
-            // 1. Filter Activities in this timeframe for this class
-            const classActivities = activities.filter(a => a.classId === targetClass.id);
+            // 1. Filter Activities in this timeframe for this class (excluding inactive)
+            const classActivities = activities.filter(a => a.classId === targetClass.id && a.status !== 'Inactive');
 
             const periodActivities = classActivities.filter(a => {
                 const activityDate = a.dueDate ? new Date(a.dueDate) : new Date(a.createdAt || now);
