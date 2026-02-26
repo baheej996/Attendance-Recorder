@@ -560,22 +560,22 @@ const MentorStats = () => {
                             ) : (
                                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     {/* Cards */}
-                                    <div className="grid md:grid-cols-3 gap-6">
-                                        <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100 relative overflow-hidden">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
+                                        <div className="bg-purple-50 p-4 sm:p-6 rounded-2xl border border-purple-100 relative overflow-hidden">
                                             <div className="relative z-10">
-                                                <p className="text-sm text-purple-600 font-bold uppercase tracking-wider mb-2">Class Average</p>
-                                                <p className="text-4xl font-extrabold text-purple-900">{examStats.classAvg}%</p>
+                                                <p className="text-[10px] sm:text-sm text-purple-600 font-bold uppercase tracking-wider mb-1 sm:mb-2 leading-tight">Class Average</p>
+                                                <p className="text-2xl sm:text-4xl font-extrabold text-purple-900">{examStats.classAvg}%</p>
                                             </div>
-                                            <GraduationCap className="absolute -bottom-4 -right-4 w-24 h-24 text-purple-100 z-0 rotate-12" />
+                                            <GraduationCap className="absolute -bottom-2 -right-2 w-16 h-16 sm:w-24 sm:h-24 text-purple-100 z-0 rotate-12" />
                                         </div>
-                                        <div className="bg-green-50 p-6 rounded-2xl border border-green-100">
-                                            <p className="text-sm text-green-600 font-bold uppercase tracking-wider mb-2">Pass Percentage</p>
-                                            <p className="text-4xl font-extrabold text-green-900">{examStats.passPercentage}%</p>
+                                        <div className="bg-green-50 p-4 sm:p-6 rounded-2xl border border-green-100">
+                                            <p className="text-[10px] sm:text-sm text-green-600 font-bold uppercase tracking-wider mb-1 sm:mb-2 leading-tight">Pass Pct</p>
+                                            <p className="text-2xl sm:text-4xl font-extrabold text-green-900">{examStats.passPercentage}%</p>
                                         </div>
-                                        <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
-                                            <p className="text-sm text-amber-600 font-bold uppercase tracking-wider mb-2">Top Performer</p>
-                                            <p className="text-2xl font-bold text-amber-900 truncate">{examStats.topPerformer?.name || 'N/A'}</p>
-                                            <p className="text-sm text-amber-700 mt-1">{examStats.topPerformer ? `${examStats.topPerformer.registerNo}` : '-'}</p>
+                                        <div className="bg-amber-50 p-4 sm:p-6 rounded-2xl border border-amber-100 col-span-2 md:col-span-1">
+                                            <p className="text-[10px] sm:text-sm text-amber-600 font-bold uppercase tracking-wider mb-1 sm:mb-2 leading-tight">Top Performer</p>
+                                            <p className="text-lg sm:text-2xl font-bold text-amber-900 truncate max-w-full">{examStats.topPerformer?.name || 'N/A'}</p>
+                                            <p className="text-xs sm:text-sm text-amber-700 mt-0.5 sm:mt-1">{examStats.topPerformer ? `${examStats.topPerformer.registerNo}` : '-'}</p>
                                         </div>
                                     </div>
 
