@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 import { X, Download, AlertTriangle, FileText, GraduationCap, CheckCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 const COLORS = ['#10B981', '#EF4444']; // Green, Red
 const BAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e'];
@@ -104,6 +105,9 @@ const StudentStatsModal = ({ student, records, onClose }) => {
 
 const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
     const { institutionSettings } = useData();
+    const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
+    const printRef = React.useRef(null);
+
     // Filter results for this specific student and exam
     const studentResults = results.filter(r => r.examId === exam.id && r.studentId === student.id);
 
@@ -133,130 +137,137 @@ const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
     }, [studentResults, subjects]);
 
     const generateResultPDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text(`Exam Report - ${exam.name}`, 14, 20);
-
-        doc.setFontSize(12);
-        doc.text(`Name: ${student.name}`, 14, 30);
-        doc.text(`Register No: ${student.registerNo}`, 14, 37);
-        doc.text(`Class: ${subjects[0]?.className || ''}`, 14, 44); // Hacky class name access
-
-        doc.text(`Total Marks: ${stats.totalObtained} / ${stats.totalMax}`, 14, 55);
-        doc.text(`Percentage: ${stats.overallPercentage.toFixed(2)}%`, 80, 55);
-        doc.text(`Result: ${stats.isOverallPassed ? 'PASS' : 'FAIL'}`, 140, 55);
-
-        const tableData = stats.subjectBreakdown.map(sub => [
-            sub.name,
-            sub.maxMarks,
-            sub.isAbsent ? 'AB' : sub.marks,
-            sub.isAbsent ? '-' : `${sub.percentage.toFixed(0)}%`,
-            sub.isPassed ? 'Pass' : 'Fail'
-        ]);
-
-        autoTable(doc, {
-            startY: 65,
-            head: [['Subject', 'Max Marks', 'Obtained', '%', 'Status']],
-            body: tableData,
-            theme: 'grid',
-            headStyles: { fillColor: stats.isOverallPassed ? [16, 185, 129] : [239, 68, 68] }
-        });
-
-        // Add Signature if available
-        const hasSignature = useData().institutionSettings?.signatureImage; // Accessing directly via hook inside component usually, but here function is inside component
-        // Note: institutionSettings is not destructured in the top component scope of MentorStats, we need to add it.
-        // Wait, MentorStats component scope has access to useData().
-        // Actually this is StudentResultModal, which takes props. We assume institutionSettings is not passed.
-        // We should check if we can access context. Hook calls can't be inside nested functions, but components can use hooks.
-        // StudentResultModal IS a component.
-        // Let's modify the component to get institutionSettings from useData().
-
-        // For now, I'll update the component imports and usage in the next step to be safe, 
-        // OR I can use the trick that this function is inside the component that I can edit.
-        // The component is `StudentResultModal`. I will edit lines above to include `institutionSettings`.
-
-        // Add Signature if available
-        if (institutionSettings?.signatureImage) {
-            try {
-                // Add at bottom right
-                doc.addImage(institutionSettings.signatureImage, 'PNG', 140, 260, 40, 15);
-                doc.setFontSize(10);
-                doc.text("Principal's Signature", 140, 278);
-            } catch (err) {
-                console.error("Error adding signature:", err);
+        setIsGeneratingPDF(true);
+        setTimeout(async () => {
+            if (!printRef.current) {
+                setIsGeneratingPDF(false);
+                return;
             }
-        }
+            try {
+                const canvas = await html2canvas(printRef.current, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                });
+                const imgData = canvas.toDataURL('image/png');
 
-        doc.save(`${student.name}_${exam.name}_Result.pdf`);
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                const margin = 10;
+                const printWidth = pdfWidth - (margin * 2);
+                const printHeight = (canvas.height * printWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
+
+                if (institutionSettings?.signatureImage) {
+                    try {
+                        const sigY = margin + printHeight + 10;
+                        pdf.addImage(institutionSettings.signatureImage, 'PNG', pdfWidth - 60, sigY, 40, 15);
+                        pdf.setFontSize(10);
+                        pdf.setTextColor(100);
+                        pdf.text("Principal's Signature", pdfWidth - 60, sigY + 18);
+                    } catch (err) {
+                        console.error("Error adding signature:", err);
+                    }
+                }
+
+                pdf.save(`${student.name}_${exam.name}_Result.pdf`);
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+                alert("Could not generate PDF.");
+            } finally {
+                setIsGeneratingPDF(false);
+            }
+        }, 100); // Wait for buttons to hide before capturing
     };
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                    <div>
-                        <h3 className="text-xl font-bold text-gray-900">{student.name}</h3>
-                        <p className="text-sm text-gray-500">{exam.name} • Result Details</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                        <X className="w-5 h-5 text-gray-500" />
-                    </button>
-                </div>
-
-                <div className="p-6 space-y-6">
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className={clsx("p-4 rounded-xl border", stats.isOverallPassed ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100")}>
-                            <p className={clsx("text-sm font-semibold mb-1", stats.isOverallPassed ? "text-green-600" : "text-red-600")}>Result</p>
-                            <p className={clsx("text-2xl font-bold", stats.isOverallPassed ? "text-green-900" : "text-red-900")}>
-                                {stats.isOverallPassed ? "PASS" : "FAIL"}
-                            </p>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-full animate-in zoom-in-95 duration-200">
+                <div ref={printRef} className="bg-white">
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-900">{student.name}</h3>
+                            <p className="text-sm text-gray-500">{exam.name} • Result Details</p>
                         </div>
-                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                            <p className="text-sm text-blue-600 font-semibold mb-1">Percentage</p>
-                            <p className="text-2xl font-bold text-blue-900">{stats.overallPercentage.toFixed(1)}%</p>
-                        </div>
-                        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                            <p className="text-sm text-indigo-600 font-semibold mb-1">Total Marks</p>
-                            <p className="text-2xl font-bold text-indigo-900">{stats.totalObtained} <span className="text-sm font-medium text-indigo-400">/ {stats.totalMax}</span></p>
-                        </div>
+                        {/* Hide the close button when generating PDF */}
+                        {!isGeneratingPDF && (
+                            <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
+                        )}
                     </div>
 
-                    {/* Table */}
-                    <div className="overflow-hidden rounded-lg border border-gray-200">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Marks</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {stats.subjectBreakdown.map(sub => (
-                                    <tr key={sub.id}>
-                                        <td className="px-4 py-3 text-sm text-gray-900 font-medium">{sub.name}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-600 text-right">
-                                            {sub.isAbsent ? <span className="text-red-500 font-bold">AB</span> : `${sub.marks} / ${sub.maxMarks}`}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-right">
-                                            <span className={clsx(
-                                                "px-2 py-0.5 rounded text-xs font-medium",
-                                                sub.isPassed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                                            )}>
-                                                {sub.isPassed ? 'Pass' : 'Fail'}
-                                            </span>
-                                        </td>
+                    <div className="p-6 space-y-6">
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className={clsx("p-4 rounded-xl border", stats.isOverallPassed ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100")}>
+                                <p className={clsx("text-sm font-semibold mb-1", stats.isOverallPassed ? "text-green-600" : "text-red-600")}>Result</p>
+                                <p className={clsx("text-2xl font-bold", stats.isOverallPassed ? "text-green-900" : "text-red-900")}>
+                                    {stats.isOverallPassed ? "PASS" : "FAIL"}
+                                </p>
+                            </div>
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                <p className="text-sm text-blue-600 font-semibold mb-1">Percentage</p>
+                                <p className="text-2xl font-bold text-blue-900">{stats.overallPercentage.toFixed(1)}%</p>
+                            </div>
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                <p className="text-sm text-indigo-600 font-semibold mb-1">Total Marks</p>
+                                <p className="text-2xl font-bold text-indigo-900">{stats.totalObtained} <span className="text-sm font-medium text-indigo-400">/ {stats.totalMax}</span></p>
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        <div className="overflow-hidden rounded-lg border border-gray-200">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Marks</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Status</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {stats.subjectBreakdown.map(sub => (
+                                        <tr key={sub.id}>
+                                            <td className="px-4 py-3 text-sm text-gray-900 font-medium">{sub.name}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-600 text-right">
+                                                {sub.isAbsent ? <span className="text-red-500 font-bold">AB</span> : `${sub.marks} / ${sub.maxMarks}`}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right">
+                                                <span className={clsx(
+                                                    "px-2 py-0.5 rounded text-xs font-medium",
+                                                    sub.isPassed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                                )}>
+                                                    {sub.isPassed ? 'Pass' : 'Fail'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
 
-                    <Button onClick={generateResultPDF} className="w-full flex items-center justify-center gap-2">
-                        <Download className="w-4 h-4" /> Download Result PDF
-                    </Button>
+                        {/* Include an explicit transparent margin at the bottom of the element being captured */}
+                        <div className="h-2"></div>
+                    </div>
                 </div>
+
+                {!isGeneratingPDF && (
+                    <div className="px-6 pb-6 pt-0">
+                        <Button onClick={generateResultPDF} className="w-full flex items-center justify-center gap-2" disabled={isGeneratingPDF}>
+                            {isGeneratingPDF ? (
+                                <span>Generating...</span>
+                            ) : (
+                                <>
+                                    <Download className="w-4 h-4" /> Download Result PDF
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                )}
             </div>
         </div>
     )
