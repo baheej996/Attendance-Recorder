@@ -138,15 +138,24 @@ const StudentRamadan = () => {
                         </h2>
                         <p className="text-gray-500">Mark your fasting status for all 30 days of Ramadan.</p>
                     </div>
-                    <div className="flex gap-4 text-sm font-medium">
-                        <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
-                            <span className="w-3 h-3 rounded-full bg-green-500"></span> Fasting: {fastingCount}
+                    <div className="flex flex-wrap gap-4 mt-4 md:mt-0 text-[15px] font-bold">
+                        <div className="relative flex items-center justify-center px-5 py-2.5 bg-[#FCFCFC] border-2 border-[#10B981] text-[#10B981] rounded-[14px] shadow-[0_4px_12px_0_rgba(16,185,129,0.3)]">
+                            <span>Fasting</span>
+                            <span className="absolute -top-3 -right-3 bg-white border-2 border-[#10B981] text-[#10B981] text-[13px] px-1.5 min-w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm">
+                                {fastingCount}
+                            </span>
                         </div>
-                        <div className="flex items-center gap-2 text-red-700 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
-                            <span className="w-3 h-3 rounded-full bg-red-500"></span> Not Fasting: {notFastingCount}
+                        <div className="relative flex items-center justify-center px-5 py-2.5 bg-[#FCFCFC] border-2 border-[#EF4444] text-[#EF4444] rounded-[14px] shadow-[0_4px_12px_0_rgba(239,68,68,0.3)]">
+                            <span>Not Fasting</span>
+                            <span className="absolute -top-3 -right-3 bg-white border-2 border-[#EF4444] text-[#EF4444] text-[13px] px-1.5 min-w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm">
+                                {notFastingCount}
+                            </span>
                         </div>
-                        <div className="flex items-center gap-2 text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-100">
-                            <span className="w-3 h-3 rounded-full bg-yellow-500"></span> Excused: {excusedCount}
+                        <div className="relative flex items-center justify-center px-5 py-2.5 bg-[#FCFCFC] border-2 border-[#D97706] text-[#D97706] rounded-[14px] shadow-[0_4px_12px_0_rgba(217,119,6,0.3)]">
+                            <span>Excused</span>
+                            <span className="absolute -top-3 -right-3 bg-white border-2 border-[#D97706] text-[#D97706] text-[13px] px-1.5 min-w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm">
+                                {excusedCount}
+                            </span>
                         </div>
                     </div>
                 </div>
