@@ -338,10 +338,18 @@ const ActivitiesManager = () => {
                 };
             });
 
+            // Calculate overall class completion percentage
+            const totalPossibleActivities = studentStats.length * periodActivities.length;
+            const totalCompletedActivities = studentStats.reduce((sum, stat) => sum + stat.completedCount, 0);
+            const classCompletionPercentage = totalPossibleActivities > 0
+                ? Math.round((totalCompletedActivities / totalPossibleActivities) * 100)
+                : 0;
+
             reportDataByClass.push({
                 cls: targetClass,
                 activitiesCount: periodActivities.length,
-                studentStats
+                studentStats,
+                classCompletionPercentage // Inject the new metric
             });
         }
 
@@ -377,7 +385,7 @@ const ActivitiesManager = () => {
                 const partiallyCompletedText = partiallyCompletedList.length > 0 ? partiallyCompletedList.join('\n\n') : 'None';
                 const notStartedText = notStartedList.length > 0 ? notStartedList.join('\n\n') : 'None';
 
-                return `*Class:* ${data.cls.name} - ${data.cls.division}\n*Total Activities:* ${data.activitiesCount}\n\n*Fully Completed ✅*\n${fullyCompletedText}\n\n*Partially Completed ⚠️*\n${partiallyCompletedText}\n\n*Not Started ⏳*\n${notStartedText}`;
+                return `*Class:* ${data.cls.name} - ${data.cls.division}\n*Overall Class Completion:* ${data.classCompletionPercentage}%\n*Total Activities:* ${data.activitiesCount}\n\n*Fully Completed ✅*\n${fullyCompletedText}\n\n*Partially Completed ⚠️*\n${partiallyCompletedText}\n\n*Not Started ⏳*\n${notStartedText}`;
             });
 
             const titleHeader = `*Report: ${periodName}*\n`;
@@ -404,6 +412,12 @@ const ActivitiesManager = () => {
                 doc.text(`Class: ${data.cls.name} - ${data.cls.division}`, 14, 22);
                 doc.text(`Period: ${periodName}`, 14, 28);
                 doc.text(`Total Activities: ${data.activitiesCount}`, 14, 34);
+
+                // Class Completion Metric
+                doc.setFont(undefined, 'bold');
+                doc.setFontSize(12);
+                doc.text(`Overall Class Completion: ${data.classCompletionPercentage}%`, 130, 22);
+                doc.setFont(undefined, 'normal');
 
                 const tableData = data.studentStats.map(stat => {
                     const completedText = stat.completedCount > 0
