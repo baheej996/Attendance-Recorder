@@ -412,7 +412,7 @@ const MentorStats = () => {
     };
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-8 animate-fadeIn">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h2 className="text-3xl font-bold text-gray-900">Statistics & Reports</h2>
 
@@ -440,8 +440,8 @@ const MentorStats = () => {
             </div>
 
             <Card>
-                <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between bg-gray-50/50">
-                    <div className="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
+                <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-row gap-2 sm:gap-4 items-center justify-between bg-gray-50/50">
+                    <div className="flex flex-row gap-2 sm:gap-4 items-center flex-1">
                         <div className="w-full md:w-64">
                             <Select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="bg-white">
                                 <option value="" disabled>Select Class</option>
@@ -450,7 +450,7 @@ const MentorStats = () => {
                         </div>
 
                         {activeTab === 'results' && selectedClassId && (
-                            <div className="w-full md:w-64">
+                            <div className="w-full sm:w-64">
                                 <Select value={selectedExamId} onChange={(e) => setSelectedExamId(e.target.value)} className="bg-white">
                                     <option value="" disabled>Select Exam</option>
                                     {exams.map(e => <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>)}
@@ -489,29 +489,29 @@ const MentorStats = () => {
                     <div className="p-6 space-y-8">
                         {/* ---------------- ATTENDANCE VIEW ---------------- */}
                         {activeTab === 'attendance' && attendanceStats && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                                        <p className="text-sm text-indigo-600 font-bold uppercase tracking-wider mb-2">Class Average</p>
-                                        <p className="text-4xl font-extrabold text-indigo-900">{attendanceStats.avgPct}%</p>
+                            <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                                    <div className="bg-indigo-50 p-3 sm:p-6 rounded-2xl border border-indigo-100 flex flex-col justify-center items-center text-center">
+                                        <p className="text-[10px] sm:text-sm text-indigo-600 font-bold uppercase tracking-wider mb-1 sm:mb-2 leading-tight">Class Average</p>
+                                        <p className="text-xl sm:text-4xl font-extrabold text-indigo-900">{attendanceStats.avgPct}%</p>
                                     </div>
-                                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                                        <p className="text-sm text-blue-600 font-bold uppercase tracking-wider mb-2">Total Students</p>
-                                        <p className="text-4xl font-extrabold text-blue-900">{attendanceStats.totalStudents}</p>
+                                    <div className="bg-blue-50 p-3 sm:p-6 rounded-2xl border border-blue-100 flex flex-col justify-center items-center text-center">
+                                        <p className="text-[10px] sm:text-sm text-blue-600 font-bold uppercase tracking-wider mb-1 sm:mb-2 leading-tight">Total Students</p>
+                                        <p className="text-xl sm:text-4xl font-extrabold text-blue-900">{attendanceStats.totalStudents}</p>
                                     </div>
-                                    <div className="bg-red-50 p-6 rounded-2xl border border-red-100 col-span-2">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <AlertTriangle className="w-5 h-5 text-red-500" />
-                                            <p className="text-sm text-red-700 font-bold uppercase tracking-wider">At Risk ({attendanceStats.atRisk.length})</p>
+                                    <div className="bg-red-50 p-3 sm:p-6 rounded-2xl border border-red-100 flex flex-col justify-center lg:col-span-2">
+                                        <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-3">
+                                            <AlertTriangle className="w-3 h-3 sm:w-5 sm:h-5 text-red-500 shrink-0" />
+                                            <p className="text-[10px] sm:text-sm text-red-700 font-bold uppercase tracking-wider leading-tight">At Risk ({attendanceStats.atRisk.length})</p>
                                         </div>
                                         {attendanceStats.atRisk.length > 0 ? (
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex flex-wrap gap-1 sm:gap-2">
                                                 {attendanceStats.atRisk.slice(0, 6).map(s => (
-                                                    <span key={s.id} className="bg-white px-3 py-1 rounded-lg border border-red-200 text-xs font-bold text-red-700 shadow-sm">{s.name}</span>
+                                                    <span key={s.id} className="bg-white px-2 py-0.5 sm:px-3 sm:py-1 rounded sm:rounded-lg border border-red-200 text-[10px] sm:text-xs font-bold text-red-700 shadow-sm truncate max-w-full">{s.name}</span>
                                                 ))}
-                                                {attendanceStats.atRisk.length > 6 && <span className="text-xs text-red-500 font-medium self-center">+{attendanceStats.atRisk.length - 6} more</span>}
+                                                {attendanceStats.atRisk.length > 6 && <span className="text-[10px] sm:text-xs text-red-500 font-medium self-center">+{attendanceStats.atRisk.length - 6} more</span>}
                                             </div>
-                                        ) : <p className="text-sm text-green-700 font-medium flex items-center gap-2"><CheckCircle className="w-4 h-4" /> All students &gt; 75% attendance!</p>}
+                                        ) : <p className="text-[10px] sm:text-sm text-green-700 font-medium flex items-center gap-1 sm:gap-2"><CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" /> <span className="truncate">All students &gt; 75% attendance!</span></p>}
                                     </div>
                                 </div>
 
