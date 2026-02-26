@@ -216,61 +216,82 @@ const MentorLeaderboard = () => {
                     </div>
                 </div>
 
-                <div className="flex w-full md:w-auto bg-white p-1 rounded-lg border border-gray-200 overflow-hidden">
-                    {['class', 'batch', 'assigned', 'global'].map((mode) => (
-                        <button
-                            key={mode}
-                            onClick={() => setViewMode(mode)}
-                            className={clsx(
-                                "flex-1 px-1 sm:px-6 py-2 sm:py-2.5 text-[11px] sm:text-sm font-semibold rounded-md transition-all whitespace-nowrap",
-                                viewMode === mode
-                                    ? "bg-purple-50 text-purple-700 shadow-sm"
-                                    : "text-gray-600 hover:bg-gray-50"
-                            )}
-                        >
-                            {mode === 'class' ? 'This Class' :
-                                mode === 'batch' ? 'This Batch' :
-                                    mode === 'assigned' ? 'My Classes' : 'This School'}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Selectors and Actions */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                    <select
-                        value={selectedExamId}
-                        onChange={(e) => setSelectedExamId(e.target.value)}
-                        className="w-full sm:min-w-[200px] bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
-                    >
-                        <option value="">Select Exam to view</option>
-                        {exams.map(e => (
-                            <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>
-                        ))}
-                    </select>
-
-                    {(viewMode === 'class' || viewMode === 'batch') && (
+                <div className="flex flex-col gap-4">
+                    {/* Top Row: Exam Selector & View Filters */}
+                    <div className="flex flex-col sm:flex-row gap-4 w-full">
+                        {/* Exam Selector */}
                         <select
-                            value={selectedClassId}
-                            onChange={(e) => setSelectedClassId(e.target.value)}
-                            className="w-full sm:min-w-[200px] bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
+                            value={selectedExamId}
+                            onChange={(e) => setSelectedExamId(e.target.value)}
+                            className="w-full sm:flex-1 bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
                         >
-                            <option value="">Select Class</option>
-                            {availableClasses.map(c => (
-                                <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
+                            <option value="">Select Exam to view</option>
+                            {exams.map(e => (
+                                <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>
                             ))}
                         </select>
-                    )}
-                </div>
 
-                <Button
-                    onClick={generateLeaderboardPDF}
-                    disabled={!selectedExamId || leaderboardData.length === 0}
-                    className="w-full md:w-auto flex items-center justify-center gap-2"
-                >
-                    <Download className="w-4 h-4" /> Export PDF
-                </Button>
+                        {/* View Filters Desktop (Buttons) */}
+                        <div className="hidden sm:flex bg-white p-1 rounded-lg border border-gray-200 overflow-hidden shadow-sm shrink-0">
+                            {['class', 'batch', 'assigned', 'global'].map((mode) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setViewMode(mode)}
+                                    className={clsx(
+                                        "px-4 py-2.5 text-sm font-semibold rounded-md transition-all whitespace-nowrap",
+                                        viewMode === mode
+                                            ? "bg-purple-50 text-purple-700 shadow-sm"
+                                            : "text-gray-600 hover:bg-gray-50"
+                                    )}
+                                >
+                                    {mode === 'class' ? 'This Class' :
+                                        mode === 'batch' ? 'This Batch' :
+                                            mode === 'assigned' ? 'My Classes' : 'This School'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* View Filters Mobile (Dropdown) */}
+                        <div className="sm:hidden w-full">
+                            <select
+                                value={viewMode}
+                                onChange={(e) => setViewMode(e.target.value)}
+                                className="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
+                            >
+                                <option value="class">This Class</option>
+                                <option value="batch">This Batch</option>
+                                <option value="assigned">My Classes</option>
+                                <option value="global">This School</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Bottom Row: Class Selector & Export Button */}
+                    <div className="flex flex-row justify-between items-center gap-4 w-full">
+                        {(viewMode === 'class' || viewMode === 'batch') ? (
+                            <select
+                                value={selectedClassId}
+                                onChange={(e) => setSelectedClassId(e.target.value)}
+                                className="w-1/2 sm:w-auto sm:min-w-[250px] bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3.5 shadow-sm font-medium"
+                            >
+                                <option value="">Select Class</option>
+                                {availableClasses.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div className="flex-1"></div> /* Empty div to push Export Button right */
+                        )}
+
+                        <Button
+                            onClick={generateLeaderboardPDF}
+                            disabled={!selectedExamId || leaderboardData.length === 0}
+                            className="flex-1 sm:flex-none sm:w-auto flex items-center justify-center gap-2 h-[50px]"
+                        >
+                            <Download className="w-4 h-4" /> Export PDF
+                        </Button>
+                    </div>
+                </div>
             </div>
 
             {/* Leaderboard List */}
