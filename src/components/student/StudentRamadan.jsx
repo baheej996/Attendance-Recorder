@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { BookOpen, Moon, Calendar, Trophy, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, Moon, Calendar, Trophy, CheckCircle2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { getQuranProgressStats, TOTAL_QURAN_PAGES, TOTAL_JUZ } from '../../utils/quranUtils';
 import { clsx } from 'clsx';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -11,7 +11,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 const RAMADAN_DAYS = Array.from({ length: 30 }, (_, i) => i + 1);
 
 const StudentRamadan = () => {
-    const { currentUser, quranProgress, updateQuranProgress, ramadanLogs, addRamadanLog, updateRamadanLog } = useData();
+    const { currentUser, quranProgress, updateQuranProgress, ramadanLogs, addRamadanLog, updateRamadanLog, deleteRamadanLog } = useData();
 
     // --- State: Quran Tracker ---
     const [pageInput, setPageInput] = useState('');
@@ -41,6 +41,14 @@ const StudentRamadan = () => {
 
         const dateStr = new Date().toISOString().split('T')[0]; // Current date as record date
         const existingLog = ramadanLogs.find(log => log.studentId === currentUser.id && parseInt(log.dayNumber) === parseInt(day));
+
+        if (status === 'Clear') {
+            if (existingLog) {
+                await deleteRamadanLog(existingLog.id);
+            }
+            setSelectedDay(null);
+            return;
+        }
 
         if (existingLog) {
             await updateRamadanLog(existingLog.id, { status, date: dateStr });
@@ -169,37 +177,61 @@ const StudentRamadan = () => {
 
                 {/* Day Selection Action Panel */}
                 {selectedDay && (
-                    <div className="mt-8 p-6 bg-indigo-50 border border-indigo-100 rounded-2xl animate-fadeIn">
-                        <h3 className="font-bold text-lg text-indigo-900 mb-4 flex items-center gap-2">
-                            Update Status for Day {selectedDay}
-                        </h3>
-                        <div className="flex flex-wrap gap-4">
-                            <button
-                                onClick={() => handleFastingSubmit(selectedDay, 'Fasting')}
-                                className="flex-1 py-3 px-4 bg-white border-2 border-green-500 text-green-700 hover:bg-green-50 font-bold rounded-xl transition-colors"
-                            >
-                                I am Fasting
-                            </button>
-                            <button
-                                onClick={() => handleFastingSubmit(selectedDay, 'Not Fasting')}
-                                className="flex-1 py-3 px-4 bg-white border-2 border-red-500 text-red-700 hover:bg-red-50 font-bold rounded-xl transition-colors"
-                            >
-                                Not Fasting
-                            </button>
-                            <button
-                                onClick={() => handleFastingSubmit(selectedDay, 'Excused')}
-                                className="flex-1 py-3 px-4 bg-white border-2 border-yellow-400 text-yellow-700 hover:bg-yellow-50 font-bold rounded-xl transition-colors"
-                            >
-                                Excused
-                            </button>
-                            <button
-                                onClick={() => setSelectedDay(null)}
-                                className="py-3 px-6 bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold rounded-xl transition-colors"
-                            >
-                                Cancel
-                            </button>
+                    <>
+                        {/* Mobile Backdrop */}
+                        <div
+                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden animate-fadeIn"
+                            onClick={() => setSelectedDay(null)}
+                        />
+
+                        <div className={clsx(
+                            "fixed md:relative inset-x-0 bottom-0 md:bottom-auto z-50 md:z-auto",
+                            "bg-white md:bg-indigo-50 border-t md:border-t-0 md:border border-indigo-100",
+                            "rounded-t-3xl md:rounded-2xl p-6 md:p-6 pb-8 md:pb-6 mt-0 md:mt-8",
+                            "shadow-2xl md:shadow-none animate-slideUp md:animate-fadeIn",
+                            "max-h-[85vh] overflow-y-auto"
+                        )}>
+                            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4 md:hidden" />
+                            <h3 className="font-bold text-xl md:text-lg text-indigo-900 mb-6 md:mb-4 flex items-center justify-between">
+                                <span>Update Status for Day {selectedDay}</span>
+                                <button className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-full" onClick={() => setSelectedDay(null)}>
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </h3>
+                            <div className="flex flex-col md:flex-row flex-wrap gap-3 md:gap-4">
+                                <button
+                                    onClick={() => handleFastingSubmit(selectedDay, 'Fasting')}
+                                    className="flex-1 py-3.5 md:py-3 px-4 bg-white border-2 border-green-500 text-green-700 hover:bg-green-50 font-bold rounded-xl transition-colors"
+                                >
+                                    I am Fasting
+                                </button>
+                                <button
+                                    onClick={() => handleFastingSubmit(selectedDay, 'Not Fasting')}
+                                    className="flex-1 py-3.5 md:py-3 px-4 bg-white border-2 border-red-500 text-red-700 hover:bg-red-50 font-bold rounded-xl transition-colors"
+                                >
+                                    Not Fasting
+                                </button>
+                                <button
+                                    onClick={() => handleFastingSubmit(selectedDay, 'Excused')}
+                                    className="flex-1 py-3.5 md:py-3 px-4 bg-white border-2 border-yellow-400 text-yellow-700 hover:bg-yellow-50 font-bold rounded-xl transition-colors"
+                                >
+                                    Excused
+                                </button>
+                                <button
+                                    onClick={() => handleFastingSubmit(selectedDay, 'Clear')}
+                                    className="flex-1 py-3.5 md:py-3 px-4 bg-white border-2 border-gray-300 text-gray-600 hover:bg-gray-50 font-bold rounded-xl transition-colors"
+                                >
+                                    Clear
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDay(null)}
+                                    className="w-full md:w-auto py-3.5 md:py-3 px-6 bg-gray-100 text-gray-700 hover:bg-gray-200 font-bold rounded-xl transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    </>
                 )}
             </Card>
 

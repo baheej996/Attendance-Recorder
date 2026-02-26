@@ -615,6 +615,7 @@ export const DataProvider = ({ children }) => {
         ramadanLogs,
         addRamadanLog: async (log) => await addDoc(collection(db, 'ramadanLogs'), { ...log, timestamp: new Date().toISOString() }),
         updateRamadanLog: async (id, u) => await updateDoc(doc(db, 'ramadanLogs', id), u),
+        deleteRamadanLog: async (id) => await deleteDoc(doc(db, 'ramadanLogs', id)),
 
         quranProgress,
         updateQuranProgress: async (studentId, data) => {
