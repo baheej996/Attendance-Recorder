@@ -4,7 +4,7 @@ import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers, History, MessageSquare } from 'lucide-react';
+import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers, History, MessageSquare, Moon } from 'lucide-react';
 import { clsx } from 'clsx';
 
 // Import New Student Components
