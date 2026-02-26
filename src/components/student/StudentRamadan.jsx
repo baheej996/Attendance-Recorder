@@ -138,22 +138,22 @@ const StudentRamadan = () => {
                         </h2>
                         <p className="text-gray-500">Mark your fasting status for all 30 days of Ramadan.</p>
                     </div>
-                    <div className="flex flex-wrap gap-4 mt-4 md:mt-0 text-[15px] font-bold">
-                        <div className="relative flex items-center justify-center px-5 py-2.5 bg-[#FCFCFC] border-2 border-[#10B981] text-[#10B981] rounded-[14px] shadow-[0_4px_12px_0_rgba(16,185,129,0.3)]">
-                            <span>Fasting</span>
-                            <span className="absolute -top-3 -right-3 bg-white border-2 border-[#10B981] text-[#10B981] text-[13px] px-1.5 min-w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm">
+                    <div className="grid grid-cols-3 gap-2 md:flex md:gap-4 mt-5 md:mt-0 text-[12px] sm:text-[15px] font-bold w-full md:w-auto">
+                        <div className="relative flex items-center justify-center py-2 md:px-5 md:py-2.5 bg-[#FCFCFC] border-2 border-[#10B981] text-[#10B981] rounded-xl md:rounded-[14px] shadow-[0_4px_12px_0_rgba(16,185,129,0.3)]">
+                            <span className="whitespace-nowrap">Fasting</span>
+                            <span className="absolute -top-2.5 -right-2 md:-top-3 md:-right-3 bg-white border-2 border-[#10B981] text-[#10B981] text-[10px] md:text-[13px] md:px-1.5 min-w-[22px] md:min-w-[26px] h-[22px] md:h-[26px] rounded-full flex items-center justify-center shadow-sm">
                                 {fastingCount}
                             </span>
                         </div>
-                        <div className="relative flex items-center justify-center px-5 py-2.5 bg-[#FCFCFC] border-2 border-[#EF4444] text-[#EF4444] rounded-[14px] shadow-[0_4px_12px_0_rgba(239,68,68,0.3)]">
-                            <span>Not Fasting</span>
-                            <span className="absolute -top-3 -right-3 bg-white border-2 border-[#EF4444] text-[#EF4444] text-[13px] px-1.5 min-w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm">
+                        <div className="relative flex items-center justify-center py-2 px-1 md:px-5 md:py-2.5 bg-[#FCFCFC] border-2 border-[#EF4444] text-[#EF4444] rounded-xl md:rounded-[14px] shadow-[0_4px_12px_0_rgba(239,68,68,0.3)] text-center leading-[1.1]">
+                            <span>Not<br className="md:hidden" /> Fasting</span>
+                            <span className="absolute -top-2.5 -right-2 md:-top-3 md:-right-3 bg-white border-2 border-[#EF4444] text-[#EF4444] text-[10px] md:text-[13px] md:px-1.5 min-w-[22px] md:min-w-[26px] h-[22px] md:h-[26px] rounded-full flex items-center justify-center shadow-sm">
                                 {notFastingCount}
                             </span>
                         </div>
-                        <div className="relative flex items-center justify-center px-5 py-2.5 bg-[#FCFCFC] border-2 border-[#D97706] text-[#D97706] rounded-[14px] shadow-[0_4px_12px_0_rgba(217,119,6,0.3)]">
-                            <span>Excused</span>
-                            <span className="absolute -top-3 -right-3 bg-white border-2 border-[#D97706] text-[#D97706] text-[13px] px-1.5 min-w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm">
+                        <div className="relative flex items-center justify-center py-2 md:px-5 md:py-2.5 bg-[#FCFCFC] border-2 border-[#D97706] text-[#D97706] rounded-xl md:rounded-[14px] shadow-[0_4px_12px_0_rgba(217,119,6,0.3)]">
+                            <span className="whitespace-nowrap">Excused</span>
+                            <span className="absolute -top-2.5 -right-2 md:-top-3 md:-right-3 bg-white border-2 border-[#D97706] text-[#D97706] text-[10px] md:text-[13px] md:px-1.5 min-w-[22px] md:min-w-[26px] h-[22px] md:h-[26px] rounded-full flex items-center justify-center shadow-sm">
                                 {excusedCount}
                             </span>
                         </div>
