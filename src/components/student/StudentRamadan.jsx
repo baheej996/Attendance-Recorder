@@ -160,36 +160,30 @@ const StudentRamadan = () => {
                         </h2>
                         <p className="text-gray-500">Mark your fasting status for all 30 days of Ramadan.</p>
                     </div>
-                    <div className="flex justify-center md:justify-end gap-2 md:gap-4 mt-5 md:mt-0 w-full md:w-auto">
+                    <div className="flex justify-center md:justify-end gap-3 md:gap-5 mt-5 md:mt-0 w-full md:w-auto">
                         {/* Fasting Badge */}
-                        <div className="flex items-center bg-[#D1FAE5] rounded-full overflow-hidden shadow-sm h-8 md:h-10">
-                            <div className="flex items-center pl-2 md:pl-3 pr-2 md:pr-3 gap-2 border-r border-transparent">
-                                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#10B981]"></div>
-                                <span className="text-[#065F46] font-bold text-xs md:text-[15px] whitespace-nowrap">Fasted</span>
-                            </div>
-                            <div className="h-full flex items-center justify-center bg-[#10B981] text-white font-bold text-xs md:text-[15px] px-2.5 md:px-4">
+                        <div className="flex items-center bg-[#E0F8E8] rounded-[24px] pr-1.5 md:pr-2 pl-3 md:pl-4 py-1.5 md:py-2 shadow-sm gap-2">
+                            <div className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full bg-[#00C853] shrink-0"></div>
+                            <span className="text-[#00C853] font-bold text-[15px] md:text-xl whitespace-nowrap leading-none mr-2 border-r border-transparent">Fasted</span>
+                            <div className="flex items-center justify-center bg-[#00C853] text-[white] font-bold text-[13px] md:text-[17px] px-2 md:px-3 py-1 md:py-1.5 rounded-[12px] md:rounded-[14px] leading-none">
                                 {fastingCount}
                             </div>
                         </div>
 
                         {/* Missed Badge */}
-                        <div className="flex items-center bg-[#FEE2E2] rounded-full overflow-hidden shadow-sm h-8 md:h-10">
-                            <div className="flex items-center pl-2 md:pl-3 pr-2 md:pr-3 gap-2 border-r border-transparent">
-                                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#EF4444]"></div>
-                                <span className="text-[#991B1B] font-bold text-xs md:text-[15px] whitespace-nowrap">Missed</span>
-                            </div>
-                            <div className="h-full flex items-center justify-center bg-[#EF4444] text-white font-bold text-xs md:text-[15px] px-2.5 md:px-4">
+                        <div className="flex items-center bg-[#FFE8EB] rounded-[24px] pr-1.5 md:pr-2 pl-3 md:pl-4 py-1.5 md:py-2 shadow-sm gap-2">
+                            <div className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full bg-[#FF3B43] shrink-0"></div>
+                            <span className="text-[#FF3B43] font-bold text-[15px] md:text-xl whitespace-nowrap leading-none mr-2 border-r border-transparent">Missed</span>
+                            <div className="flex items-center justify-center bg-[#FF3B43] text-white font-bold text-[13px] md:text-[17px] px-2 md:px-3 py-1 md:py-1.5 rounded-[12px] md:rounded-[14px] leading-none">
                                 {notFastingCount}
                             </div>
                         </div>
 
                         {/* Excused Badge */}
-                        <div className="flex items-center bg-[#FEF3C7] rounded-full overflow-hidden shadow-sm h-8 md:h-10">
-                            <div className="flex items-center pl-2 md:pl-3 pr-2 md:pr-3 gap-2 border-r border-transparent">
-                                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#F59E0B]"></div>
-                                <span className="text-[#92400E] font-bold text-xs md:text-[15px] whitespace-nowrap">Excused</span>
-                            </div>
-                            <div className="h-full flex items-center justify-center bg-[#F59E0B] text-white font-bold text-xs md:text-[15px] px-2.5 md:px-4">
+                        <div className="flex items-center bg-[#FFF8CC] rounded-[24px] pr-1.5 md:pr-2 pl-3 md:pl-4 py-1.5 md:py-2 shadow-sm gap-2">
+                            <div className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full bg-[#F5B000] shrink-0"></div>
+                            <span className="text-[#F5B000] font-bold text-[15px] md:text-xl whitespace-nowrap leading-none mr-1 border-r border-transparent">Excused</span>
+                            <div className="flex items-center justify-center bg-[#F5B000] text-white font-bold text-[13px] md:text-[17px] px-2 md:px-3 py-1 md:py-1.5 rounded-[12px] md:rounded-[14px] leading-none">
                                 {excusedCount}
                             </div>
                         </div>
