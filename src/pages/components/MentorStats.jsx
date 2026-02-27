@@ -103,7 +103,7 @@ const StudentStatsModal = ({ student, records, onClose }) => {
     );
 };
 
-const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
+const StudentResultModal = ({ student, exam, rank, subjects, results, onClose }) => {
     const { institutionSettings } = useData();
     const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
     const printRef = React.useRef(null);
@@ -205,7 +205,7 @@ const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
 
                     <div className="p-6 space-y-6">
                         {/* Summary Cards */}
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div className={clsx("p-4 rounded-xl border", stats.isOverallPassed ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100")}>
                                 <p className={clsx("text-sm font-semibold mb-1", stats.isOverallPassed ? "text-green-600" : "text-red-600")}>Result</p>
                                 <p className={clsx("text-2xl font-bold", stats.isOverallPassed ? "text-green-900" : "text-red-900")}>
@@ -215,6 +215,10 @@ const StudentResultModal = ({ student, exam, subjects, results, onClose }) => {
                             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                                 <p className="text-sm text-blue-600 font-semibold mb-1">Percentage</p>
                                 <p className="text-2xl font-bold text-blue-900">{stats.overallPercentage.toFixed(1)}%</p>
+                            </div>
+                            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                                <p className="text-sm text-purple-600 font-semibold mb-1">Class Rank</p>
+                                <p className="text-2xl font-bold text-purple-900">#{rank}</p>
                             </div>
                             <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                                 <p className="text-sm text-indigo-600 font-semibold mb-1">Total Marks</p>
@@ -354,10 +358,21 @@ const MentorStats = () => {
         });
 
         const classAvg = classStudents.length > 0 ? (totalClassPercentage / classStudents.length).toFixed(1) : 0;
-        const topPerformer = studentPerformances.sort((a, b) => b.pct - a.pct)[0]?.student;
         const passPercentage = classStudents.length > 0 ? ((passCount / classStudents.length) * 100).toFixed(1) : 0;
 
-        return { studentPerformances, classAvg, topPerformer, passPercentage, subjectAverages };
+        // Rank Calculation
+        const sortedPerformances = [...studentPerformances].sort((a, b) => b.pct - a.pct);
+        let currentRank = 1;
+        for (let i = 0; i < sortedPerformances.length; i++) {
+            if (i > 0 && sortedPerformances[i].pct !== sortedPerformances[i - 1].pct) {
+                currentRank++;
+            }
+            sortedPerformances[i].rank = currentRank;
+        }
+
+        const topPerformer = sortedPerformances[0]?.student;
+
+        return { studentPerformances: sortedPerformances, classAvg, topPerformer, passPercentage, subjectAverages };
     }, [selectedClassId, selectedExamId, classStudents, classSubjects, results]);
 
 
@@ -393,17 +408,8 @@ const MentorStats = () => {
         doc.text(`Class: ${cls?.name} ${cls?.division}  |  Exam: ${exam?.name}`, 14, 28);
         doc.text(`Class Average: ${examStats.classAvg}%  |  Pass: ${examStats.passPercentage}%`, 14, 34);
 
-        // Sort students best to worst
+        // Ranks are now pre-computed in examStats.studentPerformances
         const sortedStudents = [...examStats.studentPerformances].sort((a, b) => b.pct - a.pct);
-
-        // Compute dense ranks for PDF
-        let currentRank = 1;
-        for (let i = 0; i < sortedStudents.length; i++) {
-            if (i > 0 && sortedStudents[i].pct !== sortedStudents[i - 1].pct) {
-                currentRank++;
-            }
-            sortedStudents[i].rank = currentRank;
-        }
 
         const tableData = sortedStudents.map((perf) => {
             return [
@@ -628,15 +634,15 @@ const MentorStats = () => {
                                             <h3 className="text-xl font-bold text-gray-800">Detailed Student Results</h3>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {examStats.studentPerformances.sort((a, b) => b.pct - a.pct).map(({ student, obtained, max, pct, isPassed }, idx) => (
+                                            {examStats.studentPerformances.map(({ student, obtained, max, pct, isPassed, rank }) => (
                                                 <div
                                                     key={student.id}
-                                                    onClick={() => setResultModalData({ student, exam: exams.find(e => e.id === selectedExamId) })}
+                                                    onClick={() => setResultModalData({ student, rank, exam: exams.find(e => e.id === selectedExamId) })}
                                                     className="p-5 rounded-2xl border border-gray-100 bg-white hover:border-purple-300 hover:shadow-lg cursor-pointer transition-all flex justify-between items-center group"
                                                 >
                                                     <div>
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-1.5 py-0.5 rounded">#{idx + 1}</span>
+                                                            <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-1.5 py-0.5 rounded">#{rank}</span>
                                                             <h4 className="font-bold text-gray-900">{student.name}</h4>
                                                         </div>
                                                         <p className="text-xs text-gray-500 font-mono">{student.registerNo}</p>
@@ -667,6 +673,7 @@ const MentorStats = () => {
                 <StudentResultModal
                     student={resultModalData.student}
                     exam={resultModalData.exam}
+                    rank={resultModalData.rank}
                     subjects={classSubjects}
                     results={results}
                     onClose={() => setResultModalData(null)}
