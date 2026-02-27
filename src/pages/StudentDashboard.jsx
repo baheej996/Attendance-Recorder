@@ -95,7 +95,16 @@ const StudentDashboard = () => {
     const classFlags = classFeatureFlags?.find(f => f.classId === currentUser.classId) || {};
 
     // Find the mentor for this class to check their global flags
-    const assignedMentor = mentors?.find(m => (m.assignedClassIds || []).includes(currentUser.classId));
+    let assignedMentor = mentors?.find(m => (m.assignedClassIds || []).includes(currentUser.classId));
+
+    // Fallback: check class object's assignedMentors array
+    if (!assignedMentor) {
+        const classInfo = classes?.find(c => c.id === currentUser.classId);
+        if (classInfo?.assignedMentors?.length > 0) {
+            assignedMentor = mentors?.find(m => m.id === classInfo.assignedMentors[0]);
+        }
+    }
+
     let mentorFlags = {};
     if (assignedMentor) {
         mentorFlags = classFeatureFlags?.find(f => f.classId === `mentor_${assignedMentor.id}`) || {};
