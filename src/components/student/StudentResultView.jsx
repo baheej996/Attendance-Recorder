@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const StudentResultView = () => {
-    const { currentUser, exams, subjects, results, institutionSettings } = useData();
+    const { currentUser, exams, subjects, results, students, institutionSettings } = useData();
     const [selectedExamId, setSelectedExamId] = useState('');
 
     // Filter published exams only
@@ -36,6 +36,28 @@ const StudentResultView = () => {
     const totalMax = myResults.reduce((sum, r) => sum + getMaxMarks(r.subjectId), 0);
     const percentage = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0;
 
+    // Calculate Rank
+    const getStudentRank = () => {
+        if (!selectedExamId || myResults.length === 0) return null;
+
+        const classStudentIds = students.filter(s => s.classId === currentUser.classId).map(s => s.id);
+        const classResults = results.filter(r => r.examId === selectedExamId && classStudentIds.includes(r.studentId));
+
+        const studentTotals = {};
+        classResults.forEach(r => {
+            if (!studentTotals[r.studentId]) studentTotals[r.studentId] = 0;
+            studentTotals[r.studentId] += Number(r.marks);
+        });
+
+        const uniqueScores = [...new Set(Object.values(studentTotals))].sort((a, b) => b - a);
+        const myTotal = studentTotals[currentUser.id] || 0;
+
+        const rank = uniqueScores.indexOf(myTotal) + 1;
+        return rank > 0 ? rank : '-';
+    };
+
+    const studentRank = getStudentRank();
+
     const downloadPDF = () => {
         const doc = new jsPDF();
         const exam = exams.find(e => e.id === selectedExamId);
@@ -56,6 +78,7 @@ const StudentResultView = () => {
 
         doc.text(`Student Name: ${currentUser.name}`, 20, 45);
         doc.text(`Register No: ${currentUser.registerNo}`, 20, 52);
+        doc.text(`Rank: ${studentRank}`, 150, 45);
 
         // Table
         const tableColumn = ["Subject", "Max Marks", "Pass Marks", "Obtained", "Grade", "Result"];
@@ -100,6 +123,7 @@ const StudentResultView = () => {
         doc.setFontSize(12);
         doc.text(`Total Marks: ${totalMarks} / ${totalMax}`, 20, finalY);
         doc.text(`Percentage: ${percentage}%`, 20, finalY + 7);
+        doc.text(`Class Rank: ${studentRank}`, 20, finalY + 14);
 
         // Footer signature placeholder
         const hasSignature = institutionSettings?.signatureImage;
@@ -161,7 +185,7 @@ const StudentResultView = () => {
                         ) : (
                             <>
                                 {/* Score Summary */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl p-4 text-white shadow-md">
                                         <p className="text-indigo-100 text-sm font-medium mb-1">Total Marks</p>
                                         <p className="text-3xl font-bold">{totalMarks} <span className="text-lg text-indigo-200">/ {totalMax}</span></p>
@@ -169,6 +193,10 @@ const StudentResultView = () => {
                                     <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-md">
                                         <p className="text-purple-100 text-sm font-medium mb-1">Percentage</p>
                                         <p className="text-3xl font-bold">{percentage}%</p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-md">
+                                        <p className="text-blue-100 text-sm font-medium mb-1">Class Rank</p>
+                                        <p className="text-3xl font-bold">#{studentRank}</p>
                                     </div>
                                     <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-md flex flex-col justify-center items-center">
                                         <Trophy className="w-8 h-8 mb-2 opacity-80" />

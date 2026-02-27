@@ -4,6 +4,8 @@ import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock } f
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { clsx } from 'clsx';
 import { Card } from '../ui/Card';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
     const {
@@ -15,7 +17,8 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
         activitySubmissions,
         activities,
         prayerRecords,
-        attendance
+        attendance,
+        institutionSettings
     } = useData();
 
     const [activeTab, setActiveTab] = useState('overview');
@@ -43,23 +46,43 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
             const classSubjects = subjects.filter(s => s.classId === student.classId && s.isExamSubject);
             const maxPossible = classSubjects.reduce((sum, s) => sum + Number(s.maxMarks || 100), 0);
 
+            // Calculate Rank
+            let rank = '-';
+            if (examResults.length > 0) {
+                const classStudentIds = students.filter(s => s.classId === student.classId).map(s => s.id);
+                const classResults = results.filter(r => r.examId === exam.id && classStudentIds.includes(r.studentId));
+
+                const studentTotals = {};
+                classResults.forEach(r => {
+                    if (!studentTotals[r.studentId]) studentTotals[r.studentId] = 0;
+                    studentTotals[r.studentId] += Number(r.marks);
+                });
+
+                const uniqueScores = [...new Set(Object.values(studentTotals))].sort((a, b) => b - a);
+                const studentTotal = studentTotals[studentId] || 0;
+                const calculatedRank = uniqueScores.indexOf(studentTotal) + 1;
+                rank = calculatedRank > 0 ? calculatedRank : '-';
+            }
+
             return {
                 id: exam.id,
                 name: exam.name,
                 date: exam.date,
                 score: totalMarks,
                 max: maxPossible,
+                rank: rank,
                 results: examResults.map(r => {
                     const subject = subjects.find(s => s.id === r.subjectId);
                     return {
                         subjectName: subject?.name || 'Unknown Subject',
                         marks: r.marks,
-                        maxMarks: subject?.maxMarks || 100
+                        maxMarks: subject?.maxMarks || 100,
+                        passMarks: subject?.passMarks || 40
                     };
                 })
             };
         }).filter(Boolean);
-    }, [exams, results, subjects, studentId, student]);
+    }, [exams, results, subjects, studentId, student, students]);
 
     // Activity Data
     const activityData = useMemo(() => {
@@ -110,6 +133,89 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
         return { present, absent, total, percentage, records: studentAttendance };
     }, [attendance, studentId]);
+
+    const downloadExamPDF = (exam) => {
+        const doc = new jsPDF();
+
+        // Header
+        doc.setFontSize(20);
+        doc.text(institutionSettings?.name || "Attendance Recorder", 105, 15, { align: "center" });
+        doc.setFontSize(14);
+        doc.text(institutionSettings?.tagline || "Track Smart, Act Fast", 105, 22, { align: "center" });
+
+        doc.setLineWidth(0.5);
+        doc.line(20, 25, 190, 25);
+
+        // Exam & Student Details
+        doc.setFontSize(12);
+        doc.text(`Exam Report: ${exam.name}`, 20, 35);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 35);
+
+        doc.text(`Student Name: ${student.name}`, 20, 45);
+        doc.text(`Register No: ${student.registerNo}`, 20, 52);
+        doc.text(`Rank: ${exam.rank}`, 150, 45);
+
+        // Table
+        const tableColumn = ["Subject", "Max Marks", "Pass Marks", "Obtained", "Grade", "Result"];
+        const tableRows = [];
+
+        exam.results.forEach(r => {
+            const max = Number(r.maxMarks || 100);
+            const pass = Number(r.passMarks || 40);
+            const marks = Number(r.marks);
+            const pct = max > 0 ? (marks / max) * 100 : 0;
+
+            let grade = 'F';
+            if (pct >= 90) grade = 'A+';
+            else if (pct >= 80) grade = 'A';
+            else if (pct >= 70) grade = 'B';
+            else if (pct >= 60) grade = 'C';
+            else if (pct >= 50) grade = 'D';
+
+            const status = marks >= pass ? "PASS" : "FAIL";
+
+            tableRows.push([
+                r.subjectName,
+                max,
+                pass,
+                marks,
+                grade,
+                status
+            ]);
+        });
+
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 60,
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229] } // Indigo-600
+        });
+
+        // Summary
+        const percentage = exam.max > 0 ? ((exam.score / exam.max) * 100).toFixed(1) : 0;
+        const finalY = doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(12);
+        doc.text(`Total Marks: ${exam.score} / ${exam.max}`, 20, finalY);
+        doc.text(`Percentage: ${percentage}%`, 20, finalY + 7);
+        doc.text(`Class Rank: ${exam.rank}`, 20, finalY + 14);
+
+        // Footer signature placeholder
+        const hasSignature = institutionSettings?.signatureImage;
+
+        if (hasSignature) {
+            try {
+                doc.addImage(institutionSettings.signatureImage, 'PNG', 140, finalY + 15, 40, 15);
+            } catch (err) {
+                console.error("Error adding signature image:", err);
+            }
+        }
+
+        doc.text("Principal's Signature:", 140, finalY + 35);
+        doc.line(140, finalY + 33, 190, finalY + 33);
+
+        doc.save(`${student.registerNo}_${exam.name.replace(/\s+/g, '_')}.pdf`);
+    };
 
     if (!student || !isOpen) return null;
 
@@ -234,14 +340,29 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                                 ) : (
                                     examData.map(exam => (
                                         <Card key={exam.id} className="overflow-hidden">
-                                            <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                                            <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                                 <div>
                                                     <h4 className="font-bold text-gray-900">{exam.name}</h4>
                                                     <p className="text-xs text-gray-500">{format(new Date(exam.date), 'MMMM d, yyyy')}</p>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-sm font-medium text-gray-500">Total Score</div>
-                                                    <div className="text-xl font-bold text-indigo-600">{exam.score} / {exam.max}</div>
+                                                <div className="flex items-center gap-6">
+                                                    <div className="text-right">
+                                                        <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Rank</div>
+                                                        <div className="text-xl font-bold text-gray-900">#{exam.rank}</div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Total Score</div>
+                                                        <div className="text-xl font-bold text-indigo-600">{exam.score} / {exam.max}</div>
+                                                    </div>
+                                                    {exam.results.length > 0 && (
+                                                        <button
+                                                            onClick={() => downloadExamPDF(exam)}
+                                                            className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors border border-indigo-100 flex items-center justify-center shrink-0"
+                                                            title="Download Report Card"
+                                                        >
+                                                            <BookOpen className="w-5 h-5" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="divide-y divide-gray-100">
