@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
@@ -13,6 +14,7 @@ const RAMADAN_DAYS = Array.from({ length: 30 }, (_, i) => i + 1);
 
 const StudentRamadan = () => {
     const { currentUser, quranProgress, updateQuranProgress, ramadanLogs, addRamadanLog, updateRamadanLog, deleteRamadanLog } = useData();
+    const { showAlert } = useUI();
 
     // --- State: Quran Tracker ---
     const [pageInput, setPageInput] = useState('');
@@ -80,7 +82,7 @@ const StudentRamadan = () => {
         const newPage = parseInt(pageInput, 10);
 
         if (newPage < 1 || newPage > TOTAL_QURAN_PAGES) {
-            alert(`Please enter a valid page number (1-${TOTAL_QURAN_PAGES})`);
+            showAlert('Invalid Page', `Please enter a valid page number (1-${TOTAL_QURAN_PAGES})`, 'warning');
             return;
         }
 
@@ -119,7 +121,7 @@ const StudentRamadan = () => {
         if (!currentUser) return;
         const newCount = parseInt(editKhatmCount, 10);
         if (isNaN(newCount) || newCount < 0) {
-            alert('Please enter a valid positive number');
+            showAlert('Invalid Number', 'Please enter a valid positive number', 'warning');
             return;
         }
 
