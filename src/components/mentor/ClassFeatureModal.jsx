@@ -3,33 +3,54 @@ import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, X } from 'lucide-react';
 
-const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDisabled, globalDisabledReason, onToggle }) => (
-    <div className={`flex items-center justify-between p-4 bg-white border rounded-xl transition-colors ${isGloballyDisabled ? 'border-red-100 bg-red-50/30 opacity-70 cursor-not-allowed' : 'border-gray-100 hover:border-indigo-100'}`}>
-        <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-lg ${isGloballyDisabled ? 'bg-red-100 text-red-500' : isEnabled ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-50 text-gray-400'}`}>
-                <Icon className="w-6 h-6" />
+const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDisabled, globalDisabledReason, disabledTheme = 'red', onToggle }) => {
+    const themeColors = {
+        red: {
+            border: 'border-red-100',
+            bgBox: 'bg-red-50/30',
+            iconBg: 'bg-red-100',
+            iconText: 'text-red-500',
+            toggleBg: 'bg-red-200'
+        },
+        yellow: {
+            border: 'border-yellow-200',
+            bgBox: 'bg-yellow-50/50',
+            iconBg: 'bg-yellow-100',
+            iconText: 'text-yellow-600',
+            toggleBg: 'bg-yellow-200'
+        }
+    };
+
+    const t = isGloballyDisabled ? themeColors[disabledTheme] : null;
+
+    return (
+        <div className={`flex items-center justify-between p-4 bg-white border rounded-xl transition-colors ${isGloballyDisabled ? `${t.border} ${t.bgBox} opacity-80 cursor-not-allowed` : 'border-gray-100 hover:border-indigo-100'}`}>
+            <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-lg ${isGloballyDisabled ? `${t.iconBg} ${t.iconText}` : isEnabled ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-50 text-gray-400'}`}>
+                    <Icon className="w-6 h-6" />
+                </div>
+                <div>
+                    <h3 className={`font-semibold ${isGloballyDisabled ? 'text-gray-700' : isEnabled ? 'text-gray-900' : 'text-gray-500'}`}>
+                        {label}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                        {isGloballyDisabled ? globalDisabledReason : description}
+                    </p>
+                </div>
             </div>
-            <div>
-                <h3 className={`font-semibold ${isGloballyDisabled ? 'text-gray-700' : isEnabled ? 'text-gray-900' : 'text-gray-500'}`}>
-                    {label}
-                </h3>
-                <p className="text-sm text-gray-500">
-                    {isGloballyDisabled ? globalDisabledReason : description}
-                </p>
-            </div>
+            <label className={`relative inline-flex items-center ${isGloballyDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={isEnabled && !isGloballyDisabled}
+                    onChange={onToggle}
+                    disabled={isGloballyDisabled}
+                />
+                <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${isGloballyDisabled ? t.toggleBg : 'bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 peer-checked:bg-indigo-600'}`}></div>
+            </label>
         </div>
-        <label className={`relative inline-flex items-center ${isGloballyDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-            <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={isEnabled && !isGloballyDisabled}
-                onChange={onToggle}
-                disabled={isGloballyDisabled}
-            />
-            <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${isGloballyDisabled ? 'bg-gray-200' : 'bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 peer-checked:bg-indigo-600'}`}></div>
-        </label>
-    </div>
-);
+    );
+};
 
 const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }) => {
     const { currentUser, studentFeatureFlags, classFeatureFlags, updateClassFeatureFlags } = useData();
@@ -144,6 +165,7 @@ const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }
                             if (isAdminDisabled) lockReason = 'Disabled by Administrator';
                             else if (isMentorDisabled) lockReason = 'Enable in Global Features first';
 
+                            const theme = isMentorDisabled ? 'yellow' : 'red';
                             const isEnabledLocally = localFlags[f.key] !== false; // Default true if undefined
 
                             return (
@@ -153,6 +175,7 @@ const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }
                                     isEnabled={isEnabledLocally}
                                     isGloballyDisabled={isLocked}
                                     globalDisabledReason={lockReason}
+                                    disabledTheme={theme}
                                     onToggle={() => handleToggle(f.key)}
                                 />
                             );
