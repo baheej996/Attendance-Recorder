@@ -134,8 +134,6 @@ const Leaderboard = () => {
         } else if (viewMode === 'batch') {
             const batchClassIds = classes.filter(c => c.name === myClass.name).map(c => c.id);
             filteredStudents = students.filter(s => batchClassIds.includes(s.classId));
-        } else {
-            filteredStudents = students;
         }
         return getAggregatedScores(filteredStudents);
     }, [selectedExamId, viewMode, students, results, myClass]);
@@ -161,7 +159,7 @@ const Leaderboard = () => {
                 </div>
 
                 <div className="flex bg-white p-1 rounded-lg border border-gray-200">
-                    {['class', 'batch', 'global'].map((mode) => (
+                    {['class', 'batch'].map((mode) => (
                         <button
                             key={mode}
                             onClick={() => setViewMode(mode)}
@@ -172,7 +170,7 @@ const Leaderboard = () => {
                                     : "text-gray-600 hover:bg-gray-50"
                             )}
                         >
-                            {mode === 'class' ? 'My Class' : mode === 'batch' ? 'My Batch' : 'All School'}
+                            {mode === 'class' ? 'My Class' : 'My Batch'}
                         </button>
                     ))}
                 </div>
@@ -203,7 +201,7 @@ const Leaderboard = () => {
                             <p className="text-indigo-200 text-sm font-medium mb-1">Your Current Rank</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-4xl font-bold">#{myRankData.rank}</span>
-                                <span className="text-indigo-200">in {viewMode === 'class' ? 'Class' : viewMode === 'batch' ? 'Batch' : 'School'}</span>
+                                <span className="text-indigo-200">in {viewMode === 'class' ? 'Class' : 'Batch'}</span>
                             </div>
                         </div>
                         <div className="text-right">
