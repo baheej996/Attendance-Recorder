@@ -30,18 +30,38 @@ const FeatureToggle = ({ label, description, icon: Icon, isEnabled, onToggle }) 
 const FeatureControl = () => {
     const { studentFeatureFlags, updateStudentFeatureFlags } = useData();
     const { showAlert } = useUI();
-    const [localFlags, setLocalFlags] = useState(studentFeatureFlags || {});
+    const features = [
+        { key: 'overview', label: 'Overview', description: 'Student dashboard with quick stats.', icon: Calendar },
+        { key: 'activities', label: 'Activities', description: 'Assignments and projects for students.', icon: Layers },
+        { key: 'exams', label: 'Online Exams', description: 'MCQ based online examinations.', icon: FileText },
+        { key: 'results', label: 'Report Card', description: 'View exam results and progress.', icon: FileText },
+        { key: 'leave', label: 'Leave Applications', description: 'Apply for leave and view status.', icon: Calendar },
+        { key: 'chat', label: 'Mentor Chat', description: 'Messaging system with mentors.', icon: MessageSquare },
+        { key: 'prayer', label: 'Prayer Chart', description: 'Daily prayer tracking.', icon: BookOpen },
+        { key: 'history', label: 'Class History', description: 'View past class logs.', icon: Clock },
+        { key: 'leaderboard', label: 'Leaderboard', description: 'Class rankings and points.', icon: Trophy },
+        { key: 'star', label: 'Star of the Month', description: 'Monthly student recognition.', icon: Star },
+        { key: 'help', label: 'Help Section', description: 'Guides and FAQs.', icon: Info },
+    ];
+
+    const [localFlags, setLocalFlags] = useState({});
     const [hasChanges, setHasChanges] = useState(false);
 
     useEffect(() => {
         if (studentFeatureFlags) {
-            setLocalFlags(studentFeatureFlags);
+            // Ensure all features have an explicit true/false value
+            const explicitFlags = {};
+            features.forEach(f => {
+                explicitFlags[f.key] = studentFeatureFlags[f.key] !== false;
+            });
+            setLocalFlags(explicitFlags);
         }
     }, [studentFeatureFlags]);
 
     const handleToggle = (key) => {
         setLocalFlags(prev => {
-            const updated = { ...prev, [key]: !prev[key] };
+            const currentValue = prev[key] === undefined ? true : prev[key];
+            const updated = { ...prev, [key]: !currentValue };
             setHasChanges(true);
             return updated;
         });
@@ -58,19 +78,7 @@ const FeatureControl = () => {
         }
     };
 
-    const features = [
-        { key: 'overview', label: 'Overview', description: 'Student dashboard with quick stats.', icon: Calendar },
-        { key: 'activities', label: 'Activities', description: 'Assignments and projects for students.', icon: Layers },
-        { key: 'exams', label: 'Online Exams', description: 'MCQ based online examinations.', icon: FileText },
-        { key: 'results', label: 'Report Card', description: 'View exam results and progress.', icon: FileText },
-        { key: 'leave', label: 'Leave Applications', description: 'Apply for leave and view status.', icon: Calendar },
-        { key: 'chat', label: 'Mentor Chat', description: 'Messaging system with mentors.', icon: MessageSquare },
-        { key: 'prayer', label: 'Prayer Chart', description: 'Daily prayer tracking.', icon: BookOpen },
-        { key: 'history', label: 'Class History', description: 'View past class logs.', icon: Clock },
-        { key: 'leaderboard', label: 'Leaderboard', description: 'Class rankings and points.', icon: Trophy },
-        { key: 'star', label: 'Star of the Month', description: 'Monthly student recognition.', icon: Star },
-        { key: 'help', label: 'Help Section', description: 'Guides and FAQs.', icon: Info },
-    ];
+    // Features array moved up to state boundary
 
     return (
         <div className="space-y-6">
