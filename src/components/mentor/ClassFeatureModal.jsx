@@ -64,8 +64,8 @@ const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }
         if (isOpen) {
             setHasChanges(false);
             if (isGlobalMode) {
-                // Global mode reads/writes to `mentor_${uid}`
-                const mentorGlobalId = `mentor_${currentUser?.uid}`;
+                // Global mode reads/writes to `mentor_${id}`
+                const mentorGlobalId = `mentor_${currentUser?.id}`;
                 const currentGlobalFlags = classFeatureFlags?.find(f => f.classId === mentorGlobalId) || {};
                 setLocalFlags(currentGlobalFlags);
             } else if (classId) {
@@ -80,7 +80,7 @@ const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }
 
     const adminGlobalFlags = studentFeatureFlags || {};
     // Only lookup mentor flags if we are editing a single class, as it acts as the middle lock
-    const mentorGlobalFlags = isGlobalMode ? {} : (classFeatureFlags?.find(f => f.classId === `mentor_${currentUser?.uid}`) || {});
+    const mentorGlobalFlags = isGlobalMode ? {} : (classFeatureFlags?.find(f => f.classId === `mentor_${currentUser?.id}`) || {});
 
     const handleToggle = (key) => {
         setLocalFlags(prev => {
@@ -97,7 +97,7 @@ const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }
         setIsSaving(true);
         try {
             if (isGlobalMode) {
-                await updateClassFeatureFlags(`mentor_${currentUser.uid}`, localFlags);
+                await updateClassFeatureFlags(`mentor_${currentUser.id}`, localFlags);
                 showAlert('Success', `Global features updated for all your classes.`, 'success');
             } else {
                 await updateClassFeatureFlags(classId, localFlags);
