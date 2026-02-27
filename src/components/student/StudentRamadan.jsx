@@ -160,24 +160,38 @@ const StudentRamadan = () => {
                         </h2>
                         <p className="text-gray-500">Mark your fasting status for all 30 days of Ramadan.</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 md:flex md:gap-4 mt-5 md:mt-0 text-[12px] sm:text-[15px] font-bold w-full md:w-auto">
-                        <div className="relative flex items-center justify-center py-2 md:px-5 md:py-2.5 bg-[#FCFCFC] border-2 border-[#10B981] text-[#10B981] rounded-xl md:rounded-[14px] shadow-[0_4px_12px_0_rgba(16,185,129,0.3)]">
-                            <span className="whitespace-nowrap">Fasting</span>
-                            <span className="absolute -top-2.5 -right-2 md:-top-3 md:-right-3 bg-white border-2 border-[#10B981] text-[#10B981] text-[10px] md:text-[13px] md:px-1.5 min-w-[22px] md:min-w-[26px] h-[22px] md:h-[26px] rounded-full flex items-center justify-center shadow-sm">
+                    <div className="flex justify-center md:justify-end gap-2 md:gap-4 mt-5 md:mt-0 w-full md:w-auto">
+                        {/* Fasting Badge */}
+                        <div className="flex items-center bg-[#D1FAE5] rounded-full overflow-hidden shadow-sm h-8 md:h-10">
+                            <div className="flex items-center pl-2 md:pl-3 pr-2 md:pr-3 gap-2 border-r border-transparent">
+                                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#10B981]"></div>
+                                <span className="text-[#065F46] font-bold text-xs md:text-[15px] whitespace-nowrap">Fasted</span>
+                            </div>
+                            <div className="h-full flex items-center justify-center bg-[#10B981] text-white font-bold text-xs md:text-[15px] px-2.5 md:px-4">
                                 {fastingCount}
-                            </span>
+                            </div>
                         </div>
-                        <div className="relative flex items-center justify-center py-2 px-1 md:px-5 md:py-2.5 bg-[#FCFCFC] border-2 border-[#EF4444] text-[#EF4444] rounded-xl md:rounded-[14px] shadow-[0_4px_12px_0_rgba(239,68,68,0.3)] text-center leading-[1.1]">
-                            <span>Not<br className="md:hidden" /> Fasting</span>
-                            <span className="absolute -top-2.5 -right-2 md:-top-3 md:-right-3 bg-white border-2 border-[#EF4444] text-[#EF4444] text-[10px] md:text-[13px] md:px-1.5 min-w-[22px] md:min-w-[26px] h-[22px] md:h-[26px] rounded-full flex items-center justify-center shadow-sm">
+
+                        {/* Missed Badge */}
+                        <div className="flex items-center bg-[#FEE2E2] rounded-full overflow-hidden shadow-sm h-8 md:h-10">
+                            <div className="flex items-center pl-2 md:pl-3 pr-2 md:pr-3 gap-2 border-r border-transparent">
+                                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#EF4444]"></div>
+                                <span className="text-[#991B1B] font-bold text-xs md:text-[15px] whitespace-nowrap">Missed</span>
+                            </div>
+                            <div className="h-full flex items-center justify-center bg-[#EF4444] text-white font-bold text-xs md:text-[15px] px-2.5 md:px-4">
                                 {notFastingCount}
-                            </span>
+                            </div>
                         </div>
-                        <div className="relative flex items-center justify-center py-2 md:px-5 md:py-2.5 bg-[#FCFCFC] border-2 border-[#D97706] text-[#D97706] rounded-xl md:rounded-[14px] shadow-[0_4px_12px_0_rgba(217,119,6,0.3)]">
-                            <span className="whitespace-nowrap">Excused</span>
-                            <span className="absolute -top-2.5 -right-2 md:-top-3 md:-right-3 bg-white border-2 border-[#D97706] text-[#D97706] text-[10px] md:text-[13px] md:px-1.5 min-w-[22px] md:min-w-[26px] h-[22px] md:h-[26px] rounded-full flex items-center justify-center shadow-sm">
+
+                        {/* Excused Badge */}
+                        <div className="flex items-center bg-[#FEF3C7] rounded-full overflow-hidden shadow-sm h-8 md:h-10">
+                            <div className="flex items-center pl-2 md:pl-3 pr-2 md:pr-3 gap-2 border-r border-transparent">
+                                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#F59E0B]"></div>
+                                <span className="text-[#92400E] font-bold text-xs md:text-[15px] whitespace-nowrap">Excused</span>
+                            </div>
+                            <div className="h-full flex items-center justify-center bg-[#F59E0B] text-white font-bold text-xs md:text-[15px] px-2.5 md:px-4">
                                 {excusedCount}
-                            </span>
+                            </div>
                         </div>
                     </div>
                 </div>
