@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { BookOpen, Moon, Calendar, Trophy, CheckCircle2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { BookOpen, Moon, Calendar, Trophy, CheckCircle2, ChevronLeft, ChevronRight, X, Edit2 } from 'lucide-react';
 import { getQuranProgressStats, TOTAL_QURAN_PAGES, TOTAL_JUZ } from '../../utils/quranUtils';
 import { clsx } from 'clsx';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -20,6 +21,11 @@ const StudentRamadan = () => {
     // --- State: Fasting Tracker ---
     const [selectedDay, setSelectedDay] = useState(null);
     const [fastingStatus, setFastingStatus] = useState(''); // 'Fasting', 'Not Fasting', 'Excused'
+
+    // --- State: Modals ---
+    const [isKhatmModalOpen, setIsKhatmModalOpen] = useState(false);
+    const [isEditKhatmOpen, setIsEditKhatmOpen] = useState(false);
+    const [editKhatmCount, setEditKhatmCount] = useState('');
 
     // Load Data
     useEffect(() => {
@@ -95,16 +101,32 @@ const StudentRamadan = () => {
         });
     };
 
-    const handleManualKhatm = async () => {
+    const handleManualKhatm = () => {
+        setIsKhatmModalOpen(true);
+    };
+
+    const confirmManualKhatm = async () => {
         if (!currentUser) return;
-        if (window.confirm("Mark a full Khatm (Recitation of entire Quran) as complete?")) {
-            await updateQuranProgress(currentUser.id, {
-                lastPage: 1,
-                juz: 1,
-                completedKhatms: (currentQuranData?.completedKhatms || 0) + 1
-            });
-            setPageInput(1);
+        await updateQuranProgress(currentUser.id, {
+            lastPage: 1,
+            juz: 1,
+            completedKhatms: (currentQuranData?.completedKhatms || 0) + 1
+        });
+        setPageInput(1);
+    };
+
+    const handleEditKhatmSubmit = async () => {
+        if (!currentUser) return;
+        const newCount = parseInt(editKhatmCount, 10);
+        if (isNaN(newCount) || newCount < 0) {
+            alert('Please enter a valid positive number');
+            return;
         }
+
+        await updateQuranProgress(currentUser.id, {
+            completedKhatms: newCount
+        });
+        setIsEditKhatmOpen(false);
     };
 
     if (!currentUser || !currentQuranData) return null;
@@ -271,10 +293,18 @@ const StudentRamadan = () => {
                                 <BookOpen className="w-6 h-6 text-purple-600" />
                                 Quran Recitation
                             </h2>
-                            <div className="text-right">
-                                <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600">
-                                    {currentQuranData.completedKhatms}
-                                </span>
+                            <div className="text-right flex flex-col items-end">
+                                <div className="flex items-center gap-2 mb-1 group cursor-pointer" onClick={() => {
+                                    setEditKhatmCount(currentQuranData.completedKhatms.toString());
+                                    setIsEditKhatmOpen(true);
+                                }}>
+                                    <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600">
+                                        {currentQuranData.completedKhatms}
+                                    </span>
+                                    <button className="text-gray-300 group-hover:text-purple-500 transition-colors bg-gray-50 p-1.5 rounded-lg border border-transparent group-hover:border-purple-200">
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                </div>
                                 <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Total Khatms</p>
                             </div>
                         </div>
@@ -329,6 +359,54 @@ const StudentRamadan = () => {
                     </div>
                 </Card>
             </div>
+
+            {/* Complete Khatm Modal */}
+            <ConfirmationModal
+                isOpen={isKhatmModalOpen}
+                onClose={() => setIsKhatmModalOpen(false)}
+                onConfirm={confirmManualKhatm}
+                title="Mark Khatm as Complete?"
+                message="This will add +1 to your Total Khatms count and reset your current page tracker back to Page 1 so you can start a new recital."
+                confirmText="Yes, Complete Khatm"
+            />
+
+            {/* Edit Total Khatms Modal */}
+            {isEditKhatmOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all animate-slideUp p-6">
+                        <div className="flex justify-between items-center mb-5">
+                            <h3 className="text-lg font-bold text-gray-900">Edit Total Khatms</h3>
+                            <button onClick={() => setIsEditKhatmOpen(false)} className="text-gray-400 hover:bg-gray-100 p-1 rounded-full text-gray-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <p className="text-gray-500 text-sm mb-4">
+                            Update your total completed Khatm count. You can use this to correct mistakes.
+                        </p>
+                        <input
+                            type="number"
+                            value={editKhatmCount}
+                            onChange={(e) => setEditKhatmCount(e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl focus:ring-purple-500 focus:border-purple-500 block p-3 mb-6"
+                            min="0"
+                        />
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsEditKhatmOpen(false)}
+                                className="flex-1 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleEditKhatmSubmit}
+                                className="flex-1 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 shadow-sm transition-colors"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );
