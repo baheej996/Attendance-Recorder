@@ -58,23 +58,23 @@ const FeatureControl = () => {
         }
     }, [studentFeatureFlags]);
 
-    const handleToggle = (key) => {
-        setLocalFlags(prev => {
-            const currentValue = prev[key] === undefined ? true : prev[key];
-            const updated = { ...prev, [key]: !currentValue };
-            setHasChanges(true);
-            return updated;
-        });
-    };
+    const handleToggle = async (key) => {
+        // Optimistic UI update
+        const currentValue = localFlags[key] === undefined ? true : localFlags[key];
+        const newStatus = !currentValue;
+        const updatedFlags = { ...localFlags, [key]: newStatus };
 
-    const saveChanges = async () => {
+        setLocalFlags(updatedFlags);
+
+        // Auto-save to Firebase
         try {
-            await updateStudentFeatureFlags(localFlags);
-            setHasChanges(false);
-            showAlert('Success', 'Student panel features updated successfully.', 'success');
+            await updateStudentFeatureFlags(updatedFlags);
+            showAlert('Success', `${features.find(f => f.key === key)?.label} ${newStatus ? 'Enabled' : 'Disabled'} successfully.`, 'success');
         } catch (error) {
             console.error("Error updating features:", error);
-            showAlert('Error', 'Failed to update features.', 'error');
+            showAlert('Error', 'Failed to update feature.', 'error');
+            // Revert on failure
+            setLocalFlags(localFlags);
         }
     };
 
@@ -85,16 +85,8 @@ const FeatureControl = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Feature Control</h2>
-                    <p className="text-gray-500">Enable or disable features for the Student Panel.</p>
+                    <p className="text-gray-500">Enable or disable features for the Student Panel. Changes are saved automatically.</p>
                 </div>
-                {hasChanges && (
-                    <button
-                        onClick={saveChanges}
-                        className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm animate-in fade-in"
-                    >
-                        Save Changes
-                    </button>
-                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
