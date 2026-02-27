@@ -204,6 +204,32 @@ const MarksEntry = () => {
         );
     };
 
+    const handleDeleteAllExamMarks = () => {
+        if (!selectedExamId) return;
+
+        // Get all students in all available classes
+        const availableClassIds = availableClasses.map(c => c.id);
+        const allAvailableStudentIds = students
+            .filter(s => availableClassIds.includes(s.classId))
+            .map(s => s.id);
+
+        if (allAvailableStudentIds.length === 0) {
+            showAlert('No Students', 'There are no students in your assigned classes.', 'info');
+            return;
+        }
+
+        const examName = exams.find(e => e.id === selectedExamId)?.name || 'this exam';
+
+        showConfirm(
+            'Delete All Exam Marks',
+            `Are you sure you want to delete ALL marks for every subject and class you manage in ${examName}? This action cannot be undone.`,
+            () => {
+                deleteExamResultsForClass(selectedExamId, allAvailableStudentIds);
+                showAlert('Deleted', `All marks for ${examName} have been deleted successfully.`, 'success');
+            }
+        );
+    };
+
     // --- Bulk CSV Logic ---
     const handleDownloadTemplate = () => {
         if (!selectedClassId) return;
@@ -414,9 +440,19 @@ const MarksEntry = () => {
                     <Button variant="secondary" onClick={() => resetSelection('exam')} className="p-2 h-auto rounded-full hover:bg-gray-200">
                         <ArrowLeft className="w-6 h-6" />
                     </Button>
-                    <div>
+                    <div className="flex-1">
                         <h2 className="text-3xl font-bold text-gray-900">Select Class</h2>
                         <p className="text-gray-500 mt-1">Exam: {exams.find(e => e.id === selectedExamId)?.name}</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <Button
+                            variant="danger"
+                            onClick={handleDeleteAllExamMarks}
+                            className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Delete All Marks</span>
+                        </Button>
                     </div>
                 </div>
 
