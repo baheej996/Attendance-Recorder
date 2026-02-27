@@ -122,17 +122,15 @@ const MentorLeaderboard = () => {
                 return b.totalMarks - a.totalMarks;
             });
 
-        // Compute competition ranks (handles ties: 1, 2, 2, 4...)
+        // Compute dense ranks (handles ties: 1, 2, 2, 3...)
         let currentRank = 1;
         for (let i = 0; i < sortedStudents.length; i++) {
             if (i > 0 &&
-                sortedStudents[i].marksMissed === sortedStudents[i - 1].marksMissed &&
-                sortedStudents[i].totalMarks === sortedStudents[i - 1].totalMarks) {
-                sortedStudents[i].rank = sortedStudents[i - 1].rank;
-            } else {
-                currentRank = i + 1;
-                sortedStudents[i].rank = currentRank;
+                (sortedStudents[i].marksMissed !== sortedStudents[i - 1].marksMissed ||
+                    sortedStudents[i].totalMarks !== sortedStudents[i - 1].totalMarks)) {
+                currentRank++;
             }
+            sortedStudents[i].rank = currentRank;
         }
         return sortedStudents;
     };
