@@ -94,26 +94,26 @@ const StudentDashboard = () => {
     const globalFlags = studentFeatureFlags || {};
     const classFlags = classFeatureFlags?.find(f => f.classId === currentUser.classId) || {};
 
-    // Find the mentor for this class to check their global flags
-    let assignedMentor = mentors?.find(m => (m.assignedClassIds || []).includes(currentUser.classId));
-
-    // Fallback: check class object's assignedMentors array
-    if (!assignedMentor) {
-        const classInfo = classes?.find(c => c.id === currentUser.classId);
-        if (classInfo?.assignedMentors?.length > 0) {
-            assignedMentor = mentors?.find(m => m.id === classInfo.assignedMentors[0]);
-        }
-    }
-
-    let mentorFlags = {};
-    if (assignedMentor) {
-        mentorFlags = classFeatureFlags?.find(f => f.classId === `mentor_${assignedMentor.id}`) || {};
-    }
+    // Find all mentors assigned to this class
+    const assignedMentors = mentors?.filter(m => (m.assignedClassIds || []).includes(currentUser.classId)) || [];
 
     const isFeatureEnabled = (key) => {
-        const isGloballyEnabled = globalFlags[key] !== false; // Admin level
-        const isMentorEnabled = mentorFlags[key] !== false;  // Mentor level
-        const isLocallyEnabled = classFlags[key] !== false;  // Class level
+        // Admin level lock
+        const isGloballyEnabled = globalFlags[key] !== false;
+
+        // Mentor level lock (if ANY mentor disables it, it's locked)
+        let isMentorEnabled = true;
+        for (const mentor of assignedMentors) {
+            const mentorFlags = classFeatureFlags?.find(f => f.classId === `mentor_${mentor.id}`) || {};
+            if (mentorFlags[key] === false) {
+                isMentorEnabled = false;
+                break;
+            }
+        }
+
+        // Class level lock
+        const isLocallyEnabled = classFlags[key] !== false;
+
         return isGloballyEnabled && isMentorEnabled && isLocallyEnabled;
     };
 
