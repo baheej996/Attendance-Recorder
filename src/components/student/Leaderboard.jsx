@@ -91,7 +91,7 @@ const Leaderboard = () => {
     const myClass = classes.find(c => c.id === myStudent?.classId);
 
     const getAggregatedScores = (studentList) => {
-        return studentList.map(student => {
+        const sortedStudents = studentList.map(student => {
             const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId);
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
             const totalMaxMarks = studentResults.reduce((sum, r) => {
@@ -112,6 +112,20 @@ const Leaderboard = () => {
                 if (a.marksMissed !== b.marksMissed) return a.marksMissed - b.marksMissed;
                 return b.totalMarks - a.totalMarks;
             });
+
+        // Compute competition ranks (handles ties: 1, 2, 2, 4...)
+        let currentRank = 1;
+        for (let i = 0; i < sortedStudents.length; i++) {
+            if (i > 0 &&
+                sortedStudents[i].marksMissed === sortedStudents[i - 1].marksMissed &&
+                sortedStudents[i].totalMarks === sortedStudents[i - 1].totalMarks) {
+                sortedStudents[i].rank = sortedStudents[i - 1].rank;
+            } else {
+                currentRank = i + 1;
+                sortedStudents[i].rank = currentRank;
+            }
+        }
+        return sortedStudents;
     };
 
     const leaderboardData = useMemo(() => {
@@ -129,11 +143,9 @@ const Leaderboard = () => {
     }, [selectedExamId, viewMode, students, results, myClass]);
 
     // Find my rank
-    const myRankIndex = leaderboardData.findIndex(s => s.id === currentUser.id);
-    const myRankData = myRankIndex !== -1 ? leaderboardData[myRankIndex] : null;
+    const myRankData = leaderboardData.find(s => s.id === currentUser.id);
 
-    const getRankDisplay = (index) => {
-        const rank = index + 1;
+    const getRankDisplay = (rank) => {
         if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
         if (rank === 2) return <Medal className="w-5 h-5 text-gray-400" />;
         if (rank === 3) return <Medal className="w-5 h-5 text-amber-600" />;
@@ -192,7 +204,7 @@ const Leaderboard = () => {
                         <div>
                             <p className="text-indigo-200 text-sm font-medium mb-1">Your Current Rank</p>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-4xl font-bold">#{myRankIndex + 1}</span>
+                                <span className="text-4xl font-bold">#{myRankData.rank}</span>
                                 <span className="text-indigo-200">in {viewMode === 'class' ? 'Class' : viewMode === 'batch' ? 'Batch' : 'School'}</span>
                             </div>
                         </div>
@@ -237,7 +249,7 @@ const Leaderboard = () => {
                                         )}
                                     >
                                         <td className="p-4 text-center flex justify-center items-center">
-                                            {getRankDisplay(index)}
+                                            {getRankDisplay(student.rank)}
                                         </td>
                                         <td className="p-4">
                                             <div className="font-semibold text-gray-900">

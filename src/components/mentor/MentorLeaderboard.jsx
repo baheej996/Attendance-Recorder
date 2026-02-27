@@ -100,7 +100,7 @@ const MentorLeaderboard = () => {
     }, []);
 
     const getAggregatedScores = (studentList) => {
-        return studentList.map(student => {
+        const sortedStudents = studentList.map(student => {
             const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId);
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
             const totalMaxMarks = studentResults.reduce((sum, r) => {
@@ -121,6 +121,20 @@ const MentorLeaderboard = () => {
                 if (a.marksMissed !== b.marksMissed) return a.marksMissed - b.marksMissed;
                 return b.totalMarks - a.totalMarks;
             });
+
+        // Compute competition ranks (handles ties: 1, 2, 2, 4...)
+        let currentRank = 1;
+        for (let i = 0; i < sortedStudents.length; i++) {
+            if (i > 0 &&
+                sortedStudents[i].marksMissed === sortedStudents[i - 1].marksMissed &&
+                sortedStudents[i].totalMarks === sortedStudents[i - 1].totalMarks) {
+                sortedStudents[i].rank = sortedStudents[i - 1].rank;
+            } else {
+                currentRank = i + 1;
+                sortedStudents[i].rank = currentRank;
+            }
+        }
+        return sortedStudents;
     };
 
     const leaderboardData = useMemo(() => {
@@ -172,10 +186,10 @@ const MentorLeaderboard = () => {
         doc.setTextColor(107, 114, 128);
         doc.text(`Scope: ${viewLabel}`, 14, 30);
 
-        const tableData = leaderboardData.map((student, index) => {
+        const tableData = leaderboardData.map((student) => {
             const cls = classes.find(c => c.id === student.classId);
             return [
-                index + 1,
+                student.rank,
                 student.registerNo,
                 student.name,
                 cls ? `${cls.name} ${cls.division}` : 'N/A',
@@ -195,8 +209,7 @@ const MentorLeaderboard = () => {
         doc.save(`Leaderboard_${exam?.name || 'Export'}_${new Date().getTime()}.pdf`);
     };
 
-    const getRankDisplay = (index) => {
-        const rank = index + 1;
+    const getRankDisplay = (rank) => {
         if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
         if (rank === 2) return <Medal className="w-5 h-5 text-gray-400" />;
         if (rank === 3) return <Medal className="w-5 h-5 text-amber-600" />;
@@ -335,7 +348,7 @@ const MentorLeaderboard = () => {
                                             )}
                                         >
                                             <td className="p-5 text-center flex justify-center items-center">
-                                                {getRankDisplay(index)}
+                                                {getRankDisplay(student.rank)}
                                             </td>
                                             <td className="p-5">
                                                 <div className="flex items-center gap-3">
