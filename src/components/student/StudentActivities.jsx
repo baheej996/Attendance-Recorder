@@ -51,8 +51,18 @@ const StudentActivities = () => {
         // Sort by points desc
         studentScores.sort((a, b) => b.points - a.points);
 
-        const myRank = studentScores.findIndex(s => s.id === currentUser.id) + 1;
-        const myPoints = studentScores.find(s => s.id === currentUser.id)?.points || 0;
+        // Compute dense ranks (handles ties: 1, 2, 2, 3...)
+        let currentRank = 1;
+        for (let i = 0; i < studentScores.length; i++) {
+            if (i > 0 && studentScores[i].points !== studentScores[i - 1].points) {
+                currentRank++;
+            }
+            studentScores[i].rank = currentRank;
+        }
+
+        const myStudentData = studentScores.find(s => s.id === currentUser.id);
+        const myRank = myStudentData ? myStudentData.rank : 0;
+        const myPoints = myStudentData ? myStudentData.points : 0;
 
         // Calculate completion percentage compared to total possible points (or total activities)
         // Let's use total active activities count as base
@@ -204,15 +214,15 @@ const StudentActivities = () => {
                             </h3>
                         </div>
                         <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-                            {stats.leaderboard.map((s, index) => (
+                            {stats.leaderboard.map((s) => (
                                 <div key={s.id} className={`p-4 flex items-center justify-between ${s.id === currentUser.id ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}>
                                     <div className="flex items-center gap-3">
-                                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                            index === 1 ? 'bg-gray-200 text-gray-700' :
-                                                index === 2 ? 'bg-orange-100 text-orange-700' :
+                                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${s.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                                            s.rank === 2 ? 'bg-gray-200 text-gray-700' :
+                                                s.rank === 3 ? 'bg-orange-100 text-orange-700' :
                                                     'text-gray-400'
                                             }`}>
-                                            {index + 1}
+                                            {s.rank}
                                         </span>
                                         <p className={`text-sm font-medium ${s.id === currentUser.id ? 'text-indigo-700' : 'text-gray-700'}`}>
                                             {s.name}

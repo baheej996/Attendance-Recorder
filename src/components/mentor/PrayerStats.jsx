@@ -62,7 +62,7 @@ const PrayerStats = () => {
         const filteredRecords = prayerRecords.filter(r => studentIds.includes(r.studentId));
 
         // 1. Top Performers (Total Prayers Offered)
-        const leaderboard = classStudents.map(student => {
+        const sortedStudents = classStudents.map(student => {
             const studentRecords = filteredRecords.filter(r => r.studentId === student.id);
             const totalPrayers = studentRecords.reduce((sum, r) => {
                 return sum + Object.values(r.prayers || {}).filter(Boolean).length;
@@ -70,7 +70,16 @@ const PrayerStats = () => {
             return { ...student, totalPrayers };
         }).sort((a, b) => b.totalPrayers - a.totalPrayers);
 
-        return { leaderboard };
+        // Compute dense ranks (handles ties: 1, 2, 2, 3...)
+        let currentRank = 1;
+        for (let i = 0; i < sortedStudents.length; i++) {
+            if (i > 0 && sortedStudents[i].totalPrayers !== sortedStudents[i - 1].totalPrayers) {
+                currentRank++;
+            }
+            sortedStudents[i].rank = currentRank;
+        }
+
+        return { leaderboard: sortedStudents };
     }, [selectedClassId, classStudents, prayerRecords]);
 
     const handleToggleFeature = async (classId, currentStatus) => {
@@ -454,8 +463,8 @@ const PrayerStats = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50 text-sm">
-                                                {stats?.leaderboard.map((student, index) => {
-                                                    const rank = index + 1;
+                                                {stats?.leaderboard.map((student) => {
+                                                    const rank = student.rank;
                                                     return (
                                                         <tr key={student.id} className="hover:bg-gray-50 group transition-colors">
                                                             <td className="p-4 text-center align-middle">

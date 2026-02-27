@@ -396,9 +396,18 @@ const MentorStats = () => {
         // Sort students best to worst
         const sortedStudents = [...examStats.studentPerformances].sort((a, b) => b.pct - a.pct);
 
-        const tableData = sortedStudents.map((perf, index) => {
+        // Compute dense ranks for PDF
+        let currentRank = 1;
+        for (let i = 0; i < sortedStudents.length; i++) {
+            if (i > 0 && sortedStudents[i].pct !== sortedStudents[i - 1].pct) {
+                currentRank++;
+            }
+            sortedStudents[i].rank = currentRank;
+        }
+
+        const tableData = sortedStudents.map((perf) => {
             return [
-                index + 1,
+                perf.rank,
                 perf.student.registerNo,
                 perf.student.name,
                 `${perf.obtained} / ${perf.max}`,
