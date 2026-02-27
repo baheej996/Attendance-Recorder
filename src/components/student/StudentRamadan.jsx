@@ -160,30 +160,36 @@ const StudentRamadan = () => {
                         </h2>
                         <p className="text-gray-500">Mark your fasting status for all 30 days of Ramadan.</p>
                     </div>
-                    <div className="flex justify-center md:justify-end gap-3 md:gap-5 mt-5 md:mt-0 w-full md:w-auto">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:flex md:gap-4 mt-5 md:mt-0 w-full md:w-auto">
                         {/* Fasting Badge */}
-                        <div className="flex items-center bg-[#E0F8E8] rounded-[24px] pr-1.5 md:pr-2 pl-3 md:pl-4 py-1.5 md:py-2 shadow-sm gap-2">
-                            <div className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full bg-[#00C853] shrink-0"></div>
-                            <span className="text-[#00C853] font-bold text-[15px] md:text-xl whitespace-nowrap leading-none mr-2 border-r border-transparent">Fasted</span>
-                            <div className="flex items-center justify-center bg-[#00C853] text-[white] font-bold text-[13px] md:text-[17px] px-2 md:px-3 py-1 md:py-1.5 rounded-[12px] md:rounded-[14px] leading-none">
+                        <div className="flex items-center justify-between bg-[#e0f9e8] rounded-[10px] md:rounded-[20px] p-1 md:p-1.5 shadow-sm">
+                            <div className="flex items-center gap-1 md:gap-2 pl-0.5 md:pl-2">
+                                <div className="w-2 h-2 md:w-3.5 md:h-3.5 rounded-full bg-[#00C853] shrink-0"></div>
+                                <span className="text-[#00C853] font-bold text-[10px] sm:text-[13px] md:text-[18px] leading-none tracking-tight">Fasted</span>
+                            </div>
+                            <div className="flex items-center justify-center bg-[#00C853] text-[white] font-bold text-[10px] sm:text-[12px] md:text-[16px] min-w-[20px] md:min-w-[32px] h-[20px] md:h-[32px] px-1 md:px-2 rounded-[6px] md:rounded-[10px] leading-none ml-1 md:ml-3">
                                 {fastingCount}
                             </div>
                         </div>
 
                         {/* Missed Badge */}
-                        <div className="flex items-center bg-[#FFE8EB] rounded-[24px] pr-1.5 md:pr-2 pl-3 md:pl-4 py-1.5 md:py-2 shadow-sm gap-2">
-                            <div className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full bg-[#FF3B43] shrink-0"></div>
-                            <span className="text-[#FF3B43] font-bold text-[15px] md:text-xl whitespace-nowrap leading-none mr-2 border-r border-transparent">Missed</span>
-                            <div className="flex items-center justify-center bg-[#FF3B43] text-white font-bold text-[13px] md:text-[17px] px-2 md:px-3 py-1 md:py-1.5 rounded-[12px] md:rounded-[14px] leading-none">
+                        <div className="flex items-center justify-between bg-[#ffe8eb] rounded-[10px] md:rounded-[20px] p-1 md:p-1.5 shadow-sm">
+                            <div className="flex items-center gap-1 md:gap-2 pl-0.5 md:pl-2">
+                                <div className="w-2 h-2 md:w-3.5 md:h-3.5 rounded-full bg-[#FF3B43] shrink-0"></div>
+                                <span className="text-[#FF3B43] font-bold text-[10px] sm:text-[13px] md:text-[18px] leading-none tracking-tight">Missed</span>
+                            </div>
+                            <div className="flex items-center justify-center bg-[#FF3B43] text-[white] font-bold text-[10px] sm:text-[12px] md:text-[16px] min-w-[20px] md:min-w-[32px] h-[20px] md:h-[32px] px-1 md:px-2 rounded-[6px] md:rounded-[10px] leading-none ml-1 md:ml-3">
                                 {notFastingCount}
                             </div>
                         </div>
 
                         {/* Excused Badge */}
-                        <div className="flex items-center bg-[#FFF8CC] rounded-[24px] pr-1.5 md:pr-2 pl-3 md:pl-4 py-1.5 md:py-2 shadow-sm gap-2">
-                            <div className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full bg-[#F5B000] shrink-0"></div>
-                            <span className="text-[#F5B000] font-bold text-[15px] md:text-xl whitespace-nowrap leading-none mr-1 border-r border-transparent">Excused</span>
-                            <div className="flex items-center justify-center bg-[#F5B000] text-white font-bold text-[13px] md:text-[17px] px-2 md:px-3 py-1 md:py-1.5 rounded-[12px] md:rounded-[14px] leading-none">
+                        <div className="flex items-center justify-between bg-[#fff6cc] rounded-[10px] md:rounded-[20px] p-1 md:p-1.5 shadow-sm">
+                            <div className="flex items-center gap-1 md:gap-2 pl-0.5 md:pl-2">
+                                <div className="w-2 h-2 md:w-3.5 md:h-3.5 rounded-full bg-[#F5B000] shrink-0"></div>
+                                <span className="text-[#F5B000] font-bold text-[10px] sm:text-[13px] md:text-[18px] leading-none tracking-tight">Excused</span>
+                            </div>
+                            <div className="flex items-center justify-center bg-[#F5B000] text-[white] font-bold text-[10px] sm:text-[12px] md:text-[16px] min-w-[20px] md:min-w-[32px] h-[20px] md:h-[32px] px-1 md:px-2 rounded-[6px] md:rounded-[10px] leading-none ml-1 md:ml-3">
                                 {excusedCount}
                             </div>
                         </div>
