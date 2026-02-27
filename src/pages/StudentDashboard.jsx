@@ -44,7 +44,7 @@ const SidebarItem = ({ icon: Icon, label, path, active, onClick, hasNotification
 );
 
 const StudentDashboard = () => {
-    const { currentUser, logout, activities, activitySubmissions, classes, studentFeatureFlags, classFeatureFlags, attendance, exams, results } = useData();
+    const { currentUser, logout, activities, activitySubmissions, classes, mentors, studentFeatureFlags, classFeatureFlags, attendance, exams, results } = useData();
     const location = useLocation();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -95,12 +95,10 @@ const StudentDashboard = () => {
     const classFlags = classFeatureFlags?.find(f => f.classId === currentUser.classId) || {};
 
     // Find the mentor for this class to check their global flags
-    const classInfo = classes?.find(c => c.id === currentUser.classId);
+    const assignedMentor = mentors?.find(m => (m.assignedClassIds || []).includes(currentUser.classId));
     let mentorFlags = {};
-    if (classInfo && classInfo.assignedMentors && classInfo.assignedMentors.length > 0) {
-        // Assume the first assigned mentor's global settings apply for simplicity
-        const mainMentorId = classInfo.assignedMentors[0];
-        mentorFlags = classFeatureFlags?.find(f => f.classId === `mentor_${mainMentorId}`) || {};
+    if (assignedMentor) {
+        mentorFlags = classFeatureFlags?.find(f => f.classId === `mentor_${assignedMentor.id}`) || {};
     }
 
     const isFeatureEnabled = (key) => {
