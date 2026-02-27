@@ -608,7 +608,13 @@ export const DataProvider = ({ children }) => {
         mentorSettings, updateMentorSettings: async (s) => await setDoc(doc(db, 'settings', 'mentorUI'), s),
 
         studentFeatureFlags, updateStudentFeatureFlags: async (flags) => await setDoc(doc(db, 'settings', 'studentFeatures'), flags, { merge: true }),
-        classFeatureFlags, updateClassFeatureFlags: async (classId, flags) => await setDoc(doc(db, 'classFeatureFlags', classId), { classId, ...flags }, { merge: true }),
+        classFeatureFlags,
+        updateClassFeatureFlags: async (classId, flags) => await setDoc(doc(db, 'classFeatureFlags', classId), { classId, ...flags }, { merge: true }),
+        updateBulkClassFeatureFlags: async (classIds, flags) => {
+            const batch = writeBatch(db);
+            classIds.forEach(id => batch.set(doc(db, 'classFeatureFlags', id), { classId: id, ...flags }, { merge: true }));
+            await batch.commit();
+        },
 
         resetData,
         isDataLoaded,

@@ -31,26 +31,30 @@ const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDi
     </div>
 );
 
-const ClassFeatureModal = ({ classId, className, isOpen, onClose }) => {
-    const { studentFeatureFlags, classFeatureFlags, updateClassFeatureFlags } = useData();
+const ClassFeatureModal = ({ classId, classIds, className, isOpen, onClose }) => {
+    const { studentFeatureFlags, classFeatureFlags, updateClassFeatureFlags, updateBulkClassFeatureFlags } = useData();
     const { showAlert } = useUI();
 
     const [localFlags, setLocalFlags] = useState({});
     const [hasChanges, setHasChanges] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        if (isOpen && classId) {
-            // Find flags for this specific class
-            const currentClassFlags = classFeatureFlags?.find(f => f.classId === classId) || {};
+    const isBulk = Array.isArray(classIds) && classIds.length > 0;
 
-            // Initialize local state, defaulting to global setting if no class override exists
-            // Wait, we should just store the overrides. Let's make it so if local is undefined, it's effectively true unless global is false.
-            // Actually, let's keep it simple: explicit true/false overrides.
-            setLocalFlags(currentClassFlags);
+    useEffect(() => {
+        if (isOpen) {
             setHasChanges(false);
+            if (!isBulk && classId) {
+                const currentClassFlags = classFeatureFlags?.find(f => f.classId === classId) || {};
+                setLocalFlags(currentClassFlags);
+            } else if (isBulk) {
+                // Initialize bulk edit with all enabled by default, globally disabled ones are handled by UI automatically
+                const explicitBulkFlags = {};
+                // If they want to sync everything, they toggle from `true` state.
+                setLocalFlags(explicitBulkFlags);
+            }
         }
-    }, [isOpen, classId, classFeatureFlags]);
+    }, [isOpen, classId, classIds, classFeatureFlags, isBulk]);
 
     if (!isOpen) return null;
 
@@ -70,9 +74,14 @@ const ClassFeatureModal = ({ classId, className, isOpen, onClose }) => {
     const saveChanges = async () => {
         setIsSaving(true);
         try {
-            await updateClassFeatureFlags(classId, localFlags);
+            if (isBulk) {
+                await updateBulkClassFeatureFlags(classIds, localFlags);
+                showAlert('Success', `Features updated globally for ${classIds.length} classes.`, 'success');
+            } else {
+                await updateClassFeatureFlags(classId, localFlags);
+                showAlert('Success', `Features updated for class ${className}.`, 'success');
+            }
             setHasChanges(false);
-            showAlert('Success', `Features updated for class ${className}.`, 'success');
             onClose();
         } catch (error) {
             console.error("Error updating features:", error);
@@ -101,8 +110,13 @@ const ClassFeatureModal = ({ classId, className, isOpen, onClose }) => {
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 bg-white border-b border-gray-100 rounded-t-2xl shrink-0">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">Class Features</h2>
-                        <p className="text-sm text-gray-500">Manage student panel features for <span className="font-semibold text-indigo-600">Class {className}</span></p>
+                        <h2 className="text-xl font-bold text-gray-900">{isBulk ? 'Global Class Features' : 'Class Features'}</h2>
+                        <p className="text-sm text-gray-500">
+                            {isBulk ?
+                                `Manage features for all ${classIds.length} of your assigned classes at once.` :
+                                <span>Manage student panel features for <span className="font-semibold text-indigo-600">Class {className}</span></span>
+                            }
+                        </p>
                     </div>
                     <button
                         onClick={onClose}
@@ -116,7 +130,7 @@ const ClassFeatureModal = ({ classId, className, isOpen, onClose }) => {
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     <div className="bg-indigo-50 text-indigo-800 p-4 rounded-xl text-sm flex gap-3 items-start border border-indigo-100">
                         <Info className="w-5 h-5 shrink-0 text-indigo-600 mt-0.5" />
-                        <p>Turn off specific features for this class. Note that if the administrator has disabled a feature globally, you cannot enable it here.</p>
+                        <p>Turn off specific features for {isBulk ? 'these classes' : 'this class'}. Note that if the administrator has disabled a feature globally, you cannot enable it here.</p>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">

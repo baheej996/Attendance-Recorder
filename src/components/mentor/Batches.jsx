@@ -54,14 +54,30 @@ const Batches = () => {
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <Users className="w-6 h-6 text-indigo-600" />
-                    My Batches
-                </h1>
-                <p className="text-gray-500 mt-1">
-                    Manage and view details of your assigned classes and students.
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <Users className="w-6 h-6 text-indigo-600" />
+                        My Batches
+                    </h1>
+                    <p className="text-gray-500 mt-1">
+                        Manage and view details of your assigned classes and students.
+                    </p>
+                </div>
+                {assignedClasses.length > 0 && (
+                    <button
+                        onClick={() => setFeatureModalData({
+                            isOpen: true,
+                            classIds: assignedClasses.map(c => c.id),
+                            classNameStr: 'All My Classes'
+                        })}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-700 font-medium rounded-lg hover:bg-indigo-100 transition-colors shadow-sm"
+                        title="Configure features for all classes simultaneously"
+                    >
+                        <Settings className="w-5 h-5" />
+                        Global Features
+                    </button>
+                )}
             </div>
 
             {assignedClasses.length === 0 ? (
