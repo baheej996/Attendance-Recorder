@@ -68,7 +68,8 @@ const Batches = () => {
                     <button
                         onClick={() => setFeatureModalData({
                             isOpen: true,
-                            classIds: assignedClasses.map(c => c.id),
+                            isGlobalMode: true,
+                            classId: null,
                             classNameStr: 'All My Classes'
                         })}
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-700 font-medium rounded-lg hover:bg-indigo-100 transition-colors shadow-sm"
@@ -244,9 +245,9 @@ const Batches = () => {
 
             <ClassFeatureModal
                 isOpen={featureModalData.isOpen}
-                onClose={() => setFeatureModalData({ isOpen: false, classId: null, classIds: null, classNameStr: '' })}
+                onClose={() => setFeatureModalData({ isOpen: false, classId: null, isGlobalMode: false, classNameStr: '' })}
                 classId={featureModalData.classId}
-                classIds={featureModalData.classIds}
+                isGlobalMode={featureModalData.isGlobalMode}
                 className={featureModalData.classNameStr}
             />
         </div>

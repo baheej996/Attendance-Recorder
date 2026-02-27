@@ -94,10 +94,20 @@ const StudentDashboard = () => {
     const globalFlags = studentFeatureFlags || {};
     const classFlags = classFeatureFlags?.find(f => f.classId === currentUser.classId) || {};
 
+    // Find the mentor for this class to check their global flags
+    const classInfo = classes?.find(c => c.id === currentUser.classId);
+    let mentorFlags = {};
+    if (classInfo && classInfo.assignedMentors && classInfo.assignedMentors.length > 0) {
+        // Assume the first assigned mentor's global settings apply for simplicity
+        const mainMentorId = classInfo.assignedMentors[0];
+        mentorFlags = classFeatureFlags?.find(f => f.classId === `mentor_${mainMentorId}`) || {};
+    }
+
     const isFeatureEnabled = (key) => {
-        const isGloballyEnabled = globalFlags[key] !== false; // Default true
-        const isLocallyEnabled = classFlags[key] !== false; // Default true
-        return isGloballyEnabled && isLocallyEnabled;
+        const isGloballyEnabled = globalFlags[key] !== false; // Admin level
+        const isMentorEnabled = mentorFlags[key] !== false;  // Mentor level
+        const isLocallyEnabled = classFlags[key] !== false;  // Class level
+        return isGloballyEnabled && isMentorEnabled && isLocallyEnabled;
     };
 
     const navItems = [

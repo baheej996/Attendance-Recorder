@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, X } from 'lucide-react';
 
-const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDisabled, onToggle }) => (
+const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDisabled, globalDisabledReason, onToggle }) => (
     <div className={`flex items-center justify-between p-4 bg-white border rounded-xl transition-colors ${isGloballyDisabled ? 'border-red-100 bg-red-50/30 opacity-70 cursor-not-allowed' : 'border-gray-100 hover:border-indigo-100'}`}>
         <div className="flex items-center gap-4">
             <div className={`p-3 rounded-lg ${isGloballyDisabled ? 'bg-red-100 text-red-500' : isEnabled ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-50 text-gray-400'}`}>
@@ -14,7 +14,7 @@ const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDi
                     {label}
                 </h3>
                 <p className="text-sm text-gray-500">
-                    {isGloballyDisabled ? 'Disabled by Administrator' : description}
+                    {isGloballyDisabled ? globalDisabledReason : description}
                 </p>
             </div>
         </div>
@@ -31,34 +31,35 @@ const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDi
     </div>
 );
 
-const ClassFeatureModal = ({ classId, classIds, className, isOpen, onClose }) => {
-    const { studentFeatureFlags, classFeatureFlags, updateClassFeatureFlags, updateBulkClassFeatureFlags } = useData();
+const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }) => {
+    const { currentUser, studentFeatureFlags, classFeatureFlags, updateClassFeatureFlags } = useData();
     const { showAlert } = useUI();
 
     const [localFlags, setLocalFlags] = useState({});
     const [hasChanges, setHasChanges] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    const isBulk = Array.isArray(classIds) && classIds.length > 0;
-
     useEffect(() => {
         if (isOpen) {
             setHasChanges(false);
-            if (!isBulk && classId) {
+            if (isGlobalMode) {
+                // Global mode reads/writes to `mentor_${uid}`
+                const mentorGlobalId = `mentor_${currentUser?.uid}`;
+                const currentGlobalFlags = classFeatureFlags?.find(f => f.classId === mentorGlobalId) || {};
+                setLocalFlags(currentGlobalFlags);
+            } else if (classId) {
+                // Local mode reads/writes to specific `classId`
                 const currentClassFlags = classFeatureFlags?.find(f => f.classId === classId) || {};
                 setLocalFlags(currentClassFlags);
-            } else if (isBulk) {
-                // Initialize bulk edit with all enabled by default, globally disabled ones are handled by UI automatically
-                const explicitBulkFlags = {};
-                // If they want to sync everything, they toggle from `true` state.
-                setLocalFlags(explicitBulkFlags);
             }
         }
-    }, [isOpen, classId, classIds, classFeatureFlags, isBulk]);
+    }, [isOpen, isGlobalMode, classId, classFeatureFlags, currentUser]);
 
     if (!isOpen) return null;
 
-    const globalFlags = studentFeatureFlags || {};
+    const adminGlobalFlags = studentFeatureFlags || {};
+    // Only lookup mentor flags if we are editing a single class, as it acts as the middle lock
+    const mentorGlobalFlags = isGlobalMode ? {} : (classFeatureFlags?.find(f => f.classId === `mentor_${currentUser?.uid}`) || {});
 
     const handleToggle = (key) => {
         setLocalFlags(prev => {
@@ -74,9 +75,9 @@ const ClassFeatureModal = ({ classId, classIds, className, isOpen, onClose }) =>
     const saveChanges = async () => {
         setIsSaving(true);
         try {
-            if (isBulk) {
-                await updateBulkClassFeatureFlags(classIds, localFlags);
-                showAlert('Success', `Features updated globally for ${classIds.length} classes.`, 'success');
+            if (isGlobalMode) {
+                await updateClassFeatureFlags(`mentor_${currentUser.uid}`, localFlags);
+                showAlert('Success', `Global features updated for all your classes.`, 'success');
             } else {
                 await updateClassFeatureFlags(classId, localFlags);
                 showAlert('Success', `Features updated for class ${className}.`, 'success');
@@ -110,10 +111,10 @@ const ClassFeatureModal = ({ classId, classIds, className, isOpen, onClose }) =>
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 bg-white border-b border-gray-100 rounded-t-2xl shrink-0">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">{isBulk ? 'Global Class Features' : 'Class Features'}</h2>
+                        <h2 className="text-xl font-bold text-gray-900">{isGlobalMode ? 'Global Class Features' : 'Class Features'}</h2>
                         <p className="text-sm text-gray-500">
-                            {isBulk ?
-                                `Manage features for all ${classIds.length} of your assigned classes at once.` :
+                            {isGlobalMode ?
+                                `Manage features for all of your assigned classes at once.` :
                                 <span>Manage student panel features for <span className="font-semibold text-indigo-600">Class {className}</span></span>
                             }
                         </p>
@@ -130,12 +131,19 @@ const ClassFeatureModal = ({ classId, classIds, className, isOpen, onClose }) =>
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     <div className="bg-indigo-50 text-indigo-800 p-4 rounded-xl text-sm flex gap-3 items-start border border-indigo-100">
                         <Info className="w-5 h-5 shrink-0 text-indigo-600 mt-0.5" />
-                        <p>Turn off specific features for {isBulk ? 'these classes' : 'this class'}. Note that if the administrator has disabled a feature globally, you cannot enable it here.</p>
+                        <p>Turn off specific features for {isGlobalMode ? 'all your classes' : 'this class'}. Note that if the administrator has disabled a feature completely, you cannot enable it here.</p>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
                         {features.map(f => {
-                            const isGloballyDisabled = globalFlags[f.key] === false;
+                            const isAdminDisabled = adminGlobalFlags[f.key] === false;
+                            const isMentorDisabled = !isGlobalMode && mentorGlobalFlags[f.key] === false;
+
+                            const isLocked = isAdminDisabled || isMentorDisabled;
+                            let lockReason = '';
+                            if (isAdminDisabled) lockReason = 'Disabled by Administrator';
+                            else if (isMentorDisabled) lockReason = 'Enable in Global Features first';
+
                             const isEnabledLocally = localFlags[f.key] !== false; // Default true if undefined
 
                             return (
@@ -143,7 +151,8 @@ const ClassFeatureModal = ({ classId, classIds, className, isOpen, onClose }) =>
                                     key={f.key}
                                     {...f}
                                     isEnabled={isEnabledLocally}
-                                    isGloballyDisabled={isGloballyDisabled}
+                                    isGloballyDisabled={isLocked}
+                                    globalDisabledReason={lockReason}
                                     onToggle={() => handleToggle(f.key)}
                                 />
                             );
