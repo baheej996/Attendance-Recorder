@@ -347,6 +347,14 @@ export const DataProvider = ({ children }) => {
         await batch.commit();
     };
 
+    const deleteExamResultsForClass = async (examId, studentIds) => {
+        if (!studentIds || studentIds.length === 0) return;
+        const batch = writeBatch(db);
+        const toDelete = results.filter(r => r.examId === examId && studentIds.includes(r.studentId));
+        toDelete.forEach(r => batch.delete(doc(db, 'results', r.id)));
+        await batch.commit();
+    };
+
     // Attendance
     const recordAttendance = async (record) => {
         const batch = writeBatch(db);
@@ -570,7 +578,7 @@ export const DataProvider = ({ children }) => {
         attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds,
         subjects, addSubject, updateSubject, deleteSubject, deleteSubjects,
         exams, addExam, updateExam, deleteExam,
-        results, recordResult, deleteResultBatch,
+        results, recordResult, deleteResultBatch, deleteExamResultsForClass,
         questions, addQuestion, updateQuestion, deleteQuestion,
         studentResponses, submitExam, deleteStudentResponse: async (e, s, stuk) => {
             const r = studentResponses.find(x => x.examId == e && x.subjectId == s && x.studentId == stuk);

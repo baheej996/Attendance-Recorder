@@ -10,7 +10,7 @@ import ExamGradingModal from './ExamGradingModal';
 const MarksEntry = () => {
     const {
         subjects, exams, students, results,
-        recordResult, deleteResultBatch, classes, currentUser,
+        recordResult, deleteResultBatch, deleteExamResultsForClass, classes, currentUser,
         examSettings, updateExamSetting, deleteStudentResponse
     } = useData();
     const { showAlert, showConfirm } = useUI();
@@ -178,6 +178,28 @@ const MarksEntry = () => {
                 setMarksData(newMarks);
 
                 showAlert('Reset Successful', 'Student can now retake the exam.', 'success');
+            }
+        );
+    };
+
+    const handleDeleteAllClassMarks = () => {
+        if (!selectedExamId || !selectedClassId) return;
+        const currentClassStudentIds = classStudents.map(s => s.id);
+
+        if (currentClassStudentIds.length === 0) {
+            showAlert('No Students', 'There are no students in this class.', 'info');
+            return;
+        }
+
+        const classInfo = availableClasses.find(c => c.id === selectedClassId);
+        const className = classInfo ? `${classInfo.name}-${classInfo.division}` : 'this class';
+
+        showConfirm(
+            'Delete All Marks for Class',
+            `Are you sure you want to delete ALL marks for EVERY subject in ${className} for this exam? This action cannot be undone.`,
+            () => {
+                deleteExamResultsForClass(selectedExamId, currentClassStudentIds);
+                showAlert('Deleted', `All marks for ${className} have been deleted successfully.`, 'success');
             }
         );
     };
@@ -473,6 +495,14 @@ const MarksEntry = () => {
 
                     {/* CSV Actions */}
                     <div className="flex gap-3">
+                        <Button
+                            variant="danger"
+                            onClick={handleDeleteAllClassMarks}
+                            className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Delete All Marks</span>
+                        </Button>
                         <Button
                             variant="secondary"
                             onClick={handleDownloadTemplate}
