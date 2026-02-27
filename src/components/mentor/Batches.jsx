@@ -244,8 +244,9 @@ const Batches = () => {
 
             <ClassFeatureModal
                 isOpen={featureModalData.isOpen}
-                onClose={() => setFeatureModalData({ isOpen: false, classId: null, classNameStr: '' })}
+                onClose={() => setFeatureModalData({ isOpen: false, classId: null, classIds: null, classNameStr: '' })}
                 classId={featureModalData.classId}
+                classIds={featureModalData.classIds}
                 className={featureModalData.classNameStr}
             />
         </div>
