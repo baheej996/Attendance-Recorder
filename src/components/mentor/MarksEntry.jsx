@@ -125,9 +125,24 @@ const MarksEntry = () => {
     };
 
     const handleSave = () => {
-        const records = Object.entries(marksData).map(([studentId, marks]) => ({
-            studentId, marks: Number(marks)
-        }));
+        // Validation: Check if any marks exceed the subject's maximum
+        const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
+        const maxMarks = selectedSubject ? Number(selectedSubject.maxMarks) : 100;
+
+        let hasInvalidMarks = false;
+        const records = Object.entries(marksData).map(([studentId, marks]) => {
+            const numMarks = Number(marks);
+            if (numMarks > maxMarks) {
+                hasInvalidMarks = true;
+            }
+            return { studentId, marks: numMarks };
+        });
+
+        if (hasInvalidMarks) {
+            showAlert('Invalid Marks', `One or more students have marks exceeding the maximum allowed (${maxMarks}) for this subject.`, 'error');
+            return; // Abort save
+        }
+
         recordResult({ examId: selectedExamId, subjectId: selectedSubjectId, records });
         setHasChanges(false);
         showAlert('Success', 'Marks saved successfully!', 'success');
@@ -272,21 +287,38 @@ const MarksEntry = () => {
                     if (cellVal) cellVal = cellVal.replace(/['"]+/g, '').trim();
 
                     if (cellVal && cellVal !== 'N/A' && !isNaN(cellVal)) {
+                        const numericVal = Number(cellVal);
+
+                        // Validation: Check against subject max marks
+                        const currentSubject = subjects.find(s => s.id === info.id);
+                        const maxMarksForSubject = currentSubject ? Number(currentSubject.maxMarks) : 100;
+
+                        if (numericVal > maxMarksForSubject) {
+                            if (!subjectUpdates.errors) subjectUpdates.errors = true;
+                        }
+
                         if (!subjectUpdates[info.id]) {
                             subjectUpdates[info.id] = [];
                         }
                         subjectUpdates[info.id].push({
                             studentId,
-                            marks: Number(cellVal)
+                            marks: numericVal
                         });
                     }
                 });
+            }
+
+            if (subjectUpdates.errors) {
+                showAlert('Import Failed', 'CSV contains marks that exceed the maximum limit for their respective subjects. Please fix the data and try again.', 'error');
+                e.target.value = null;
+                return; // Abort the entire import
             }
 
             // Save to DB
             let subjectsProcessed = 0;
             let totalMarksImported = 0;
             Object.keys(subjectUpdates).forEach(subjectId => {
+                if (subjectId === 'errors') return; // Skip error flag
                 const records = subjectUpdates[subjectId];
                 if (records.length > 0) {
                     recordResult({ examId: selectedExamId, subjectId, records });
