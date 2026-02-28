@@ -121,11 +121,13 @@ export const ReportCardPDFTemplate = forwardRef(({ student, exam, rank, stats },
                 </div>
 
                 {/* 6. Absolute Footer */}
-                <div className="mt-auto border-t border-[#e2e8f0] pt-6 flex flex-row items-center gap-6">
-                    <img src="/samastha-logo.jpg" alt="Samastha Logo" className="h-16 object-contain" />
-                    <div>
-                        <h4 className="font-bold text-[#1e293b] text-lg">Samastha E-Learning Online Global Madrasa</h4>
-                        <p className="text-[#64748b] text-xs leading-tight mt-1">
+                <div className="mt-auto border-t border-[#e2e8f0] pt-6 flex flex-row items-center gap-5">
+                    <img src="/samastha-logo.jpg" alt="Samastha Logo" className="h-[4.5rem] object-contain shrink-0" />
+                    <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-black text-[22px] tracking-tight mb-1" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                            Samastha E-Learning Online Global Madrasa
+                        </h4>
+                        <p className="text-black text-[11.5px] leading-tight" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
                             Global Education Centre, Samastha Central Office, Francis Road, Calicut - 03, Ph: +91 8590518541<br />
                             Pin code: 673003, Website: www.samasthaelearning.com, E-mail: samasthaelearning@gmail.com
                         </p>
