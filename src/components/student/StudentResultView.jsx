@@ -236,18 +236,20 @@ const StudentResultView = () => {
 
                 {/* Hidden High-Fidelity PDF Template injected into DOM */}
                 {selectedExamId && myResults.length > 0 && (
-                    <ReportCardPDFTemplate
-                        ref={pdfRef}
-                        student={{
-                            ...currentUser,
-                            classDetails: students.find(s => s.id === currentUser.id)?.classId
-                                ? `${students.find(s => s.id === currentUser.id).classDetails?.name || ''} ${students.find(s => s.id === currentUser.id).classDetails?.division || ''}`
-                                : ''
-                        }}
-                        exam={activeExam}
-                        rank={studentRank}
-                        stats={stats}
-                    />
+                    <div className="absolute left-[-9999px] top-[-9999px]">
+                        <ReportCardPDFTemplate
+                            ref={pdfRef}
+                            student={{
+                                ...currentUser,
+                                classDetails: students.find(s => s.id === currentUser.id)?.classId
+                                    ? `${students.find(s => s.id === currentUser.id).classDetails?.name || ''} ${students.find(s => s.id === currentUser.id).classDetails?.division || ''}`
+                                    : ''
+                            }}
+                            exam={activeExam}
+                            rank={studentRank}
+                            stats={stats}
+                        />
+                    </div>
                 )}
             </Card>
         </div>

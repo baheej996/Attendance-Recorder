@@ -495,16 +495,18 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
                 {/* Hidden Template Render Box */}
                 {activePdfExam && (
-                    <ReportCardPDFTemplate
-                        ref={pdfRef}
-                        student={{
-                            ...student,
-                            classDetails: studentClass ? `${studentClass.name} ${studentClass.division}` : ''
-                        }}
-                        exam={activePdfExam}
-                        rank={activePdfExam.rank}
-                        stats={activePdfExam.stats}
-                    />
+                    <div className="absolute left-[-9999px] top-[-9999px]">
+                        <ReportCardPDFTemplate
+                            ref={pdfRef}
+                            student={{
+                                ...student,
+                                classDetails: studentClass ? `${studentClass.name} ${studentClass.division}` : ''
+                            }}
+                            exam={activePdfExam}
+                            rank={activePdfExam.rank}
+                            stats={activePdfExam.stats}
+                        />
+                    </div>
                 )}
             </div>
         </div>

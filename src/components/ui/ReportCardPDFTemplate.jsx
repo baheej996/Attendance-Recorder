@@ -12,11 +12,12 @@ export const ReportCardPDFTemplate = forwardRef(({ student, exam, rank, stats },
     // A4 dimensions at 96 DPI: 794 x 1123, we'll use 800 x 1131 for clean rounding
     return (
         <div
+            id="report-card-pdf-template"
             ref={ref}
-            className="fixed top-[-9999px] left-[-9999px] bg-white text-gray-900"
-            style={{ width: '800px', height: '1131px', fontFamily: '"Inter", sans-serif' }}
+            className="bg-white text-gray-900"
+            style={{ width: '800px', height: '1131px', fontFamily: '"Inter", sans-serif', boxSizing: 'border-box' }}
         >
-            <div className="relative h-full w-full bg-white p-12 flex flex-col">
+            <div className="relative h-full w-full bg-white p-12 flex flex-col pt-8">
 
                 {/* 1. Header Title */}
                 <div className="text-center mt-8 mb-12">

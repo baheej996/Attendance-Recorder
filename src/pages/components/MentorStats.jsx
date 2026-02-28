@@ -259,7 +259,7 @@ const StudentResultModal = ({ student, exam, rank, subjects, results, onClose })
                 )}
 
                 {/* Hidden Output for HTML to Image capture */}
-                <div className="absolute -left-[9999px] -top-[9999px]"> {/* Hide off-screen */}
+                <div className="absolute left-[-9999px] top-[-9999px]">
                     <ReportCardPDFTemplate
                         ref={printRef}
                         student={{
