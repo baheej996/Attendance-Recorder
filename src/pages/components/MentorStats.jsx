@@ -7,6 +7,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Ba
 import { clsx } from 'clsx';
 import { X, Download, AlertTriangle, FileText, GraduationCap, CheckCircle, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { ReportCardPDFTemplate } from '../../components/ui/ReportCardPDFTemplate';
 
 
