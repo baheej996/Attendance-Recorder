@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock } from 'lucide-react';
+import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock, Loader2, Download } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { clsx } from 'clsx';
 import { Card } from '../ui/Card';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { ReportCardPDFTemplate } from '../ui/ReportCardPDFTemplate';
 
 export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
     const {
@@ -22,6 +22,9 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
     } = useData();
 
     const [activeTab, setActiveTab] = useState('overview');
+    const [generatingExams, setGeneratingExams] = useState({});
+    const [activePdfExam, setActivePdfExam] = useState(null);
+    const pdfRef = useRef(null);
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
     const studentClass = useMemo(() => classes.find(c => c.id === student?.classId), [classes, student]);
@@ -64,6 +67,29 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                 rank = calculatedRank > 0 ? calculatedRank : '-';
             }
 
+            // Calculate pass/fail and percentages for stats
+            let passedCount = 0;
+            const subjectBreakdown = examResults.map(r => {
+                const subject = subjects.find(s => s.id === r.subjectId);
+                const max = Number(subject?.maxMarks || 100);
+                const pass = Number(subject?.passMarks || 40);
+                const marks = Number(r.marks);
+                const isPassed = marks >= pass;
+                if (isPassed) passedCount++;
+
+                return {
+                    id: r.id,
+                    name: subject?.name || 'Unknown Subject',
+                    marks,
+                    maxMarks: max,
+                    isPassed,
+                    isAbsent: false
+                };
+            });
+
+            const overallPercentage = maxPossible > 0 ? (totalMarks / maxPossible) * 100 : 0;
+            const isOverallPassed = examResults.length > 0 && passedCount === examResults.length;
+
             return {
                 id: exam.id,
                 name: exam.name,
@@ -71,6 +97,13 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                 score: totalMarks,
                 max: maxPossible,
                 rank: rank,
+                stats: {
+                    totalObtained: totalMarks,
+                    totalMax: maxPossible,
+                    overallPercentage,
+                    isOverallPassed,
+                    subjectBreakdown
+                },
                 results: examResults.map(r => {
                     const subject = subjects.find(s => s.id === r.subjectId);
                     return {
@@ -135,86 +168,36 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
     }, [attendance, studentId]);
 
     const downloadExamPDF = (exam) => {
-        const doc = new jsPDF();
+        setGeneratingExams(prev => ({ ...prev, [exam.id]: true }));
+        setActivePdfExam(exam);
 
-        // Header
-        doc.setFontSize(20);
-        doc.text(institutionSettings?.name || "Attendance Recorder", 105, 15, { align: "center" });
-        doc.setFontSize(14);
-        doc.text(institutionSettings?.tagline || "Track Smart, Act Fast", 105, 22, { align: "center" });
-
-        doc.setLineWidth(0.5);
-        doc.line(20, 25, 190, 25);
-
-        // Exam & Student Details
-        doc.setFontSize(12);
-        doc.text(`Exam Report: ${exam.name}`, 20, 35);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 35);
-
-        doc.text(`Student Name: ${student.name}`, 20, 45);
-        doc.text(`Register No: ${student.registerNo}`, 20, 52);
-        doc.text(`Rank: ${exam.rank}`, 150, 45);
-
-        // Table
-        const tableColumn = ["Subject", "Max Marks", "Pass Marks", "Obtained", "Grade", "Result"];
-        const tableRows = [];
-
-        exam.results.forEach(r => {
-            const max = Number(r.maxMarks || 100);
-            const pass = Number(r.passMarks || 40);
-            const marks = Number(r.marks);
-            const pct = max > 0 ? (marks / max) * 100 : 0;
-
-            let grade = 'F';
-            if (pct >= 90) grade = 'A+';
-            else if (pct >= 80) grade = 'A';
-            else if (pct >= 70) grade = 'B';
-            else if (pct >= 60) grade = 'C';
-            else if (pct >= 50) grade = 'D';
-
-            const status = marks >= pass ? "PASS" : "FAIL";
-
-            tableRows.push([
-                r.subjectName,
-                max,
-                pass,
-                marks,
-                grade,
-                status
-            ]);
-        });
-
-        autoTable(doc, {
-            head: [tableColumn],
-            body: tableRows,
-            startY: 60,
-            theme: 'grid',
-            headStyles: { fillColor: [79, 70, 229] } // Indigo-600
-        });
-
-        // Summary
-        const percentage = exam.max > 0 ? ((exam.score / exam.max) * 100).toFixed(1) : 0;
-        const finalY = doc.lastAutoTable.finalY + 10;
-        doc.setFontSize(12);
-        doc.text(`Total Marks: ${exam.score} / ${exam.max}`, 20, finalY);
-        doc.text(`Percentage: ${percentage}%`, 20, finalY + 7);
-        doc.text(`Class Rank: ${exam.rank}`, 20, finalY + 14);
-
-        // Footer signature placeholder
-        const hasSignature = institutionSettings?.signatureImage;
-
-        if (hasSignature) {
-            try {
-                doc.addImage(institutionSettings.signatureImage, 'PNG', 140, finalY + 15, 40, 15);
-            } catch (err) {
-                console.error("Error adding signature image:", err);
+        setTimeout(async () => {
+            if (!pdfRef.current) {
+                setGeneratingExams(prev => ({ ...prev, [exam.id]: false }));
+                return;
             }
-        }
+            try {
+                const { toPng } = await import('html-to-image');
+                const imgData = await toPng(pdfRef.current, {
+                    cacheBust: true,
+                    backgroundColor: '#ffffff',
+                    pixelRatio: 2
+                });
 
-        doc.text("Principal's Signature:", 140, finalY + 35);
-        doc.line(140, finalY + 33, 190, finalY + 33);
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
 
-        doc.save(`${student.registerNo}_${exam.name.replace(/\s+/g, '_')}.pdf`);
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`${student.registerNo}_${exam.name.replace(/\s+/g, '_')}.pdf`);
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+                alert("Could not generate high-fidelity PDF. Please try again.");
+            } finally {
+                setGeneratingExams(prev => ({ ...prev, [exam.id]: false }));
+                setActivePdfExam(null);
+            }
+        }, 150);
     };
 
     if (!student || !isOpen) return null;
@@ -357,10 +340,11 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                                                     {exam.results.length > 0 && (
                                                         <button
                                                             onClick={() => downloadExamPDF(exam)}
-                                                            className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors border border-indigo-100 flex items-center justify-center shrink-0"
+                                                            disabled={generatingExams[exam.id]}
+                                                            className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors border border-indigo-100 flex items-center justify-center shrink-0 disabled:opacity-50"
                                                             title="Download Report Card"
                                                         >
-                                                            <BookOpen className="w-5 h-5" />
+                                                            {generatingExams[exam.id] ? <Loader2 className="w-5 h-5 animate-spin" /> : <BookOpen className="w-5 h-5" />}
                                                         </button>
                                                     )}
                                                 </div>
@@ -508,6 +492,20 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                         )}
                     </div>
                 </div>
+
+                {/* Hidden Template Render Box */}
+                {activePdfExam && (
+                    <ReportCardPDFTemplate
+                        ref={pdfRef}
+                        student={{
+                            ...student,
+                            classDetails: studentClass ? `${studentClass.name} ${studentClass.division}` : ''
+                        }}
+                        exam={activePdfExam}
+                        rank={activePdfExam.rank}
+                        stats={activePdfExam.stats}
+                    />
+                )}
             </div>
         </div>
     );

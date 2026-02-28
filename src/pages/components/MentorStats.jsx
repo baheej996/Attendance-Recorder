@@ -5,9 +5,9 @@ import { Select } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
-import { X, Download, AlertTriangle, FileText, GraduationCap, CheckCircle } from 'lucide-react';
+import { X, Download, AlertTriangle, FileText, GraduationCap, CheckCircle, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { ReportCardPDFTemplate } from '../../components/ui/ReportCardPDFTemplate';
 
 
 const COLORS = ['#10B981', '#EF4444']; // Green, Red
@@ -104,7 +104,7 @@ const StudentStatsModal = ({ student, records, onClose }) => {
 };
 
 const StudentResultModal = ({ student, exam, rank, subjects, results, onClose }) => {
-    const { institutionSettings } = useData();
+    const { institutionSettings, classes, students } = useData();
     const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
     const printRef = React.useRef(null);
 
@@ -153,43 +153,23 @@ const StudentResultModal = ({ student, exam, rank, subjects, results, onClose })
 
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
 
-                // Get element dimensions to maintain aspect ratio
-                const elWidth = printRef.current.offsetWidth || 1;
-                const elHeight = printRef.current.offsetHeight || 1;
-
-                const margin = 10;
-                const printWidth = pdfWidth - (margin * 2);
-                const printHeight = (elHeight * printWidth) / elWidth;
-
-                pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
-
-                if (institutionSettings?.signatureImage) {
-                    try {
-                        const sigY = margin + printHeight + 10;
-                        pdf.addImage(institutionSettings.signatureImage, 'PNG', pdfWidth - 60, sigY, 40, 15);
-                        pdf.setFontSize(10);
-                        pdf.setTextColor(100);
-                        pdf.text("Principal's Signature", pdfWidth - 60, sigY + 18);
-                    } catch (err) {
-                        console.error("Error adding signature:", err);
-                    }
-                }
-
-                pdf.save(`${student.name}_${exam.name}_Result.pdf`);
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`${student.registerNo}_${exam.name.replace(/\s+/g, '_')}_Report.pdf`);
             } catch (error) {
                 console.error("Error generating PDF:", error);
-                alert("Could not generate PDF.");
+                alert("Could not generate high-fidelity PDF.");
             } finally {
                 setIsGeneratingPDF(false);
             }
-        }, 100); // Wait for buttons to hide before capturing
+        }, 150);
     };
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-full animate-in zoom-in-95 duration-200">
-                <div ref={printRef} className="bg-white">
+                <div className="bg-white">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                         <div>
                             <h3 className="text-xl font-bold text-gray-900">{student.name}</h3>
@@ -264,17 +244,35 @@ const StudentResultModal = ({ student, exam, rank, subjects, results, onClose })
 
                 {!isGeneratingPDF && (
                     <div className="px-6 pb-6 pt-0">
-                        <Button onClick={generateResultPDF} className="w-full flex items-center justify-center gap-2" disabled={isGeneratingPDF}>
-                            {isGeneratingPDF ? (
-                                <span>Generating...</span>
-                            ) : (
-                                <>
-                                    <Download className="w-4 h-4" /> Download Result PDF
-                                </>
-                            )}
-                        </Button>
+                        {/* PDF Download Action */}
+                        <div className="flex justify-end pt-4">
+                            <Button
+                                onClick={generateResultPDF}
+                                disabled={isGeneratingPDF}
+                                className="w-full flex items-center justify-center gap-2"
+                            >
+                                {isGeneratingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                {isGeneratingPDF ? 'Generating...' : 'Download Report PDF'}
+                            </Button>
+                        </div>
                     </div>
                 )}
+
+                {/* Hidden Output for HTML to Image capture */}
+                <div className="absolute -left-[9999px] -top-[9999px]"> {/* Hide off-screen */}
+                    <ReportCardPDFTemplate
+                        ref={printRef}
+                        student={{
+                            ...student,
+                            classDetails: students.find(s => s.id === student.id)?.classId
+                                ? `${classes.find(c => c.id === students.find(s => s.id === student.id).classId)?.name || ''} ${classes.find(c => c.id === students.find(s => s.id === student.id).classId).division || ''}`
+                                : ''
+                        }}
+                        exam={exam}
+                        rank={rank}
+                        stats={stats}
+                    />
+                </div>
             </div>
         </div>
     )

@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Trophy, FileText, Calendar, Download } from 'lucide-react';
+import { Trophy, FileText, Calendar, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { ReportCardPDFTemplate } from '../ui/ReportCardPDFTemplate';
 
 const StudentResultView = () => {
     const { currentUser, exams, subjects, results, students, institutionSettings } = useData();
     const [selectedExamId, setSelectedExamId] = useState('');
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const pdfRef = useRef(null);
 
     // Filter published exams only
     const publishedExams = exams.filter(e => e.status === 'Published');
@@ -58,88 +60,68 @@ const StudentResultView = () => {
 
     const studentRank = getStudentRank();
 
-    const downloadPDF = () => {
-        const doc = new jsPDF();
-        const exam = exams.find(e => e.id === selectedExamId);
-
-        // Header
-        doc.setFontSize(20);
-        doc.text(institutionSettings?.name || "Attendance Recorder", 105, 15, { align: "center" });
-        doc.setFontSize(14);
-        doc.text(institutionSettings?.tagline || "Track Smart, Act Fast", 105, 22, { align: "center" });
-
-        doc.setLineWidth(0.5);
-        doc.line(20, 25, 190, 25);
-
-        // Exam & Student Details
-        doc.setFontSize(12);
-        doc.text(`Exam Report: ${exam ? exam.name : 'N/A'}`, 20, 35);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 35);
-
-        doc.text(`Student Name: ${currentUser.name}`, 20, 45);
-        doc.text(`Register No: ${currentUser.registerNo}`, 20, 52);
-        doc.text(`Rank: ${studentRank}`, 150, 45);
-
-        // Table
-        const tableColumn = ["Subject", "Max Marks", "Pass Marks", "Obtained", "Grade", "Result"];
-        const tableRows = [];
-
-        myResults.forEach(r => {
+    const stats = useMemo(() => {
+        let passedCount = 0;
+        const subjectBreakdown = myResults.map(r => {
             const subject = subjects.find(s => s.id === r.subjectId);
-            const max = Number(subject?.maxMarks || 100);
-            const pass = Number(subject?.passMarks || 40);
+            const maxMarks = Number(subject?.maxMarks || 100);
+            const passMarks = Number(subject?.passMarks || 40);
             const marks = Number(r.marks);
-            const pct = (marks / max) * 100;
+            const isPassed = marks >= passMarks;
+            if (isPassed) passedCount++;
 
-            let grade = 'F';
-            if (pct >= 90) grade = 'A+';
-            else if (pct >= 80) grade = 'A';
-            else if (pct >= 70) grade = 'B';
-            else if (pct >= 60) grade = 'C';
-            else if (pct >= 50) grade = 'D';
-
-            const status = marks >= pass ? "PASS" : "FAIL";
-
-            tableRows.push([
-                subject?.name || 'Unknown',
-                max,
-                pass,
+            return {
+                id: r.id,
+                name: subject?.name || 'Unknown',
                 marks,
-                grade,
-                status
-            ]);
+                maxMarks,
+                isPassed,
+                isAbsent: false
+            };
         });
 
-        autoTable(doc, {
-            head: [tableColumn],
-            body: tableRows,
-            startY: 60,
-            theme: 'grid',
-            headStyles: { fillColor: [79, 70, 229] } // Indigo-600
-        });
+        const isOverallPassed = myResults.length > 0 && passedCount === myResults.length;
 
-        // Summary
-        const finalY = doc.lastAutoTable.finalY + 10;
-        doc.setFontSize(12);
-        doc.text(`Total Marks: ${totalMarks} / ${totalMax}`, 20, finalY);
-        doc.text(`Percentage: ${percentage}%`, 20, finalY + 7);
-        doc.text(`Class Rank: ${studentRank}`, 20, finalY + 14);
+        return {
+            totalObtained: totalMarks,
+            totalMax: totalMax,
+            overallPercentage: Number(percentage),
+            isOverallPassed,
+            subjectBreakdown
+        };
+    }, [myResults, subjects, totalMarks, totalMax, percentage]);
 
-        // Footer signature placeholder
-        const hasSignature = institutionSettings?.signatureImage;
+    const activeExam = useMemo(() => exams.find(e => e.id === selectedExamId), [exams, selectedExamId]);
 
-        if (hasSignature) {
-            try {
-                doc.addImage(institutionSettings.signatureImage, 'PNG', 140, finalY + 15, 40, 15);
-            } catch (err) {
-                console.error("Error adding signature image:", err);
+    const downloadPDF = () => {
+        setIsGeneratingPDF(true);
+        setTimeout(async () => {
+            if (!pdfRef.current) {
+                setIsGeneratingPDF(false);
+                return;
             }
-        }
+            try {
+                const { toPng } = await import('html-to-image');
+                const imgData = await toPng(pdfRef.current, {
+                    cacheBust: true,
+                    backgroundColor: '#ffffff',
+                    pixelRatio: 2
+                });
 
-        doc.text("Principal's Signature:", 140, finalY + 35);
-        doc.line(140, finalY + 33, 190, finalY + 33);
+                // Standard A4: 210 x 297 mm
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
 
-        doc.save(`${currentUser.registerNo}_${exam ? exam.name.replace(/\s+/g, '_') : 'Report'}.pdf`);
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`${currentUser.registerNo}_${activeExam ? activeExam.name.replace(/\s+/g, '_') : 'ReportCard'}.pdf`);
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+                alert("Could not generate high-fidelity PDF. Please try again or check console.");
+            } finally {
+                setIsGeneratingPDF(false);
+            }
+        }, 150); // slight delay to ensure UI ref mounts fully
     };
 
     return (
@@ -168,10 +150,11 @@ const StudentResultView = () => {
                     {selectedExamId && myResults.length > 0 && (
                         <button
                             onClick={downloadPDF}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
+                            disabled={isGeneratingPDF}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium disabled:opacity-75"
                         >
-                            <Download className="w-4 h-4" />
-                            Download Report
+                            {isGeneratingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            {isGeneratingPDF ? 'Preparing...' : 'Download Report'}
                         </button>
                     )}
                 </div>
@@ -249,6 +232,22 @@ const StudentResultView = () => {
                             </>
                         )}
                     </div>
+                )}
+
+                {/* Hidden High-Fidelity PDF Template injected into DOM */}
+                {selectedExamId && myResults.length > 0 && (
+                    <ReportCardPDFTemplate
+                        ref={pdfRef}
+                        student={{
+                            ...currentUser,
+                            classDetails: students.find(s => s.id === currentUser.id)?.classId
+                                ? `${students.find(s => s.id === currentUser.id).classDetails?.name || ''} ${students.find(s => s.id === currentUser.id).classDetails?.division || ''}`
+                                : ''
+                        }}
+                        exam={activeExam}
+                        rank={studentRank}
+                        stats={stats}
+                    />
                 )}
             </Card>
         </div>
