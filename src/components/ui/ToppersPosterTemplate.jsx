@@ -1,10 +1,38 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState, useEffect } from 'react';
+
+/**
+ * Hook to eagerly fetch and convert an image to a base64 string.
+ * This solves severe image-dropping issues in html-to-image on iOS/Safari.
+ */
+const useBase64Image = (url) => {
+    const [base64, setBase64] = useState(url); // fallback to url initially
+    useEffect(() => {
+        let isMounted = true;
+        fetch(url)
+            .then(res => res.blob())
+            .then(blob => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (isMounted) setBase64(reader.result);
+                };
+                reader.readAsDataURL(blob);
+            })
+            .catch(console.error);
+        return () => { isMounted = false };
+    }, [url]);
+    return base64;
+};
 
 /**
  * High-fidelity Toppers Poster Template.
  * Maps every student with Rank 1-3 to an individual styled row box with badges.
  */
 export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref) => {
+    const bgBase64 = useBase64Image('/toppers-bg.jpg');
+    const badge1Base64 = useBase64Image('/badge-1.png');
+    const badge2Base64 = useBase64Image('/badge-2.png');
+    const badge3Base64 = useBase64Image('/badge-3.png');
+
     if (!topStudents || topStudents.length === 0) return null;
 
     // Absolute pixel positions based on 1080x1350 coordinate system
@@ -23,7 +51,7 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
         >
             {/* Baked Background Image */}
             <img
-                src="/toppers-bg.jpg"
+                src={bgBase64}
                 alt="Background"
                 style={{ position: 'absolute', top: 0, left: 0, width: '1080px', height: '1350px', zIndex: 0 }}
                 crossOrigin="anonymous"
@@ -100,7 +128,11 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
                                     {/* Badge Image */}
                                     <img
-                                        src={`/badge-${s.badge}.png`}
+                                        src={
+                                            s.badge === '1' ? badge1Base64 :
+                                                s.badge === '2' ? badge2Base64 :
+                                                    badge3Base64
+                                        }
                                         alt={`Rank ${rank}`}
                                         style={{ width: badgeSize, height: badgeSize, objectFit: 'contain' }}
                                         crossOrigin="anonymous"
