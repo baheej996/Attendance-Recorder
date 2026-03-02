@@ -58,9 +58,10 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                     top: '660px',
                     left: '120px',
                     width: '840px',
+                    height: '480px', // Fill vertical space before footer
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: topStudents.length > 5 ? '8px' : '15px',
+                    gap: '12px', // Consistent gap
                 }}>
                     {topStudents.map((perf, idx) => {
                         const rank = perf.rank;
@@ -84,7 +85,8 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    height: topStudents.length > 4 ? '85px' : '100px' // scale down if many ties
+                                    flex: 1, // Let flex handle the height to fill the 480px container
+                                    maxHeight: '140px' // Cap height if there are only 1 or 2 students
                                 }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
