@@ -9,6 +9,13 @@ import { format } from 'date-fns';
 export const ReportCardPDFTemplate = forwardRef(({ student, exam, rank, stats }, ref) => {
     if (!student || !exam || !stats) return null;
 
+    const examDate = new Date(exam.date);
+    const examYear = examDate.getFullYear();
+    const examMonth = examDate.getMonth();
+    // Academic year typically starts in June. Exams before June belong to the previous year.
+    const academicStartYear = examMonth < 5 ? examYear - 1 : examYear;
+    const academicYearString = `${academicStartYear}-${academicStartYear + 1}`;
+
     // A4 dimensions at 96 DPI: 794 x 1123, we'll use 800 x 1131 for clean rounding
     return (
         <div
@@ -25,7 +32,7 @@ export const ReportCardPDFTemplate = forwardRef(({ student, exam, rank, stats },
                         ANNUAL EXAMINATION
                     </h1>
                     <h2 className="text-4xl font-bold text-gray-600 tracking-tight leading-none">
-                        MARKLIST <span className="font-light text-gray-500">({new Date(exam.date).getFullYear()}-{String(new Date(exam.date).getFullYear() + 1).slice(-2)})</span>
+                        MARKLIST <span className="font-light text-gray-500">({academicYearString})</span>
                     </h2>
                 </div>
 
@@ -33,7 +40,7 @@ export const ReportCardPDFTemplate = forwardRef(({ student, exam, rank, stats },
                 <div className="bg-[#f8f9fc] rounded-xl p-6 mb-6 flex flex-row items-center justify-between border-0">
                     <div>
                         <h3 className="text-2xl font-bold text-[#1e293b] mb-1">{student.name}</h3>
-                        <p className="text-[#64748b] text-sm">SKIMVB Annual Examination {new Date(exam.date).getFullYear()}-{String(new Date(exam.date).getFullYear() + 1).slice(-2)} • Result Details</p>
+                        <p className="text-[#64748b] text-sm">SKIMVB Annual Examination {academicYearString} • Result Details</p>
                         {student.registerNo && <p className="text-[#64748b] text-sm mt-1 font-mono">Reg No: {student.registerNo}</p>}
                     </div>
                     {student.classDetails && (
