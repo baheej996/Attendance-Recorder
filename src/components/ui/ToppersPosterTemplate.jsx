@@ -36,10 +36,10 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                 <div
                     style={{
                         position: 'absolute',
-                        top: '595px',
-                        left: '130px', /* Shifted left to avoid yellow badge overlap */
-                        fontSize: '36px',
-                        fontWeight: '800',
+                        top: '580px', /* Centered vertically in new banner */
+                        left: '210px', /* Shifted right to fit inside new banner */
+                        fontSize: '34px',
+                        fontWeight: '600', /* Reduced boldness */
                         color: '#1f2937',
                         letterSpacing: '0.5px'
                     }}
@@ -51,7 +51,7 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                 <div style={{
                     position: 'absolute',
                     top: '710px', /* Shifted slightly up */
-                    left: '60px', /* Shifted left to match bounded width */
+                    left: '120px', /* Centered horizontally: (1080 - 840) / 2 = 120 */
                     width: '840px', /* Reduced width to avoid pencil overlap */
                     display: 'flex',
                     flexDirection: 'column',
