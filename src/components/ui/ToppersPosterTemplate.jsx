@@ -37,8 +37,8 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                     style={{
                         position: 'absolute',
                         top: '582px',
-                        left: '150px',
-                        width: '400px',
+                        left: '115px',
+                        width: '445px',
                         textAlign: 'center',
                         fontSize: '34px',
                         fontWeight: '600',
@@ -52,7 +52,7 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                 {/* --- Student Rows Stack --- */}
                 <div style={{
                     position: 'absolute',
-                    top: '680px',
+                    top: '660px',
                     left: '120px',
                     width: '840px',
                     display: 'flex',
