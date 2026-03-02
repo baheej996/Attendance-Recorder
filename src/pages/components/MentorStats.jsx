@@ -8,7 +8,9 @@ import { clsx } from 'clsx';
 import { X, Download, AlertTriangle, FileText, GraduationCap, CheckCircle, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as htmlToImage from 'html-to-image';
 import { ReportCardPDFTemplate } from '../../components/ui/ReportCardPDFTemplate';
+import { ToppersPosterTemplate } from '../../components/ui/ToppersPosterTemplate';
 
 
 const COLORS = ['#10B981', '#EF4444']; // Green, Red
@@ -284,6 +286,8 @@ const MentorStats = () => {
     const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'results'
     const [selectedClassId, setSelectedClassId] = useState('');
     const [selectedExamId, setSelectedExamId] = useState('');
+    const [isGeneratingPoster, setIsGeneratingPoster] = useState(false);
+    const toppersPrintRef = React.useRef(null);
     const [selectedStudent, setSelectedStudent] = useState(null); // For Attendance Modal
     const [resultModalData, setResultModalData] = useState(null); // { student, exam }
 
@@ -439,6 +443,33 @@ const MentorStats = () => {
         doc.save(`Results_${cls?.name.replace(' ', '_')}_${exam?.name.replace(' ', '_')}.pdf`);
     };
 
+    const generateToppersPoster = async () => {
+        if (!toppersPrintRef.current) return;
+        setIsGeneratingPoster(true);
+
+        try {
+            const dataUrl = await htmlToImage.toPng(toppersPrintRef.current, {
+                quality: 1.0,
+                pixelRatio: 2,
+                cacheBust: true,
+                backgroundColor: '#ffffff'
+            });
+
+            const cls = classes.find(c => c.id === selectedClassId);
+            const exam = exams.find(e => e.id === selectedExamId);
+
+            const link = document.createElement('a');
+            link.download = `Toppers_${cls?.name.replace(' ', '_')}_${exam?.name.replace(' ', '_')}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (error) {
+            console.error("Error generating Toppers Poster:", error);
+            alert("Could not generate Toppers Poster. Ensure the layout is fully rendered.");
+        } finally {
+            setIsGeneratingPoster(false);
+        }
+    };
+
     return (
         <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-8 animate-fadeIn">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -498,13 +529,24 @@ const MentorStats = () => {
                         </Button>
                     )}
                     {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
-                        <Button
-                            onClick={generateExamReport}
-                            variant="secondary"
-                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
-                        >
-                            <Download className="w-4 h-4" /> Export PDF
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={generateToppersPoster}
+                                disabled={isGeneratingPoster || examStats.studentPerformances.length === 0}
+                                variant="secondary"
+                                className="bg-white hover:bg-gray-50 text-emerald-700 border border-emerald-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
+                            >
+                                {isGeneratingPoster ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                {isGeneratingPoster ? 'Generating...' : 'Toppers poster'}
+                            </Button>
+                            <Button
+                                onClick={generateExamReport}
+                                variant="secondary"
+                                className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
+                            >
+                                <Download className="w-4 h-4" /> Export PDF
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -679,6 +721,30 @@ const MentorStats = () => {
                 />
             )}
         </div>
+
+            {/* Hidden Output for Toppers Poster Capture */ }
+    <div className="absolute left-[-9999px] top-[-9999px]">
+        {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
+            <ToppersPosterTemplate
+                ref={toppersPrintRef}
+                topStudents={examStats.studentPerformances.slice(0, 3)}
+                className={classes.find(c => c.id === selectedClassId)?.name + (classes.find(c => c.id === selectedClassId)?.division ? ' ' + classes.find(c => c.id === selectedClassId)?.division : '')}
+                academicYear={
+                    (exams.find(e => e.id === selectedExamId)?.date)
+                        ? (() => {
+                            const d = new Date(exams.find(e => e.id === selectedExamId).date);
+                            const y = d.getFullYear();
+                            const m = d.getMonth();
+                            const sy = m < 5 ? y - 1 : y;
+                            return `${sy}-${String(sy + 1).slice(-2)}`;
+                        })()
+                        : ''
+                }
+            />
+        )}
+    </div>
+
+        </div >
     );
 };
 
