@@ -134,9 +134,9 @@ export const ReportCardPDFTemplate = forwardRef(({ student, exam, rank, stats },
                         <h4 className="font-bold text-black text-[22px] tracking-tight mb-1" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
                             Samastha E-Learning Online Global Madrasa
                         </h4>
-                        <p className="text-black text-[11.5px] leading-tight" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
-                            Global Education Centre, Samastha Central Office, Francis Road, Calicut - 03, Ph: +91 8590518541<br />
-                            Pin code: 673003, Website: www.samasthaelearning.com, E-mail: samasthaelearning@gmail.com
+                        <p className="text-black text-[11px] leading-tight flex flex-col gap-0.5" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                            <span className="whitespace-nowrap tracking-tight">Global Education Centre, Samastha Central Office, Francis Road, Calicut - 03, Ph: +91 8590518541</span>
+                            <span className="whitespace-nowrap tracking-tight">Pin code: 673003, Website: www.samasthaelearning.com, E-mail: samasthaelearning@gmail.com</span>
                         </p>
                     </div>
                 </div>
