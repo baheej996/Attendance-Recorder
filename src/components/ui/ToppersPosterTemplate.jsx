@@ -1,23 +1,11 @@
-import React, { forwardRef, useMemo } from 'react';
-import { clsx } from 'clsx';
+import React, { forwardRef } from 'react';
 
 /**
  * High-fidelity Toppers Poster Template.
- * Maps students dynamically by Rank to support ties spanning multiple rows.
+ * Maps every student with Rank 1-3 to an individual styled row box with badges.
  */
-export const ToppersPosterTemplate = forwardRef(({ topStudents, className, academicYear }, ref) => {
+export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref) => {
     if (!topStudents || topStudents.length === 0) return null;
-
-    // Group students by rank (1, 2, 3)
-    const groupedStudents = useMemo(() => {
-        const ranks = { 1: [], 2: [], 3: [] };
-        topStudents.forEach((perf) => {
-            if (perf.rank === 1) ranks[1].push(perf);
-            if (perf.rank === 2) ranks[2].push(perf);
-            if (perf.rank === 3) ranks[3].push(perf);
-        });
-        return ranks;
-    }, [topStudents]);
 
     // Absolute pixel positions based on 1080x1350 coordinate system
     return (
@@ -28,7 +16,7 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className, acade
             style={{
                 width: '1080px',
                 height: '1350px',
-                fontFamily: '"Arial", sans-serif',
+                fontFamily: '"Urbanist", "Arial", sans-serif',
                 position: 'relative',
                 overflow: 'hidden'
             }}
@@ -44,119 +32,97 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className, acade
             {/* Dynamic Overlays */}
             <div style={{ position: 'relative', zIndex: 10, width: '100%', height: '100%' }}>
 
-                {/* Academic Year */}
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '382px',
-                        left: '460px',
-                        fontSize: '22px',
-                        fontWeight: 'bold',
-                        color: '#6b21a8',
-                        letterSpacing: '1px'
-                    }}
-                >
-                    {academicYear}
-                </div>
-
                 {/* Class Name */}
                 <div
                     style={{
                         position: 'absolute',
-                        top: '600px',
-                        left: '180px',
+                        top: '595px',
+                        left: '185px',
                         fontSize: '36px',
-                        fontWeight: 'bold',
-                        color: '#1f2937'
+                        fontWeight: '800',
+                        color: '#1f2937',
+                        letterSpacing: '0.5px'
                     }}
                 >
                     Class {className}
                 </div>
 
-                {/* --- Student Array Map (Handles Ties) --- */}
-                {/* 
-                    Row 1 Base Y = 745
-                    Row 2 Base Y = 895  (Diff: 150)
-                    Row 3 Base Y = 1045 (Diff: 150)
-                */}
+                {/* --- Student Rows Stack --- */}
+                <div style={{
+                    position: 'absolute',
+                    top: '720px',
+                    left: '80px',
+                    width: '920px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: topStudents.length > 5 ? '10px' : '20px',
+                }}>
+                    {topStudents.map((perf, idx) => {
+                        const rank = perf.rank;
+                        if (rank > 3) return null;
 
-                {[1, 2, 3].map((rank, idx) => {
-                    const rowStudents = groupedStudents[rank];
-                    if (!rowStudents || rowStudents.length === 0) return null;
+                        const styles = {
+                            1: { bg: '#eefcf4', border: '#a3deb8', color: '#10b981' },
+                            2: { bg: '#eff6ff', border: '#bfdbfe', color: '#3b82f6' },
+                            3: { bg: '#faf5ff', border: '#e9d5ff', color: '#a855f7' }
+                        };
+                        const s = styles[rank];
 
-                    const baseY = 745 + (idx * 150);
-                    const namesString = rowStudents.map(s => s.student.name).join(' & ');
-
-                    // All students in this rank share the same pct/marks since they tied
-                    const pct = rowStudents[0].pct.toFixed(1);
-                    const marks = `${rowStudents[0].obtained}/${rowStudents[0].max}`;
-
-                    const styles = {
-                        1: { color: '#059669' },
-                        2: { color: '#0284c7' },
-                        3: { color: '#7e22ce' }
-                    };
-
-                    return (
-                        <React.Fragment key={`rank-${rank}`}>
-                            {/* Names (Comma separated if tied) */}
+                        return (
                             <div
+                                key={`student-${idx}`}
                                 style={{
-                                    position: 'absolute',
-                                    top: `${baseY}px`,
-                                    left: '260px',
-                                    fontSize: rowStudents.length > 2 ? '22px' : rowStudents.length === 2 ? '26px' : '30px',
-                                    fontWeight: 'bold',
-                                    color: styles[rank].color,
-                                    width: '320px',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    textTransform: 'uppercase',
+                                    backgroundColor: s.bg,
+                                    border: `2px solid ${s.border}`,
+                                    borderRadius: '50px', // Creates the pill shape
+                                    padding: '15px 35px',
                                     display: 'flex',
+                                    justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    height: '40px'
+                                    height: topStudents.length > 4 ? '90px' : '110px' // scale down if many ties
                                 }}
                             >
-                                {namesString}
-                            </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
+                                    {/* Badge Image */}
+                                    <img
+                                        src={`/badge-${rank}.png`}
+                                        alt={`Rank ${rank}`}
+                                        style={{ width: '56px', height: '56px', objectFit: 'contain' }}
+                                        crossOrigin="anonymous"
+                                    />
+                                    {/* Student Name */}
+                                    <div
+                                        style={{
+                                            fontSize: '32px',
+                                            fontWeight: '800',
+                                            color: s.color,
+                                            textTransform: 'uppercase',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            maxWidth: '400px'
+                                        }}
+                                    >
+                                        {perf.student.name}
+                                    </div>
+                                </div>
 
-                            {/* Percentage */}
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    top: `${baseY}px`,
-                                    left: '600px',
-                                    fontSize: '32px',
-                                    fontWeight: 'bold',
-                                    color: '#111827',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    height: '40px'
-                                }}
-                            >
-                                {pct}%
-                            </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '30px', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                    {/* Percentage */}
+                                    <div style={{ fontSize: '32px', fontWeight: '800', color: '#111827', width: '130px', textAlign: 'right' }}>
+                                        {perf.pct.toFixed(1)}%
+                                    </div>
 
-                            {/* Marks */}
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    top: `${baseY}px`,
-                                    left: '750px',
-                                    fontSize: '32px',
-                                    fontWeight: '500',
-                                    color: '#111827',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    height: '40px'
-                                }}
-                            >
-                                {marks}
+                                    {/* Marks */}
+                                    <div style={{ fontSize: '32px', color: '#111827', width: '150px', textAlign: 'right' }}>
+                                        <span style={{ fontWeight: '800' }}>{perf.obtained}/</span>
+                                        <span style={{ fontWeight: '400', color: '#4b5563' }}>{perf.max}</span>
+                                    </div>
+                                </div>
                             </div>
-                        </React.Fragment>
-                    );
-                })}
+                        );
+                    })}
+                </div>
 
             </div>
         </div>
