@@ -36,10 +36,13 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                 <div
                     style={{
                         position: 'absolute',
-                        top: '586px',
+                        top: '558px', /* Shifted up to center vertically */
                         left: '120px',
                         width: '300px', /* Shrunk width to only span the white bubble */
-                        textAlign: 'center',
+                        height: '70px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         fontSize: '34px',
                         fontWeight: '600',
                         color: '#1f2937',
