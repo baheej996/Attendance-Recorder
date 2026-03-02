@@ -730,7 +730,7 @@ const MentorStats = () => {
                 {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
                     <ToppersPosterTemplate
                         ref={toppersPrintRef}
-                        topStudents={examStats.studentPerformances.slice(0, 3)}
+                        topStudents={examStats.studentPerformances.filter(p => p.rank <= 3)}
                         className={classes.find(c => c.id === selectedClassId)?.name + (classes.find(c => c.id === selectedClassId)?.division ? ' ' + classes.find(c => c.id === selectedClassId)?.division : '')}
                         academicYear={
                             (exams.find(e => e.id === selectedExamId)?.date)
