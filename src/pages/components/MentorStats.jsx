@@ -725,31 +725,28 @@ const MentorStats = () => {
                     onClose={() => setResultModalData(null)}
                 />
             )}
+            {/* Hidden Output for Toppers Poster Capture */}
+            <div className="absolute left-[-9999px] top-[-9999px]">
+                {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
+                    <ToppersPosterTemplate
+                        ref={toppersPrintRef}
+                        topStudents={examStats.studentPerformances.slice(0, 3)}
+                        className={classes.find(c => c.id === selectedClassId)?.name + (classes.find(c => c.id === selectedClassId)?.division ? ' ' + classes.find(c => c.id === selectedClassId)?.division : '')}
+                        academicYear={
+                            (exams.find(e => e.id === selectedExamId)?.date)
+                                ? (() => {
+                                    const d = new Date(exams.find(e => e.id === selectedExamId).date);
+                                    const y = d.getFullYear();
+                                    const m = d.getMonth();
+                                    const sy = m < 5 ? y - 1 : y;
+                                    return `${sy}-${String(sy + 1).slice(-2)}`;
+                                })()
+                                : ''
+                        }
+                    />
+                )}
+            </div>
         </div>
-
-            {/* Hidden Output for Toppers Poster Capture */ }
-    <div className="absolute left-[-9999px] top-[-9999px]">
-        {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
-            <ToppersPosterTemplate
-                ref={toppersPrintRef}
-                topStudents={examStats.studentPerformances.slice(0, 3)}
-                className={classes.find(c => c.id === selectedClassId)?.name + (classes.find(c => c.id === selectedClassId)?.division ? ' ' + classes.find(c => c.id === selectedClassId)?.division : '')}
-                academicYear={
-                    (exams.find(e => e.id === selectedExamId)?.date)
-                        ? (() => {
-                            const d = new Date(exams.find(e => e.id === selectedExamId).date);
-                            const y = d.getFullYear();
-                            const m = d.getMonth();
-                            const sy = m < 5 ? y - 1 : y;
-                            return `${sy}-${String(sy + 1).slice(-2)}`;
-                        })()
-                        : ''
-                }
-            />
-        )}
-    </div>
-
-        </div >
     );
 };
 
