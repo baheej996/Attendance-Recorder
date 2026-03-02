@@ -499,10 +499,10 @@ const MentorStats = () => {
             </div>
 
             <Card>
-                <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-row gap-2 sm:gap-4 items-center justify-between bg-gray-50/50">
-                    <div className="flex flex-row gap-2 sm:gap-4 items-center flex-1">
-                        <div className="w-full md:w-64">
-                            <Select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="bg-white">
+                <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-gray-50/50">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center w-full md:w-auto">
+                        <div className="w-full sm:w-64">
+                            <Select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="bg-white text-sm">
                                 <option value="" disabled>Select Class</option>
                                 {availableClasses.map(c => <option key={c.id} value={c.id}>{c.name} - {c.division}</option>)}
                             </Select>
@@ -510,7 +510,7 @@ const MentorStats = () => {
 
                         {activeTab === 'results' && selectedClassId && (
                             <div className="w-full sm:w-64">
-                                <Select value={selectedExamId} onChange={(e) => setSelectedExamId(e.target.value)} className="bg-white">
+                                <Select value={selectedExamId} onChange={(e) => setSelectedExamId(e.target.value)} className="bg-white text-sm">
                                     <option value="" disabled>Select Exam</option>
                                     {exams.map(e => <option key={e.id} value={e.id}>{e.name} {e.status === 'Draft' ? '(Draft)' : ''}</option>)}
                                 </Select>
@@ -519,35 +519,40 @@ const MentorStats = () => {
                     </div>
 
                     {/* Export Buttons */}
-                    {activeTab === 'attendance' && selectedClassId && classStudents.length > 0 && (
-                        <Button
-                            onClick={generateAttendanceReport}
-                            variant="secondary"
-                            className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
-                        >
-                            <Download className="w-4 h-4" /> Export PDF
-                        </Button>
-                    )}
-                    {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
-                        <div className="flex gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end">
+                        {activeTab === 'attendance' && selectedClassId && classStudents.length > 0 && (
                             <Button
-                                onClick={generateToppersPoster}
-                                disabled={isGeneratingPoster || examStats.studentPerformances.length === 0}
+                                onClick={generateAttendanceReport}
                                 variant="secondary"
-                                className="bg-white hover:bg-gray-50 text-emerald-700 border border-emerald-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
-                            >
-                                {isGeneratingPoster ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                                {isGeneratingPoster ? 'Generating...' : 'Toppers poster'}
-                            </Button>
-                            <Button
-                                onClick={generateExamReport}
-                                variant="secondary"
-                                className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2"
+                                className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2 text-sm"
                             >
                                 <Download className="w-4 h-4" /> Export PDF
                             </Button>
-                        </div>
-                    )}
+                        )}
+
+                        {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
+                            <>
+                                <Button
+                                    onClick={generateToppersPoster}
+                                    disabled={isGeneratingPoster || examStats.studentPerformances.length === 0}
+                                    variant="secondary"
+                                    title="Download Top 3 Students Poster"
+                                    className="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2 text-sm transition-colors"
+                                >
+                                    {isGeneratingPoster ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                    <span className="hidden sm:inline">{isGeneratingPoster ? 'Generating...' : 'Toppers Poster'}</span>
+                                    <span className="sm:hidden">{isGeneratingPoster ? '...' : 'Poster'}</span>
+                                </Button>
+                                <Button
+                                    onClick={generateExamReport}
+                                    variant="secondary"
+                                    className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm whitespace-nowrap flex items-center justify-center gap-2 text-sm"
+                                >
+                                    <Download className="w-4 h-4" /> Export PDF
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {!selectedClassId ? (
