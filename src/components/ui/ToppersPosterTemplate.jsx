@@ -61,11 +61,19 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                     height: '480px', // Fill vertical space before footer
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '12px', // Consistent gap
+                    gap: topStudents.length > 6 ? '6px' : topStudents.length > 4 ? '10px' : '15px',
                 }}>
                     {topStudents.map((perf, idx) => {
                         const rank = perf.rank;
                         if (rank > 3) return null;
+
+                        // Dynamic scaling variables to prevent overflow on large ties
+                        const isCrowded = topStudents.length > 4;
+                        const isVeryCrowded = topStudents.length > 6;
+                        const padding = isVeryCrowded ? '6px 16px' : isCrowded ? '10px 20px' : '12px 25px';
+                        const badgeSize = isVeryCrowded ? '32px' : isCrowded ? '40px' : '48px';
+                        const fontSize = isVeryCrowded ? '22px' : isCrowded ? '26px' : '30px';
+                        const nameMaxWidth = isVeryCrowded ? '420px' : isCrowded ? '390px' : '360px';
 
                         const styles = {
                             1: { bg: '#eefcf4', border: '#a3deb8', color: '#10b981', badge: '3' }, // 1st uses badge-3.png per user
@@ -81,7 +89,7 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                                     backgroundColor: s.bg,
                                     border: `2px solid ${s.border}`,
                                     borderRadius: '35px', // Reduced roundness
-                                    padding: '12px 25px', // Tighter padding
+                                    padding: padding, // Dynamically scales
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
@@ -94,20 +102,20 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
                                     <img
                                         src={`/badge-${s.badge}.png`}
                                         alt={`Rank ${rank}`}
-                                        style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+                                        style={{ width: badgeSize, height: badgeSize, objectFit: 'contain' }}
                                         crossOrigin="anonymous"
                                     />
                                     {/* Student Name */}
                                     <div
                                         style={{
-                                            fontSize: '30px',
+                                            fontSize: fontSize,
                                             fontWeight: '700', // Reduced boldness
                                             color: s.color,
                                             textTransform: 'uppercase',
                                             whiteSpace: 'nowrap',
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
-                                            maxWidth: '360px'
+                                            maxWidth: nameMaxWidth
                                         }}
                                     >
                                         {perf.student.name}
@@ -116,12 +124,12 @@ export const ToppersPosterTemplate = forwardRef(({ topStudents, className }, ref
 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '25px', justifyContent: 'flex-end', minWidth: '220px' }}>
                                     {/* Percentage */}
-                                    <div style={{ fontSize: '30px', fontWeight: '700', color: '#111827', width: '110px', textAlign: 'right' }}>
+                                    <div style={{ fontSize: fontSize, fontWeight: '700', color: '#111827', width: '110px', textAlign: 'right' }}>
                                         {perf.pct.toFixed(1)}%
                                     </div>
 
                                     {/* Marks */}
-                                    <div style={{ fontSize: '30px', color: '#111827', width: '130px', textAlign: 'right' }}>
+                                    <div style={{ fontSize: fontSize, color: '#111827', width: '130px', textAlign: 'right' }}>
                                         <span style={{ fontWeight: '700' }}>{perf.obtained}/</span>
                                         <span style={{ fontWeight: '400', color: '#4b5563' }}>{perf.max}</span>
                                     </div>
