@@ -452,7 +452,9 @@ const MentorStats = () => {
                 quality: 1.0,
                 pixelRatio: 2,
                 cacheBust: true,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                useCORS: true,
+                allowTaint: true
             });
 
             const cls = classes.find(c => c.id === selectedClassId);
