@@ -17,7 +17,8 @@ const MentorRamadan = () => {
     const [selectedClassId, setSelectedClassId] = useState('');
     const [selectedDay, setSelectedDay] = useState(1); // Default to Day 1
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState('fasting'); // 'fasting' | 'quran'
+    const [activeTab, setActiveTab] = useState('fasting'); // 'fasting' | 'quran' | 'ranking'
+    const [rankingType, setRankingType] = useState('fasting'); // 'fasting' | 'quran'
 
     // Data Filtering
     const myClasses = useMemo(() => {
@@ -76,6 +77,28 @@ const MentorRamadan = () => {
         });
     }, [classStudents, ramadanLogs]);
 
+    // Calculate Quran Ranking
+    const quranRankings = useMemo(() => {
+        if (!classStudents) return [];
+
+        const rankings = classStudents.map(student => {
+            const progress = getStudentQuranProgress(student.id);
+            return {
+                ...student,
+                completedKhatms: progress.completedKhatms || 0,
+                juz: progress.juz || 1,
+                lastPage: progress.lastPage || 0
+            };
+        });
+
+        return rankings.sort((a, b) => {
+            if (b.completedKhatms !== a.completedKhatms) return b.completedKhatms - a.completedKhatms;
+            if (b.juz !== a.juz) return b.juz - a.juz;
+            if (b.lastPage !== a.lastPage) return b.lastPage - a.lastPage;
+            return a.name.localeCompare(b.name);
+        });
+    }, [classStudents, quranProgress]);
+
     // Calculate Fasting Stats for selected class and day
     const fastingStats = useMemo(() => {
         let fasting = 0, notFasting = 0, excused = 0, unrecorded = 0;
@@ -129,34 +152,69 @@ const MentorRamadan = () => {
                 headStyles: { fillColor: [79, 70, 229] },
             });
         } else if (activeTab === 'ranking') {
-            doc.text(`Fasting Ranking Leaderboard`, 14, 40);
+            if (rankingType === 'fasting') {
+                doc.text(`Fasting Ranking Leaderboard`, 14, 40);
 
-            const filteredRankings = fastingRankings.filter(s => {
-                if (!searchTerm) return true;
-                const lowerSearch = searchTerm.toLowerCase();
-                return s.name.toLowerCase().includes(lowerSearch) || s.registerNo?.toLowerCase().includes(lowerSearch);
-            });
+                const filteredRankings = fastingRankings.filter(s => {
+                    if (!searchTerm) return true;
+                    const lowerSearch = searchTerm.toLowerCase();
+                    return s.name.toLowerCase().includes(lowerSearch) || s.registerNo?.toLowerCase().includes(lowerSearch);
+                });
 
-            const tableData = filteredRankings.map((s, index, arr) => {
-                const rank = index === 0 ? 1 :
-                    (s.totalFasts === arr[index - 1].totalFasts ?
-                        arr.findIndex(st => st.totalFasts === s.totalFasts) + 1 :
-                        index + 1);
-                return [
-                    rank,
-                    s.registerNo || '-',
-                    s.name,
-                    `${s.totalFasts} / 30`
-                ];
-            });
+                const tableData = filteredRankings.map((s, index, arr) => {
+                    const rank = index === 0 ? 1 :
+                        (s.totalFasts === arr[index - 1].totalFasts ?
+                            arr.findIndex(st => st.totalFasts === s.totalFasts) + 1 :
+                            index + 1);
+                    return [
+                        rank,
+                        s.registerNo || '-',
+                        s.name,
+                        `${s.totalFasts} / 30`
+                    ];
+                });
 
-            doc.autoTable({
-                startY: 48,
-                head: [['Rank', 'Reg No', 'Student Name', 'Total Fasts']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [217, 119, 6] }, // amber-600
-            });
+                doc.autoTable({
+                    startY: 48,
+                    head: [['Rank', 'Reg No', 'Student Name', 'Total Fasts']],
+                    body: tableData,
+                    theme: 'striped',
+                    headStyles: { fillColor: [217, 119, 6] }, // amber-600
+                });
+            } else {
+                doc.text(`Quran Ranking Leaderboard`, 14, 40);
+
+                const filteredRankings = quranRankings.filter(s => {
+                    if (!searchTerm) return true;
+                    const lowerSearch = searchTerm.toLowerCase();
+                    return s.name.toLowerCase().includes(lowerSearch) || s.registerNo?.toLowerCase().includes(lowerSearch);
+                });
+
+                const tableData = filteredRankings.map((s, index, arr) => {
+                    // Check for ties in Khatms, Juz, AND Page
+                    const isTie = (a, b) => a.completedKhatms === b.completedKhatms && a.juz === b.juz && a.lastPage === b.lastPage;
+                    const rank = index === 0 ? 1 :
+                        (isTie(s, arr[index - 1]) ?
+                            arr.findIndex(st => isTie(st, s)) + 1 :
+                            index + 1);
+                    return [
+                        rank,
+                        s.registerNo || '-',
+                        s.name,
+                        s.completedKhatms,
+                        s.juz,
+                        s.lastPage
+                    ];
+                });
+
+                doc.autoTable({
+                    startY: 48,
+                    head: [['Rank', 'Reg No', 'Student Name', 'Khatms', 'Juz', 'Page']],
+                    body: tableData,
+                    theme: 'striped',
+                    headStyles: { fillColor: [217, 119, 6] },
+                });
+            }
         } else {
             doc.text(`Quran Recitation Progress`, 14, 40);
 
@@ -250,7 +308,7 @@ const MentorRamadan = () => {
                                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                         )}
                     >
-                        <Trophy className="w-5 h-5" /> Fasting Ranking
+                        <Trophy className="w-5 h-5" /> Ranks
                     </button>
                 </nav>
             </div>
@@ -445,65 +503,159 @@ const MentorRamadan = () => {
             {/* --- RANKING TAB CONTENT --- */}
             {activeTab === 'ranking' && (
                 <div className="space-y-6">
+                    <div className="flex bg-gray-100/80 p-1.5 rounded-xl border border-gray-200/60 shadow-inner w-full max-w-sm">
+                        <button
+                            className={clsx(
+                                "flex-1 py-2 text-sm font-bold rounded-lg transition-all",
+                                rankingType === 'fasting' ? "bg-white text-emerald-700 shadow-sm border border-gray-200" : "text-gray-500 hover:text-gray-700 border-transparent"
+                            )}
+                            onClick={() => setRankingType('fasting')}
+                        >
+                            Fasting Ranks
+                        </button>
+                        <button
+                            className={clsx(
+                                "flex-1 py-2 text-sm font-bold rounded-lg transition-all",
+                                rankingType === 'quran' ? "bg-white text-purple-700 shadow-sm border border-gray-200" : "text-gray-500 hover:text-gray-700 border-transparent"
+                            )}
+                            onClick={() => setRankingType('quran')}
+                        >
+                            Quran Ranks
+                        </button>
+                    </div>
+
                     <Card className="overflow-hidden border border-gray-100 shadow-sm">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-amber-700 uppercase bg-amber-50 border-b border-amber-100">
-                                    <tr>
-                                        <th className="px-4 py-4 font-bold w-16 text-center whitespace-nowrap">Rank</th>
-                                        <th className="px-4 py-4 font-bold whitespace-nowrap">Register No</th>
-                                        <th className="px-4 py-4 font-bold whitespace-nowrap min-w-[150px]">Student Name</th>
-                                        <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Total Fasts</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {fastingRankings.length > 0 ? (
-                                        fastingRankings.filter(s => {
-                                            if (!searchTerm) return true;
-                                            const lowerSearch = searchTerm.toLowerCase();
-                                            return s.name.toLowerCase().includes(lowerSearch) || s.registerNo?.toLowerCase().includes(lowerSearch);
-                                        }).map((student, index, arr) => {
-                                            const rank = index === 0 ? 1 :
-                                                (student.totalFasts === arr[index - 1].totalFasts ?
-                                                    arr.findIndex(st => st.totalFasts === student.totalFasts) + 1 :
-                                                    index + 1);
-
-                                            return (
-                                                <tr key={student.id} className="hover:bg-amber-50/50 transition-colors">
-                                                    <td className="px-4 py-4 text-center font-bold whitespace-nowrap">
-                                                        <div className={clsx(
-                                                            "mx-auto flex h-8 w-8 items-center justify-center rounded-full",
-                                                            rank === 1 ? "bg-amber-100 text-amber-700 font-bold" :
-                                                                rank === 2 ? "bg-gray-100 text-gray-700 font-bold" :
-                                                                    rank === 3 ? "bg-orange-100 text-orange-700 font-bold" :
-                                                                        "text-gray-500"
-                                                        )}>
-                                                            {rank}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
-                                                        {student.registerNo || '-'}
-                                                    </td>
-                                                    <td className="px-4 py-4 font-bold text-gray-900 whitespace-nowrap">
-                                                        {student.name}
-                                                    </td>
-                                                    <td className="px-4 py-4 text-center whitespace-nowrap">
-                                                        <span className="font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
-                                                            {student.totalFasts} / 30
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    ) : (
+                            {rankingType === 'fasting' ? (
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-amber-700 uppercase bg-amber-50 border-b border-amber-100">
                                         <tr>
-                                            <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
-                                                No students found in this class.
-                                            </td>
+                                            <th className="px-4 py-4 font-bold w-16 text-center whitespace-nowrap">Rank</th>
+                                            <th className="px-4 py-4 font-bold whitespace-nowrap">Register No</th>
+                                            <th className="px-4 py-4 font-bold whitespace-nowrap min-w-[150px]">Student Name</th>
+                                            <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Total Fasts</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {fastingRankings.length > 0 ? (
+                                            fastingRankings.filter(s => {
+                                                if (!searchTerm) return true;
+                                                const lowerSearch = searchTerm.toLowerCase();
+                                                return s.name.toLowerCase().includes(lowerSearch) || s.registerNo?.toLowerCase().includes(lowerSearch);
+                                            }).map((student, index, arr) => {
+                                                const rank = index === 0 ? 1 :
+                                                    (student.totalFasts === arr[index - 1].totalFasts ?
+                                                        arr.findIndex(st => st.totalFasts === student.totalFasts) + 1 :
+                                                        index + 1);
+
+                                                return (
+                                                    <tr key={student.id} className="hover:bg-amber-50/50 transition-colors">
+                                                        <td className="px-4 py-4 text-center font-bold whitespace-nowrap">
+                                                            <div className={clsx(
+                                                                "mx-auto flex h-8 w-8 items-center justify-center rounded-full",
+                                                                rank === 1 ? "bg-amber-100 text-amber-700 font-bold" :
+                                                                    rank === 2 ? "bg-gray-100 text-gray-700 font-bold" :
+                                                                        rank === 3 ? "bg-orange-100 text-orange-700 font-bold" :
+                                                                            "text-gray-500"
+                                                            )}>
+                                                                {rank}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
+                                                            {student.registerNo || '-'}
+                                                        </td>
+                                                        <td className="px-4 py-4 font-bold text-gray-900 whitespace-nowrap">
+                                                            {student.name}
+                                                        </td>
+                                                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                                                            <span className="font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
+                                                                {student.totalFasts} / 30
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                                                    No students found in this class.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-purple-700 uppercase bg-purple-50 border-b border-purple-100">
+                                        <tr>
+                                            <th className="px-4 py-4 font-bold w-16 text-center whitespace-nowrap">Rank</th>
+                                            <th className="px-4 py-4 font-bold whitespace-nowrap">Register No</th>
+                                            <th className="px-4 py-4 font-bold whitespace-nowrap min-w-[150px]">Student Name</th>
+                                            <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Khatms</th>
+                                            <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Juz</th>
+                                            <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Page</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {quranRankings.length > 0 ? (
+                                            quranRankings.filter(s => {
+                                                if (!searchTerm) return true;
+                                                const lowerSearch = searchTerm.toLowerCase();
+                                                return s.name.toLowerCase().includes(lowerSearch) || s.registerNo?.toLowerCase().includes(lowerSearch);
+                                            }).map((student, index, arr) => {
+                                                const isTie = (a, b) => a.completedKhatms === b.completedKhatms && a.juz === b.juz && a.lastPage === b.lastPage;
+                                                const rank = index === 0 ? 1 :
+                                                    (isTie(student, arr[index - 1]) ?
+                                                        arr.findIndex(st => isTie(st, student)) + 1 :
+                                                        index + 1);
+
+                                                return (
+                                                    <tr key={student.id} className="hover:bg-purple-50/50 transition-colors">
+                                                        <td className="px-4 py-4 text-center font-bold whitespace-nowrap">
+                                                            <div className={clsx(
+                                                                "mx-auto flex h-8 w-8 items-center justify-center rounded-full",
+                                                                rank === 1 ? "bg-purple-100 text-purple-700 font-bold" :
+                                                                    rank === 2 ? "bg-gray-100 text-gray-700 font-bold" :
+                                                                        rank === 3 ? "bg-indigo-100 text-indigo-700 font-bold" :
+                                                                            "text-gray-500"
+                                                            )}>
+                                                                {rank}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
+                                                            {student.registerNo || '-'}
+                                                        </td>
+                                                        <td className="px-4 py-4 font-bold text-gray-900 whitespace-nowrap">
+                                                            {student.name}
+                                                        </td>
+                                                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                                                            <span className="font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-lg border border-purple-200">
+                                                                {student.completedKhatms}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                                                            <span className="font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-200">
+                                                                {student.juz}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                                                            <span className="font-medium text-gray-600 bg-gray-50 px-3 py-1 rounded-lg border border-gray-200">
+                                                                {student.lastPage}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                                                    No students found in this class.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </Card>
                 </div>
