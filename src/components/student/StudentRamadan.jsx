@@ -79,28 +79,40 @@ const StudentRamadan = () => {
     // Handle Quran Page Update
     const handlePageSubmit = async () => {
         if (!currentUser || !pageInput) return;
-        const newPage = parseInt(pageInput, 10);
+        let newPage = parseInt(pageInput, 10);
 
         if (newPage < 1 || newPage > TOTAL_QURAN_PAGES) {
             showAlert('Invalid Page', `Please enter a valid page number (1-${TOTAL_QURAN_PAGES})`, 'warning');
             return;
         }
 
-        const stats = getQuranProgressStats(newPage);
-
         let khatms = currentQuranData?.completedKhatms || 0;
+        let isKhatmTriggered = false;
 
-        // If they wrap around (e.g. going from 600 back to 5) assume Khatm completed
-        // Provide manual Khatm increment later if needed, but this is a simple auto-check
-        if (currentQuranData && currentQuranData.lastPage > 550 && newPage < 50) {
+        // Auto-increment Khatm if they land on the final page (604)
+        if (newPage === 604) {
             khatms += 1;
+            newPage = 1; // Reset tracker back to beginning for the next recital
+            isKhatmTriggered = true;
         }
+        // If they wrap around (e.g. going from 600 back to 5) assume Khatm completed
+        else if (currentQuranData && currentQuranData.lastPage > 550 && newPage < 50) {
+            khatms += 1;
+            isKhatmTriggered = true;
+        }
+
+        const stats = getQuranProgressStats(newPage);
 
         await updateQuranProgress(currentUser.id, {
             lastPage: newPage,
             juz: stats.currentJuz,
             completedKhatms: khatms
         });
+
+        if (isKhatmTriggered) {
+            showAlert('Mashallah! 🎉', 'You have completed a Khatm! Your total count has been increased.', 'success');
+            setPageInput('1'); // Reset the input field for them
+        }
     };
 
     const handleManualKhatm = () => {
