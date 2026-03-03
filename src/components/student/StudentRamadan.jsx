@@ -13,7 +13,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 const RAMADAN_DAYS = Array.from({ length: 30 }, (_, i) => i + 1);
 
 const StudentRamadan = () => {
-    const { currentUser, quranProgress, updateQuranProgress, ramadanLogs, addRamadanLog, updateRamadanLog, deleteRamadanLog } = useData();
+    const { currentUser, students, quranProgress, updateQuranProgress, ramadanLogs, addRamadanLog, updateRamadanLog, deleteRamadanLog } = useData();
     const { showAlert } = useUI();
 
     // --- State: Quran Tracker ---
@@ -42,6 +42,56 @@ const StudentRamadan = () => {
             }
         }
     }, [currentUser, quranProgress]);
+
+    // Calculate Personal Rankings
+    const { fastingRank, quranRank } = useMemo(() => {
+        if (!currentUser || !currentUser.classId || !students) return { fastingRank: null, quranRank: null };
+
+        // 1. Get all students in my class
+        const myClassStudents = students.filter(s => s.classId === currentUser.classId && s.status === 'Active');
+
+        // 2. Fasting Rankings List
+        const fastingList = myClassStudents.map(student => {
+            const fLogs = ramadanLogs.filter(log => log.studentId === student.id && log.status === 'Fasting');
+            return { id: student.id, totalFasts: fLogs.length };
+        }).sort((a, b) => b.totalFasts - a.totalFasts); // Assuming no tie-breaker needed for mere numeric rank display
+
+        // Find my fasting rank (handling ties)
+        let fRank = null;
+        if (fastingList.length > 0) {
+            const myFastingData = fastingList.find(s => s.id === currentUser.id);
+            if (myFastingData) {
+                fRank = fastingList.findIndex(s => s.totalFasts === myFastingData.totalFasts) + 1;
+            }
+        }
+
+        // 3. Quran Rankings List
+        const quranList = myClassStudents.map(student => {
+            const p = quranProgress.find(q => q.studentId === student.id) || { completedKhatms: 0, juz: 1, lastPage: 0 };
+            return {
+                id: student.id,
+                completedKhatms: p.completedKhatms || 0,
+                juz: p.juz || 1,
+                lastPage: p.lastPage || 0
+            };
+        }).sort((a, b) => {
+            if (b.completedKhatms !== a.completedKhatms) return b.completedKhatms - a.completedKhatms;
+            if (b.juz !== a.juz) return b.juz - a.juz;
+            return b.lastPage - a.lastPage;
+        });
+
+        // Find my quran rank (handling ties)
+        let qRank = null;
+        if (quranList.length > 0) {
+            const myQuranData = quranList.find(s => s.id === currentUser.id);
+            if (myQuranData) {
+                const isTie = (a, b) => a.completedKhatms === b.completedKhatms && a.juz === b.juz && a.lastPage === b.lastPage;
+                qRank = quranList.findIndex(s => isTie(s, myQuranData)) + 1;
+            }
+        }
+
+        return { fastingRank: fRank, quranRank: qRank };
+    }, [currentUser, students, ramadanLogs, quranProgress]);
 
     // Handle Fasting Submission
     const handleFastingSubmit = async (day, status) => {
@@ -159,10 +209,38 @@ const StudentRamadan = () => {
 
     return (
         <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6 sm:space-y-8 animate-fadeIn">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <Moon className="w-8 h-8 text-indigo-600" />
-                Ramadan Tracker
-            </h1>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <Moon className="w-8 h-8 text-indigo-600" />
+                    Ramadan Tracker
+                </h1>
+
+                {/* Personal Rank Cards */}
+                <div className="flex flex-row gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 hide-scrollbar shrink-0">
+                    {fastingRank && (
+                        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-3 flex items-center gap-4 min-w-[140px] shadow-sm">
+                            <div className="bg-amber-100 p-2 rounded-xl text-amber-600">
+                                <Trophy className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-0.5">Fasting Rank</p>
+                                <p className="text-xl font-extrabold text-amber-900 leading-none">#{fastingRank}</p>
+                            </div>
+                        </div>
+                    )}
+                    {quranRank && (
+                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-2xl p-3 flex items-center gap-4 min-w-[140px] shadow-sm">
+                            <div className="bg-purple-100 p-2 rounded-xl text-purple-600">
+                                <Trophy className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-bold text-purple-600 uppercase tracking-wider mb-0.5">Quran Rank</p>
+                                <p className="text-xl font-extrabold text-purple-900 leading-none">#{quranRank}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* --- Fasting Tracker Section --- */}
             <Card className="p-6 bg-white overflow-hidden shadow-sm border border-gray-100">
