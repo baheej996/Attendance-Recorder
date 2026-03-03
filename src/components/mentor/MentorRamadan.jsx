@@ -217,8 +217,8 @@ const MentorRamadan = () => {
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-8">
+            <div className="border-b border-gray-200 overflow-x-auto hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+                <nav className="-mb-px flex space-x-6 sm:space-x-8 min-w-max pb-1">
                     <button
                         onClick={() => setActiveTab('fasting')}
                         className={clsx(
@@ -329,9 +329,9 @@ const MentorRamadan = () => {
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
                                     <tr>
-                                        <th className="px-6 py-4 font-medium">Register No</th>
-                                        <th className="px-6 py-4 font-medium">Student Name</th>
-                                        <th className="px-6 py-4 font-medium text-center">Status (Day {selectedDay})</th>
+                                        <th className="px-4 py-4 font-medium whitespace-nowrap">Register No</th>
+                                        <th className="px-4 py-4 font-medium whitespace-nowrap min-w-[150px]">Student Name</th>
+                                        <th className="px-4 py-4 font-medium text-center whitespace-nowrap">Status (Day {selectedDay})</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -340,13 +340,13 @@ const MentorRamadan = () => {
                                             const log = getStudentFastingLog(student.id, selectedDay);
                                             return (
                                                 <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                                    <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
                                                         {student.registerNo || '-'}
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="px-4 py-4 whitespace-nowrap">
                                                         <span className="font-medium text-gray-900">{student.name}</span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-center">
+                                                    <td className="px-4 py-4 text-center whitespace-nowrap">
                                                         {log ? (
                                                             <span className={clsx(
                                                                 "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border",
@@ -388,11 +388,11 @@ const MentorRamadan = () => {
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-purple-600 uppercase bg-purple-50 border-b border-purple-100">
                                     <tr>
-                                        <th className="px-6 py-4 font-bold">Register No</th>
-                                        <th className="px-6 py-4 font-bold">Student Name</th>
-                                        <th className="px-6 py-4 font-bold text-center">Total Khatms</th>
-                                        <th className="px-6 py-4 font-bold text-center">Current Juz / Para</th>
-                                        <th className="px-6 py-4 font-bold text-center">Current Page</th>
+                                        <th className="px-4 py-4 font-bold whitespace-nowrap">Register No</th>
+                                        <th className="px-4 py-4 font-bold whitespace-nowrap min-w-[150px]">Student Name</th>
+                                        <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Total Khatms</th>
+                                        <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Current Juz / Para</th>
+                                        <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Current Page</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -401,13 +401,13 @@ const MentorRamadan = () => {
                                             const progress = getStudentQuranProgress(student.id);
                                             return (
                                                 <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                                    <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
                                                         {student.registerNo || '-'}
                                                     </td>
-                                                    <td className="px-6 py-4 font-bold text-gray-900">
+                                                    <td className="px-4 py-4 font-bold text-gray-900 whitespace-nowrap">
                                                         {student.name}
                                                     </td>
-                                                    <td className="px-6 py-4 text-center">
+                                                    <td className="px-4 py-4 text-center whitespace-nowrap">
                                                         <span className={clsx(
                                                             "inline-flex items-center justify-center w-8 h-8 rounded-full font-bold",
                                                             progress.completedKhatms > 0 ? "bg-purple-100 text-purple-700 border border-purple-200" : "bg-gray-100 text-gray-500"
@@ -415,12 +415,12 @@ const MentorRamadan = () => {
                                                             {progress.completedKhatms || 0}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-center">
+                                                    <td className="px-4 py-4 text-center whitespace-nowrap">
                                                         <span className="font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">
                                                             {progress.juz || 1}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-center">
+                                                    <td className="px-4 py-4 text-center whitespace-nowrap">
                                                         <span className="font-medium text-gray-600 bg-gray-50 px-3 py-1 rounded-lg border border-gray-200">
                                                             P. {progress.lastPage || 0}
                                                         </span>
@@ -450,10 +450,10 @@ const MentorRamadan = () => {
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-amber-700 uppercase bg-amber-50 border-b border-amber-100">
                                     <tr>
-                                        <th className="px-6 py-4 font-bold w-20 text-center">Rank</th>
-                                        <th className="px-6 py-4 font-bold">Register No</th>
-                                        <th className="px-6 py-4 font-bold">Student Name</th>
-                                        <th className="px-6 py-4 font-bold text-center">Total Fasts</th>
+                                        <th className="px-4 py-4 font-bold w-16 text-center whitespace-nowrap">Rank</th>
+                                        <th className="px-4 py-4 font-bold whitespace-nowrap">Register No</th>
+                                        <th className="px-4 py-4 font-bold whitespace-nowrap min-w-[150px]">Student Name</th>
+                                        <th className="px-4 py-4 font-bold text-center whitespace-nowrap">Total Fasts</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -470,7 +470,7 @@ const MentorRamadan = () => {
 
                                             return (
                                                 <tr key={student.id} className="hover:bg-amber-50/50 transition-colors">
-                                                    <td className="px-6 py-4 text-center font-bold">
+                                                    <td className="px-4 py-4 text-center font-bold whitespace-nowrap">
                                                         <div className={clsx(
                                                             "mx-auto flex h-8 w-8 items-center justify-center rounded-full",
                                                             rank === 1 ? "bg-amber-100 text-amber-700 font-bold" :
@@ -481,13 +481,13 @@ const MentorRamadan = () => {
                                                             {rank}
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                                    <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
                                                         {student.registerNo || '-'}
                                                     </td>
-                                                    <td className="px-6 py-4 font-bold text-gray-900">
+                                                    <td className="px-4 py-4 font-bold text-gray-900 whitespace-nowrap">
                                                         {student.name}
                                                     </td>
-                                                    <td className="px-6 py-4 text-center">
+                                                    <td className="px-4 py-4 text-center whitespace-nowrap">
                                                         <span className="font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
                                                             {student.totalFasts} / 30
                                                         </span>
