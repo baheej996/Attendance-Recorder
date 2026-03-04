@@ -385,25 +385,25 @@ const MarksEntry = () => {
     // 1. Exam Selection
     if (!selectedExamId) {
         return (
-            <div className="p-8 max-w-5xl mx-auto space-y-10 animate-fadeIn">
-                <div className="flex items-center gap-4 mb-10">
-                    <Filter className="w-8 h-8 text-indigo-600" />
-                    <h2 className="text-3xl font-bold text-gray-900">Select Exam</h2>
+            <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6 sm:space-y-10 animate-fadeIn">
+                <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
+                    <Filter className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600" />
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Select Exam</h2>
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <Card className="p-6 border-l-4 border-l-indigo-500">
-                        <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Exams</p>
-                        <p className="text-3xl font-bold mt-2">{examStats.total}</p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-8">
+                    <Card className="p-3 sm:p-6 border-l-2 sm:border-l-4 border-l-indigo-500 text-center sm:text-left">
+                        <p className="text-gray-500 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Total<br className="sm:hidden" /> Exams</p>
+                        <p className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">{examStats.total}</p>
                     </Card>
-                    <Card className="p-6 border-l-4 border-l-green-500">
-                        <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Published</p>
-                        <p className="text-3xl font-bold mt-2">{examStats.published}</p>
+                    <Card className="p-3 sm:p-6 border-l-2 sm:border-l-4 border-l-green-500 text-center sm:text-left">
+                        <p className="text-gray-500 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Published</p>
+                        <p className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">{examStats.published}</p>
                     </Card>
-                    <Card className="p-6 border-l-4 border-l-yellow-500">
-                        <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Drafts</p>
-                        <p className="text-3xl font-bold mt-2">{examStats.draft}</p>
+                    <Card className="p-3 sm:p-6 border-l-2 sm:border-l-4 border-l-yellow-500 text-center sm:text-left">
+                        <p className="text-gray-500 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Drafts</p>
+                        <p className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">{examStats.draft}</p>
                     </Card>
                 </div>
 
@@ -435,39 +435,41 @@ const MarksEntry = () => {
     // 2. Class Selection
     if (!selectedClassId) {
         return (
-            <div className="p-8 max-w-5xl mx-auto space-y-10 animate-fadeIn">
-                <div className="flex items-center gap-4 mb-10">
-                    <Button variant="secondary" onClick={() => resetSelection('exam')} className="p-2 h-auto rounded-full hover:bg-gray-200">
-                        <ArrowLeft className="w-6 h-6" />
-                    </Button>
-                    <div className="flex-1">
-                        <h2 className="text-3xl font-bold text-gray-900">Select Class</h2>
-                        <p className="text-gray-500 mt-1">Exam: {exams.find(e => e.id === selectedExamId)?.name}</p>
+            <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6 sm:space-y-10 animate-fadeIn">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 sm:mb-10">
+                    <div className="flex items-center gap-3">
+                        <Button variant="secondary" onClick={() => resetSelection('exam')} className="p-1.5 sm:p-2 h-auto rounded-full hover:bg-gray-200 shrink-0">
+                            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                        </Button>
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">Select Class</h2>
+                            <p className="text-gray-500 text-sm sm:text-base mt-0.5 sm:mt-1 truncate">Exam: {exams.find(e => e.id === selectedExamId)?.name}</p>
+                        </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 sm:gap-3 shrink-0">
                         <Button
                             variant="danger"
                             onClick={handleDeleteAllExamMarks}
-                            className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50"
+                            className="flex items-center gap-1.5 sm:gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2"
                         >
                             <Trash2 className="w-4 h-4" />
-                            <span className="hidden sm:inline">Delete All Marks</span>
+                            <span>Delete All Marks</span>
                         </Button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <Card className="p-6 bg-indigo-50 border-indigo-100">
-                        <p className="text-indigo-600 text-sm font-bold uppercase tracking-wider">Assigned Classes</p>
-                        <p className="text-3xl font-bold text-indigo-900 mt-2">{classStats.total}</p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-8">
+                    <Card className="p-3 sm:p-6 bg-indigo-50 border-indigo-100 text-center sm:text-left">
+                        <p className="text-indigo-600 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Assigned<br className="sm:hidden" /> Classes</p>
+                        <p className="text-xl sm:text-3xl font-bold text-indigo-900 mt-1 sm:mt-2">{classStats.total}</p>
                     </Card>
-                    <Card className="p-6 bg-green-50 border-green-100">
-                        <p className="text-green-600 text-sm font-bold uppercase tracking-wider">Completed</p>
-                        <p className="text-3xl font-bold text-green-900 mt-2">{classStats.completed}</p>
+                    <Card className="p-3 sm:p-6 bg-green-50 border-green-100 text-center sm:text-left">
+                        <p className="text-green-600 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Completed</p>
+                        <p className="text-xl sm:text-3xl font-bold text-green-900 mt-1 sm:mt-2">{classStats.completed}</p>
                     </Card>
-                    <Card className="p-6 bg-amber-50 border-amber-100">
-                        <p className="text-amber-600 text-sm font-bold uppercase tracking-wider">Pending</p>
-                        <p className="text-3xl font-bold text-amber-900 mt-2">{classStats.pending}</p>
+                    <Card className="p-3 sm:p-6 bg-amber-50 border-amber-100 text-center sm:text-left">
+                        <p className="text-amber-600 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Pending</p>
+                        <p className="text-xl sm:text-3xl font-bold text-amber-900 mt-1 sm:mt-2">{classStats.pending}</p>
                     </Card>
                 </div>
 
@@ -485,26 +487,26 @@ const MarksEntry = () => {
                                 onClick={() => setSelectedClassId(cls.id)}
                                 className="p-6 flex justify-between items-center cursor-pointer hover:shadow-lg transition-all hover:bg-gray-50 border border-gray-100"
                             >
-                                <div className="flex items-center gap-6">
-                                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center font-black text-xl text-indigo-600">
+                                <div className="flex items-center gap-4 sm:gap-6 min-w-0 pr-2">
+                                    <div className="w-10 h-10 sm:w-14 sm:h-14 shrink-0 rounded-xl sm:rounded-2xl bg-indigo-50 flex items-center justify-center font-black text-lg sm:text-xl text-indigo-600">
                                         {cls.name}
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-xl text-gray-900">Class {cls.name} - {cls.division}</h3>
-                                        <p className="text-gray-500 mt-1">{clsSubjects.length} Subjects</p>
+                                    <div className="min-w-0">
+                                        <h3 className="font-bold text-lg sm:text-xl text-gray-900 truncate">Class {cls.name} - {cls.division}</h3>
+                                        <p className="text-gray-500 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">{clsSubjects.length} Subjects</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                                     {isComplete ? (
-                                        <div className="flex items-center gap-2 text-green-600 font-medium px-4 py-2 bg-green-50 rounded-lg">
-                                            <CheckCircle className="w-5 h-5" /> Completed
+                                        <div className="flex items-center gap-1.5 sm:gap-2 text-green-600 font-bold px-2 sm:px-4 py-1.5 sm:py-2 bg-green-50 rounded-lg text-xs sm:text-sm">
+                                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden sm:inline">Completed</span>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-2 text-amber-600 font-medium px-4 py-2 bg-amber-50 rounded-lg">
-                                            <Clock className="w-5 h-5" /> Pending
+                                        <div className="flex items-center gap-1.5 sm:gap-2 text-amber-600 font-bold px-2 sm:px-4 py-1.5 sm:py-2 bg-amber-50 rounded-lg text-xs sm:text-sm">
+                                            <Clock className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden sm:inline">Pending</span>
                                         </div>
                                     )}
-                                    <ChevronRight className="w-6 h-6 text-gray-300" />
+                                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-gray-300" />
                                 </div>
                             </Card>
                         );
@@ -517,64 +519,66 @@ const MarksEntry = () => {
     // 3. Subject Selection
     if (!selectedSubjectId) {
         return (
-            <div className="p-8 max-w-5xl mx-auto space-y-10 animate-fadeIn">
-                <div className="flex items-center gap-4 mb-10">
-                    <Button variant="secondary" onClick={() => resetSelection('class')} className="p-2 h-auto rounded-full hover:bg-gray-200">
-                        <ArrowLeft className="w-6 h-6" />
-                    </Button>
-                    <div className="flex-1">
-                        <h2 className="text-3xl font-bold text-gray-900">Select Subject</h2>
-                        <p className="text-gray-500 mt-1">
-                            {exams.find(e => e.id === selectedExamId)?.name} • Class {availableClasses.find(c => c.id === selectedClassId)?.name}-{availableClasses.find(c => c.id === selectedClassId)?.division}
-                        </p>
+            <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6 sm:space-y-10 animate-fadeIn">
+                <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6 sm:mb-10">
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Button variant="secondary" onClick={() => resetSelection('class')} className="p-1.5 sm:p-2 h-auto rounded-full hover:bg-gray-200 shrink-0">
+                            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                        </Button>
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">Select Subject</h2>
+                            <p className="text-gray-500 text-sm sm:text-base mt-0.5 sm:mt-1 truncate">
+                                {exams.find(e => e.id === selectedExamId)?.name} • Class {availableClasses.find(c => c.id === selectedClassId)?.name}-{availableClasses.find(c => c.id === selectedClassId)?.division}
+                            </p>
+                        </div>
                     </div>
 
                     {/* CSV Actions */}
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-3 md:ml-auto w-full md:w-auto">
                         <Button
                             variant="danger"
                             onClick={handleDeleteAllClassMarks}
-                            className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50"
+                            className="flex items-center justify-center gap-1.5 sm:gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 flex-grow sm:flex-none"
                         >
-                            <Trash2 className="w-4 h-4" />
-                            <span className="hidden sm:inline">Delete All Marks</span>
+                            <Trash2 className="w-4 h-4 shrink-0" />
+                            <span className="hidden sm:inline whitespace-nowrap">Delete All Marks</span>
                         </Button>
                         <Button
                             variant="secondary"
                             onClick={handleDownloadTemplate}
-                            className="flex items-center gap-2 bg-white"
+                            className="flex items-center justify-center gap-1.5 sm:gap-2 bg-white text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 flex-grow sm:flex-none"
                         >
-                            <Download className="w-4 h-4" />
-                            <span className="hidden sm:inline">Download Template</span>
+                            <Download className="w-4 h-4 shrink-0" />
+                            <span className="hidden sm:inline whitespace-nowrap">Template</span>
                         </Button>
-                        <div className="relative">
+                        <div className="relative flex-grow sm:flex-none w-full sm:w-auto">
                             <input
                                 type="file"
                                 accept=".csv"
                                 onChange={handleUploadCSV}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                 title="Upload CSV"
                             />
-                            <Button variant="primary" className="flex items-center gap-2">
-                                <Upload className="w-4 h-4" />
-                                <span className="hidden sm:inline">Upload marks CSV</span>
+                            <Button variant="primary" className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 w-full">
+                                <Upload className="w-4 h-4 shrink-0" />
+                                <span className="hidden sm:inline whitespace-nowrap">Upload CSV</span>
                             </Button>
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <Card className="p-6">
-                        <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Subjects</p>
-                        <p className="text-3xl font-bold mt-2">{subjectStats.total}</p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-8">
+                    <Card className="p-3 sm:p-6 text-center sm:text-left">
+                        <p className="text-gray-500 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Total<br className="sm:hidden" /> Subjects</p>
+                        <p className="text-xl sm:text-3xl font-bold mt-1 sm:mt-2">{subjectStats.total}</p>
                     </Card>
-                    <Card className="p-6">
-                        <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Entered</p>
-                        <p className="text-3xl font-bold text-green-600 mt-2">{subjectStats.entered}</p>
+                    <Card className="p-3 sm:p-6 text-center sm:text-left">
+                        <p className="text-gray-500 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Entered</p>
+                        <p className="text-xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2">{subjectStats.entered}</p>
                     </Card>
-                    <Card className="p-6">
-                        <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Pending</p>
-                        <p className="text-3xl font-bold text-amber-600 mt-2">{subjectStats.pending}</p>
+                    <Card className="p-3 sm:p-6 text-center sm:text-left">
+                        <p className="text-gray-500 text-[10px] sm:text-sm font-bold uppercase tracking-wider leading-tight">Pending</p>
+                        <p className="text-xl sm:text-3xl font-bold text-amber-600 mt-1 sm:mt-2">{subjectStats.pending}</p>
                     </Card>
                 </div>
 
@@ -611,20 +615,20 @@ const MarksEntry = () => {
                                     {/* Header / Main Click Area */}
                                     <div
                                         onClick={() => setSelectedSubjectId(sub.id)}
-                                        className="p-6 cursor-pointer bg-white hover:bg-gray-50 transition-colors border-b border-gray-100"
+                                        className="p-4 sm:p-6 cursor-pointer bg-white hover:bg-gray-50 transition-colors border-b border-gray-100"
                                     >
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-bold text-xl text-gray-900">{sub.name}</h3>
-                                                <p className="text-gray-500 mt-1">Max Marks: {sub.maxMarks}</p>
+                                        <div className="flex justify-between items-center sm:items-start gap-2">
+                                            <div className="min-w-0">
+                                                <h3 className="font-bold text-lg sm:text-xl text-gray-900 truncate">{sub.name}</h3>
+                                                <p className="text-gray-500 text-xs sm:text-sm mt-0.5 sm:mt-1">Max Marks: {sub.maxMarks}</p>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                                                 {sub.isEntered ? (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">Entered</span>
+                                                    <span className="px-2 sm:px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] sm:text-xs font-bold">Entered</span>
                                                 ) : (
-                                                    <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">Pending</span>
+                                                    <span className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-[10px] sm:text-xs font-bold">Pending</span>
                                                 )}
-                                                <ChevronRight className="w-5 h-5 text-gray-300" />
+                                                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" />
                                             </div>
                                         </div>
                                     </div>
@@ -696,56 +700,62 @@ const MarksEntry = () => {
 
     // 4. Mark Entry Table (Final Step)
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8 animate-fadeIn">
-            <div className="flex items-center gap-4 mb-8">
-                <Button variant="secondary" onClick={() => resetSelection('subject')} className="p-2 h-auto rounded-full hover:bg-gray-200">
-                    <ArrowLeft className="w-6 h-6" />
-                </Button>
-                <div>
-                    <h2 className="text-3xl font-bold text-gray-900">Enter Marks</h2>
-                    <p className="text-gray-500 mt-1">
-                        {availableClasses.find(c => c.id === selectedClassId)?.name}-{availableClasses.find(c => c.id === selectedClassId)?.division} • {subjects.find(s => s.id === selectedSubjectId)?.name}
-                    </p>
+        <div className="p-2 sm:p-8 max-w-5xl mx-auto space-y-4 sm:space-y-8 animate-fadeIn text-sm sm:text-base">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2 sm:mb-8 px-2 sm:px-0">
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <Button variant="secondary" onClick={() => resetSelection('subject')} className="p-1.5 sm:p-2 h-auto rounded-full hover:bg-gray-200 shrink-0">
+                        <ArrowLeft className="w-4 h-4 sm:w-6 sm:h-6" />
+                    </Button>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-xl sm:text-3xl font-bold text-gray-900 truncate">Enter Marks</h2>
+                        <p className="text-gray-500 text-xs sm:text-base mt-0 sm:mt-1 truncate">
+                            {availableClasses.find(c => c.id === selectedClassId)?.name}-{availableClasses.find(c => c.id === selectedClassId)?.division} • {subjects.find(s => s.id === selectedSubjectId)?.name}
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <Card className="p-8">
-                <div className="flex justify-between items-center mb-8">
-                    <div className="text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 font-medium">
-                        Total Students: <span className="font-bold text-gray-900 ml-1">{classStudents.length}</span>
+            <Card className="p-3 sm:p-8 relative">
+                {/* Fixed Top Action Bar - Compact on Mobile */}
+                <div className="flex flex-row flex-nowrap items-center justify-between bg-white sticky top-0 z-10 pb-3 mb-3 border-b border-gray-100">
+                    <div className="text-[10px] sm:text-sm text-gray-600 bg-gray-50 px-2 py-1.5 sm:px-4 sm:py-2 rounded min-w-0 border border-gray-200 font-medium shrink-0 flex items-center">
+                        <span className="hidden sm:inline">Total Students:</span>
+                        <span className="sm:hidden">Total:</span>
+                        <span className="font-bold text-gray-900 ml-1">{classStudents.length}</span>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-1 sm:gap-3 shrink-0 ml-1">
                         <Button
                             onClick={handleDelete}
                             variant="danger"
-                            className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 text-sm font-medium px-4 py-2"
+                            className="flex items-center justify-center gap-1 sm:gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 font-medium px-2 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-sm"
                         >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Entry
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Delete Entry</span>
                         </Button>
                         <Button
                             onClick={handleSave}
                             disabled={!hasChanges}
                             variant="primary"
-                            className="flex items-center gap-2 text-sm font-medium px-6 py-2"
+                            className="flex items-center justify-center gap-1 sm:gap-2 font-medium px-3 py-1.5 sm:px-6 sm:py-2 text-[10px] sm:text-sm whitespace-nowrap"
                         >
-                            <Save className="w-4 h-4" />
-                            Save Marks
+                            <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span>Save<span className="hidden sm:inline"> Marks</span></span>
                         </Button>
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-gray-200">
-                    <table className="min-w-full divide-y divide-gray-200">
+                {/* Table wrapper allowing horizontal scroll to fix clipping issue */}
+                <div className="overflow-x-auto rounded-lg sm:rounded-xl border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reg No</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Marks Obtained</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Actions</th>
+                                <th className="px-2 sm:px-6 py-2 sm:py-3 text-left font-bold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Reg No</th>
+                                <th className="px-2 sm:px-6 py-2 sm:py-3 text-left font-bold text-gray-500 uppercase tracking-wider">Student<span className="hidden sm:inline"> Name</span></th>
+                                <th className="px-2 sm:px-6 py-2 sm:py-3 text-left font-bold text-gray-500 uppercase tracking-wider w-24 sm:w-40">Marks<span className="hidden sm:inline"> Obtained</span></th>
+                                <th className="px-2 sm:px-6 py-2 sm:py-3 text-left font-bold text-gray-500 uppercase tracking-wider w-16 sm:w-24">Act.</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-gray-100">
                             {classStudents.map(student => {
                                 // Check if student has submitted
                                 // We can check if their score exists in results?
@@ -754,48 +764,57 @@ const MarksEntry = () => {
                                 // Let's just provide the button always, or if mark is entered?
                                 // Better: Provide simple "Grade" button.
                                 return (
-                                    <tr key={student.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.registerNo}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell font-mono">{student.registerNo}</td>
+                                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-gray-900 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{student.name}</span>
+                                                <span className="sm:hidden text-[10px] text-gray-400 font-mono mt-0.5">{student.registerNo}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                                             <input
                                                 type="number"
                                                 min="0"
                                                 max={subjects.find(s => s.id === selectedSubjectId)?.maxMarks || 100}
                                                 value={marksData[student.id] || ''}
                                                 onChange={e => handleMarkChange(student.id, e.target.value)}
-                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1.5 px-2 border"
+                                                className="w-16 sm:w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs sm:text-sm py-1.5 px-2 border transition-colors outline-none font-bold"
                                                 placeholder="0"
                                             />
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <Button
-                                                size="sm"
-                                                variant="secondary"
-                                                className="text-xs px-2 py-1 h-auto"
-                                                onClick={() => {
-                                                    setCurrentStudentForGrading(student);
-                                                    setGradingModalOpen(true);
-                                                }}
-                                            >
-                                                View/Grade
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="text-xs px-2 py-1 h-auto ml-2 text-amber-600 border-amber-200 hover:bg-amber-50"
-                                                title="Allow Retake"
-                                                onClick={() => handleRetake(student.id)}
-                                            >
-                                                <RotateCcw className="w-3.5 h-3.5" />
-                                            </Button>
+                                        <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                                            <div className="flex items-center justify-start gap-1 sm:gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    className="px-1.5 sm:px-3 py-1.5 h-auto text-[10px] sm:text-xs font-bold"
+                                                    title="View/Grade submission"
+                                                    onClick={() => {
+                                                        setCurrentStudentForGrading(student);
+                                                        setGradingModalOpen(true);
+                                                    }}
+                                                >
+                                                    <Eye className="w-3.5 h-3.5 sm:hidden" />
+                                                    <span className="hidden sm:inline">View/Grade</span>
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="px-1.5 sm:px-2 py-1.5 h-auto text-amber-600 border-amber-200 hover:bg-amber-50"
+                                                    title="Allow Retake"
+                                                    onClick={() => handleRetake(student.id)}
+                                                >
+                                                    <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                                </Button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
                             })}
                             {classStudents.length === 0 && (
                                 <tr>
-                                    <td colSpan="3" className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan="4" className="px-6 py-8 sm:py-12 text-center text-gray-500 text-sm sm:text-base">
                                         No students found in this class.
                                     </td>
                                 </tr>
