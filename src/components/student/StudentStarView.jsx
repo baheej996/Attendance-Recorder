@@ -18,11 +18,22 @@ const StudentStarView = () => {
     const posterRef = useRef(null);
 
     // Config
-    const config = institutionSettings?.starConfig || {
+    const globalConfig = institutionSettings?.starConfig || {
         attendance: true,
         activities: true,
         prayer: true,
     };
+
+    const appliedConfig = useMemo(() => {
+        let currentConfig = globalConfig;
+        if (currentUser?.classId) {
+            const customConfig = starConfigs?.find(c => c.classId === currentUser.classId)?.config;
+            if (customConfig) {
+                currentConfig = customConfig;
+            }
+        }
+        return currentConfig;
+    }, [globalConfig, starConfigs, currentUser?.classId]);
 
     const years = [new Date().getFullYear() - 1, new Date().getFullYear()];
     const months = [
@@ -35,12 +46,6 @@ const StudentStarView = () => {
         if (!currentUser?.classId) return [];
 
         // Determine if this class has a custom overriding config
-        let appliedConfig = config;
-        const customConfig = starConfigs?.find(c => c.classId === currentUser.classId)?.config;
-        if (customConfig) {
-            appliedConfig = customConfig;
-        }
-
         return calculateStudentStarScores({
             students, attendance, activities, activitySubmissions,
             prayerRecords, specialPrayers, ramadanLogs, quranProgress,
@@ -51,7 +56,7 @@ const StudentStarView = () => {
 
     }, [
         students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers,
-        ramadanLogs, quranProgress, currentUser, selectedMonth, selectedYear, config, classes, starConfigs
+        ramadanLogs, quranProgress, currentUser, selectedMonth, selectedYear, appliedConfig, classes
     ]);
 
     const maxScore = results.length > 0 ? results[0].finalScore : 0;
@@ -151,20 +156,40 @@ const StudentStarView = () => {
                                     Class {classes.find(c => c.id === currentUser.classId)?.name} • {months[selectedMonth]} {selectedYear}
                                 </p>
 
-                                <div className="grid grid-cols-3 gap-2 w-full mb-6">
-                                    <div className="bg-white/10 rounded-lg p-2">
-                                        <div className="text-xl font-bold">{Math.round(isMeWinner ? winners.find(w => w.id === currentUser.id).scores.attendance : 0)}%</div>
-                                        <div className="text-[10px] uppercase tracking-wider opacity-75">Attd.</div>
-                                    </div>
-                                    <div className="bg-white/10 rounded-lg p-2">
-                                        <div className="text-xl font-bold">{Math.round(isMeWinner ? winners.find(w => w.id === currentUser.id).scores.activities : 0)}%</div>
-                                        <div className="text-[10px] uppercase tracking-wider opacity-75">Act.</div>
-                                    </div>
-                                    <div className="bg-white/10 rounded-lg p-2">
-                                        <div className="text-xl font-bold">{Math.round(isMeWinner ? winners.find(w => w.id === currentUser.id).scores.prayer : 0)}%</div>
-                                        <div className="text-[10px] uppercase tracking-wider opacity-75">Pray</div>
-                                    </div>
-                                </div>
+                                {/* Dynamic Stat Boxes */}
+                                {(() => {
+                                    const winnerScores = isMeWinner ? winners.find(w => w.id === currentUser.id).scores : null;
+                                    const stats = [];
+                                    if (appliedConfig.attendance) stats.push({ label: 'Attd.', score: winnerScores?.attendance || 0 });
+                                    if (appliedConfig.activities) stats.push({ label: 'Act.', score: winnerScores?.activities || 0 });
+                                    if (appliedConfig.prayer) stats.push({ label: 'Pray', score: winnerScores?.prayer || 0 });
+                                    if (appliedConfig.specialPrayer) stats.push({ label: 'S. Pray', score: winnerScores?.specialPrayer || 0 });
+                                    if (appliedConfig.fasting) stats.push({ label: 'Fast', score: winnerScores?.fasting || 0 });
+                                    if (appliedConfig.quran) stats.push({ label: 'Quran', score: winnerScores?.quran || 0 });
+
+                                    // Dynamic safely mapped tailwind classes avoiding raw string interpolation for prod builds
+                                    const gridClassMap = {
+                                        1: 'grid-cols-1',
+                                        2: 'grid-cols-2',
+                                        3: 'grid-cols-3',
+                                        4: 'grid-cols-2', // Wrap to two rows of 2
+                                        5: 'grid-cols-3', // Wrap to two rows
+                                        6: 'grid-cols-3'
+                                    };
+
+                                    const gClass = gridClassMap[stats.length] || 'grid-cols-3';
+
+                                    return (
+                                        <div className={`grid ${gClass} gap-2 w-full mb-6`}>
+                                            {stats.map((stat, idx) => (
+                                                <div key={idx} className="bg-white/10 rounded-lg p-2">
+                                                    <div className="text-xl font-bold">{Math.round(stat.score)}%</div>
+                                                    <div className="text-[10px] uppercase tracking-wider opacity-75">{stat.label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
                                 <div className="text-[10px] text-indigo-200 uppercase tracking-widest opacity-60">
                                     Samastha E-Learning
                                 </div>
