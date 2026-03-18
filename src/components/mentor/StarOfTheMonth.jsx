@@ -504,7 +504,8 @@ const StarOfTheMonth = () => {
                                     <Trophy className="w-3 h-3" /> STAR OF THE MONTH
                                 </div>
                                 <h2 className="text-2xl font-bold mb-1">{winner.name}</h2>
-                                <p className="text-indigo-100 text-sm mb-4">Class {winner.className}</p>
+                                <p className="text-indigo-100 text-sm mb-1">Class {winner.className}</p>
+                                <p className="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-4">{months[selectedMonth]} {selectedYear}</p>
 
                                 <div className="flex flex-wrap justify-center gap-2 w-full mb-6">
                                     {config.attendance !== false && (

@@ -336,7 +336,10 @@ const StudentStarView = () => {
                                         </div>
                                     </div>
                                     <h3 className="text-xl font-bold mb-1">{winner.name}</h3>
-                                    <p className={`text-sm mb-4 ${winner.id === currentUser.id ? 'text-indigo-200' : 'text-gray-500'}`}>
+                                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${winner.id === currentUser.id ? 'text-indigo-200' : 'text-gray-400'}`}>
+                                        {months[selectedMonth]} {selectedYear}
+                                    </p>
+                                    <p className={`text-sm mb-4 ${winner.id === currentUser.id ? 'text-indigo-100' : 'text-gray-600'}`}>
                                         {winner.id === currentUser.id ? 'You' : `Rank #1`}
                                     </p>
 
