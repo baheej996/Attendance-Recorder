@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isAfter } from 'date-fns';
 
 const StarOfTheMonth = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, toggleStarDeclaration } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, toggleStarDeclaration } = useData();
     const navigate = useNavigate();
 
     // State for selectors
@@ -20,6 +20,7 @@ const StarOfTheMonth = () => {
         attendance: true,
         activities: true,
         prayer: true,
+        specialPrayer: true,
         fasting: true,
         quran: true,
     };
@@ -73,20 +74,30 @@ const StarOfTheMonth = () => {
             );
             const workingDays = classAttendanceDates.size || 1; // Avoid division by zero
 
-            // Calculate Total Active Activities
+            // Calculate Total Active Activities (created this month)
             const activeActivityList = activities.filter(a =>
-                a.classId === classId && a.status === 'Active' // We could filter by date created, but Active is simpler
+                a.classId === classId &&
+                a.createdAt &&
+                isSameMonth(new Date(a.createdAt), startDate) &&
+                isSameYear(new Date(a.createdAt), startDate)
             );
             const activeActivities = activeActivityList.length || 1;
             const activeActivityIds = activeActivityList.map(a => a.id);
 
-            classStats[classId] = { workingDays, activeActivities, activeActivityIds };
+            // Special Prayers assigned to this class
+            const activeSpecialPrayersList = specialPrayers?.filter(p =>
+                p.isEnabled && p.assignedClassIds?.includes(classId)
+            ) || [];
+            const activeSpecialPrayers = activeSpecialPrayersList.length || 1;
+            const activeSpecialPrayerIds = activeSpecialPrayersList.map(p => p.id);
+
+            classStats[classId] = { workingDays, activeActivities, activeActivityIds, activeSpecialPrayers, activeSpecialPrayerIds };
         });
 
         // 3. Process each student
         const processed = classStudents.map(student => {
             const classId = student.classId;
-            const stats = classStats[classId] || { workingDays: 1, activeActivities: 1, activeActivityIds: [] };
+            const stats = classStats[classId] || { workingDays: 1, activeActivities: 1, activeActivityIds: [], activeSpecialPrayers: 1, activeSpecialPrayerIds: [] };
 
             // --- Attendance Score ---
             let attendanceScore = 0;
@@ -104,24 +115,23 @@ const StarOfTheMonth = () => {
             // --- Activities Score ---
             let activityScore = 0;
             let completedCount = 0;
-            if (config.activities) {
+            if (config.activities && stats.activeActivityIds.length > 0) {
                 const activeIds = stats.activeActivityIds || [];
+                // Only count submissions for activities created this month
                 const studentSubmissions = activitySubmissions.filter(s =>
                     s.studentId === student.id &&
                     s.status === 'Completed' &&
                     activeIds.includes(s.activityId)
                 );
-                const monthSubmissions = studentSubmissions.filter(s =>
-                    isSameMonth(new Date(s.timestamp), startDate) &&
-                    isSameYear(new Date(s.timestamp), startDate)
-                );
-                completedCount = monthSubmissions.length;
-                activityScore = (completedCount / (stats.activeActivities || 1)) * 100;
+                completedCount = studentSubmissions.length;
+                activityScore = (completedCount / stats.activeActivityIds.length) * 100;
             }
 
             // --- Prayer Score ---
             let prayerScore = 0;
             let prayersPerformed = 0;
+            const standardPrayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'f', 'd', 'a', 'm', 'i'];
+
             if (config.prayer) {
                 const studentPrayers = prayerRecords.filter(p =>
                     p.studentId === student.id &&
@@ -129,10 +139,9 @@ const StarOfTheMonth = () => {
                     isSameYear(new Date(p.date), startDate)
                 );
 
-                // Sum all true values in prayers object
                 studentPrayers.forEach(record => {
-                    Object.values(record.prayers || {}).forEach(status => {
-                        if (status === true) prayersPerformed++;
+                    Object.entries(record.prayers || {}).forEach(([key, status]) => {
+                        if (status === true && standardPrayers.includes(key)) prayersPerformed++;
                     });
                 });
 
@@ -141,28 +150,52 @@ const StarOfTheMonth = () => {
                 prayerScore = (prayersPerformed / maxPrayers) * 100;
             }
 
-            // --- Fasting Score ---
+            // --- Special Prayer Score ---
+            let specialPrayerScore = 0;
+            let specialPrayersPerformed = 0;
+            if (config.specialPrayer && stats.activeSpecialPrayerIds.length > 0) {
+                const studentPrayers = prayerRecords.filter(p =>
+                    p.studentId === student.id &&
+                    isSameMonth(new Date(p.date), startDate) &&
+                    isSameYear(new Date(p.date), startDate)
+                );
+
+                studentPrayers.forEach(record => {
+                    Object.entries(record.prayers || {}).forEach(([key, status]) => {
+                        if (status === true && stats.activeSpecialPrayerIds.includes(key)) specialPrayersPerformed++;
+                    });
+                });
+
+                const maxSpecialPrayers = daysInMonth * stats.activeSpecialPrayerIds.length;
+                specialPrayerScore = (specialPrayersPerformed / maxSpecialPrayers) * 100;
+            }
+
             let fastingScore = 0;
             let fastsCompleted = 0;
             if (config.fasting) {
+                // Fetch ALL fasting logs for this student independently of the Gregorian month
                 const studentFasts = ramadanLogs.filter(log =>
                     log.studentId === student.id &&
-                    log.status === 'Fasting' &&
-                    isSameMonth(new Date(log.date || log.timestamp), startDate) &&
-                    isSameYear(new Date(log.date || log.timestamp), startDate)
+                    log.status === 'Fasting'
                 );
                 fastsCompleted = studentFasts.length;
-                fastingScore = (fastsCompleted / daysInMonth) * 100;
+                fastingScore = Math.min((fastsCompleted / 30) * 100, 100);
             }
 
-            // --- Quran Score ---
             let quranScore = 0;
             let quranPages = 0;
             if (config.quran) {
                 const studentQuran = quranProgress.find(q => q.studentId === student.id);
                 quranPages = studentQuran?.lastPage || 0;
-                // Total Quran pages is 604
-                quranScore = Math.min((quranPages / 604) * 100, 100);
+                const completedKhatms = studentQuran?.completedKhatms || 0;
+
+                // If they have completed at least 1 Khatm, they get 100%
+                if (completedKhatms >= 1) {
+                    quranScore = 100;
+                } else {
+                    // Total Quran pages is 604
+                    quranScore = Math.min((quranPages / 604) * 100, 100);
+                }
             }
 
             // --- Overall Score ---
@@ -172,6 +205,7 @@ const StarOfTheMonth = () => {
             if (config.attendance) { totalScore += attendanceScore; divider++; }
             if (config.activities) { totalScore += activityScore; divider++; }
             if (config.prayer) { totalScore += prayerScore; divider++; }
+            if (config.specialPrayer) { totalScore += specialPrayerScore; divider++; }
             if (config.fasting) { totalScore += fastingScore; divider++; }
             if (config.quran) { totalScore += quranScore; divider++; }
 
@@ -183,11 +217,13 @@ const StarOfTheMonth = () => {
                     attendance: attendanceScore,
                     activities: activityScore,
                     prayer: prayerScore,
+                    specialPrayer: specialPrayerScore,
                     fasting: fastingScore,
                     quran: quranScore,
                     present: presentCount,
                     activitiesCompleted: completedCount,
                     prayersPerformed: prayersPerformed,
+                    specialPrayersPerformed: specialPrayersPerformed,
                     fastsCompleted: fastsCompleted,
                     quranPages: quranPages
                 },
@@ -200,8 +236,8 @@ const StarOfTheMonth = () => {
         return processed.sort((a, b) => b.finalScore - a.finalScore);
 
     }, [
-        students, attendance, activities, activitySubmissions, prayerRecords,
-        ramadanLogs, quranProgress,
+        students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers,
+        ramadanLogs, quranProgress, selectedClassId,
         mentorClassIds, selectedMonth, selectedYear, config, classes
     ]);
 
@@ -252,6 +288,7 @@ const StarOfTheMonth = () => {
                 attendance: student.scores.attendance,
                 activities: student.scores.activities,
                 prayer: student.scores.prayer,
+                specialPrayer: student.scores.specialPrayer,
                 fasting: student.scores.fasting,
                 quran: student.scores.quran
             },
@@ -371,6 +408,15 @@ const StarOfTheMonth = () => {
                             />
                         </label>
                         <label className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                            <span className="font-medium text-gray-700">Special Prayers</span>
+                            <input
+                                type="checkbox"
+                                checked={config.specialPrayer !== false}
+                                onChange={(e) => setConfig(prev => ({ ...prev, specialPrayer: e.target.checked }))}
+                                className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
                             <span className="font-medium text-gray-700">Fasting</span>
                             <input
                                 type="checkbox"
@@ -476,7 +522,13 @@ const StarOfTheMonth = () => {
                                     {config.prayer !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
                                             <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.prayer)}%</div>
-                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Pray</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Daily Pray</div>
+                                        </div>
+                                    )}
+                                    {config.specialPrayer !== false && (
+                                        <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
+                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.specialPrayer)}%</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Spc. Pray</div>
                                         </div>
                                     )}
                                     {config.fasting !== false && (
@@ -527,7 +579,8 @@ const StarOfTheMonth = () => {
                                 <th className="px-6 py-3">Student</th>
                                 {config.attendance !== false && <th className="px-6 py-3 text-center">Attendance</th>}
                                 {config.activities !== false && <th className="px-6 py-3 text-center">Activities</th>}
-                                {config.prayer !== false && <th className="px-6 py-3 text-center">Prayer</th>}
+                                {config.prayer !== false && <th className="px-6 py-3 text-center">Daily Pray</th>}
+                                {config.specialPrayer !== false && <th className="px-6 py-3 text-center">Spec. Pray</th>}
                                 {config.fasting !== false && <th className="px-6 py-3 text-center">Fasting</th>}
                                 {config.quran !== false && <th className="px-6 py-3 text-center">Quran</th>}
                                 <th className="px-6 py-3 text-center">Overall Score</th>
@@ -566,6 +619,12 @@ const StarOfTheMonth = () => {
                                         <td className="px-6 py-4 text-center">
                                             <div className="font-medium">{Math.round(student.scores.prayer)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.prayersPerformed} Prayers</div>
+                                        </td>
+                                    )}
+                                    {config.specialPrayer !== false && (
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="font-medium">{Math.round(student.scores.specialPrayer)}%</div>
+                                            <div className="text-xs text-gray-400">{student.scores.specialPrayersPerformed} Spc. Prayers</div>
                                         </td>
                                     )}
                                     {config.fasting !== false && (
