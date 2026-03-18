@@ -8,7 +8,7 @@ import { toPng } from 'html-to-image';
 import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StudentStarView = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, classes, institutionSettings, starDeclarations, mentors } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, starDeclarations, starConfigs, mentors } = useData();
 
     // State
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
