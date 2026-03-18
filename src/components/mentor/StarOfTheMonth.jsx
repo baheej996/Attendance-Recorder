@@ -5,6 +5,7 @@ import { clsx } from 'clsx';
 import { Star, Calendar, Settings, MessageSquare, Trophy, Award, CheckCircle, XCircle, Users, Unlock, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isAfter } from 'date-fns';
+import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StarOfTheMonth = () => {
     const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig } = useData();
