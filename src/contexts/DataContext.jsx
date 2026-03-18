@@ -42,6 +42,7 @@ export const DataProvider = ({ children }) => {
 
     // Settings & Misc
     const [starDeclarations, setStarDeclarations] = useState([]);
+    const [starConfigs, setStarConfigs] = useState([]); // Per-class configurations
     const [adminRequests, setAdminRequests] = useState([]);
     const [chatSettings, setChatSettings] = useState([]);
     const [mentorSettings, setMentorSettings] = useState({ sidebarOrder: [] });
@@ -109,6 +110,7 @@ export const DataProvider = ({ children }) => {
             subscribe('quranProgress', setQuranProgress),
 
             subscribe('starDeclarations', setStarDeclarations),
+            subscribe('starConfigs', setStarConfigs),
             subscribe('adminRequests', setAdminRequests),
             subscribe('chatSettings', setChatSettings),
             subscribe('examSettings', setExamSettings),
@@ -560,6 +562,10 @@ export const DataProvider = ({ children }) => {
     const saveStarDeclaration = async (dec) => await addDoc(collection(db, 'starDeclarations'), dec);
     const deleteStarDeclaration = async (id) => await deleteDoc(doc(db, 'starDeclarations', id));
 
+    const updateStarConfig = async (classId, newConfig) => {
+        await setDoc(doc(db, 'starConfigs', classId), { classId, config: newConfig }, { merge: true });
+    };
+
     const addAdminRequest = async (req) => await addDoc(collection(db, 'adminRequests'), req);
     const updateAdminRequest = async (id, upd) => await updateDoc(doc(db, 'adminRequests', id), upd);
     const deleteAdminRequest = async (id) => await deleteDoc(doc(db, 'adminRequests', id));
@@ -598,6 +604,7 @@ export const DataProvider = ({ children }) => {
 
         // New / Misc
         starDeclarations, saveStarDeclaration, deleteStarDeclaration,
+        starConfigs, updateStarConfig,
         adminRequests, addAdminRequest, updateAdminRequest, deleteAdminRequest,
         chatMessages, sendMessage: async (msg) => await addDoc(collection(db, 'chatMessages'), { ...msg, timestamp: new Date().toISOString() }),
         markMessagesAsRead, deleteChatConversation,

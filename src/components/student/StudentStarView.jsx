@@ -5,6 +5,7 @@ import { clsx } from 'clsx';
 import { Star, Calendar, Trophy, Award, Download, Share2, PartyPopper, X, Lock, Clock } from 'lucide-react';
 import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYear, isAfter } from 'date-fns';
 import { toPng } from 'html-to-image';
+import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StudentStarView = () => {
     const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, classes, institutionSettings, starDeclarations, mentors } = useData();
@@ -33,103 +34,24 @@ const StudentStarView = () => {
     const results = useMemo(() => {
         if (!currentUser?.classId) return [];
 
-        // 1. Filter students in MY class only
-        const classStudents = students.filter(s => s.classId === currentUser.classId);
-        const classId = currentUser.classId;
+        // Determine if this class has a custom overriding config
+        let appliedConfig = config;
+        const customConfig = starConfigs?.find(c => c.classId === currentUser.classId)?.config;
+        if (customConfig) {
+            appliedConfig = customConfig;
+        }
 
-        // 2. Date Range
-        const startDate = startOfMonth(new Date(selectedYear, selectedMonth));
-        const daysInMonth = getDaysInMonth(startDate);
-
-        // Class Stats
-        const classAttendanceDates = new Set(
-            attendance
-                .filter(a => {
-                    const s = students.find(stu => stu.id === a.studentId);
-                    return s && s.classId === classId && isSameMonth(new Date(a.date), startDate) && isSameYear(new Date(a.date), startDate);
-                })
-                .map(a => a.date)
-        );
-        const workingDays = classAttendanceDates.size || 1;
-
-        const activeActivityList = activities.filter(a =>
-            a.classId === classId && a.status === 'Active'
-        );
-        const activeActivities = activeActivityList.length || 1;
-        const activeActivityIds = activeActivityList.map(a => a.id);
-
-        const processed = classStudents.map(student => {
-            let attendanceScore = 0;
-            let presentCount = 0;
-            if (config.attendance) {
-                const studentAttendance = attendance.filter(a =>
-                    a.studentId === student.id &&
-                    isSameMonth(new Date(a.date), startDate) &&
-                    isSameYear(new Date(a.date), startDate)
-                );
-                presentCount = studentAttendance.filter(a => a.status === 'Present').length;
-                attendanceScore = (presentCount / (workingDays || 1)) * 100;
-            }
-
-            let activityScore = 0;
-            let completedCount = 0;
-            if (config.activities) {
-                const studentSubmissions = activitySubmissions.filter(s =>
-                    s.studentId === student.id &&
-                    s.status === 'Completed' &&
-                    activeActivityIds.includes(s.activityId)
-                );
-                const monthSubmissions = studentSubmissions.filter(s =>
-                    isSameMonth(new Date(s.timestamp), startDate) &&
-                    isSameYear(new Date(s.timestamp), startDate)
-                );
-                completedCount = monthSubmissions.length;
-                activityScore = (completedCount / (activeActivities || 1)) * 100;
-            }
-
-            let prayerScore = 0;
-            let prayersPerformed = 0;
-            if (config.prayer) {
-                const studentPrayers = prayerRecords.filter(p =>
-                    p.studentId === student.id &&
-                    isSameMonth(new Date(p.date), startDate) &&
-                    isSameYear(new Date(p.date), startDate)
-                );
-                studentPrayers.forEach(record => {
-                    Object.values(record.prayers || {}).forEach(status => {
-                        if (status === true) prayersPerformed++;
-                    });
-                });
-                const maxPrayers = daysInMonth * 5;
-                prayerScore = (prayersPerformed / maxPrayers) * 100;
-            }
-
-            let totalScore = 0;
-            let divider = 0;
-
-            if (config.attendance) { totalScore += attendanceScore; divider++; }
-            if (config.activities) { totalScore += activityScore; divider++; }
-            if (config.prayer) { totalScore += prayerScore; divider++; }
-
-            const finalScore = divider > 0 ? (totalScore / divider) : 0;
-
-            return {
-                ...student,
-                scores: {
-                    attendance: attendanceScore,
-                    activities: activityScore,
-                    prayer: prayerScore,
-                },
-                finalScore,
-                className: classes.find(c => c.id === classId)?.name || 'Unknown'
-            };
+        return calculateStudentStarScores({
+            students, attendance, activities, activitySubmissions,
+            prayerRecords, specialPrayers, ramadanLogs, quranProgress,
+            classes, selectedClassId: currentUser.classId, mentorClassIds: [],
+            selectedMonth, selectedYear, config: appliedConfig,
+            isMentorView: false
         });
 
-        return processed.sort((a, b) => b.finalScore - a.finalScore);
-
     }, [
-        students, attendance, activities, activitySubmissions, prayerRecords,
-        currentUser, selectedMonth, selectedYear, config, classes
+        students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers,
+        ramadanLogs, quranProgress, currentUser, selectedMonth, selectedYear, config, classes, starConfigs
     ]);
 
     const maxScore = results.length > 0 ? results[0].finalScore : 0;
