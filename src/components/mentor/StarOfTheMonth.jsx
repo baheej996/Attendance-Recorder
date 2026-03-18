@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isAfter } from 'date-fns';
 
 const StarOfTheMonth = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, classes, institutionSettings, updateInstitutionSettings, starDeclarations, toggleStarDeclaration } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, toggleStarDeclaration } = useData();
     const navigate = useNavigate();
 
     // State for selectors
@@ -20,6 +20,8 @@ const StarOfTheMonth = () => {
         attendance: true,
         activities: true,
         prayer: true,
+        fasting: true,
+        quran: true,
     };
 
     const setConfig = (newConfig) => {
@@ -139,6 +141,30 @@ const StarOfTheMonth = () => {
                 prayerScore = (prayersPerformed / maxPrayers) * 100;
             }
 
+            // --- Fasting Score ---
+            let fastingScore = 0;
+            let fastsCompleted = 0;
+            if (config.fasting) {
+                const studentFasts = ramadanLogs.filter(log =>
+                    log.studentId === student.id &&
+                    log.status === 'Fasting' &&
+                    isSameMonth(new Date(log.date || log.timestamp), startDate) &&
+                    isSameYear(new Date(log.date || log.timestamp), startDate)
+                );
+                fastsCompleted = studentFasts.length;
+                fastingScore = (fastsCompleted / daysInMonth) * 100;
+            }
+
+            // --- Quran Score ---
+            let quranScore = 0;
+            let quranPages = 0;
+            if (config.quran) {
+                const studentQuran = quranProgress.find(q => q.studentId === student.id);
+                quranPages = studentQuran?.lastPage || 0;
+                // Total Quran pages is 604
+                quranScore = Math.min((quranPages / 604) * 100, 100);
+            }
+
             // --- Overall Score ---
             let totalScore = 0;
             let divider = 0;
@@ -146,6 +172,8 @@ const StarOfTheMonth = () => {
             if (config.attendance) { totalScore += attendanceScore; divider++; }
             if (config.activities) { totalScore += activityScore; divider++; }
             if (config.prayer) { totalScore += prayerScore; divider++; }
+            if (config.fasting) { totalScore += fastingScore; divider++; }
+            if (config.quran) { totalScore += quranScore; divider++; }
 
             const finalScore = divider > 0 ? (totalScore / divider) : 0;
 
@@ -155,9 +183,13 @@ const StarOfTheMonth = () => {
                     attendance: attendanceScore,
                     activities: activityScore,
                     prayer: prayerScore,
+                    fasting: fastingScore,
+                    quran: quranScore,
                     present: presentCount,
                     activitiesCompleted: completedCount,
-                    prayersPerformed: prayersPerformed
+                    prayersPerformed: prayersPerformed,
+                    fastsCompleted: fastsCompleted,
+                    quranPages: quranPages
                 },
                 finalScore,
                 className: classes.find(c => c.id === classId)?.name || 'Unknown'
@@ -169,6 +201,7 @@ const StarOfTheMonth = () => {
 
     }, [
         students, attendance, activities, activitySubmissions, prayerRecords,
+        ramadanLogs, quranProgress,
         mentorClassIds, selectedMonth, selectedYear, config, classes
     ]);
 
@@ -218,7 +251,9 @@ const StarOfTheMonth = () => {
             scores: {
                 attendance: student.scores.attendance,
                 activities: student.scores.activities,
-                prayer: student.scores.prayer
+                prayer: student.scores.prayer,
+                fasting: student.scores.fasting,
+                quran: student.scores.quran
             },
             month: months[selectedMonth],
             year: selectedYear
@@ -307,12 +342,12 @@ const StarOfTheMonth = () => {
                     <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <Settings className="w-4 h-4" /> Calculating Criteria
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <label className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
                             <span className="font-medium text-gray-700">Attendance</span>
                             <input
                                 type="checkbox"
-                                checked={config.attendance}
+                                checked={config.attendance !== false}
                                 onChange={(e) => setConfig(prev => ({ ...prev, attendance: e.target.checked }))}
                                 className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
                             />
@@ -321,7 +356,7 @@ const StarOfTheMonth = () => {
                             <span className="font-medium text-gray-700">Activities</span>
                             <input
                                 type="checkbox"
-                                checked={config.activities}
+                                checked={config.activities !== false}
                                 onChange={(e) => setConfig(prev => ({ ...prev, activities: e.target.checked }))}
                                 className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
                             />
@@ -330,8 +365,26 @@ const StarOfTheMonth = () => {
                             <span className="font-medium text-gray-700">Prayer Chart</span>
                             <input
                                 type="checkbox"
-                                checked={config.prayer}
+                                checked={config.prayer !== false}
                                 onChange={(e) => setConfig(prev => ({ ...prev, prayer: e.target.checked }))}
+                                className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                            <span className="font-medium text-gray-700">Fasting</span>
+                            <input
+                                type="checkbox"
+                                checked={config.fasting !== false}
+                                onChange={(e) => setConfig(prev => ({ ...prev, fasting: e.target.checked }))}
+                                className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                            />
+                        </label>
+                        <label className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                            <span className="font-medium text-gray-700">Quran Recitation</span>
+                            <input
+                                type="checkbox"
+                                checked={config.quran !== false}
+                                onChange={(e) => setConfig(prev => ({ ...prev, quran: e.target.checked }))}
                                 className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
                             />
                         </label>
@@ -407,19 +460,37 @@ const StarOfTheMonth = () => {
                                 <h2 className="text-2xl font-bold mb-1">{winner.name}</h2>
                                 <p className="text-indigo-100 text-sm mb-4">Class {winner.className}</p>
 
-                                <div className="grid grid-cols-3 gap-2 w-full mb-6">
-                                    <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
-                                        <div className="text-xl font-bold">{Math.round(winner.scores.attendance)}%</div>
-                                        <div className="text-[10px] uppercase tracking-wider opacity-75">Attd.</div>
-                                    </div>
-                                    <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
-                                        <div className="text-xl font-bold">{Math.round(winner.scores.activities)}%</div>
-                                        <div className="text-[10px] uppercase tracking-wider opacity-75">Act.</div>
-                                    </div>
-                                    <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
-                                        <div className="text-xl font-bold">{Math.round(winner.scores.prayer)}%</div>
-                                        <div className="text-[10px] uppercase tracking-wider opacity-75">Pray</div>
-                                    </div>
+                                <div className="flex flex-wrap justify-center gap-2 w-full mb-6">
+                                    {config.attendance !== false && (
+                                        <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
+                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.attendance)}%</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Attd.</div>
+                                        </div>
+                                    )}
+                                    {config.activities !== false && (
+                                        <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
+                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.activities)}%</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Act.</div>
+                                        </div>
+                                    )}
+                                    {config.prayer !== false && (
+                                        <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
+                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.prayer)}%</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Pray</div>
+                                        </div>
+                                    )}
+                                    {config.fasting !== false && (
+                                        <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
+                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.fasting)}%</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Fast</div>
+                                        </div>
+                                    )}
+                                    {config.quran !== false && (
+                                        <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
+                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.quran)}%</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Quran</div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button
@@ -454,9 +525,11 @@ const StarOfTheMonth = () => {
                             <tr>
                                 <th className="px-6 py-3">Rank</th>
                                 <th className="px-6 py-3">Student</th>
-                                <th className="px-6 py-3 text-center">Attendance</th>
-                                <th className="px-6 py-3 text-center">Activities</th>
-                                <th className="px-6 py-3 text-center">Prayer</th>
+                                {config.attendance !== false && <th className="px-6 py-3 text-center">Attendance</th>}
+                                {config.activities !== false && <th className="px-6 py-3 text-center">Activities</th>}
+                                {config.prayer !== false && <th className="px-6 py-3 text-center">Prayer</th>}
+                                {config.fasting !== false && <th className="px-6 py-3 text-center">Fasting</th>}
+                                {config.quran !== false && <th className="px-6 py-3 text-center">Quran</th>}
                                 <th className="px-6 py-3 text-center">Overall Score</th>
                                 <th className="px-6 py-3 text-right">Action</th>
                             </tr>
@@ -477,18 +550,36 @@ const StarOfTheMonth = () => {
                                         <div className="font-medium text-gray-900">{student.name}</div>
                                         <div className="text-xs text-gray-500">Class {student.className}</div>
                                     </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="font-medium">{Math.round(student.scores.attendance)}%</div>
-                                        <div className="text-xs text-gray-400">{student.scores.present} Days</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="font-medium">{Math.round(student.scores.activities)}%</div>
-                                        <div className="text-xs text-gray-400">{student.scores.activitiesCompleted} Done</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="font-medium">{Math.round(student.scores.prayer)}%</div>
-                                        <div className="text-xs text-gray-400">{student.scores.prayersPerformed} Prayers</div>
-                                    </td>
+                                    {config.attendance !== false && (
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="font-medium">{Math.round(student.scores.attendance)}%</div>
+                                            <div className="text-xs text-gray-400">{student.scores.present} Days</div>
+                                        </td>
+                                    )}
+                                    {config.activities !== false && (
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="font-medium">{Math.round(student.scores.activities)}%</div>
+                                            <div className="text-xs text-gray-400">{student.scores.activitiesCompleted} Done</div>
+                                        </td>
+                                    )}
+                                    {config.prayer !== false && (
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="font-medium">{Math.round(student.scores.prayer)}%</div>
+                                            <div className="text-xs text-gray-400">{student.scores.prayersPerformed} Prayers</div>
+                                        </td>
+                                    )}
+                                    {config.fasting !== false && (
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="font-medium">{Math.round(student.scores.fasting)}%</div>
+                                            <div className="text-xs text-gray-400">{student.scores.fastsCompleted} Days</div>
+                                        </td>
+                                    )}
+                                    {config.quran !== false && (
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="font-medium">{Math.round(student.scores.quran)}%</div>
+                                            <div className="text-xs text-gray-400">{student.scores.quranPages} Pages</div>
+                                        </td>
+                                    )}
                                     <td className="px-6 py-4 text-center">
                                         <div className="inline-flex items-center gap-1 font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
                                             {student.finalScore.toFixed(1)}%
