@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYear, parseISO, isAfter } from 'date-fns';
 
 const StarOfTheMonth = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, toggleStarDeclaration } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration } = useData();
     const navigate = useNavigate();
 
     // State for selectors
@@ -269,14 +269,27 @@ const StarOfTheMonth = () => {
 
     const statusInfo = getDeclarationStatus();
 
-    const handleDeclaration = () => {
+    const handleDeclaration = async () => {
         if (selectedClassId === 'All') return;
-        toggleStarDeclaration(selectedClassId, selectedMonth, selectedYear, 'Declared');
+        try {
+            await saveStarDeclaration({ classId: selectedClassId, month: selectedMonth, year: selectedYear, status: 'Declared' });
+        } catch (error) {
+            console.error("Failed to declare results", error);
+            alert("Database quota exceeded or network error. Please try again later.");
+        }
     };
 
-    const handleUndoDeclaration = () => {
+    const handleUndoDeclaration = async () => {
         if (selectedClassId === 'All') return;
-        toggleStarDeclaration(selectedClassId, selectedMonth, selectedYear, 'Hidden'); // Or remove
+        const decl = starDeclarations.find(d => d.classId === selectedClassId && d.month === selectedMonth && d.year === selectedYear);
+        if (decl) {
+            try {
+                await deleteStarDeclaration(decl.id);
+            } catch (error) {
+                console.error("Failed to undo declaration", error);
+                alert("Database quota exceeded or network error. Please try again later.");
+            }
+        }
     };
 
     const handleEncourage = (student) => {
