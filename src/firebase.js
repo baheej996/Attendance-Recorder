@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
 const firebaseConfig = {
     projectId: "samasthaelearning-1487e",
@@ -13,9 +14,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 // Use local emulators if running on localhost
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     connectFirestoreEmulator(db, '127.0.0.1', 8080);
-    console.warn("Connected to Firebase Firestore Local Emulator!");
+    connectStorageEmulator(storage, '127.0.0.1', 9199);
+    console.warn("Connected to Firebase Firestore and Storage Local Emulators!");
 }

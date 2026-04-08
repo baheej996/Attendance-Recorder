@@ -14,7 +14,8 @@ import {
     Settings,
     Star,
     Moon,
-    Trophy
+    Trophy,
+    Book
 } from 'lucide-react';
 
 export const MENTOR_NAV_ITEMS = [
@@ -23,6 +24,7 @@ export const MENTOR_NAV_ITEMS = [
     { id: 'chat', icon: MessageSquare, label: 'Chat', path: '/mentor/chat' },
     { id: 'activities', icon: Layers, label: 'Activities', path: '/mentor/activities' },
     { id: 'logbook', icon: BookOpen, label: 'Class Log Book', path: '/mentor/logbook' },
+    { id: 'subjects', icon: Book, label: 'Subjects (Books)', path: '/mentor/subjects' },
     { id: 'prayer', icon: Calendar, label: 'Prayer Chart', path: '/mentor/prayer-chart' },
     { id: 'ramadan', icon: Moon, label: 'Ramadan', path: '/mentor/ramadan' },
     { id: 'print', icon: Printer, label: 'Print Attendance', path: '/mentor/print' },

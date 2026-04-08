@@ -6,6 +6,8 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import SubjectBookModal from './SubjectBookModal';
+import { FileImage } from 'lucide-react';
 
 const SubjectManager = () => {
     const { classes, subjects, addSubject, updateSubject, deleteSubject, deleteSubjects } = useData();
@@ -22,6 +24,10 @@ const SubjectManager = () => {
     // Bulk Delete State
     const [selectedSubjectIds, setSelectedSubjectIds] = useState([]);
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
+    // Book Modal State
+    const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+    const [bookModalSubjectGroup, setBookModalSubjectGroup] = useState(null);
 
     // Extract unique grade names (e.g. "1", "2", "3") sorted
     const uniqueGrades = [...new Set(classes.map(c => c.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -448,6 +454,16 @@ const SubjectManager = () => {
                                         </div>
                                         <div className="flex gap-2 sm:gap-1 self-end sm:self-auto opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100">
                                             <button
+                                                onClick={() => {
+                                                    setBookModalSubjectGroup(group);
+                                                    setIsBookModalOpen(true);
+                                                }}
+                                                className="text-gray-400 hover:text-green-600 p-2 hover:bg-green-50 rounded-lg transition-colors border border-gray-100 sm:border-none"
+                                                title="Manage Book Pages"
+                                            >
+                                                <FileImage className="w-4 h-4" />
+                                            </button>
+                                            <button
                                                 onClick={() => handleEdit(group.sampleSubject)}
                                                 className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors border border-gray-100 sm:border-none"
                                                 title="Edit Batch Subject"
@@ -478,6 +494,15 @@ const SubjectManager = () => {
                 message={`Are you sure you want to delete ${selectedSubjectIds.length} subjects? This action cannot be undone.`}
                 confirmText="Delete All Selected"
                 isDanger={true}
+            />
+
+            <SubjectBookModal
+                isOpen={isBookModalOpen}
+                onClose={() => {
+                    setIsBookModalOpen(false);
+                    setBookModalSubjectGroup(null);
+                }}
+                subjectGroup={bookModalSubjectGroup}
             />
         </div>
     );

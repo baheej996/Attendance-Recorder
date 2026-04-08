@@ -4,7 +4,7 @@ import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers, History, MessageSquare, Moon } from 'lucide-react';
+import { Book, BookOpen, Trophy, Calendar, LogOut, FileText, LayoutDashboard, Info, Layers, History, MessageSquare, Moon, Video, Clock, ExternalLink } from 'lucide-react';
 import { clsx } from 'clsx';
 
 // Import New Student Components
@@ -18,6 +18,7 @@ import StudentLeave from './StudentLeave';
 import StudentChat from './StudentChat';
 import StudentStarView from '../components/student/StudentStarView';
 import StudentRamadan from '../components/student/StudentRamadan';
+import StudentSubjects from '../components/student/StudentSubjects';
 
 import Help from './Help';
 import { Star } from 'lucide-react';
@@ -44,7 +45,7 @@ const SidebarItem = ({ icon: Icon, label, path, active, onClick, hasNotification
 );
 
 const StudentDashboard = () => {
-    const { currentUser, logout, activities, activitySubmissions, classes, mentors, studentFeatureFlags, classFeatureFlags, attendance, exams, results } = useData();
+    const { currentUser, logout, activities, activitySubmissions, classes, mentors, studentFeatureFlags, classFeatureFlags, attendance, exams, results, liveClasses } = useData();
     const location = useLocation();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -88,6 +89,17 @@ const StudentDashboard = () => {
         !(activitySubmissions || []).some(s => s.activityId === a.id && s.studentId === currentUser.id && s.status === 'Completed')
     ).length > 0;
 
+    // --- Live Class check ---
+    const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayStr = DAYS_OF_WEEK[new Date().getDay()];
+    
+    // Check if the current user's class has an active live class config for today
+    const activeLiveClass = (liveClasses || []).find(lc => 
+        lc.classId === currentUser?.classId && 
+        lc.isEnabled && 
+        (lc.selectedDays || []).includes(todayStr)
+    );
+
     if (!currentUser) return null;
 
     // Check feature flags
@@ -120,6 +132,7 @@ const StudentDashboard = () => {
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/student', key: 'overview' },
         { icon: Layers, label: 'Activities', path: '/student/activities', key: 'activities', hasNotification: hasPendingActivities },
+        { icon: Book, label: 'My Subjects', path: '/student/subjects', key: 'subjects' },
         { icon: FileText, label: 'Online Exams', path: '/student/exams', key: 'exams' },
         { icon: FileText, label: 'Report Card', path: '/student/results', key: 'results' },
         { icon: Calendar, label: 'Leave Applications', path: '/student/leave', key: 'leave' },
@@ -152,6 +165,7 @@ const StudentDashboard = () => {
 
         const matchedFeature = [
             { path: '/student/activities', key: 'activities' },
+            { path: '/student/subjects', key: 'subjects' },
             { path: '/student/exams', key: 'exams' },
             { path: '/student/results', key: 'results' },
             { path: '/student/leave', key: 'leave' },
@@ -302,6 +316,44 @@ const StudentDashboard = () => {
                                 </div>
                             </div>
 
+                            {/* Live Class Banner */}
+                            {activeLiveClass && (
+                                <div className="bg-white border-2 border-indigo-500 rounded-2xl p-6 shadow-lg relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                        <Video className="w-32 h-32" />
+                                    </div>
+                                    <div className="flex items-center gap-4 relative z-10 w-full md:w-auto">
+                                        <div className="p-4 bg-indigo-100 rounded-xl">
+                                            <Video className="w-8 h-8 text-indigo-600 animate-pulse" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                                Live Class Today
+                                                <span className="flex h-3 w-3 relative">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                                </span>
+                                            </h3>
+                                            <div className="flex items-center gap-2 text-gray-500 mt-1 font-medium">
+                                                <Clock className="w-4 h-4" />
+                                                Scheduled for {activeLiveClass.time}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="relative z-10 w-full md:w-auto">
+                                        <a 
+                                            href={activeLiveClass.link} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                                        >
+                                            <ExternalLink className="w-5 h-5" />
+                                            Join Live Class
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Stats Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <Card className="p-6 border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
@@ -415,6 +467,7 @@ const StudentDashboard = () => {
                             </div>
                         </div>
                     } />
+                    <Route path="/subjects" element={<StudentSubjects />} />
                     <Route path="/exams" element={<StudentExamView />} />
                     <Route path="/activities" element={<StudentActivities />} />
                     <Route path="/leave" element={<StudentLeave />} />

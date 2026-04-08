@@ -20,6 +20,7 @@ import SpecialPrayerManager from '../components/mentor/SpecialPrayerManager';
 import MentorPrayerStats from '../components/mentor/MentorPrayerStats';
 import MentorRamadan from '../components/mentor/MentorRamadan';
 import MentorLeaderboard from '../components/mentor/MentorLeaderboard';
+import MentorSubjects from '../components/mentor/MentorSubjects';
 import { MENTOR_NAV_ITEMS } from '../config/mentorNavItems';
 import { useData } from '../contexts/DataContext';
 
@@ -199,6 +200,7 @@ const MentorDashboard = () => {
                         <Route path="/chat" element={<MentorChat />} />
                         <Route path="/activities" element={<ActivitiesManager />} />
                         <Route path="/logbook" element={<LogBook />} />
+                        <Route path="/subjects" element={<MentorSubjects />} />
                         <Route path="/prayer-chart" element={<PrayerStats />} />
                         <Route path="/ramadan" element={<MentorRamadan />} />
                         <Route path="/print" element={<PrintAttendance />} />

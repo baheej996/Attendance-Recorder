@@ -39,6 +39,7 @@ export const DataProvider = ({ children }) => {
     // Ramadan Feature
     const [ramadanLogs, setRamadanLogs] = useState([]);
     const [quranProgress, setQuranProgress] = useState([]);
+    const [liveClasses, setLiveClasses] = useState([]);
 
     // Settings & Misc
     const [starDeclarations, setStarDeclarations] = useState([]);
@@ -108,6 +109,7 @@ export const DataProvider = ({ children }) => {
             subscribe('specialPrayers', setSpecialPrayers),
             subscribe('ramadanLogs', setRamadanLogs),
             subscribe('quranProgress', setQuranProgress),
+            subscribe('liveClasses', setLiveClasses),
 
             subscribe('starDeclarations', setStarDeclarations),
             subscribe('starConfigs', setStarConfigs),
@@ -622,6 +624,9 @@ export const DataProvider = ({ children }) => {
             classIds.forEach(id => batch.set(doc(db, 'classFeatureFlags', id), { classId: id, ...flags }, { merge: true }));
             await batch.commit();
         },
+
+        liveClasses,
+        updateLiveClassConfig: async (classId, config) => await setDoc(doc(db, 'liveClasses', classId), { classId, ...config }, { merge: true }),
 
         resetData,
         isDataLoaded,

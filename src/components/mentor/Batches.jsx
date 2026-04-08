@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Users, BookOpen, GraduationCap, ChevronDown, ChevronUp, Eye, Settings } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, ChevronDown, ChevronUp, Eye, Settings, Video } from 'lucide-react';
 import { clsx } from 'clsx';
 import { StudentProfileModal } from './StudentProfileModal';
 import ClassFeatureModal from './ClassFeatureModal';
+import LiveClassModal from './LiveClassModal';
 
 const Batches = () => {
     const { currentUser, classes, students } = useData();
@@ -12,6 +13,7 @@ const Batches = () => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [currentPreviewStudentId, setCurrentPreviewStudentId] = useState(null);
     const [featureModalData, setFeatureModalData] = useState({ isOpen: false, classId: null, classNameStr: '' });
+    const [liveClassModalData, setLiveClassModalData] = useState({ isOpen: false, classId: null, classNameStr: '' });
 
     // Memoize the filtering to avoid recalculation on every render
     const assignedClasses = useMemo(() => {
@@ -113,6 +115,17 @@ const Batches = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setLiveClassModalData({ isOpen: true, classId: cls.id, classNameStr: `${cls.name}-${cls.division}` });
+                                            }}
+                                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm text-sm font-medium"
+                                            title="Live Class Schedule"
+                                        >
+                                            <Video className="w-4 h-4" />
+                                            Live Class
+                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -249,6 +262,13 @@ const Batches = () => {
                 classId={featureModalData.classId}
                 isGlobalMode={featureModalData.isGlobalMode}
                 className={featureModalData.classNameStr}
+            />
+
+            <LiveClassModal
+                isOpen={liveClassModalData.isOpen}
+                onClose={() => setLiveClassModalData({ isOpen: false, classId: null, classNameStr: '' })}
+                classId={liveClassModalData.classId}
+                className={liveClassModalData.classNameStr}
             />
         </div>
     );
