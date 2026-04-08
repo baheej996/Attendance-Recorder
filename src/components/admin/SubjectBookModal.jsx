@@ -34,16 +34,19 @@ const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
         const newUrls = [];
 
         try {
-            for (const file of imageFiles) {
+            // Upload all files in parallel
+            const uploadPromises = imageFiles.map(async (file) => {
                 const ext = file.name.split('.').pop() || 'png';
                 const uniqueId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
                 const fileName = `subject_books/${subject.id}/chapter_${chapterIndex}/${uniqueId}.${ext}`;
                 const storageRef = ref(storage, fileName);
 
                 const snapshot = await uploadBytes(storageRef, file);
-                const url = await getDownloadURL(snapshot.ref);
-                newUrls.push(url);
-            }
+                return await getDownloadURL(snapshot.ref);
+            });
+
+            const uploadedUrls = await Promise.all(uploadPromises);
+            newUrls.push(...uploadedUrls);
 
             const currentChapterData = chapterData[chapterIndex] || { images: [], isRevealedToStudents: false };
             const updatedChapterData = {
@@ -54,9 +57,10 @@ const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
                 }
             };
 
-            for (const id of subjectGroup.subjectIds) {
-                await updateSubject(id, { chapterData: updatedChapterData });
-            }
+            // Update all subjects in parallel
+            await Promise.all(
+                subjectGroup.subjectIds.map(id => updateSubject(id, { chapterData: updatedChapterData }))
+            );
 
             showAlert('Success', `${newUrls.length} pages uploaded successfully to Chapter ${chapterIndex}.`, 'success');
         } catch (error) {
@@ -87,9 +91,9 @@ const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
                         }
                     };
 
-                    for (const id of subjectGroup.subjectIds) {
-                        await updateSubject(id, { chapterData: updatedChapterData });
-                    }
+                    await Promise.all(
+                        subjectGroup.subjectIds.map(id => updateSubject(id, { chapterData: updatedChapterData }))
+                    );
                     showAlert('Success', 'Page removed successfully.', 'success');
                 } catch (error) {
                     console.error('Error removing page:', error);
@@ -114,9 +118,9 @@ const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
                         }
                     };
 
-                    for (const id of subjectGroup.subjectIds) {
-                        await updateSubject(id, { chapterData: updatedChapterData });
-                    }
+                    await Promise.all(
+                        subjectGroup.subjectIds.map(id => updateSubject(id, { chapterData: updatedChapterData }))
+                    );
                     showAlert('Success', 'All pages removed from the chapter.', 'success');
                 } catch (error) {
                     console.error('Error clearing chapter:', error);
