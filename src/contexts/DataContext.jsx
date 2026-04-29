@@ -177,27 +177,13 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        const fetchTotalCounts = async () => {
-            try {
-                const [studentSnap, mentorSnap, classSnap] = await Promise.all([
-                    getCountFromServer(collection(db, 'students')),
-                    getCountFromServer(collection(db, 'mentors')),
-                    getCountFromServer(collection(db, 'classes'))
-                ]);
-                setTotalCounts({
-                    students: studentSnap.data().count,
-                    mentors: mentorSnap.data().count,
-                    classes: classSnap.data().count
-                });
-            } catch (error) {
-                console.error("Error fetching total counts:", error);
-            }
-        };
-
-        fetchTotalCounts();
-        // Refresh counts every 5 minutes or when data changes significantly
-        const interval = setInterval(fetchTotalCounts, 5 * 60 * 1000);
-        return () => clearInterval(interval);
+        // We use lightweight snapshots for counts since getCountFromServer may have compatibility issues in this specific environment
+        const countUnsubs = [
+            onSnapshot(collection(db, 'students'), snap => setTotalCounts(prev => ({ ...prev, students: snap.size }))),
+            onSnapshot(collection(db, 'mentors'), snap => setTotalCounts(prev => ({ ...prev, mentors: snap.size }))),
+            onSnapshot(collection(db, 'classes'), snap => setTotalCounts(prev => ({ ...prev, classes: snap.size })))
+        ];
+        return () => countUnsubs.forEach(u => u());
     }, []);
 
     // 2. User-Specific / Heavy Subscriptions (Filtered for Performance)
@@ -269,9 +255,10 @@ export const DataProvider = ({ children }) => {
                 subscribe('notifications', setNotifications, orderBy('createdAt', 'desc'), limit(100))
             );
         } else if (currentUser.role === 'admin') {
-            // Admins still load more, but we can limit logs and chats
             unsubs.push(
-                subscribe('students', setStudents),
+                subscribe('students', (data) => { setStudents(data); setAllStudents(data); }),
+                subscribe('mentors', setMentors),
+                subscribe('classes', setClasses),
                 subscribe('exams', setExams),
                 subscribe('activities', setActivities),
                 subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(1000)),
@@ -290,7 +277,7 @@ export const DataProvider = ({ children }) => {
         }
 
         return () => unsubs.forEach(u => u());
-    }, [currentUser]);
+    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit]);
 
     // Separate Effect for Log Pagination (to avoid re-subscribing to everything else)
     useEffect(() => {

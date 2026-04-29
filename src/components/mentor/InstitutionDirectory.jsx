@@ -33,9 +33,9 @@ const InstitutionDirectory = () => {
     // Auto-increase limit when searching to satisfy "but while searching it should be shown"
     React.useEffect(() => {
         if (searchQuery.length > 2) {
-            if (activeTab === 'students' && allStudentsLimit < 500) setAllStudentsLimit(500);
-            if (activeTab === 'mentors' && allMentorsLimit < 500) setAllMentorsLimit(500);
-            if (activeTab === 'classes' && allClassesLimit < 500) setAllClassesLimit(500);
+            if (activeTab === 'students' && allStudentsLimit < 10000) setAllStudentsLimit(10000);
+            if (activeTab === 'mentors' && allMentorsLimit < 10000) setAllMentorsLimit(10000);
+            if (activeTab === 'classes' && allClassesLimit < 10000) setAllClassesLimit(10000);
         }
     }, [searchQuery, activeTab, allStudentsLimit, allMentorsLimit, allClassesLimit, setAllStudentsLimit, setAllMentorsLimit, setAllClassesLimit]);
 
@@ -118,11 +118,11 @@ const InstitutionDirectory = () => {
         if (activeTab === 'students') {
             return studentsList.filter(s => {
                 const matchesSearch = 
-                    s.name?.toLowerCase().includes(query) ||
-                    s.uid?.toLowerCase().includes(query) ||
-                    s.registerNo?.toLowerCase().includes(query) ||
-                    s.className?.toLowerCase().includes(query) ||
-                    s.mentorName?.toLowerCase().includes(query);
+                    String(s.name || '').toLowerCase().includes(query) ||
+                    String(s.uid || '').toLowerCase().includes(query) ||
+                    String(s.registerNo || '').toLowerCase().includes(query) ||
+                    String(s.className || '').toLowerCase().includes(query) ||
+                    String(s.mentorName || '').toLowerCase().includes(query);
                 
                 const matchesClass = filters.studentClass === 'all' || s.classId === filters.studentClass;
                 const matchesStatus = filters.studentStatus === 'all' || s.status === filters.studentStatus;
@@ -315,7 +315,12 @@ const InstitutionDirectory = () => {
                 </div>
 
                 {/* Data Table / Grid */}
-                <div className="flex-1 overflow-x-auto">
+                <div className="flex-1 overflow-x-auto relative">
+                    {searchQuery.length > 2 && filteredData.length === 0 && (
+                        <div className="absolute top-0 left-0 right-0 p-4 bg-indigo-50 text-indigo-600 text-center text-xs font-bold animate-pulse z-10">
+                            Searching across records...
+                        </div>
+                    )}
                     {filteredData.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-24 text-center">
                             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
@@ -564,6 +569,7 @@ const InstitutionDirectory = () => {
                     </Card>
                 </div>
             )}
+        </div>
     );
 };
 
