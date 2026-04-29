@@ -13,7 +13,7 @@ const Landing = () => {
                     <div className="flex justify-center mb-4">
                         <LayoutGrid className="w-16 h-16 text-indigo-600" />
                     </div>
-                    <h1 className="text-4xl font-bold text-gray-900 mb-4">Attendance Recorder</h1>
+                    <h1 className="text-4xl font-bold text-gray-900 mb-4">Samastha E-Learning</h1>
                     <p className="text-xl text-gray-600">Select your role to continue</p>
                 </div>
 

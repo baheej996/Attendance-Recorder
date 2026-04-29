@@ -1,30 +1,30 @@
 import React from 'react';
-import { BookOpen, Shield, Users, GraduationCap, ClipboardCheck, FileText, BarChart2, CheckCircle, Info, Printer, Layers, PlayCircle, HelpCircle } from 'lucide-react';
+import { BookOpen, Shield, Users, GraduationCap, ClipboardCheck, FileText, BarChart2, CheckCircle, Info, Printer, Layers, PlayCircle, HelpCircle, Bell, Settings, Moon, Book, Sparkles, Star, History } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useTour } from '../hooks/useTour';
 
 const Section = ({ title, icon: Icon, children }) => (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-        <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+    <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 group">
+        <div className="flex items-center gap-4 mb-5">
+            <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600 group-hover:scale-110 transition-transform">
                 <Icon className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+            <h3 className="text-xl font-black text-gray-900 leading-tight">{title}</h3>
         </div>
-        <div className="text-gray-600 space-y-2 leading-relaxed">
+        <div className="text-gray-500 font-medium space-y-3 leading-relaxed text-sm md:text-base">
             {children}
         </div>
     </div>
 );
 
 const FeatureItem = ({ icon: Icon, title, description }) => (
-    <div className="flex gap-4 p-4 rounded-lg bg-gray-50 border border-gray-100">
-        <div className="mt-1 text-indigo-600">
+    <div className="flex gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100">
+        <div className="mt-1 text-indigo-500">
             <Icon className="w-5 h-5" />
         </div>
         <div>
-            <h4 className="font-bold text-gray-900">{title}</h4>
-            <p className="text-sm text-gray-600 mt-1">{description}</p>
+            <h4 className="font-black text-gray-900 text-sm">{title}</h4>
+            <p className="text-[11px] font-bold text-gray-400 mt-0.5 leading-normal">{description}</p>
         </div>
     </div>
 );
@@ -38,23 +38,32 @@ const Readme = () => {
         // Feature Flags for Student
         const globalFlags = studentFeatureFlags || {};
         const classFlags = classFeatureFlags?.find(f => f.classId === currentUser?.classId) || {};
-        const isPrayerChartEnabled = (globalFlags.prayer !== false) && (classFlags.prayer !== false);
+        // Unified Feature Key logic for the tour
+        const activeFeatures = {};
+        const availableKeys = ['welcome', 'overview', 'activities', 'subjects', 'exams', 'results', 'leave', 'chat', 'prayer', 'ramadan', 'history', 'attendanceHistory', 'leaderboard', 'star', 'help'];
+        
+        availableKeys.forEach(k => {
+            activeFeatures[k] = (globalFlags[k] !== false) && (classFlags[k] !== false);
+        });
+
+        const isPrayerChartEnabled = activeFeatures.prayer;
 
         switch (role) {
             case 'admin':
                 return (
                     <>
-                        <div className="mb-12 text-center">
-                            <h1 className="text-3xl font-bold text-indigo-900 mb-4">Admin Guide</h1>
-                            <p className="text-gray-600 max-w-2xl mx-auto mb-6">
-                                Complete control over the system. Manage users, classes, and system settings.
+                        <div className="mb-12 text-center py-10 bg-gradient-to-br from-indigo-900 to-indigo-800 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                            <h1 className="text-3xl md:text-5xl font-black mb-4 relative z-10">Admin Center</h1>
+                            <p className="text-indigo-200 font-medium max-w-2xl mx-auto mb-8 px-6 text-sm md:text-base relative z-10">
+                                Management authority for users, academic structure, and institutional settings.
                             </p>
                             <button
                                 onClick={() => startTour('admin')}
-                                className="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-full font-medium shadow-lg hover:bg-indigo-700 hover:scale-105 transition-all animate-bounce-subtle"
+                                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-indigo-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all relative z-10"
                             >
                                 <PlayCircle className="w-5 h-5" />
-                                Start Interactive Tour
+                                Launch Interactive Guide
                             </button>
                         </div>
 
@@ -71,16 +80,21 @@ const Readme = () => {
                                 <p>Structure your institution by creating Classes and Divisions. Assign Mentors to specific classes to grant them access.</p>
                             </Section>
 
-                            <Section title="System Settings" icon={Shield}>
-                                <p>Manage critical system configurations.</p>
+                            <Section title="System Settings" icon={Settings}>
+                                <p>Manage critical system configurations and global feature availability.</p>
                                 <div className="mt-4 space-y-3">
+                                    <FeatureItem icon={CheckCircle} title="App Feature Control" description="Toggle features like Ramadan tracking or Attendance History for everyone." />
                                     <FeatureItem icon={CheckCircle} title="Factory Reset" description="Wipe all data to start fresh (Requires Admin Password)." />
-                                    <FeatureItem icon={CheckCircle} title="Subject Management" description="Create subjects that Mentors can link to their Activities/Homework." />
+                                    <FeatureItem icon={BookOpen} title="Global Subjects" description="Create a master list of subjects for the entire institution." />
+                                    <FeatureItem icon={FileText} title="Syllabus/Curriculum" description="Define the academic roadmap for each subject." />
                                 </div>
                             </Section>
 
-                            <Section title="Exam Management" icon={FileText}>
-                                <p>Create and schedule exams for different classes. You control the examination timeline and publication of results.</p>
+                            <Section title="Automated Alerts" icon={Bell}>
+                                <p>The system automatically dispatches real-time notifications to relevant classes or students during key academic events.</p>
+                                <div className="mt-4 space-y-3">
+                                    <FeatureItem icon={CheckCircle} title="Smart Triggers" description="Attendance, Exam schedules, and Star declarations trigger instant alerts." />
+                                </div>
                             </Section>
                         </div>
                     </>
@@ -89,17 +103,18 @@ const Readme = () => {
             case 'mentor':
                 return (
                     <>
-                        <div className="mb-12 text-center">
-                            <h1 className="text-3xl font-bold text-purple-900 mb-4">Mentor Guide</h1>
-                            <p className="text-gray-600 max-w-2xl mx-auto mb-6">
-                                Manage your class, record attendance, and evaluate student performance.
+                        <div className="mb-12 text-center py-10 bg-gradient-to-br from-purple-900 to-purple-800 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full -ml-20 -mb-20 blur-3xl"></div>
+                            <h1 className="text-3xl md:text-5xl font-black mb-4 relative z-10">Mentor Hub</h1>
+                            <p className="text-purple-200 font-medium max-w-2xl mx-auto mb-8 px-6 text-sm md:text-base relative z-10">
+                                Record attendance, manage academic activities, and track student growth.
                             </p>
                             <button
                                 onClick={() => startTour('mentor')}
-                                className="inline-flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-full font-medium shadow-lg hover:bg-purple-700 hover:scale-105 transition-all"
+                                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-purple-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all relative z-10"
                             >
                                 <PlayCircle className="w-5 h-5" />
-                                Guide Me
+                                Start Guide
                             </button>
                         </div>
 
@@ -124,20 +139,24 @@ const Readme = () => {
                                 </div>
                             </Section>
 
-                            <Section title="Grading & Marks" icon={BarChart2}>
-                                <p>Grade student submissions and enter marks manually if needed. View detailed feedback for every student.</p>
-                            </Section>
-
-                            <Section title="Statistics" icon={Info}>
-                                <p>View visual analytics of your class performance and attendance trends over time.</p>
-                            </Section>
-
-                            <Section title="Print Register" icon={Printer}>
-                                <p>Generate and print monthly student attendance registers in an optimized A4 landscape format.</p>
+                             <Section title="Statistics & Reports" icon={BarChart2}>
+                                <p>View visual analytics and generate reports.</p>
                                 <div className="mt-4 space-y-3">
-                                    <FeatureItem icon={CheckCircle} title="Working Days" description="Auto-calculated summary of working days for the month." />
-                                    <FeatureItem icon={CheckCircle} title="Signatures" description="Dedicated spaces for Mentor, Chief Mentor, and Mufathish signatures." />
+                                    <FeatureItem icon={CheckCircle} title="Attendance Register" description="Print monthly registers in landscape format." />
+                                    <FeatureItem icon={CheckCircle} title="Performance Stats" description="Visual insights into class trends." />
                                 </div>
+                            </Section>
+
+                            <Section title="Class Features" icon={Settings}>
+                                <p>Customize the student experience for your specific batches.</p>
+                                <div className="mt-4 space-y-3">
+                                    <FeatureItem icon={CheckCircle} title="Batch Controls" description="Enable or disable specific modules like Ramadan or Subjects for each class independently." />
+                                    <FeatureItem icon={Book} title="Subject Assignment" description="Assign school subjects to your classes for structured homework tracking." />
+                                </div>
+                            </Section>
+
+                            <Section title="Automated Alerts" icon={Bell}>
+                                <p>When you record attendance or update star students, the system instantly notifies your class through badges and popups.</p>
                             </Section>
                         </div>
                     </>
@@ -146,17 +165,18 @@ const Readme = () => {
             case 'student':
                 return (
                     <>
-                        <div className="mb-12 text-center">
-                            <h1 className="text-3xl font-bold text-teal-900 mb-4">Student Guide</h1>
-                            <p className="text-gray-600 max-w-2xl mx-auto mb-6">
-                                Track your progress, take online exams, and view your results.
+                        <div className="mb-12 text-center py-10 bg-gradient-to-br from-teal-900 to-teal-800 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle,white_1px,transparent_1px)] bg-[size:20px_20px] opacity-10"></div>
+                            <h1 className="text-3xl md:text-5xl font-black mb-4 relative z-10">Learning Journey</h1>
+                            <p className="text-teal-200 font-medium max-w-2xl mx-auto mb-8 px-6 text-sm md:text-base relative z-10">
+                                Track your academic growth, spiritual milestones, and daily participation.
                             </p>
                             <button
-                                onClick={() => startTour('student', { features: { prayerChart: isPrayerChartEnabled } })}
-                                className="inline-flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-full font-medium shadow-lg hover:bg-teal-700 hover:scale-105 transition-all"
+                                onClick={() => startTour('student', { features: activeFeatures })}
+                                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-teal-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all relative z-10"
                             >
                                 <PlayCircle className="w-5 h-5" />
-                                Show Me Around
+                                Explore Portal
                             </button>
                         </div>
 
@@ -177,23 +197,30 @@ const Readme = () => {
                                 </div>
                             </Section>
 
-                            <Section title="Results & Reports" icon={BarChart2}>
-                                <p>View your graded answer sheets and download your detailed Report Card as a PDF.</p>
+                            <Section title="Spiritual & Extra" icon={Sparkles}>
+                                <div className="space-y-3">
+                                    {isPrayerChartEnabled && <FeatureItem icon={BookOpen} title="Prayer Chart" description="Log your daily prayers to maintain records." />}
+                                    <FeatureItem icon={Moon} title="Ramadan" description="Track spiritual goals during the holy month." />
+                                    <FeatureItem icon={GraduationCap} title="Leaderboard" description="Check your rank and compare with peers." />
+                                </div>
                             </Section>
 
-                            {/* Conditionally Render Prayer Chart Help */}
-                            {isPrayerChartEnabled && (
-                                <Section title="Prayer Chart" icon={BookOpen}>
-                                    <p>Track your daily prayers. Mark the prayers you have offered each day to maintain your spiritual record.</p>
-                                </Section>
-                            )}
-
-                            <Section title="Leaderboard" icon={GraduationCap}>
-                                <p>Check your rank and see how you compare with your peers in different subjects.</p>
+                            <Section title="Records & Info" icon={CheckCircle}>
+                                <div className="space-y-3">
+                                    <FeatureItem icon={CheckCircle} title="Attendance History" description="View detailed records and monthly presence rate." />
+                                    <FeatureItem icon={History} title="Class History" description="Chronological log of activities, attendance, and events." />
+                                    <FeatureItem icon={Book} title="My Subjects" description="See your assigned subjects and their details." />
+                                    <FeatureItem icon={Info} title="Overview" description="Your overall performance summary at a glance." />
+                                    <FeatureItem icon={Star} title="Star Student" description="Recognize the celebrated student of the month." />
+                                </div>
                             </Section>
 
-                            <Section title="Overview" icon={Info}>
-                                <p>See your overall attendance percentage and academic performance summary at a glance.</p>
+                            <Section title="Notifications" icon={Bell}>
+                                <p>Get real-time updates through floating alerts and red badges on menu items.</p>
+                                <div className="mt-4 space-y-3">
+                                    <FeatureItem icon={CheckCircle} title="Auto Popups" description="Instant alerts for important updates like attendance." />
+                                    <FeatureItem icon={CheckCircle} title="Red Badges" description="Visibility on which sections have new updates." />
+                                </div>
                             </Section>
                         </div>
                     </>
@@ -205,7 +232,7 @@ const Readme = () => {
     };
 
     return (
-        <div className="p-8 max-w-6xl mx-auto">
+        <div className="w-full space-y-6 animate-in fade-in duration-300">
             {getContent()}
         </div>
     );

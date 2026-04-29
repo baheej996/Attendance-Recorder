@@ -5,7 +5,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 
 const BulkTransfer = () => {
-    const { classes, students, updateStudent, exams, results, subjects } = useData();
+    const { classes, students, updateStudent, exams, results, subjects, addClass } = useData();
     const { showAlert } = useUI();
 
     // Steps: 1 = Selection, 2 = Review
@@ -31,19 +31,23 @@ const BulkTransfer = () => {
     const targetClass = classes.find(c => c.id === targetClassId);
 
     // Helper to find next class
-    const findNextClass = (currentClass) => {
+    const getNextClassInfo = (currentClass) => {
         if (!currentClass) return null;
         const currentStd = parseInt(currentClass.name);
         if (isNaN(currentStd)) return null;
         const nextStd = (currentStd + 1).toString();
-        return classes.find(c => c.name === nextStd && c.division === currentClass.division);
+        
+        const existing = classes.find(c => c.name === nextStd && c.division === currentClass.division);
+        if (existing) return { id: existing.id, isNew: false, name: nextStd, division: currentClass.division };
+        
+        return { isNew: true, name: nextStd, division: currentClass.division };
     };
 
     // Auto-match Target Class logic (Single Mode)
     useEffect(() => {
         if (!isAllClassesMode && sourceClass && !targetClassId) {
-            const match = findNextClass(sourceClass);
-            if (match) setTargetClassId(match.id);
+            const nextInfo = getNextClassInfo(sourceClass);
+            if (nextInfo && !nextInfo.isNew) setTargetClassId(nextInfo.id);
         }
     }, [sourceClass, classes, targetClassId, isAllClassesMode]);
 
@@ -51,13 +55,17 @@ const BulkTransfer = () => {
     useEffect(() => {
         if (isAllClassesMode) {
             const mappings = classes
-                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+                .sort((a, b) => {
+                    const nameComp = a.name.localeCompare(b.name, undefined, { numeric: true });
+                    if (nameComp !== 0) return nameComp;
+                    return a.division.localeCompare(b.division);
+                })
                 .map(cls => {
-                    const target = findNextClass(cls);
+                    const info = getNextClassInfo(cls);
                     const count = students.filter(s => s.classId === cls.id && s.status === 'Active').length;
                     return {
                         source: cls,
-                        target: target,
+                        target: info, // { id, isNew, name, division }
                         studentCount: count
                     };
                 });
@@ -87,14 +95,13 @@ const BulkTransfer = () => {
         let itemsToProcess = [];
 
         if (isAllClassesMode) {
-            // Process ONLY classes that have a valid target and students
-            // NOTE: We rely on the global mappings, not just the filtered view
-            classMappings.filter(m => m.target && m.studentCount > 0).forEach(mapping => {
+            // Process classes that have students and either an existing or inferrable target
+            classMappings.filter(m => m.studentCount > 0 && m.target).forEach(mapping => {
                 const classStudents = students.filter(s => s.classId === mapping.source.id && s.status === 'Active');
                 itemsToProcess.push({
                     students: classStudents,
                     sourceId: mapping.source.id,
-                    targetId: mapping.target.id
+                    target: mapping.target // This might have isNew: true
                 });
             });
 
@@ -104,10 +111,11 @@ const BulkTransfer = () => {
             }
         } else {
             const classStudents = students.filter(s => s.classId === sourceClassId && s.status === 'Active');
+            const targetCls = classes.find(c => c.id === targetClassId);
             itemsToProcess.push({
                 students: classStudents,
                 sourceId: sourceClassId,
-                targetId: targetClassId
+                target: { id: targetClassId, isNew: false, name: targetCls?.name, division: targetCls?.division }
             });
         }
 
@@ -153,7 +161,7 @@ const BulkTransfer = () => {
                     ...student,
                     examStatus: status,
                     examDetails: details,
-                    targetClassId: item.targetId, // Important: Store target for this student
+                    target: item.target, // Store full target info (could be new)
                     isSelected: (status === 'passed' || status === 'eligible')
                 };
             });
@@ -183,26 +191,57 @@ const BulkTransfer = () => {
         }
     };
 
-    const executeTransfer = () => {
+    const executeTransfer = async () => {
         if (studentsToPromote.length === 0) return;
 
-        studentsToPromote.forEach(studentId => {
-            const student = processedStudents.find(s => s.id === studentId);
-            if (student && student.targetClassId) {
-                updateStudent(studentId, { classId: student.targetClassId });
+        try {
+            // 1. Identify and create missing classes
+            const newlyCreatedClasses = {}; // Key: "name-division", Value: firestoreId
+
+            // Filter students to promote
+            const studentsProcessing = processedStudents.filter(s => studentsToPromote.includes(s.id));
+
+            for (const student of studentsProcessing) {
+                if (student.target?.isNew) {
+                    const key = `${student.target.name}-${student.target.division}`;
+                    
+                    if (!newlyCreatedClasses[key]) {
+                        // Check if another parallel process created it just now (double check state)
+                        const doubleCheck = classes.find(c => c.name === student.target.name && c.division === student.target.division);
+                        if (doubleCheck) {
+                            newlyCreatedClasses[key] = doubleCheck.id;
+                        } else {
+                            const docRef = await addClass({
+                                name: student.target.name,
+                                division: student.target.division,
+                                createdAt: new Date().toISOString()
+                            });
+                            newlyCreatedClasses[key] = docRef.id;
+                        }
+                    }
+                    
+                    // Update the student with the newly created ID
+                    await updateStudent(student.id, { classId: newlyCreatedClasses[key] });
+                } else if (student.target?.id) {
+                    // Existing class
+                    await updateStudent(student.id, { classId: student.target.id });
+                }
             }
-        });
 
-        const distinctClassCount = new Set(processedStudents.filter(s => studentsToPromote.includes(s.id)).map(s => s.classId)).size;
+            const distinctClassCount = new Set(studentsProcessing.map(s => s.classId)).size;
 
-        showAlert('Transfer Complete', `Successfully transferred ${studentsToPromote.length} students across ${distinctClassCount} classes.`, 'success');
+            showAlert('Transfer Complete', `Successfully transferred ${studentsToPromote.length} students across ${distinctClassCount} classes. Missing target classes were automatically created.`, 'success');
 
-        // Reset
-        setStep(1);
-        setSourceClassId('');
-        setTargetClassId('');
-        setStudentsToPromote([]);
-        setProcessedStudents([]);
+            // Reset
+            setStep(1);
+            setSourceClassId('');
+            setTargetClassId('');
+            setStudentsToPromote([]);
+            setProcessedStudents([]);
+        } catch (err) {
+            console.error("Transfer error:", err);
+            showAlert('Transfer Failed', 'An error occurred while creating matches or updating student records.', 'error');
+        }
     };
 
     // Helper: Distinct Standards
@@ -216,7 +255,7 @@ const BulkTransfer = () => {
 
     if (step === 1) {
         return (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="w-full space-y-6 animate-in fade-in duration-300">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Bulk Transfer</h2>
                     <p className="text-gray-500">Promote students to the next academic year or batch.</p>
@@ -259,7 +298,11 @@ const BulkTransfer = () => {
                                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                             >
                                 <option value="">-- Select Class --</option>
-                                {classes.sort((a, b) => a.name.localeCompare(b.name)).map(c => (
+                                {classes.sort((a, b) => {
+                                    const nameComp = a.name.localeCompare(b.name, undefined, { numeric: true });
+                                    if (nameComp !== 0) return nameComp;
+                                    return a.division.localeCompare(b.division);
+                                }).map(c => (
                                     <option key={c.id} value={c.id}>{c.name} - {c.division} ({students.filter(s => s.classId === c.id && s.status === 'Active').length} students)</option>
                                 ))}
                             </select>
@@ -288,7 +331,11 @@ const BulkTransfer = () => {
                                 <option value="">-- Select Target --</option>
                                 {classes
                                     .filter(c => c.id !== sourceClassId)
-                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .sort((a, b) => {
+                                        const nameComp = a.name.localeCompare(b.name, undefined, { numeric: true });
+                                        if (nameComp !== 0) return nameComp;
+                                        return a.division.localeCompare(b.division);
+                                    })
                                     .map(c => (
                                         <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
                                     ))}
@@ -335,9 +382,10 @@ const BulkTransfer = () => {
                                             <td className="p-3">{m.studentCount}</td>
                                             <td className="p-3">
                                                 {m.target ? (
-                                                    <span className="flex items-center gap-2 text-green-700 font-medium">
+                                                    <span className={`flex items-center gap-2 font-medium ${m.target.isNew ? 'text-blue-600' : 'text-green-700'}`}>
                                                         <ArrowRight className="w-3 h-3" />
                                                         {m.target.name}-{m.target.division}
+                                                        {m.target.isNew && <span className="text-[10px] bg-blue-50 px-1 rounded border border-blue-100">Auto-Create</span>}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-400 italic">No Target Found</span>
@@ -349,6 +397,10 @@ const BulkTransfer = () => {
                                                 ) : !m.target ? (
                                                     <span className="text-orange-600 flex items-center gap-1">
                                                         <AlertCircle className="w-3 h-3" /> Manual Check Reqd
+                                                    </span>
+                                                ) : m.target.isNew ? (
+                                                    <span className="text-blue-600 flex items-center gap-1">
+                                                        <School className="w-3 h-3" /> Ready (Create)
                                                     </span>
                                                 ) : (
                                                     <span className="text-green-600 flex items-center gap-1">
@@ -512,7 +564,8 @@ const BulkTransfer = () => {
                             {processedStudents.map(student => {
                                 const isSelected = studentsToPromote.includes(student.id);
                                 const currentClass = classes.find(c => c.id === student.classId);
-                                const targetClass = classes.find(c => c.id === student.targetClassId);
+                                const targetName = student.target?.name;
+                                const targetDiv = student.target?.division;
 
                                 return (
                                     <tr
@@ -532,8 +585,8 @@ const BulkTransfer = () => {
                                             <div className="font-medium text-gray-900">{student.name}</div>
                                             <div className="text-xs text-gray-500">{student.registerNo}</div>
                                             {isAllClassesMode && (
-                                                <div className="text-xs text-indigo-600 md:hidden mt-1">
-                                                    {currentClass?.name}-{currentClass?.division} → {targetClass?.name}-{targetClass?.division}
+                                                <div className="text-xs text-indigo-600 md:hidden mt-1 text-wrap">
+                                                    {currentClass?.name}-{currentClass?.division} → {targetName}-{targetDiv} {student.target?.isNew && '(Auto-Create)'}
                                                 </div>
                                             )}
                                         </td>
@@ -542,7 +595,9 @@ const BulkTransfer = () => {
                                                 <div className="flex items-center gap-1 text-gray-600">
                                                     <span>{currentClass?.name}-{currentClass?.division}</span>
                                                     <ArrowRight className="w-3 h-3" />
-                                                    <span className="font-medium text-gray-900">{targetClass?.name}-{targetClass?.division}</span>
+                                                    <span className={`font-medium ${student.target?.isNew ? 'text-blue-600' : 'text-gray-900'}`}>
+                                                        {targetName}-{targetDiv}
+                                                    </span>
                                                 </div>
                                             </td>
                                         )}

@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ClassManagement from './components/ClassManagement';
+import AdminLiveClasses from './components/AdminLiveClasses';
 import MentorManagement from './components/MentorManagement';
 import StudentManagement from './components/StudentManagement';
 import SubjectManager from '../components/admin/SubjectManager';
 import ExamManager from '../components/admin/ExamManager';
 import BulkTransfer from '../components/admin/BulkTransfer';
-import AdminRequests from './components/AdminRequests'; // New
-import FeatureControl from '../components/admin/FeatureControl'; // New
+import SyllabusManager from '../components/admin/SyllabusManager'; // New
+import AdminAdmissionRequests from '../components/admin/AdminAdmissionRequests';
+import AdminRequests from './components/AdminRequests';
+import EvaluationManager from '../components/admin/EvaluationManager';
+import FeatureControl from '../components/admin/FeatureControl';
 import SettingsManager from './components/SettingsManager';
+import SubstitutionManager from './components/SubstitutionManager';
+import TaskManager from './components/TaskManager';
+import AdminChat from './components/AdminChat';
+import AdminNotifications from '../components/admin/AdminNotifications';
+import MentorEvaluation from './components/MentorEvaluation';
 import Help from './Help';
 import { useData } from '../contexts/DataContext';
 import { useUI } from '../contexts/UIContext';
@@ -18,53 +27,72 @@ import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { AdminAuthModal } from '../components/ui/AdminAuthModal';
 import { Card, CardHeader } from '../components/ui/Card';
 
-const DashboardHome = () => {
-    const { classes, mentors, students, resetData, adminRequests } = useData();
+const DashboardHome = ({ onTabChange }) => {
+    const { classes, mentors, students } = useData();
     const { showAlert } = useUI();
-    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-    const [isAdminAuthOpen, setIsAdminAuthOpen] = useState(false);
+    const [expandedBatches, setExpandedBatches] = useState({});
 
-    const checkAuthBeforeReset = () => {
-        setIsResetModalOpen(false);
-        setIsAdminAuthOpen(true);
+    const classStats = React.useMemo(() => {
+        return classes.map(cls => {
+            const classStudents = students.filter(s => s.classId === cls.id);
+            const boys = classStudents.filter(s => s.gender === 'Male').length;
+            const girls = classStudents.filter(s => s.gender === 'Female').length;
+            return {
+                ...cls,
+                boys,
+                girls,
+                total: classStudents.length
+            };
+        }).sort((a, b) => {
+            const nameCompare = a.name.localeCompare(b.name, undefined, { numeric: true });
+            if (nameCompare !== 0) return nameCompare;
+            return a.division.localeCompare(b.division);
+        });
+    }, [classes, students]);
+
+    const groupedStats = React.useMemo(() => {
+        const groups = {};
+        classStats.forEach(cls => {
+            if (!groups[cls.name]) {
+                groups[cls.name] = {
+                    name: cls.name,
+                    boys: 0,
+                    girls: 0,
+                    total: 0,
+                    classes: []
+                };
+            }
+            groups[cls.name].boys += cls.boys;
+            groups[cls.name].girls += cls.girls;
+            groups[cls.name].total += cls.total;
+            groups[cls.name].classes.push(cls);
+        });
+        return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    }, [classStats]);
+
+    const toggleBatch = (batchName) => {
+        setExpandedBatches(prev => ({
+            ...prev,
+            [batchName]: !prev[batchName]
+        }));
     };
 
-    const handleFinalReset = () => {
-        resetData();
-        setIsAdminAuthOpen(false);
-        showAlert('Reset Complete', "System Factory Reset Complete. All data has been erased.", 'success');
-        setTimeout(() => window.location.reload(), 2000);
-    };
+    const totalBoys = students.filter(s => s.gender?.toLowerCase() === 'male').length;
+    const totalGirls = students.filter(s => s.gender?.toLowerCase() === 'female').length;
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            <ConfirmationModal
-                isOpen={isResetModalOpen}
-                onClose={() => setIsResetModalOpen(false)}
-                onConfirm={checkAuthBeforeReset}
-                title="System Reset"
-                message="DANGER: This will permanently delete ALL Classes, Mentors, Students, and Attendance records. This action cannot be undone. Are you absolutely sure?"
-                confirmText="Yes, Proceed"
-                cancelText="Cancel"
-                isDanger
-            />
-
-            <AdminAuthModal
-                isOpen={isAdminAuthOpen}
-                onClose={() => setIsAdminAuthOpen(false)}
-                onSuccess={handleFinalReset}
-                title="Security Verification"
-                message="To perform a factory reset, please verify your Admin identity."
-            />
-
+        <div className="w-full space-y-8 animate-in fade-in duration-300">
             <div className="mb-8">
                 <h2 className="text-3xl font-bold text-gray-900">Admin Dashboard</h2>
                 <p className="text-gray-500 mt-2">Welcome back, Administrator</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="flex items-center gap-4 border-l-4 border-l-indigo-500">
-                    <div className="p-3 bg-indigo-50 rounded-full text-indigo-600">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                <Card 
+                    onClick={() => onTabChange('classes')}
+                    className="flex items-center gap-4 border-l-4 border-l-indigo-500 cursor-pointer hover:bg-indigo-50/30 transition-colors group"
+                >
+                    <div className="p-3 bg-indigo-50 rounded-full text-indigo-600 group-hover:scale-110 transition-transform">
                         <School className="w-8 h-8" />
                     </div>
                     <div>
@@ -72,8 +100,11 @@ const DashboardHome = () => {
                         <h3 className="text-2xl font-bold text-gray-900">{classes.length}</h3>
                     </div>
                 </Card>
-                <Card className="flex items-center gap-4 border-l-4 border-l-purple-500">
-                    <div className="p-3 bg-purple-50 rounded-full text-purple-600">
+                <Card 
+                    onClick={() => onTabChange('mentors')}
+                    className="flex items-center gap-4 border-l-4 border-l-purple-500 cursor-pointer hover:bg-purple-50/30 transition-colors group"
+                >
+                    <div className="p-3 bg-purple-50 rounded-full text-purple-600 group-hover:scale-110 transition-transform">
                         <Users className="w-8 h-8" />
                     </div>
                     <div>
@@ -81,8 +112,11 @@ const DashboardHome = () => {
                         <h3 className="text-2xl font-bold text-gray-900">{mentors.length}</h3>
                     </div>
                 </Card>
-                <Card className="flex items-center gap-4 border-l-4 border-l-pink-500">
-                    <div className="p-3 bg-pink-50 rounded-full text-pink-600">
+                <Card 
+                    onClick={() => onTabChange('students')}
+                    className="flex items-center gap-4 border-l-4 border-l-pink-500 cursor-pointer hover:bg-pink-50/30 transition-colors group"
+                >
+                    <div className="p-3 bg-pink-50 rounded-full text-pink-600 group-hover:scale-110 transition-transform">
                         <GraduationCap className="w-8 h-8" />
                     </div>
                     <div>
@@ -90,32 +124,102 @@ const DashboardHome = () => {
                         <h3 className="text-2xl font-bold text-gray-900">{students.length}</h3>
                     </div>
                 </Card>
-                <Card className="flex items-center gap-4 border-l-4 border-l-yellow-500">
-                    <div className="p-3 bg-yellow-50 rounded-full text-yellow-600">
-                        <Bell className="w-8 h-8" />
+                <Card 
+                    onClick={() => onTabChange('students')}
+                    className="flex items-center gap-4 border-l-4 border-l-blue-500 cursor-pointer hover:bg-blue-50/30 transition-colors group"
+                >
+                    <div className="p-3 bg-blue-50 rounded-full text-blue-600 group-hover:scale-110 transition-transform">
+                        <Users className="w-8 h-8" />
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Pending Requests</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{adminRequests?.filter(r => r.status === 'Pending').length || 0}</h3>
+                        <p className="text-sm text-gray-500 font-medium">Total Boys</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{totalBoys}</h3>
                     </div>
                 </Card>
-            </div >
-
-            <div className="mt-12 bg-red-50 border border-red-100 rounded-xl p-6">
-                <h3 className="text-lg font-bold text-red-700 flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    Danger Zone
-                </h3>
-                <p className="text-red-600/80 text-sm mb-4">
-                    Perform a hard reset of the system. This will remove all data but keep your admin access.
-                </p>
-                <button
-                    onClick={() => setIsResetModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all text-sm font-semibold shadow-sm"
+                <Card 
+                    onClick={() => onTabChange('students')}
+                    className="flex items-center gap-4 border-l-4 border-l-rose-500 cursor-pointer hover:bg-rose-50/30 transition-colors group"
                 >
-                    <Trash2 className="w-4 h-4" />
-                    Delete All Data
-                </button>
+                    <div className="p-3 bg-rose-50 rounded-full text-rose-600 group-hover:scale-110 transition-transform">
+                        <Users className="w-8 h-8" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-500 font-medium">Total Girls</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{totalGirls}</h3>
+                    </div>
+                </Card>
+            </div>
+
+            <div>
+                <CardHeader title="Batch-wise Enrollment Statistics" description="Click on a batch to see class breakdown" />
+                <Card className="overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-gray-600">
+                            <thead className="bg-gray-50 text-gray-900 font-semibold sticky top-0 z-10">
+                                <tr>
+                                    <th className="px-6 py-4 w-24 whitespace-nowrap">Sl No</th>
+                                    <th className="px-6 py-4">Batch / Class Name</th>
+                                    <th className="px-6 py-4">Boys</th>
+                                    <th className="px-6 py-4">Girls</th>
+                                    <th className="px-6 py-4">Total Students</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {groupedStats.length > 0 ? groupedStats.map((batch, index) => (
+                                    <React.Fragment key={batch.name}>
+                                        <tr 
+                                            className="hover:bg-indigo-50/30 transition-colors cursor-pointer group bg-white"
+                                            onClick={() => toggleBatch(batch.name)}
+                                        >
+                                            <td className="px-6 py-4 font-medium text-gray-400">
+                                                {index + 1}
+                                            </td>
+                                            <td className="px-6 py-4 font-bold text-gray-900">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-1 rounded-md bg-gray-100 text-gray-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                                                        {expandedBatches[batch.name] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                    </div>
+                                                    Batch {batch.name}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 font-semibold text-blue-600">{batch.boys}</td>
+                                            <td className="px-6 py-4 font-semibold text-pink-600">{batch.girls}</td>
+                                            <td className="px-6 py-4">
+                                                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full font-bold text-xs border border-indigo-100">
+                                                    {batch.total} Combined
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {expandedBatches[batch.name] && batch.classes.map((cls, cIdx) => (
+                                            <tr key={cls.id} className="bg-gray-50/50 animate-in slide-in-from-top-2 duration-200">
+                                                <td className="px-6 py-3 text-right pr-10 text-[10px] font-bold text-indigo-300">
+                                                    {index + 1}.{cIdx + 1}
+                                                </td>
+                                                <td className="px-12 py-3 border-l-2 border-indigo-200">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full bg-indigo-200"></span>
+                                                        <span className="font-medium text-gray-700">Division {cls.division}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-3 text-gray-500">{cls.boys}</td>
+                                                <td className="px-6 py-3 text-gray-500">{cls.girls}</td>
+                                                <td className="px-6 py-3">
+                                                    <span className="text-gray-900 font-bold">{cls.total}</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </React.Fragment>
+                                )) : (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-12 text-center text-gray-400 italic">
+                                            No enrollment data available yet.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
             </div>
         </div >
     );
@@ -123,22 +227,59 @@ const DashboardHome = () => {
 
 const AdminDashboard = () => {
     const location = useLocation();
-    const { logout } = useData();
+    const { logout, adminRequests, substitutionRequests, admissionRequests, unreadChats, mentors, students, notifications, mentorTasks, classes } = useData();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+    const pendingRequestsCount = adminRequests?.filter(r => r.status === 'Pending').length || 0;
+    const pendingSubsCount = substitutionRequests?.filter(r => r.status === 'Pending Admin Approval').length || 0;
+    const pendingAdmissionsCount = admissionRequests?.filter(r => r.requestStatus === 'Pending').length || 0;
+    
+    const pendingTasksCount = React.useMemo(() => {
+        return mentorTasks?.reduce((acc, task) => {
+            const reviews = Object.values(task.submissions || {}).filter(s => s.status === 'under_review').length;
+            return acc + reviews;
+        }, 0) || 0;
+    }, [mentorTasks]);
+
+    const unreadMessagesCount = (unreadChats || []).length;
+
+    const unreadNotificationsCount = (notifications || []).filter(n => 
+        (n.audience === 'all' || n.audience === 'mentors') && 
+        n.senderId !== 'admin' &&
+        !(n.readBy || []).includes('admin')
+    ).length;
+
+    const attentionClassesCount = React.useMemo(() => {
+        return (classes || []).filter(cls => {
+            const studentCount = students.filter(s => s.classId === cls.id).length;
+            const mentorCount = mentors.filter(m => (m.assignedClassIds || []).includes(cls.id)).length;
+            return studentCount === 0 || mentorCount === 0;
+        }).length;
+    }, [classes, students, mentors]);
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'dashboard': return <DashboardHome />;
+            case 'dashboard': return <DashboardHome onTabChange={handleTabChange} />;
             case 'classes': return <ClassManagement />;
+            case 'live-classes': return <AdminLiveClasses />;
             case 'mentors': return <MentorManagement />;
             case 'students': return <StudentManagement />;
             case 'subjects': return <SubjectManager />;
+            case 'syllabus': return <SyllabusManager />; // New
             case 'exams': return <ExamManager />;
 
             case 'bulk-transfer': return <BulkTransfer />;
+            case 'admissions': return <AdminAdmissionRequests />;
             case 'requests': return <AdminRequests />; // New
             case 'features': return <FeatureControl />; // New
+            case 'substitutions': return <SubstitutionManager />;
+            case 'tasks': return <TaskManager />;
+            case 'messages': return <AdminChat />;
+            case 'notifications': return <AdminNotifications />;
+            case 'evaluations': return <EvaluationManager />;
+            case 'mentor-evaluation': return <MentorEvaluation />;
             case 'settings': return <SettingsManager />;
             case 'help': return <Help />;
             default: return <DashboardHome />;
@@ -152,8 +293,8 @@ const AdminDashboard = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <header className="bg-white shadow-sm z-20 sticky top-0">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <header className="bg-white shadow-sm z-30 sticky top-0">
+                <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="lg:hidden">
                             <button
@@ -175,7 +316,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={logout}
+                            onClick={() => setShowLogoutModal(true)}
                             className="flex items-center gap-2 text-gray-500 hover:text-red-600 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium"
                         >
                             <LogOut className="w-4 h-4" />
@@ -185,22 +326,23 @@ const AdminDashboard = () => {
                 </div>
             </header>
 
-            <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full relative">
+            {/* Logout Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={logout}
+                title="Admin Sign Out"
+                message="Are you sure you want to end your administrative session?"
+                confirmText="Sign Out"
+                isDanger={true}
+            />
+
+            <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar Navigation */}
                     <div className={clsx(
                         "lg:col-span-1 space-y-4",
-                        // Mobile styles: fixed overlay or regular flow? 
-                        // Let's use regular flow but hidden on mobile unless open.
-                        // Actually, for better UX on mobile, it should be an absolute/fixed overlay if we want to mimic a drawer,
-                        // OR just a toggleable block. 
-                        // Given the user's report "all menu showing", it was block.
-                        // Let's make it hidden on mobile by default, and if open, it shows.
-                        // If we just toggle 'hidden', it pushes content down. That's fine for a simple dashboard.
-                        // But let's try a slide-over for a "premium" feel as requested? 
-                        // To keep it robust without adding complex transition libraries right now, 
-                        // let's use the 'hidden lg:block' pattern, and when open on mobile, it's a fixed overlay.
                         "fixed inset-0 z-10 bg-gray-600 bg-opacity-75 lg:hidden",
                         isMobileMenuOpen ? "block" : "hidden"
                     )} onClick={() => setIsMobileMenuOpen(false)}>
@@ -211,12 +353,20 @@ const AdminDashboard = () => {
                                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</h2>
                                 </div>
                                 <nav className="flex flex-col p-2 space-y-1">
-                                    <SidebarItem icon={LayoutDashboard} label="Overview" active={activeTab === 'dashboard'} onClick={() => handleTabChange('dashboard')} />
-                                    <SidebarItem icon={School} label="Classes" active={activeTab === 'classes'} onClick={() => handleTabChange('classes')} />
-                                    <SidebarItem icon={Users} label="Mentors" active={activeTab === 'mentors'} onClick={() => handleTabChange('mentors')} />
-                                    <SidebarItem icon={UserCheck} label="Students" active={activeTab === 'students'} onClick={() => handleTabChange('students')} />
-                                    <SidebarItem icon={ArrowRightLeft} label="Bulk Transfer" active={activeTab === 'bulk-transfer'} onClick={() => handleTabChange('bulk-transfer')} />
-                                    <SidebarItem icon={Bell} label="Requests" active={activeTab === 'requests'} onClick={() => handleTabChange('requests')} />
+                                    <SidebarItem icon={LayoutDashboard} label="Overview" active={activeTab === 'dashboard'} onClick={() => handleTabChange('dashboard')} isMobile />
+                                    <SidebarItem icon={School} label="Classes" active={activeTab === 'classes'} onClick={() => handleTabChange('classes')} badge={attentionClassesCount} isMobile />
+                                    <SidebarItem icon={Video} label="Live Classes" active={activeTab === 'live-classes'} onClick={() => handleTabChange('live-classes')} isMobile />
+                                    <SidebarItem icon={Users} label="Mentors" active={activeTab === 'mentors'} onClick={() => handleTabChange('mentors')} isMobile />
+                                    <SidebarItem icon={UserCheck} label="Students" active={activeTab === 'students'} onClick={() => handleTabChange('students')} isMobile />
+                                    <SidebarItem icon={ArrowRightLeft} label="Bulk Transfer" active={activeTab === 'bulk-transfer'} onClick={() => handleTabChange('bulk-transfer')} isMobile />
+                                    <SidebarItem icon={UserPlus} label="Admissions" active={activeTab === 'admissions'} onClick={() => handleTabChange('admissions')} badge={pendingAdmissionsCount} isMobile />
+                                    <SidebarItem icon={Bell} label="Requests" active={activeTab === 'requests'} onClick={() => handleTabChange('requests')} badge={pendingRequestsCount} isMobile />
+                                    <SidebarItem icon={MessageSquare} label="Messages" active={activeTab === 'messages'} onClick={() => handleTabChange('messages')} badge={unreadMessagesCount} isMobile />
+                                    <SidebarItem icon={Megaphone} label="Notifications" active={activeTab === 'notifications'} onClick={() => handleTabChange('notifications')} badge={unreadNotificationsCount} isMobile />
+                                    <SidebarItem icon={Replace} label="Substitutions" active={activeTab === 'substitutions'} onClick={() => handleTabChange('substitutions')} badge={pendingSubsCount} isMobile />
+                                    <SidebarItem icon={ClipboardList} label="Tasks" active={activeTab === 'tasks'} onClick={() => handleTabChange('tasks')} badge={pendingTasksCount} isMobile />
+                                    <SidebarItem icon={FileBarChart} label="Mentor Evaluation" active={activeTab === 'mentor-evaluation'} onClick={() => handleTabChange('mentor-evaluation')} isMobile />
+                                    <SidebarItem icon={FileBarChart} label="Evaluations" active={activeTab === 'evaluations'} onClick={() => handleTabChange('evaluations')} isMobile />
                                 </nav>
                             </div>
 
@@ -225,8 +375,9 @@ const AdminDashboard = () => {
                                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Academics</h2>
                                 </div>
                                 <nav className="flex flex-col p-2 space-y-1">
-                                    <SidebarItem icon={BookOpen} label="Subjects" active={activeTab === 'subjects'} onClick={() => handleTabChange('subjects')} />
-                                    <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => handleTabChange('exams')} />
+                                    <SidebarItem icon={BookOpen} label="Subjects" active={activeTab === 'subjects'} onClick={() => handleTabChange('subjects')} isMobile />
+                                    <SidebarItem icon={FileText} label="Syllabus" active={activeTab === 'syllabus'} onClick={() => handleTabChange('syllabus')} isMobile />
+                                    <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => handleTabChange('exams')} isMobile />
                                 </nav>
                             </div>
 
@@ -235,8 +386,8 @@ const AdminDashboard = () => {
                                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Configuration</h2>
                                 </div>
                                 <nav className="flex flex-col p-2 space-y-1">
-                                    <SidebarItem icon={Settings} label="Settings" active={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />
-                                    <SidebarItem icon={Info} label="Help" active={activeTab === 'help'} onClick={() => handleTabChange('help')} />
+                                    <SidebarItem icon={Settings} label="Settings" active={activeTab === 'settings'} onClick={() => handleTabChange('settings')} isMobile />
+                                    <SidebarItem icon={Info} label="Help" active={activeTab === 'help'} onClick={() => handleTabChange('help')} isMobile />
                                 </nav>
                             </div>
                         </div>
@@ -250,11 +401,19 @@ const AdminDashboard = () => {
                             </div>
                             <nav className="flex flex-col p-2 space-y-1">
                                 <SidebarItem icon={LayoutDashboard} label="Overview" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-                                <SidebarItem icon={School} label="Classes" active={activeTab === 'classes'} onClick={() => setActiveTab('classes')} />
+                                <SidebarItem icon={School} label="Classes" active={activeTab === 'classes'} onClick={() => setActiveTab('classes')} badge={attentionClassesCount} />
+                                <SidebarItem icon={Video} label="Live Classes" active={activeTab === 'live-classes'} onClick={() => setActiveTab('live-classes')} />
                                 <SidebarItem icon={Users} label="Mentors" active={activeTab === 'mentors'} onClick={() => setActiveTab('mentors')} />
                                 <SidebarItem icon={UserCheck} label="Students" active={activeTab === 'students'} onClick={() => setActiveTab('students')} />
                                 <SidebarItem icon={ArrowRightLeft} label="Bulk Transfer" active={activeTab === 'bulk-transfer'} onClick={() => setActiveTab('bulk-transfer')} />
-                                <SidebarItem icon={Bell} label="Requests" active={activeTab === 'requests'} onClick={() => setActiveTab('requests')} />
+                                <SidebarItem icon={UserPlus} label="Admissions" active={activeTab === 'admissions'} onClick={() => setActiveTab('admissions')} badge={pendingAdmissionsCount} />
+                                <SidebarItem icon={Bell} label="Requests" active={activeTab === 'requests'} onClick={() => setActiveTab('requests')} badge={pendingRequestsCount} />
+                                <SidebarItem icon={MessageSquare} label="Messages" active={activeTab === 'messages'} onClick={() => setActiveTab('messages')} badge={unreadMessagesCount} />
+                                <SidebarItem icon={Megaphone} label="Notifications" active={activeTab === 'notifications'} onClick={() => setActiveTab('notifications')} badge={unreadNotificationsCount} />
+                                <SidebarItem icon={Replace} label="Substitutions" active={activeTab === 'substitutions'} onClick={() => setActiveTab('substitutions')} badge={pendingSubsCount} />
+                                <SidebarItem icon={ClipboardList} label="Tasks" active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} badge={pendingTasksCount} />
+                                <SidebarItem icon={BarChart2} label="Mentor Evaluation" active={activeTab === 'mentor-evaluation'} onClick={() => setActiveTab('mentor-evaluation')} />
+                                <SidebarItem icon={FileBarChart} label="Evaluations" active={activeTab === 'evaluations'} onClick={() => setActiveTab('evaluations')} />
                             </nav>
                         </div>
 
@@ -264,6 +423,7 @@ const AdminDashboard = () => {
                             </div>
                             <nav className="flex flex-col p-2 space-y-1">
                                 <SidebarItem icon={BookOpen} label="Subjects" active={activeTab === 'subjects'} onClick={() => setActiveTab('subjects')} />
+                                <SidebarItem icon={FileText} label="Syllabus" active={activeTab === 'syllabus'} onClick={() => setActiveTab('syllabus')} />
                                 <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => setActiveTab('exams')} />
                             </nav>
                         </div>
@@ -291,17 +451,24 @@ const AdminDashboard = () => {
 };
 
 // Simple Sidebar Item Component
-const SidebarItem = ({ icon: Icon, label, active, onClick }) => (
+const SidebarItem = ({ icon: Icon, label, active, onClick, badge, isMobile }) => (
     <button
         onClick={onClick}
-        data-tour={`sidebar-${label.toLowerCase().replace(/\s+/g, '-')}`}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${active
+        data-tour={isMobile ? `mobile-sidebar-${label.toLowerCase().replace(/\s+/g, '-')}` : `sidebar-${label.toLowerCase().replace(/\s+/g, '-')}`}
+        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${active
             ? 'bg-indigo-50 text-indigo-700 shadow-sm'
             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             }`}
     >
-        <Icon className={`w-5 h-5 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />
-        {label}
+        <div className="flex items-center gap-3">
+            <Icon className={`w-5 h-5 ${active ? 'text-indigo-600' : 'text-gray-400'}`} />
+            {label}
+        </div>
+        {badge > 0 && (
+            <span className="flex h-5 min-w-[20px] items-center justify-center px-1.5 rounded-full bg-red-600 text-[10px] font-black text-white shadow-sm border-2 border-white animate-in zoom-in duration-300">
+                {badge}
+            </span>
+        )}
     </button>
 );
 

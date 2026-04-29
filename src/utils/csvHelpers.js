@@ -4,8 +4,8 @@ export const generateCSVTemplate = (type) => {
 
     switch (type) {
         case 'class':
-            headers = 'Name,Division';
-            rows = ['10,A', '10,B', '9,A'];
+            headers = 'Name,Division,StartTime,EndTime,Days';
+            rows = ['10,A,17:00,18:00,Monday;Tuesday;Wednesday', '10,B,08:00,10:00,Friday;Saturday', '9,A,,,'];
             break;
         case 'mentor':
             headers = 'Name,Email,Password,AssignedClasses';
@@ -40,18 +40,20 @@ export const parseCSV = (file, type) => {
             const text = event.target.result.replace(/^\uFEFF/, '');
             const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
-            if (lines.length < 2) {
-                reject("File appears empty or only contains headers.");
-                return;
+            const line1 = lines[0];
+            let delimiter = ',';
+            
+            // Auto-detect delimiter if comma fails
+            if (!line1.includes(',') && line1.includes(';')) {
+                delimiter = ';';
             }
 
-            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            const headers = line1.split(delimiter).map(h => h.trim().toLowerCase());
             const result = [];
 
             for (let i = 1; i < lines.length; i++) {
-                // Split and handle potential quote issues (simple split for now, but robust to count)
-                // We'll treat the header count as the source of truth
-                let values = lines[i].split(',').map(v => v.trim());
+                // Split and handle potential quote issues
+                let values = lines[i].split(delimiter).map(v => v.trim());
 
                 // Fix mismatches
                 if (values.length > headers.length) {

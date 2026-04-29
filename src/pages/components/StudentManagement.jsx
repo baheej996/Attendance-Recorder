@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
-import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown } from 'lucide-react';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { clsx } from 'clsx';
 import { Modal } from '../../components/ui/Modal';
 
 const StudentManagement = () => {
-    const { students, addStudent, deleteStudent, deleteStudents, classes, updateStudent, deleteAllStudents, institutionSettings } = useData();
+    const { students, addStudent, deleteStudent, deleteStudents, classes, mentors, updateStudent, deleteAllStudents, institutionSettings, studentStatuses, updateStudentStatuses } = useData();
     const { showAlert } = useUI();
     const [formData, setFormData] = useState({
         name: '',
@@ -22,7 +23,11 @@ const StudentManagement = () => {
         classId: '',
         status: 'Active'
     });
-    const [filterClassId, setFilterClassId] = useState('');
+    const [filterStandard, setFilterStandard] = useState('');
+    const [filterDivision, setFilterDivision] = useState('');
+
+    const uniqueStandards = [...new Set(classes.map(c => c.name))].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+    const uniqueDivisions = [...new Set(classes.map(c => c.division))].sort();
     const [searchTerm, setSearchTerm] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,12 +35,37 @@ const StudentManagement = () => {
     const [deleteConfig, setDeleteConfig] = useState({ isOpen: false, id: null, type: 'single' });
     const [warningConfig, setWarningConfig] = useState({ isOpen: false, message: '' }); // New state for warnings
     const [selectedIds, setSelectedIds] = useState([]);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [newStatusName, setNewStatusName] = useState('');
+    const [isAttentionExpanded, setIsAttentionExpanded] = useState(true);
+
+    // Format classes for SearchableSelect
+    const classOptions = useMemo(() => 
+        classes.map(c => ({ id: c.id, label: `${c.name} - ${c.division}` })),
+    [classes]);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(25);
 
     const handleBulkUpload = (data) => {
+        if (data.length === 0) return;
+
+        // Check if required headers exist in the first row
+        const firstRow = data[0];
+        const requiredHeaders = ['name', 'registerno', 'classname', 'division'];
+        const missingHeaders = requiredHeaders.filter(h => !(h in firstRow));
+
+        if (missingHeaders.length > 0) {
+            const foundHeaders = Object.keys(firstRow).join(', ');
+            showAlert(
+                'Invalid CSV Format', 
+                `Required columns missing: ${missingHeaders.join(', ')}.\n\nFound columns: ${foundHeaders || 'None'}.\n\nPlease ensure you are using the correct CSV template.`, 
+                'error'
+            );
+            return;
+        }
+
         let count = 0;
         let errors = 0;
         let errorDetails = [];
@@ -55,7 +85,7 @@ const StudentManagement = () => {
 
             if (!rowName || !rowReg) {
                 errors++;
-                errorDetails.push(`Row ${rowNum}: Missing Name or Register No`);
+                errorDetails.push(`Row ${rowNum}: ${!rowName ? 'Name' : ''}${(!rowName && !rowReg) ? ' & ' : ''}${!rowReg ? 'Register No' : ''} is empty`);
                 return;
             }
 
@@ -65,14 +95,12 @@ const StudentManagement = () => {
                 return;
             }
 
-            const isDup = students.some(s => s.registerNo.toLowerCase() === rowReg.toLowerCase());
+            const isRegDup = students.some(s => s.registerNo.toLowerCase() === rowReg.toLowerCase());
+            const rowUid = row.uid ? String(row.uid).trim() : '';
+            const isUidDup = rowUid ? students.some(s => (s.uid || '').toLowerCase() === rowUid.toLowerCase()) : false;
 
             // Check Class Limit
             const currentClassCount = students.filter(s => s.classId === targetClass.id).length;
-            // We need to account for students added in this very bulk batch too... strictly speaking.
-            // But complex to track state in loop. Let's just check versus initial + added in this loop?
-            // Simplified: check versus current DB state. If user uploads 100 students, it might exceed.
-            // Better: skip if already full.
             const limit = institutionSettings?.maxStudentsPerClass;
             const isFull = limit && currentClassCount >= limit;
 
@@ -82,11 +110,11 @@ const StudentManagement = () => {
                 return;
             }
 
-            if (!isDup) {
+            if (!isRegDup && !isUidDup) {
                 addStudent({
                     name: rowName,
                     registerNo: rowReg,
-                    uid: row.uid || '',
+                    uid: rowUid,
                     gender: row.gender || 'Male',
                     status: row.status || 'Active',
                     classId: targetClass.id
@@ -94,17 +122,14 @@ const StudentManagement = () => {
                 count++;
             } else {
                 errors++;
-                errorDetails.push(`Row ${rowNum} (${rowName}): Duplicate Register No '${rowReg}'`);
+                if (isRegDup) errorDetails.push(`Row ${rowNum} (${rowName}): Duplicate Register No '${rowReg}'`);
+                if (isUidDup) errorDetails.push(`Row ${rowNum} (${rowName}): Duplicate UID '${rowUid}'`);
             }
         });
 
         let msg = `Bulk Upload Complete.\nSuccessfully Added: ${count}\nSkipped: ${errors}`;
         if (errors > 0) {
-            msg += "\n\nErrors:\n" + errorDetails.slice(0, 10).join("\n");
-            if (errorDetails.length > 10) msg += `\n...and ${errorDetails.length - 10} more.`;
-        }
-        if (errors > 0) {
-            msg += "\n\nErrors:\n" + errorDetails.slice(0, 10).join("\n");
+            msg += "\n\nError Highlights:\n" + errorDetails.slice(0, 10).join("\n");
             if (errorDetails.length > 10) msg += `\n...and ${errorDetails.length - 10} more.`;
             showAlert('Bulk Upload Warning', msg, 'warning');
         } else {
@@ -169,10 +194,18 @@ const StudentManagement = () => {
         }
 
         // Check duplication (exclude self if editing)
-        const isDuplicate = students.some(s => s.registerNo === formData.registerNo && s.id !== editingId);
-        if (isDuplicate) {
+        const isRegDuplicate = students.some(s => s.registerNo === formData.registerNo && s.id !== editingId);
+        if (isRegDuplicate) {
             setError('Register Number already exists');
             return;
+        }
+
+        if (formData.uid) {
+            const isUidDuplicate = students.some(s => (s.uid || '').toLowerCase() === formData.uid.toLowerCase() && s.id !== editingId);
+            if (isUidDuplicate) {
+                setError('UID already exists for another student');
+                return;
+            }
         }
 
         if (editingId) {
@@ -200,8 +233,13 @@ const StudentManagement = () => {
         setIsModalOpen(true);
     };
 
+    const [transferConfig, setTransferConfig] = useState({ isOpen: false, student: null, newClassId: '' });
+
     const handleTransfer = (studentId, newClassId) => {
         if (!newClassId) return;
+
+        const student = students.find(s => s.id === studentId);
+        if (!student) return;
 
         const limit = institutionSettings?.maxStudentsPerClass;
         if (limit) {
@@ -215,7 +253,18 @@ const StudentManagement = () => {
             }
         }
 
-        updateStudent(studentId, { classId: newClassId });
+        setTransferConfig({
+            isOpen: true,
+            student: student,
+            newClassId: newClassId
+        });
+    };
+
+    const confirmTransfer = () => {
+        if (!transferConfig.student || !transferConfig.newClassId) return;
+        updateStudent(transferConfig.student.id, { classId: transferConfig.newClassId });
+        setTransferConfig({ isOpen: false, student: null, newClassId: '' });
+        showAlert('Success', 'Student transferred successfully', 'success');
     };
 
     const confirmDelete = (id) => {
@@ -228,6 +277,36 @@ const StudentManagement = () => {
 
     const confirmDeleteSelected = () => {
         setDeleteConfig({ isOpen: true, id: null, type: 'selected' });
+    };
+
+    const handleAddStatus = () => {
+        if (!newStatusName.trim()) return;
+        if (studentStatuses.includes(newStatusName.trim())) {
+            showAlert('Error', 'Status already exists', 'error');
+            return;
+        }
+        updateStudentStatuses([...studentStatuses, newStatusName.trim()]);
+        setNewStatusName('');
+    };
+
+    const handleDeleteStatus = (statusToDelete) => {
+        if (statusToDelete === 'Active') {
+            showAlert('Error', 'Cannot delete Active status', 'error');
+            return;
+        }
+        updateStudentStatuses(studentStatuses.filter(s => s !== statusToDelete));
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'Active': return "bg-green-100 text-green-700";
+            case 'Suspended': return "bg-orange-100 text-orange-700";
+            case 'Dismissed': return "bg-red-100 text-red-700";
+            case 'Viva pending': return "bg-blue-100 text-blue-700";
+            case 'Exam pending': return "bg-purple-100 text-purple-700";
+            case 'Payment Pending': return "bg-amber-100 text-amber-700";
+            default: return "bg-gray-100 text-gray-700";
+        }
     };
 
     const handleDelete = () => {
@@ -243,12 +322,38 @@ const StudentManagement = () => {
         setDeleteConfig({ isOpen: false, id: null, type: 'single' });
     };
 
-    const filteredStudents = students.filter(student => {
-        const matchesClass = filterClassId ? student.classId === filterClassId : true;
-        const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.registerNo.includes(searchTerm);
-        return matchesClass && matchesSearch;
-    });
+    const { attentionStudents, regularStudents } = useMemo(() => {
+        const matchesFilters = (student) => {
+            const studentClass = classes.find(c => c.id === student.classId);
+            const matchesStandard = filterStandard ? studentClass?.name === filterStandard : true;
+            const matchesDivision = filterDivision ? studentClass?.division === filterDivision : true;
+            const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                student.registerNo.toLowerCase().includes(searchTerm.toLowerCase());
+            return matchesStandard && matchesDivision && matchesSearch;
+        };
+
+        const attention = [];
+        const regular = [];
+
+        students.forEach(student => {
+            if (!matchesFilters(student)) return;
+            
+            const isUnallotted = !student.classId || !classes.some(c => c.id === student.classId);
+            if (isUnallotted) {
+                attention.push(student);
+            } else {
+                regular.push(student);
+            }
+        });
+
+        return { attentionStudents: attention, regularStudents: regular };
+    }, [students, classes, filterStandard, filterDivision, searchTerm]);
+
+    const getMentorNameForStudent = (student) => {
+        if (!student.classId || !mentors) return 'Unassigned';
+        const mentor = mentors.find(m => m.assignedClassIds?.includes(student.classId));
+        return mentor ? mentor.name : 'Unassigned';
+    };
 
     // Detect duplicate registration numbers
     const duplicateStudents = React.useMemo(() => {
@@ -272,14 +377,14 @@ const StudentManagement = () => {
     }, [students]);
 
     // Pagination Logic
-    const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+    const totalPages = Math.ceil(regularStudents.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
+    const paginatedStudents = regularStudents.slice(startIndex, startIndex + itemsPerPage);
 
     // Reset page when filter changes
     React.useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, filterClassId, itemsPerPage]);
+    }, [searchTerm, filterStandard, filterDivision, itemsPerPage]);
 
     const toggleSelection = (id) => {
         setSelectedIds(prev =>
@@ -298,7 +403,7 @@ const StudentManagement = () => {
     };
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
+        <div className="space-y-6 w-full animate-in fade-in duration-300">
             <ConfirmationModal
                 isOpen={deleteConfig.isOpen}
                 onClose={() => setDeleteConfig({ isOpen: false, id: null, type: 'single' })}
@@ -327,6 +432,18 @@ const StudentManagement = () => {
                 confirmText="OK"
                 isDanger={false}
                 cancelText={null}
+            />
+
+            <ConfirmationModal
+                isOpen={transferConfig.isOpen}
+                onClose={() => setTransferConfig({ isOpen: false, student: null, newClassId: '' })}
+                onConfirm={confirmTransfer}
+                title="Confirm Transfer"
+                message={(() => {
+                    const targetClass = classes.find(c => c.id === transferConfig.newClassId);
+                    return `Are you sure you want to transfer ${transferConfig.student?.name} to Class ${targetClass?.name}-${targetClass?.division}?`;
+                })()}
+                confirmText="Yes, Transfer"
             />
 
             <Modal
@@ -374,22 +491,20 @@ const StudentManagement = () => {
                                 value={formData.status}
                                 onChange={(e) => setFormData(p => ({ ...p, status: e.target.value }))}
                             >
-                                <option value="Active">Active</option>
-                                <option value="Suspended">Suspended</option>
-                                <option value="Dismissed">Dismissed</option>
+                                {studentStatuses.map(status => (
+                                    <option key={status} value={status}>{status}</option>
+                                ))}
                             </Select>
                         </div>
 
-                        <Select
+                        <SearchableSelect
                             label="Assign Class"
+                            placeholder="Search and select class..."
+                            options={classOptions}
                             value={formData.classId}
-                            onChange={(e) => setFormData(p => ({ ...p, classId: e.target.value }))}
-                        >
-                            <option value="">Select Class</option>
-                            {classes.map(c => (
-                                <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
-                            ))}
-                        </Select>
+                            onChange={(val) => setFormData(p => ({ ...p, classId: val }))}
+                            error={!formData.classId && error ? "Class is required" : ""}
+                        />
 
                         <div className="flex gap-2 pt-2">
                             <Button type="button" onClick={handleCloseModal} className="flex-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200">
@@ -404,9 +519,59 @@ const StudentManagement = () => {
                 </div>
             </Modal>
 
-            <div className="sticky top-0 z-10 bg-gray-50 pt-2 pb-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            {/* Status Management Modal */}
+            <Modal
+                isOpen={isStatusModalOpen}
+                onClose={() => setIsStatusModalOpen(false)}
+                title="Manage Student Statuses"
+            >
+                <div className="space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Add New Status</label>
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="Status name..."
+                                value={newStatusName}
+                                onChange={(e) => setNewStatusName(e.target.value)}
+                                className="flex-1"
+                            />
+                            <Button onClick={handleAddStatus} className="bg-indigo-600">
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Existing Statuses</label>
+                        <div className="space-y-2">
+                            {studentStatuses.map(status => (
+                                <div key={status} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 group">
+                                    <span className={clsx("text-sm font-medium", getStatusColor(status).split(' ')[1])}>{status}</span>
+                                    {status !== 'Active' && (
+                                        <button 
+                                            onClick={() => handleDeleteStatus(status)}
+                                            className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
+            <div className="sticky top-[64px] z-30 bg-gray-50/95 backdrop-blur-sm py-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Student Management</h2>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                    <Button
+                        onClick={() => setIsStatusModalOpen(true)}
+                        className="bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
+                    >
+                        <Settings className="w-4 h-4" />
+                        <span className="hidden sm:inline">Statuses</span>
+                    </Button>
                     <Button
                         onClick={handleOpenModal}
                         className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
@@ -493,32 +658,107 @@ const StudentManagement = () => {
                 </Card>
             )}
 
+            {attentionStudents.length > 0 && (
+                <div className="animate-in slide-in-from-top-4 duration-500">
+                    <div 
+                        className="flex items-center justify-between mb-4 bg-red-50/50 p-4 rounded-xl border border-red-100 cursor-pointer hover:bg-red-50 transition-colors"
+                        onClick={() => setIsAttentionExpanded(!isAttentionExpanded)}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-red-100 text-red-600 rounded-lg">
+                                <AlertTriangle className="w-5 h-5" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="text-lg font-bold text-gray-900 leading-tight">Action Required</h3>
+                                <p className="text-sm text-red-700/70 font-medium">{attentionStudents.length} unallotted students (No class assigned)</p>
+                            </div>
+                        </div>
+                        <div className={clsx("p-2 rounded-lg transition-all duration-300", isAttentionExpanded ? "bg-red-200 text-red-800" : "bg-white text-red-600 shadow-sm")}>
+                            {isAttentionExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                        </div>
+                    </div>
+                    
+                    {isAttentionExpanded && (
+                        <div className="space-y-3 mb-8 animate-in fade-in zoom-in duration-300">
+                            {attentionStudents.map((student) => (
+                                <div key={student.id} className="bg-white p-4 rounded-xl border border-red-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold">
+                                            {student.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-gray-900">{student.name}</h4>
+                                            <p className="text-xs text-gray-500">Reg: {student.registerNo} • {student.gender}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <div className="w-48">
+                                            <SearchableSelect
+                                                placeholder="Assign to class..."
+                                                options={classOptions}
+                                                value=""
+                                                onChange={(val) => handleTransfer(student.id, val)}
+                                                compact={true}
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => handleEdit(student)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => confirmDelete(student.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             <Card className="flex flex-col h-[calc(100vh-200px)] md:h-[800px]">
                 <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-6 p-1">
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900">Student Directory</h3>
-                        <p className="text-gray-500 text-sm">Total: {filteredStudents.length} / {students.length}</p>
+                        <p className="text-gray-500 text-sm">Total: {regularStudents.length + attentionStudents.length} / {students.length}</p>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                        <div className="relative flex-1 sm:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <div className="relative flex-1 sm:w-64 w-full h-11">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
                             <Input
-                                placeholder="Search..."
+                                placeholder="Search students..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-white"
+                                className="pl-9 bg-white h-11"
+                                containerClassName="w-full"
                             />
                         </div>
-                        <select
-                            className="px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                            value={filterClassId}
-                            onChange={(e) => setFilterClassId(e.target.value)}
-                        >
-                            <option value="">All Classes</option>
-                            {classes.map(c => (
-                                <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
-                            ))}
-                        </select>
+                        <div className="flex items-center gap-2 w-full sm:w-auto h-11">
+                            <Select
+                                className="bg-white h-11 min-w-[140px]"
+                                containerClassName="w-full sm:w-auto"
+                                value={filterStandard}
+                                onChange={(e) => setFilterStandard(e.target.value)}
+                            >
+                                <option value="">All Standards</option>
+                                {uniqueStandards.map(std => (
+                                    <option key={std} value={std}>Class {std}</option>
+                                ))}
+                            </Select>
+                            <Select
+                                className="bg-white h-11 min-w-[140px]"
+                                containerClassName="w-full sm:w-auto"
+                                value={filterDivision}
+                                onChange={(e) => setFilterDivision(e.target.value)}
+                            >
+                                <option value="">All Divisions</option>
+                                {uniqueDivisions.map(div => (
+                                    <option key={div} value={div}>Division {div}</option>
+                                ))}
+                            </Select>
+                        </div>
                     </div>
                 </div>
 
@@ -538,6 +778,7 @@ const StudentManagement = () => {
                                 <th className="px-4 py-3">Name</th>
                                 <th className="px-4 py-3">Reg No</th>
                                 <th className="px-4 py-3">Class</th>
+                                <th className="px-4 py-3">Mentor</th>
                                 <th className="px-4 py-3">Status</th>
                                 <th className="px-4 py-3">Actions</th>
                             </tr>
@@ -560,59 +801,60 @@ const StudentManagement = () => {
                                         <td className="px-4 py-3 font-medium text-gray-900">{student.name}</td>
                                         <td className="px-4 py-3">{student.registerNo}</td>
                                         <td className="px-4 py-3">
-                                            <span className="px-2 py-0.5 bg-gray-100 rounded text-xs">
+                                            <span className="px-2 py-0.5 bg-gray-100 rounded text-xs leading-none">
                                                 {studentClass ? `${studentClass.name}-${studentClass.division}` : 'N/A'}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
+                                            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 italic">
+                                                {getMentorNameForStudent(student)}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
                                             <span className={clsx(
-                                                "px-2 py-0.5 rounded-full text-xs font-semibold",
-                                                student.status === 'Active' && "bg-green-100 text-green-700",
-                                                student.status === 'Suspended' && "bg-orange-100 text-orange-700",
-                                                student.status === 'Dismissed' && "bg-red-100 text-red-700",
+                                                "px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap",
+                                                getStatusColor(student.status)
                                             )}>
                                                 {student.status}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="flex items-center gap-1 group/transfer">
-                                                    <ArrowRightLeft className="w-4 h-4 text-gray-400 group-hover/transfer:text-indigo-600" />
-                                                    <select
-                                                        className="text-xs border-b border-transparent hover:border-indigo-300 focus:border-indigo-500 bg-transparent outline-none w-24"
-                                                        onChange={(e) => handleTransfer(student.id, e.target.value)}
+                                                <div className="w-28 flex-shrink-0">
+                                                    <SearchableSelect
+                                                        placeholder="Transfer..."
+                                                        options={classOptions}
                                                         value=""
-                                                    >
-                                                        <option value="" disabled>Transfer...</option>
-                                                        {classes.map(c => (
-                                                            <option key={c.id} value={c.id}>{c.name}-{c.division}</option>
-                                                        ))}
-                                                    </select>
+                                                        onChange={(val) => handleTransfer(student.id, val)}
+                                                        compact={true}
+                                                    />
                                                 </div>
 
-                                                <button
-                                                    onClick={() => handleEdit(student)}
-                                                    className="text-gray-400 hover:text-indigo-600 transition-colors"
-                                                    title="Edit Student"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => confirmDelete(student.id)}
-                                                    className="text-gray-400 hover:text-red-600 transition-colors"
-                                                    title="Delete Student"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => handleEdit(student)}
+                                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                        title="Edit Student"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => confirmDelete(student.id)}
+                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                        title="Delete Student"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
                                 );
                             })}
-                            {filteredStudents.length === 0 && (
+                            {paginatedStudents.length === 0 && (
                                 <tr>
-                                    <td colSpan="6" className="px-4 py-12 text-center text-gray-400">
-                                        No students found matching criteria.
+                                    <td colSpan="7" className="px-4 py-12 text-center text-gray-400 font-medium italic">
+                                        {searchTerm || filterStandard || filterDivision ? "No students found matching your filters." : "No students in the directory."}
                                     </td>
                                 </tr>
                             )}
@@ -642,32 +884,30 @@ const StudentManagement = () => {
                                         </div>
                                         <span className={clsx(
                                             "px-2 py-0.5 rounded-full text-xs font-semibold",
-                                            student.status === 'Active' && "bg-green-100 text-green-700",
-                                            student.status === 'Suspended' && "bg-orange-100 text-orange-700",
-                                            student.status === 'Dismissed' && "bg-red-100 text-red-700",
+                                            getStatusColor(student.status)
                                         )}>
                                             {student.status}
                                         </span>
                                     </div>
 
                                     <div className="flex items-center justify-between text-sm pl-8">
-                                        <span className="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600">
-                                            {studentClass ? `Class: ${studentClass.name}-${studentClass.division}` : 'No Class'}
-                                        </span>
+                                        <div className="flex flex-wrap gap-2">
+                                            <span className="px-2 py-0.5 bg-gray-100 rounded text-[10px] sm:text-xs text-gray-600">
+                                                {studentClass ? `Class: ${studentClass.name}-${studentClass.division}` : 'No Class'}
+                                            </span>
+                                            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-[10px] sm:text-xs font-bold border border-indigo-100">
+                                                {getMentorNameForStudent(student)}
+                                            </span>
+                                        </div>
 
                                         <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-1">
-                                                <ArrowRightLeft className="w-4 h-4 text-gray-400" />
-                                                <select
-                                                    className="text-xs border-b border-gray-200 bg-transparent outline-none w-20 py-1"
-                                                    onChange={(e) => handleTransfer(student.id, e.target.value)}
+                                            <div className="flex items-center gap-1 w-28">
+                                                <SearchableSelect
+                                                    placeholder="Transfer"
+                                                    options={classOptions}
                                                     value=""
-                                                >
-                                                    <option value="" disabled>Transfer</option>
-                                                    {classes.map(c => (
-                                                        <option key={c.id} value={c.id}>{c.name}-{c.division}</option>
-                                                    ))}
-                                                </select>
+                                                    onChange={(val) => handleTransfer(student.id, val)}
+                                                />
                                             </div>
                                             <button
                                                 onClick={() => handleEdit(student)}
@@ -686,9 +926,9 @@ const StudentManagement = () => {
                                 </div>
                             );
                         })}
-                        {filteredStudents.length === 0 && (
-                            <div className="p-8 text-center text-gray-400">
-                                No students found matching criteria.
+                        {paginatedStudents.length === 0 && (
+                            <div className="p-8 text-center text-gray-400 italic font-medium">
+                                No students found in the directory.
                             </div>
                         )}
                     </div>
@@ -697,7 +937,7 @@ const StudentManagement = () => {
                 {/* Pagination Controls */}
                 <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
                     <p className="text-sm text-gray-500">
-                        Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredStudents.length)}</span> of <span className="font-medium">{filteredStudents.length}</span> students
+                        Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + itemsPerPage, regularStudents.length)}</span> of <span className="font-medium">{regularStudents.length}</span> students
                     </p>
                     <div className="flex items-center gap-4">
                         <select

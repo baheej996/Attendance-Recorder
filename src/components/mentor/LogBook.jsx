@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { BookOpen, Save, Trash2, History, Filter, Search, Edit, PieChart as PieChartIcon, CheckCircle } from 'lucide-react';
+import { BookOpen, Save, Trash2, History, Filter, Search, Edit, PieChart as PieChartIcon, CheckCircle, Trophy, User } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -9,15 +9,14 @@ import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const LogBook = () => {
-    const { classes, subjects, logEntries, addLogEntry, updateLogEntry, deleteLogEntry, currentUser } = useData();
+    const { classes, subjects, logEntries, addLogEntry, updateLogEntry, deleteLogEntry, currentUser, mentors, syllabi, logLimit, loadMoreLogs, syllabusStatuses } = useData();
     const { showAlert } = useUI();
 
     const [formData, setFormData] = useState({
-        classId: '',
-        subjectId: '',
         chapter: '',
         heading: '',
-        remarks: ''
+        remarks: '',
+        sharedClassIds: []
     });
 
     const [editingId, setEditingId] = useState(null);
@@ -38,13 +37,7 @@ const LogBook = () => {
         return classes.filter(c => currentUser.assignedClassIds.includes(c.id));
     }, [classes, currentUser]);
 
-    // Filter subjects based on selected class in FORM
-    const formSubjects = useMemo(() => {
-        if (!formData.classId) return [];
-        return subjects.filter(s => s.classId === formData.classId);
-    }, [subjects, formData.classId]);
-
-    // Filter subjects for the FILTER dropdown
+    // Filter subjects for the unique FILTER dropdown
     const filterSubjects = useMemo(() => {
         if (filter.classId === 'all') {
             const assignedClassIds = assignedClasses.map(c => c.id);
@@ -53,33 +46,48 @@ const LogBook = () => {
         return subjects.filter(s => s.classId === filter.classId);
     }, [subjects, filter.classId, assignedClasses]);
 
+    const otherClasses = useMemo(() => {
+        if (filter.classId === 'all') return [];
+        const currentClass = classes.find(c => c.id === filter.classId);
+        if (!currentClass) return [];
+
+        return assignedClasses.filter(c => 
+            c.id !== filter.classId && 
+            c.name === currentClass.name
+        );
+    }, [assignedClasses, filter.classId, classes]);
+
+    // Get current subject's chapter count
+    const currentSubject = useMemo(() => {
+        return subjects.find(s => s.id === filter.subjectId);
+    }, [subjects, filter.subjectId]);
+
+    const chapterOptions = useMemo(() => {
+        if (!currentSubject || !currentSubject.totalChapters) return [];
+        return Array.from({ length: currentSubject.totalChapters }, (_, i) => `Chapter ${i + 1}`);
+    }, [currentSubject]);
+
     // Get suggestions for Chapters and Headings based on history
     const suggestions = useMemo(() => {
         const pertinentLogs = logEntries.filter(l =>
-            (!formData.subjectId || l.subjectId === formData.subjectId)
+            (filter.subjectId === 'all' || l.subjectId === filter.subjectId)
         );
         const chapters = [...new Set(pertinentLogs.map(l => l.chapter))].filter(Boolean);
         const headings = [...new Set(pertinentLogs.map(l => l.heading))].filter(Boolean);
         return { chapters, headings };
-    }, [logEntries, formData.subjectId]);
+    }, [logEntries, filter.subjectId]);
 
     // --- Syllabus Coverage Calculation ---
     const coverageStats = useMemo(() => {
-        // Stats for graphs: grouped by Subject per Class
-        // We only care about assigned classes
-
         const stats = [];
-
         assignedClasses.forEach(cls => {
-            // Get subjects for this class
             const clsSubjects = subjects.filter(s => s.classId === cls.id);
-
             clsSubjects.forEach(sub => {
-                const logsForSub = logEntries.filter(l => l.classId === cls.id && l.subjectId === sub.id);
-                const uniqueChapters = new Set(logsForSub.map(l => l.chapter.trim().toLowerCase())).size;
+                const status = syllabusStatuses.find(s => s.classId === cls.id && s.subjectId === sub.id);
+                const uniqueChapters = status ? (status.completedChapters || []).length : 0;
                 const totalChapters = sub.totalChapters || 0;
 
-                if (totalChapters > 0) { // Only showing meaningful stats
+                if (totalChapters > 0) {
                     stats.push({
                         classId: cls.id,
                         subjectId: sub.id,
@@ -94,7 +102,7 @@ const LogBook = () => {
         });
 
         return stats;
-    }, [assignedClasses, subjects, logEntries]);
+    }, [assignedClasses, subjects, syllabusStatuses]);
 
     // Filter Coverage Stats based on current Filter selection
     const displayedStats = useMemo(() => {
@@ -105,53 +113,147 @@ const LogBook = () => {
         });
     }, [coverageStats, filter]);
 
+    // --- Syllabus Targets Logic ---
+    const activeSyllabus = useMemo(() => {
+        if (filter.classId === 'all') return [];
+        
+        const cls = classes.find(c => c.id === filter.classId);
+        if (!cls) return [];
 
-    const handleSubmit = (e) => {
+        let targetSubjects = subjects.filter(s => s.classId === cls.id);
+        
+        if (filter.subjectId !== 'all') {
+             targetSubjects = targetSubjects.filter(s => s.id === filter.subjectId);
+        }
+
+        const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
+
+        return targetSubjects.map(subj => {
+            const plan = syllabi.find(s => 
+                s.gradeName === cls.name && 
+                s.subjectName.toLowerCase() === subj.name.toLowerCase() && 
+                s.month === currentMonthName
+            );
+            if (!plan) return null;
+
+            const status = syllabusStatuses.find(s => s.classId === filter.classId && s.subjectId === subj.id);
+            const completedChaptersList = status ? (status.completedChapters || []) : [];
+            
+            // Helper to match log chapter string with plan chapter number
+            const isMatch = (logCh, planChNum) => {
+                const logLower = logCh.toLowerCase().trim();
+                const planStr = planChNum.toString();
+                return logLower === planStr || logLower === `chapter ${planStr}`;
+            };
+
+            const completedChapters = plan.chapters.filter(chNum => 
+                completedChaptersList.some(ch => isMatch(ch, chNum))
+            );
+            
+            const isCompleted = plan.chapters.length > 0 && completedChapters.length === plan.chapters.length;
+
+            return {
+                id: plan.id,
+                subjectId: subj.id,
+                subjectName: subj.name,
+                chapters: plan.chapters,
+                isCompleted
+            };
+        }).filter(Boolean);
+    }, [filter, classes, subjects, syllabi, syllabusStatuses]);
+
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.classId || !formData.subjectId || !formData.chapter) {
-            showAlert('Missing Information', 'Please fill in at least Class, Subject and Chapter.', 'error');
+        if (filter.classId === 'all' || filter.subjectId === 'all') {
+            showAlert('Missing Information', 'Please select a Class and Subject from the top filter before adding a log.', 'error');
+            return;
+        }
+        if (!formData.chapter) {
+            showAlert('Missing Information', 'Please provide a Chapter.', 'error');
             return;
         }
 
-        const selectedClass = classes.find(c => c.id === formData.classId);
-        const selectedSubject = subjects.find(s => s.id === formData.subjectId);
+        const selectedClass = classes.find(c => c.id === filter.classId);
+        const selectedSubject = subjects.find(s => s.id === filter.subjectId);
+        
+        const timestamp = new Date().toISOString();
+        const date = timestamp.split('T')[0];
 
-        const payload = {
-            ...formData,
-            className: selectedClass ? `${selectedClass.name} ${selectedClass.division}` : 'Unknown',
-            subjectName: selectedSubject ? selectedSubject.name : 'Unknown',
-            mentorId: currentUser?.id
+        const basePayload = {
+            chapter: formData.chapter,
+            heading: formData.heading,
+            remarks: formData.remarks,
+            mentorId: currentUser?.id,
+            date
         };
 
-        if (editingId) {
-            updateLogEntry(editingId, payload);
-            showAlert('Success', 'Log entry updated successfully.', 'success');
-            setEditingId(null);
-        } else {
-            addLogEntry({
-                ...payload,
-                date: new Date().toISOString().split('T')[0]
-            });
-            showAlert('Success', 'Class log added successfully.', 'success');
-        }
+        try {
+            // Main entry
+            if (editingId) {
+                await updateLogEntry(editingId, {
+                    ...basePayload,
+                    classId: filter.classId,
+                    subjectId: filter.subjectId,
+                    className: selectedClass ? `${selectedClass.name} ${selectedClass.division}` : 'Unknown',
+                    subjectName: selectedSubject ? selectedSubject.name : 'Unknown'
+                });
+                showAlert('Success', 'Log entry updated successfully.', 'success');
+                setEditingId(null);
+            } else {
+                await addLogEntry({
+                    ...basePayload,
+                    classId: filter.classId,
+                    subjectId: filter.subjectId,
+                    className: selectedClass ? `${selectedClass.name} ${selectedClass.division}` : 'Unknown',
+                    subjectName: selectedSubject ? selectedSubject.name : 'Unknown'
+                });
+                showAlert('Success', 'Class log added successfully.', 'success');
+            }
 
-        if (editingId) {
-            setFormData({ classId: '', subjectId: '', chapter: '', heading: '', remarks: '' });
-        } else {
-            setFormData(prev => ({ ...prev, chapter: '', heading: '', remarks: '' }));
+            // Shared entries - Only for non-editing or if explicitly selected during edit
+            if (formData.sharedClassIds.length > 0) {
+                let sharedCount = 0;
+                for (const targetClassId of formData.sharedClassIds) {
+                    const targetClass = classes.find(c => c.id === targetClassId);
+                    const matchingSubject = subjects.find(s => s.classId === targetClassId && s.name === selectedSubject.name);
+                    
+                    if (targetClass && matchingSubject) {
+                        await addLogEntry({
+                            ...basePayload,
+                            classId: targetClassId,
+                            subjectId: matchingSubject.id,
+                            className: `${targetClass.name} ${targetClass.division}`,
+                            subjectName: matchingSubject.name
+                        });
+                        sharedCount++;
+                    }
+                }
+                if (sharedCount > 0) {
+                    showAlert('Shared', `Log shared with ${sharedCount} other classes.`, 'success');
+                }
+            }
+
+            setFormData({ chapter: '', heading: '', remarks: '', sharedClassIds: [] });
+        } catch (error) {
+            console.error(error);
+            showAlert('Error', 'An error occurred while saving the log.', 'error');
         }
     };
 
     const handleEdit = (log) => {
         setEditingId(log.id);
-        const logClass = classes.find(c => c.name + " " + c.division === log.className || c.id === log.classId);
+        
+        setFilter({
+            classId: log.classId,
+            subjectId: log.subjectId
+        });
 
         setFormData({
-            classId: log.classId,
-            subjectId: log.subjectId,
             chapter: log.chapter,
             heading: log.heading || '',
-            remarks: log.remarks || ''
+            remarks: log.remarks || '',
+            sharedClassIds: []
         });
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -171,7 +273,7 @@ const LogBook = () => {
 
     const handleCancelEdit = () => {
         setEditingId(null);
-        setFormData({ classId: '', subjectId: '', chapter: '', heading: '', remarks: '' });
+        setFormData({ chapter: '', heading: '', remarks: '', sharedClassIds: [] });
     };
 
     const displayedLogs = useMemo(() => {
@@ -188,7 +290,7 @@ const LogBook = () => {
     const COLORS = ['#4f46e5', '#e5e7eb']; // Indigo vs Gray
 
     return (
-        <div className="space-y-6 p-6 max-w-6xl mx-auto">
+        <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
             <ConfirmationModal
                 isOpen={deleteConfig.isOpen}
                 onClose={() => setDeleteConfig({ isOpen: false, id: null })}
@@ -248,58 +350,43 @@ const LogBook = () => {
                             </h2>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                                    <select
-                                        value={formData.classId}
-                                        onChange={e => setFormData({ ...formData, classId: e.target.value, subjectId: '' })}
-                                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
-                                        required
-                                    >
-                                        <option value="">Select Class</option>
-                                        {assignedClasses.length > 0 ? (
-                                            assignedClasses.map(c => (
-                                                <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
-                                            ))
-                                        ) : (
-                                            <option disabled>No Assigned Classes</option>
-                                        )}
-                                    </select>
-                                    {assignedClasses.length === 0 && (
-                                        <p className="text-xs text-red-500 mt-1">You are not assigned to any classes. Contact Admin.</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                                    <select
-                                        value={formData.subjectId}
-                                        onChange={e => setFormData({ ...formData, subjectId: e.target.value })}
-                                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
-                                        required
-                                        disabled={!formData.classId}
-                                    >
-                                        <option value="">Select Subject</option>
-                                        {formSubjects.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name} {s.totalChapters > 0 ? `(${s.totalChapters} Ch)` : ''}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                {(filter.classId === 'all' || filter.subjectId === 'all') && (
+                                    <div className="bg-blue-50 text-blue-700 p-3 rounded-lg text-xs font-semibold mb-2">
+                                        Please select a Class and Subject from the filters above to add a log entry.
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Chapter</label>
-                                    <input
-                                        type="text"
-                                        list="chapter-suggestions"
-                                        value={formData.chapter}
-                                        onChange={e => setFormData({ ...formData, chapter: e.target.value })}
-                                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
-                                        placeholder="e.g. Chapter 1: Algebra"
-                                        required
-                                    />
+                                    {chapterOptions.length > 0 ? (
+                                        <select
+                                            value={formData.chapter}
+                                            onChange={e => setFormData({ ...formData, chapter: e.target.value })}
+                                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
+                                            required
+                                        >
+                                            <option value="">Select Chapter</option>
+                                            {chapterOptions.map((opt, i) => (
+                                                <option key={i} value={opt}>{opt}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            list="chapter-suggestions"
+                                            value={formData.chapter}
+                                            onChange={e => setFormData({ ...formData, chapter: e.target.value })}
+                                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
+                                            placeholder="e.g. Chapter 1"
+                                            required
+                                        />
+                                    )}
                                     <datalist id="chapter-suggestions">
                                         {suggestions.chapters.map((c, i) => <option key={i} value={c} />)}
                                     </datalist>
+                                    {currentSubject && !currentSubject.totalChapters && (
+                                        <p className="text-[10px] text-amber-600 mt-1">Total chapters not set in Admin. Use text entry.</p>
+                                    )}
                                 </div>
 
                                 <div>
@@ -322,10 +409,40 @@ const LogBook = () => {
                                     <textarea
                                         value={formData.remarks}
                                         onChange={e => setFormData({ ...formData, remarks: e.target.value })}
-                                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white h-24 resize-none"
+                                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white h-24 resize-none text-sm"
                                         placeholder="Notes on student progress, homework assigned, etc."
                                     />
                                 </div>
+
+                                {otherClasses.length > 0 && (
+                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Share With Other Classes</label>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                            {otherClasses.map(cls => (
+                                                <label key={cls.id} className="flex items-center gap-2 cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 border-gray-300"
+                                                        checked={formData.sharedClassIds.includes(cls.id)}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                sharedClassIds: checked 
+                                                                    ? [...prev.sharedClassIds, cls.id]
+                                                                    : prev.sharedClassIds.filter(id => id !== cls.id)
+                                                            }));
+                                                        }}
+                                                    />
+                                                    <span className="text-xs text-gray-600 group-hover:text-indigo-600 font-medium transition-colors">
+                                                        {cls.name} {cls.division}
+                                                    </span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 mt-2 font-medium">Selected classes will also receive a copy of this log for the same subject name.</p>
+                                    </div>
+                                )}
 
                                 <div className="flex gap-2">
                                     {editingId && (
@@ -333,7 +450,7 @@ const LogBook = () => {
                                             Cancel
                                         </Button>
                                     )}
-                                    <Button type="submit" variant="primary" className="flex-1" disabled={assignedClasses.length === 0}>
+                                    <Button type="submit" variant="primary" className="flex-1" disabled={assignedClasses.length === 0 || filter.classId === 'all' || filter.subjectId === 'all'}>
                                         {editingId ? "Update Log" : "Add Log Entry"}
                                     </Button>
                                 </div>
@@ -349,8 +466,8 @@ const LogBook = () => {
                     {displayedStats.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {displayedStats.map((stat, idx) => (
-                                <div key={`${stat.classId}-${stat.subjectId}`} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
-                                    <div className="w-16 h-16 shrink-0 relative">
+                                <div key={`${stat.classId}-${stat.subjectId}`} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3 transition-all hover:shadow-md">
+                                    <div className="w-12 h-12 shrink-0 relative">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
@@ -389,85 +506,148 @@ const LogBook = () => {
                         </div>
                     ) : (
                         filter.classId !== 'all' && (
-                            <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-4 rounded-xl text-sm text-center">
+                            <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-3 rounded-xl text-xs text-center">
                                 No tracked subjects found for this class. Ensure subjects have 'Total Chapters' set in Admin.
                             </div>
                         )
                     )}
 
-                    {/* 2. Log History Section */}
-                    <div className="space-y-4">
-                        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-                            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                                <History className="w-5 h-5 text-gray-500" />
-                                Recent Logs
-                            </h3>
-                            <div className="text-xs text-gray-400">
-                                Showing {displayedLogs.length} entries matches filters.
+                    <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+                        {/* 2. Log History Section (60% width on large screens) */}
+                        <div className="xl:col-span-3 space-y-4">
+                            <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+                                <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-sm">
+                                    <History className="w-4 h-4 text-gray-400" />
+                                    Recent Logs
+                                </h3>
+                                <div className="text-[10px] text-gray-400">
+                                    Showing {displayedLogs.length} entries.
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                {displayedLogs.length === 0 ? (
+                                    <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-200">
+                                        <div className="mx-auto w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mb-2">
+                                            <BookOpen className="w-5 h-5 text-gray-300" />
+                                        </div>
+                                        <h3 className="text-gray-900 font-medium text-sm">{assignedClasses.length === 0 ? "No Assigned Classes" : "No Logs Found"}</h3>
+                                        <p className="text-gray-400 text-xs mt-1">{assignedClasses.length === 0 ? "Ask admin to assign classes." : "Start by adding an entry."}</p>
+                                    </div>
+                                ) : (
+                                    displayedLogs.map(log => (
+                                        <div key={log.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group relative">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                                    <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                                                        {log.className}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                                        {log.subjectName}
+                                                    </span>
+                                                    <span className="text-[9px] text-gray-400 ml-auto sm:ml-2 font-medium">
+                                                        {new Date(log.timestamp).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <div className="absolute top-3 right-3 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white pl-2">
+                                                    <button
+                                                        onClick={() => handleEdit(log)}
+                                                        className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                                    >
+                                                        <Edit className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => confirmDelete(log.id)}
+                                                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-xs font-bold text-gray-900 min-w-[60px]">Chapter:</span>
+                                                    <span className="text-xs text-gray-700">{log.chapter}</span>
+                                                </div>
+                                                {log.heading && (
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-xs font-bold text-gray-400 min-w-[60px]">Topic:</span>
+                                                        <span className="text-xs text-gray-600">{log.heading}</span>
+                                                    </div>
+                                                )}
+                                                {log.remarks && (
+                                                    <div className="mt-2 bg-yellow-50/40 p-2 rounded-lg text-xs text-gray-600 italic border border-yellow-100/40">
+                                                        "{log.remarks}"
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+
+                                {logEntries.length >= logLimit && (
+                                    <div className="pt-4 flex justify-center">
+                                        <Button 
+                                            onClick={loadMoreLogs} 
+                                            variant="secondary" 
+                                            className="w-full py-3 bg-white hover:bg-gray-50 border-gray-200 text-indigo-600 font-bold shadow-sm"
+                                        >
+                                            Load More Logs
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            {displayedLogs.length === 0 ? (
-                                <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
-                                    <div className="mx-auto w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
-                                        <BookOpen className="w-6 h-6 text-gray-300" />
-                                    </div>
-                                    <h3 className="text-gray-900 font-medium">{assignedClasses.length === 0 ? "No Assigned Classes" : "No Logs Found"}</h3>
-                                    <p className="text-gray-500 text-sm mt-1">{assignedClasses.length === 0 ? "Ask admin to assign classes to you." : "Start by adding a new entry on the left."}</p>
-                                </div>
-                            ) : (
-                                displayedLogs.map(log => (
-                                    <div key={log.id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group relative">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded">
-                                                    {log.className}
-                                                </span>
-                                                <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                                                    {log.subjectName}
-                                                </span>
-                                                <span className="text-xs text-gray-400 ml-auto md:ml-2">
-                                                    {new Date(log.timestamp).toLocaleDateString()}
-                                                </span>
-                                            </div>
-                                            <div className="absolute top-4 right-4 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white pl-2">
-                                                <button
-                                                    onClick={() => handleEdit(log)}
-                                                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                                                    title="Edit Log"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => confirmDelete(log.id)}
-                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                    title="Delete Log"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                        {/* 3. Syllabus Targets Section (40% width on large screens) */}
+                        <div className="xl:col-span-2">
+                            {activeSyllabus.length > 0 && (
+                                <Card className="overflow-hidden border-indigo-100 sticky top-6 p-4">
+                                    <h3 className="text-sm font-bold text-gray-800 flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <BookOpen className="w-4 h-4 text-indigo-600" />
+                                            Active Syllabus Targets
                                         </div>
-
-                                        <div className="space-y-1">
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-sm font-semibold text-gray-900 min-w-[70px]">Chapter:</span>
-                                                <span className="text-sm text-gray-800">{log.chapter}</span>
+                                        <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-medium">{new Date().toLocaleString('default', { month: 'long' })}</span>
+                                    </h3>
+                                    
+                                    <div className="space-y-3">
+                                        {activeSyllabus.map(target => (
+                                            <div key={target.id} className={`p-4 rounded-xl border ${target.isCompleted ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 border-gray-100'}`}>
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <span className="text-xs font-extrabold text-gray-800 uppercase tracking-wide">
+                                                        {target.subjectName}
+                                                    </span>
+                                                    {target.isCompleted ? (
+                                                        <span className="text-[10px] font-black bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1 shadow-sm">
+                                                            <CheckCircle className="w-3 h-3" /> COMPLETED
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded shadow-sm">
+                                                            PENDING
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {target.chapters.map(chNum => {
+                                                        const logLower = `chapter ${chNum}`;
+                                                        const isChCompleted = logEntries.some(l => 
+                                                            l.classId === filter.classId && 
+                                                            l.subjectId === target.subjectId && 
+                                                            (l.chapter.toLowerCase().trim() === chNum.toString() || l.chapter.toLowerCase().trim() === logLower)
+                                                        );
+                                                        return (
+                                                            <span key={chNum} className={`inline-flex items-center justify-center px-2 py-1 text-[10px] font-bold rounded shadow-sm border ${isChCompleted ? 'bg-green-600 text-white border-green-700' : 'bg-white text-gray-700 border-gray-200'}`}>
+                                                                Ch {chNum}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                            {log.heading && (
-                                                <div className="flex items-baseline gap-2">
-                                                    <span className="text-sm font-semibold text-gray-500 min-w-[70px]">Topic:</span>
-                                                    <span className="text-sm text-gray-700">{log.heading}</span>
-                                                </div>
-                                            )}
-                                            {log.remarks && (
-                                                <div className="mt-3 bg-yellow-50/50 p-3 rounded-lg text-sm text-gray-700 italic border border-yellow-100/50">
-                                                    "{log.remarks}"
-                                                </div>
-                                            )}
-                                        </div>
+                                        ))}
                                     </div>
-                                ))
+                                </Card>
                             )}
                         </div>
                     </div>

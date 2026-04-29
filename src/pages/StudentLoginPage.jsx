@@ -9,7 +9,7 @@ import { GraduationCap, History, X } from 'lucide-react';
 
 const StudentLoginPage = () => {
     const navigate = useNavigate();
-    const { students, login } = useData();
+    const { students, login, fetchStudentByRegisterNo } = useData();
 
     const [registerNo, setRegisterNo] = useState('');
     const [error, setError] = useState('');
@@ -59,18 +59,33 @@ const StudentLoginPage = () => {
         localStorage.setItem('student_login_history', JSON.stringify(updated));
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
 
-        const student = students.find(s => s.registerNo === registerNo && s.status === 'Active');
+        if (!registerNo) {
+            setError('Please enter a register number');
+            return;
+        }
 
-        if (student) {
-            saveLoginHistory(registerNo);
-            login({ role: 'student', ...student });
-            navigate('/student');
-        } else {
-            setError('Invalid Register Number');
+        try {
+            const student = await fetchStudentByRegisterNo(registerNo.trim().toUpperCase());
+
+            if (student) {
+                if (student.status !== 'Active' && student.status !== 'active') {
+                    setError(`Your account is currently ${student.status || 'Inactive'}. Please contact your mentor.`);
+                    return;
+                }
+
+                saveLoginHistory(registerNo.trim().toUpperCase());
+                login({ role: 'student', ...student });
+                navigate('/student');
+            } else {
+                setError('Invalid Register Number');
+            }
+        } catch (err) {
+            console.error("Login error:", err);
+            setError('Login failed. Please check your internet connection.');
         }
     };
 

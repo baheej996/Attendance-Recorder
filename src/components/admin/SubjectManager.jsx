@@ -1,25 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Trash2, Plus, BookOpen, Layers, Edit, Search, ArrowUpDown } from 'lucide-react';
+import { Trash2, Plus, BookOpen, Layers, Edit, Search, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import SubjectBookModal from './SubjectBookModal';
 import { FileImage } from 'lucide-react';
+import { clsx } from 'clsx';
 
 const SubjectManager = () => {
-    const { classes, subjects, addSubject, updateSubject, deleteSubject, deleteSubjects } = useData();
+    const { classes, subjects, addSubject, updateSubject, deleteSubject, deleteSubjects, repairAllSubjects } = useData();
     const { showAlert } = useUI();
 
+    const [isRepairing, setIsRepairing] = useState(false);
+
+    const handleRepair = async () => {
+        setIsRepairing(true);
+        try {
+            const addedCount = await repairAllSubjects();
+            if (addedCount > 0) {
+                showAlert('Success', `Sync complete! Added ${addedCount} missing subjects across classes.`, 'success');
+            } else {
+                showAlert('Info', 'All classes are already in sync with their subjects.', 'info');
+            }
+        } catch (error) {
+            showAlert('Error', 'Failed to sync subjects.', 'error');
+        } finally {
+            setIsRepairing(false);
+        }
+    };
+
     // We now track 'gradeName' instead of specific 'classId'
-    const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, isExamSubject: true });
+    const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both' });
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState(''); // New Search State
     const [sortBy, setSortBy] = useState('grade'); // New Sort State: 'grade' | 'name'
     const [editingId, setEditingId] = useState(null);
     const [editingOriginalName, setEditingOriginalName] = useState('');
+    const [editingOriginalGrade, setEditingOriginalGrade] = useState('');
 
     // Bulk Delete State
     const [selectedSubjectIds, setSelectedSubjectIds] = useState([]);
@@ -28,6 +48,11 @@ const SubjectManager = () => {
     // Book Modal State
     const [isBookModalOpen, setIsBookModalOpen] = useState(false);
     const [bookModalSubjectGroup, setBookModalSubjectGroup] = useState(null);
+
+    // Clear selections when filters change to avoid ghost selections
+    useEffect(() => {
+        setSelectedSubjectIds([]);
+    }, [selectedGradeFilter, searchQuery]);
 
     // Extract unique grade names (e.g. "1", "2", "3") sorted
     const uniqueGrades = [...new Set(classes.map(c => c.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -42,31 +67,78 @@ const SubjectManager = () => {
         }
 
         if (editingId) {
-            // --- Batch Update Logic ---
+            // --- Batch Update & Transfer Logic ---
+            const originalGradeName = editingOriginalGrade;
             const targetGradeName = newSubject.gradeName;
-            const targetClasses = classes.filter(c => c.name === targetGradeName);
-            const targetClassIds = targetClasses.map(c => c.id);
 
-            const subjectsToUpdate = subjects.filter(s =>
-                targetClassIds.includes(s.classId) &&
-                s.name.toLowerCase() === editingOriginalName.toLowerCase()
-            );
-
-            let updatedCount = 0;
-            subjectsToUpdate.forEach(subj => {
-                updateSubject(subj.id, {
-                    name: newSubject.name,
-                    maxMarks: Number(newSubject.maxMarks),
-                    passMarks: Number(newSubject.passMarks),
-                    totalChapters: Number(newSubject.totalChapters) || 0,
-                    isExamSubject: newSubject.isExamSubject
-                });
-                updatedCount++;
+            // Find all original subjects in this batch
+            const originalSubjects = subjects.filter(s => {
+                const sCls = classes.find(c => c.id === s.classId);
+                const sGrade = sCls ? sCls.name : 'Unknown/Deleted';
+                return sGrade === originalGradeName && s.name.toLowerCase() === editingOriginalName.toLowerCase();
             });
 
-            showAlert('Success', `Updated subject across ${updatedCount} classes in Grade ${targetGradeName}.`, 'success');
+            const targetClasses = classes.filter(c => c.name === targetGradeName);
+
+            let updatedCount = 0;
+            let addedCount = 0;
+            const toDelete = [];
+
+            if (originalGradeName === targetGradeName) {
+                // Normal property update
+                originalSubjects.forEach(subj => {
+                    updateSubject(subj.id, {
+                        name: newSubject.name,
+                        maxMarks: Number(newSubject.maxMarks),
+                        passMarks: Number(newSubject.passMarks),
+                        totalChapters: Number(newSubject.totalChapters) || 0,
+                        isExamSubject: newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both',
+                        isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both'
+                    });
+                    updatedCount++;
+                });
+            } else {
+                // Grade transfer! Smartly map to preserve as many IDs as possible
+                for (let i = 0; i < Math.max(originalSubjects.length, targetClasses.length); i++) {
+                    if (i < originalSubjects.length && i < targetClasses.length) {
+                        // Update existing and re-link classId
+                        updateSubject(originalSubjects[i].id, {
+                            name: newSubject.name,
+                            classId: targetClasses[i].id,
+                            maxMarks: Number(newSubject.maxMarks),
+                            passMarks: Number(newSubject.passMarks),
+                            totalChapters: Number(newSubject.totalChapters) || 0,
+                            isExamSubject: newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both',
+                            isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both'
+                        });
+                        updatedCount++;
+                    } else if (i >= originalSubjects.length && i < targetClasses.length) {
+                        // We need more subjects for the new grade
+                        addSubject({
+                            name: newSubject.name,
+                            classId: targetClasses[i].id,
+                            maxMarks: Number(newSubject.maxMarks),
+                            passMarks: Number(newSubject.passMarks),
+                            totalChapters: Number(newSubject.totalChapters) || 0,
+                            isExamSubject: newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both',
+                            isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both'
+                        });
+                        addedCount++;
+                    } else if (i < originalSubjects.length && i >= targetClasses.length) {
+                        // Original had too many subjects, delete the remainder
+                        toDelete.push(originalSubjects[i].id);
+                    }
+                }
+                
+                if (toDelete.length > 0) {
+                    deleteSubjects(toDelete);
+                }
+            }
+
+            showAlert('Success', `Updated subject mapped to Grade ${targetGradeName}.`, 'success');
             setEditingId(null);
             setEditingOriginalName('');
+            setEditingOriginalGrade('');
         } else {
             const targetClasses = classes.filter(c => c.name === newSubject.gradeName);
 
@@ -81,7 +153,8 @@ const SubjectManager = () => {
                         maxMarks: Number(newSubject.maxMarks),
                         passMarks: Number(newSubject.passMarks),
                         totalChapters: Number(newSubject.totalChapters) || 0,
-                        isExamSubject: newSubject.isExamSubject
+                        isExamSubject: newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both',
+                        isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both'
                     });
                     addedCount++;
                 }
@@ -100,11 +173,11 @@ const SubjectManager = () => {
             maxMarks: newSubject.maxMarks,
             passMarks: newSubject.passMarks,
             totalChapters: newSubject.totalChapters,
-            isExamSubject: newSubject.isExamSubject
+            subjectMode: newSubject.subjectMode
         });
 
         if (editingId) {
-            setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, isExamSubject: true });
+            setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both' });
         }
     };
 
@@ -112,6 +185,11 @@ const SubjectManager = () => {
         const cls = classes.find(c => c.id === subject.classId);
         setEditingId(subject.id);
         setEditingOriginalName(subject.name);
+        setEditingOriginalGrade(cls ? cls.name : 'Unknown/Deleted');
+
+        let currentMode = 'both';
+        if (subject.isExamSubject === false) currentMode = 'class';
+        if (subject.isClassSubject === false) currentMode = 'exam';
 
         setNewSubject({
             name: subject.name,
@@ -119,7 +197,7 @@ const SubjectManager = () => {
             maxMarks: subject.maxMarks,
             passMarks: subject.passMarks || 40,
             totalChapters: subject.totalChapters || 0,
-            isExamSubject: subject.isExamSubject !== undefined ? subject.isExamSubject : true
+            subjectMode: currentMode
         });
         const formElement = document.getElementById('subject-form');
         if (formElement) formElement.scrollIntoView({ behavior: 'smooth' });
@@ -128,7 +206,8 @@ const SubjectManager = () => {
     const handleCancelEdit = () => {
         setEditingId(null);
         setEditingOriginalName('');
-        setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, isExamSubject: true });
+        setEditingOriginalGrade('');
+        setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both' });
     };
 
     // Helper to get class info
@@ -215,24 +294,27 @@ const SubjectManager = () => {
     const groupedSubjects = [];
     filteredSubjects.forEach(s => {
         const cls = getClassObj(s.classId);
-        if (!cls) return;
-        const groupKey = `${s.name}-${cls.name}`;
+        const gradeName = cls ? cls.name : 'Unknown/Deleted';
+        const divisionInfo = cls ? cls.division : 'Orphaned';
+
+        const groupKey = `${s.name}-${gradeName}`;
 
         const existing = groupedSubjects.find(g => g.key === groupKey);
         if (existing) {
             existing.subjectIds.push(s.id);
-            existing.divisions.push(cls.division);
+            existing.divisions.push(divisionInfo);
         } else {
             groupedSubjects.push({
                 key: groupKey,
                 name: s.name,
-                gradeName: cls.name,
+                gradeName: gradeName,
                 maxMarks: s.maxMarks,
                 passMarks: s.passMarks,
                 totalChapters: s.totalChapters,
                 isExamSubject: s.isExamSubject,
+                isClassSubject: s.isClassSubject,
                 subjectIds: [s.id],
-                divisions: [cls.division],
+                divisions: [divisionInfo],
                 sampleSubject: s
             });
         }
@@ -240,6 +322,26 @@ const SubjectManager = () => {
 
     return (
         <div className="space-y-6">
+            <div className="flex justify-between items-center bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                        <RefreshCw className={clsx("w-5 h-5", isRepairing && "animate-spin")} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-indigo-900">Subject Synchronization</h4>
+                        <p className="text-xs text-indigo-700">Ensure all divisions in a batch have the same set of subjects.</p>
+                    </div>
+                </div>
+                <Button 
+                    onClick={handleRepair} 
+                    disabled={isRepairing}
+                    variant="secondary"
+                    className="bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                >
+                    {isRepairing ? "Syncing..." : "Sync All Divisions"}
+                </Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Add Subject Form */}
                 <Card className="p-6" id="subject-form">
@@ -264,14 +366,15 @@ const SubjectManager = () => {
                                 onChange={e => setNewSubject({ ...newSubject, gradeName: e.target.value })}
                                 className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
                                 required
-                                disabled={!!editingId} // Cannot change grade while editing a specific subject instance
                             >
-                                <option value="">Select Grade</option>
+                                <option value="" disabled>Select Grade</option>
+                                {editingOriginalGrade === 'Unknown/Deleted' && newSubject.gradeName === 'Unknown/Deleted' && (
+                                    <option value="Unknown/Deleted" disabled>Class Unknown/Deleted (Orphaned)</option>
+                                )}
                                 {uniqueGrades.map(grade => (
                                     <option key={grade} value={grade}>Class {grade}</option>
                                 ))}
                             </select>
-                            {editingId && <p className="text-xs text-gray-400 mt-1">Grade cannot be changed when editing.</p>}
                         </div>
                         <Input
                             label="Subject Name"
@@ -280,25 +383,23 @@ const SubjectManager = () => {
                             onChange={e => setNewSubject({ ...newSubject, name: e.target.value })}
                             required
                         />
-                        <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-                            <input
-                                type="checkbox"
-                                id="isExamSubject"
-                                checked={newSubject.isExamSubject}
-                                onChange={(e) => setNewSubject({ ...newSubject, isExamSubject: e.target.checked })}
-                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                            />
-                            <div className="flex flex-col">
-                                <label htmlFor="isExamSubject" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
-                                    Enable for Exams
-                                </label>
-                                <span className="text-xs text-gray-500">
-                                    If unchecked, this subject will NOT appear in Question Bank or Exam Results.
-                                </span>
-                            </div>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Subject Mode</label>
+                            <select
+                                value={newSubject.subjectMode}
+                                onChange={(e) => setNewSubject({ ...newSubject, subjectMode: e.target.value })}
+                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+                            >
+                                <option value="both">Enable for both (Lecturing & Exams)</option>
+                                <option value="class">Enable for class only (Lecturing)</option>
+                                <option value="exam">Enable for exam only (Exams)</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Controls where this subject appears for students and mentors.
+                            </p>
                         </div>
 
-                        {newSubject.isExamSubject && (
+                        {(newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both') && (
                             <div className="grid grid-cols-2 gap-4">
                                 <Input
                                     label="Max Marks"
@@ -446,7 +547,13 @@ const SubjectManager = () => {
                                                     {group.isExamSubject === false && (
                                                         <>
                                                             <span className="hidden sm:inline text-gray-300">|</span>
-                                                            <span className="text-amber-600 font-medium whitespace-nowrap">Non-Exam</span>
+                                                            <span className="text-amber-600 font-medium whitespace-nowrap">Class Only</span>
+                                                        </>
+                                                    )}
+                                                    {group.isClassSubject === false && (
+                                                        <>
+                                                            <span className="hidden sm:inline text-gray-300">|</span>
+                                                            <span className="text-blue-600 font-medium whitespace-nowrap">Exam Only</span>
                                                         </>
                                                     )}
                                                 </p>

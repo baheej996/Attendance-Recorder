@@ -27,11 +27,11 @@ export const BulkUploadButton = ({ type, onUploadSuccess }) => {
 
     return (
         <div className="relative group inline-block">
-            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium text-sm">
+            <Button className="flex items-center gap-2 shadow-sm whitespace-nowrap">
                 <FileSpreadsheet className="w-4 h-4" />
                 Bulk Upload
                 <ChevronDown className="w-3 h-3 opacity-70 group-hover:rotate-180 transition-transform" />
-            </button>
+            </Button>
 
             {/* Dropdown Menu */}
             <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right z-50">

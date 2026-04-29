@@ -3,11 +3,11 @@ import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Upload, FileText, X, Calendar, Info } from 'lucide-react';
-import { clsx } from 'clsx';
+import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Upload, FileText, X, Calendar, Info, Lock, ArrowRight } from 'lucide-react';
+import { cn } from '../../utils/cn';
 
 const StudentExamView = () => {
-    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings } = useData();
+    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings, students, updateStudent } = useData();
     const { showAlert, showConfirm } = useUI();
     const [activeExamId, setActiveExamId] = useState(null);
     const [selectedSubjectId, setSelectedSubjectId] = useState(null); // This is Subject NAME (linked to questions)
@@ -15,12 +15,62 @@ const StudentExamView = () => {
     const [attachments, setAttachments] = useState({});
     const [viewingMode, setViewingMode] = useState(false); // false = taking, true = viewing result
 
-    // 1. Resolve Student's Class Name (Moved up for Timer Effect)
     const studentClass = classes.find(c => c.id === currentUser?.classId);
+    
+    // Unique Device Fingerprint (Stored in browser session)
+    const [deviceId] = useState(() => {
+        let id = localStorage.getItem('samastha_device_id');
+        if (!id) {
+            id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('samastha_device_id', id);
+        }
+        return id;
+    });
 
-    // Timer State
     const [timeLeft, setTimeLeft] = useState(null); // in seconds
+    // Master Heartbeat: Forces UI re-calculation for scheduling every 10 seconds
+    const [tick, setTick] = useState(0);
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 10000);
+        return () => clearInterval(timer);
+    }, []);
 
+    // Robust Parser: Handles AM/PM, legacy DD-MM-YYYY, and ISO across all browsers
+    const parseFlexDate = (val) => {
+        if (!val) return null;
+        let cleanVal = val.trim();
+        
+        // Match: 24-04-2026 04:45 PM or 24/04/2026 etc.
+        const parts = cleanVal.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})\s+(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+        if (parts) {
+            let [_, d, m, y, h, mins, ampm] = parts;
+            h = parseInt(h);
+            if (ampm) {
+                ampm = ampm.toUpperCase();
+                if (ampm === 'PM' && h < 12) h += 12;
+                if (ampm === 'AM' && h === 12) h = 0;
+            }
+            cleanVal = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${h.toString().padStart(2, '0')}:${mins}`;
+        } else {
+            // Fallback for YYYY-MM-DD formats
+            cleanVal = cleanVal.replace(' ', 'T');
+        }
+
+        try {
+            const d = new Date(cleanVal);
+            if (isNaN(d.getTime())) return null;
+            // Assume IST if no timezone provided
+            if (!cleanVal.includes('+') && !cleanVal.includes('Z')) {
+                return new Date(cleanVal + ":00+05:30");
+            }
+            return d;
+        } catch (e) {
+            return null;
+        }
+    };
+    
+    // Now derived from tick re-renders
+    const now = new Date();
     // Timer Effect
     useEffect(() => {
         // Restore Session
@@ -39,8 +89,8 @@ const StudentExamView = () => {
         // Find setting for this specific exam/class/subject
         const setting = examSettings.find(s =>
             s.examId === activeExamId &&
-            s.classId === studentClass.name && // Using Class Name to match Mentor Settings
-            s.subjectId === selectedSubjectId
+            s.classId === currentUser.classId &&
+            (s.subjectId === selectedSubjectId || s.subjectName === selectedSubjectId)
         );
 
         const durationMins = setting?.duration ? parseInt(setting.duration) : 0;
@@ -123,7 +173,11 @@ const StudentExamView = () => {
     useEffect(() => {
         if (!activeExamId || !selectedSubjectId || viewingMode) return;
 
-        const setting = examSettings.find(s => s.examId === activeExamId && s.classId === currentUser.classId && s.subjectId === selectedSubjectId);
+        const setting = examSettings.find(s => 
+            s.examId === activeExamId && 
+            s.classId === currentUser.classId && 
+            (s.subjectId === selectedSubjectId || s.subjectName === selectedSubjectId)
+        );
         const durationMins = setting?.duration ? parseInt(setting.duration) : 0;
 
         if (durationMins > 0) {
@@ -169,13 +223,46 @@ const StudentExamView = () => {
     if (!studentClass) return <div className="p-8 text-center text-gray-500">Class information not found.</div>;
     const studentClassName = studentClass.name; // Restored for Render usage
 
-    const handleBack = () => {
+    const handleBack = async () => {
+        if (activeExamId) {
+            // Remove Session Lock
+            await updateStudent(currentUser.id, { activeExamSession: null });
+        }
+        
         localStorage.removeItem(`active_exam_session_${currentUser.id}`);
         setActiveExamId(null);
         setSelectedSubjectId(null);
         setTimeLeft(null);
         setAnswers({});
         setAttachments({});
+    };
+
+    const handleStartExam = async (examId, subjectName) => {
+        // Find actual subject ID
+        const sub = subjects.find(s => s.name === subjectName && s.classId === currentUser.classId);
+        if (!sub) return showAlert("Error", "Subject data not found.", "error");
+
+        const studentData = (students || []).find(s => s.id === currentUser.id);
+
+        // Security Check: Prevention of multi-device entry
+        if (studentData?.activeExamSession && studentData.activeExamSession.deviceId !== deviceId) {
+            showAlert("Access Denied", "An exam session is already active on another device. Please finish that session first.", "error");
+            return;
+        }
+
+        // Lock Session in Firestore
+        await updateStudent(currentUser.id, {
+            activeExamSession: {
+                examId,
+                subjectId: sub.id,
+                subjectName,
+                deviceId,
+                startedAt: new Date().toISOString()
+            }
+        });
+
+        setActiveExamId(examId);
+        setSelectedSubjectId(subjectName);
     };
 
 
@@ -194,11 +281,27 @@ const StudentExamView = () => {
     };
 
     // 4. Get Questions for the Active Exam & Subject
-    const examQuestions = activeExamId && selectedSubjectId ? questions.filter(q =>
-        q.examId === activeExamId &&
-        q.classId === studentClassName && // Match by Class Name (shared across divisions)
-        q.subjectId === selectedSubjectId
-    ) : [];
+    const examQuestions = activeExamId && selectedSubjectId ? questions.filter(q => {
+        // Find subject info to allow ID matching
+        const sub = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);
+        
+        if (q.examId !== activeExamId) return false;
+        
+        // Match subject by ID or Name
+        const subjectMatch = q.subjectId === selectedSubjectId || (sub && q.subjectId === sub.id);
+        if (!subjectMatch) return false;
+        
+        // Backwards compatibility or direct classId match
+        if (!q.shareMode) {
+            return q.classId === studentClassName || q.classId === currentUser.classId;
+        }
+        
+        // New explicit sharing mode
+        if (q.shareMode === 'Batch') return q.classId === studentClassName;
+        if (q.shareMode === 'Specific') return q.targetDivisions?.includes(currentUser.classId);
+        
+        return false;
+    }) : [];
 
     // Filter subjects that actually have questions for this exam?
     // Or just show all subjects this student has?
@@ -206,15 +309,6 @@ const StudentExamView = () => {
 
     // Group questions by Subject?
     // Better flow: Select Exam -> Select Subject -> Take Test.
-
-    const handleStartExam = (examId, subjectName) => {
-        localStorage.setItem(`active_exam_session_${currentUser.id}`, JSON.stringify({ examId, subjectName }));
-        setActiveExamId(examId);
-        setSelectedSubjectId(subjectName);
-        setAnswers({});
-        setAttachments({});
-        setViewingMode(false);
-    };
 
     const handleViewAnswers = (examId, subjectName, subjectId) => {
         setActiveExamId(examId);
@@ -270,7 +364,7 @@ const StudentExamView = () => {
         }
     };
 
-    const confirmSubmit = () => {
+    const confirmSubmit = async () => {
         localStorage.removeItem(`active_exam_session_${currentUser.id}`);
 
         // Clear Timer Storage
@@ -288,13 +382,19 @@ const StudentExamView = () => {
             answers: answers,
             examName: exams.find(e => e.id === activeExamId)?.name
         };
-        submitExam(submission);
 
-        // Show Success View? Or go back to list?
-        // Let's go to list or show Result immediately if allowed.
-        // For now, go back to list but maybe show "Submitted" toast.
-        showAlert("Submitted", "Your exam has been submitted successfully.", "success");
-        handleBack();
+        try {
+            await submitExam(submission);
+            
+            // Clear Session Lock
+            await updateStudent(currentUser.id, { activeExamSession: null });
+
+            showAlert("Submitted", "Your exam has been submitted successfully.", "success");
+            handleBack();
+        } catch (error) {
+            console.error("Submission error:", error);
+            showAlert("Failed", "Your submission failed. Please try again.", "error");
+        }
     };
 
 
@@ -321,100 +421,148 @@ const StudentExamView = () => {
                             </p>
 
                             {exam.instructions && (
-                                <div className="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
+                                <div className="mb-6 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3">
                                     <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-xs font-bold text-blue-700 uppercase mb-1">Instructions</p>
-                                        <p className="text-sm text-blue-800 whitespace-pre-line">{exam.instructions}</p>
+                                        <p className="text-[10px] font-black text-blue-700 uppercase mb-1 tracking-widest">Instructions</p>
+                                        <p className="text-sm text-blue-800 whitespace-pre-line leading-relaxed">{exam.instructions}</p>
                                     </div>
                                 </div>
                             )}
 
-                            <h4 className="font-semibold text-gray-700 mb-3">Available Subjects:</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                {subjects.filter(s => s.classId === currentUser.classId && s.isExamSubject !== false).map(subj => { // Only show subjects linked to student's specific class ID?
-                                    // Actually questions are linked to Class Name.
-                                    // But Subjects are linked to Class ID? 
-                                    // In DataContext seed: `classId: id1A`.
-                                    // So yes, filter subjects by my class ID.
-                                    // Then check if questions exist for this subject + exam.
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">Available Subjects</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                                {subjects.filter(s => s.classId === currentUser.classId && s.isExamSubject !== false).map(subj => {
+                                    const qCount = questions.filter(q => {
+                                        if (q.examId !== exam.id) return false;
+                                        const cidMatch = (q.classId === studentClassName || q.classId === currentUser.classId);
+                                        const sidMatch = (
+                                            q.subjectId?.toString().toLowerCase().trim() === subj.name?.toString().toLowerCase().trim() || 
+                                            q.subjectId?.toString().toLowerCase().trim() === subj.id?.toString().toLowerCase().trim()
+                                        );
+                                        return cidMatch && sidMatch;
+                                    }).length;
 
-                                    const qCount = questions.filter(q =>
-                                        q.examId === exam.id &&
-                                        q.classId === studentClassName &&
-                                        q.subjectId === subj.name // questions store Subject Name? "English"
-                                        // In QuestionBank, value={name} so yes.
-                                    ).length;
+                                    const isDone = hasTaken(exam.id, subj.id, subj.name);
+                                    const setting = examSettings.find(s => 
+                                        s.examId === exam.id && 
+                                        s.classId === currentUser.classId && 
+                                        (s.subjectId === subj.id || s.subjectId === subj.name)
+                                    ) || { isActive: false, isPublished: false, duration: 0 };
 
-                                    // Wait, subjectId in questions is Name?
-                                    // in QuestionBank: value={name} -> selectedSubjectId -> addQuestion({ subjectId: selectedSubjectId })
-                                    // So yes, questions.subjectId is the Name (e.g., "English").
-
-                                    const isDone = hasTaken(exam.id, subj.id, subj.name); // Check by ID or Name fallback
-
-                                    // Composite Logic for taking exam
-                                    // 1. Admin Exam Active (Checked by activeExams filter)
-                                    // 2. Mentor Subject Setting Active (Default to true if not set)
-                                    // 3. Time Window (if set)
-                                    // Lookup using Class Name for strict division-level isolation
-                                    // Lookup using Class ID (GUID) to match MarksEntry settings
-                                    const setting = examSettings.find(s => s.examId === exam.id && s.classId === currentUser.classId && s.subjectId === subj.name)
-                                        || { isActive: false, isPublished: false, duration: 0 };
-
-                                    const now = new Date();
-                                    const start = setting.startTime ? new Date(setting.startTime) : null;
-                                    const end = setting.endTime ? new Date(setting.endTime) : null;
-
-                                    // Robust Date Check
-                                    const isStartValid = start && !isNaN(start.getTime());
-                                    const isEndValid = end && !isNaN(end.getTime());
-
-                                    const withinTime = (!isStartValid || now >= start) && (!isEndValid || now <= end);
-
-                                    const isSubjectActive = setting.isActive !== false; // Active unless explicitly false
-
-                                    const canTake = isSubjectActive && withinTime;
-
-                                    // Composite Logic for Viewing Results
-                                    // 1. Admin Exam Published (exam.status === 'Published')
-                                    // 2. Mentor Subject Published (setting.isPublished)
+                                    const start = parseFlexDate(setting.startTime);
+                                    const end = parseFlexDate(setting.endTime);
+                                    
+                                    // Automation Logic: 
+                                    // If manually Inactive (setting.isActive === false) AND NO schedule, it's disabled.
+                                    // If schedule exists, schedule determines status regardless of setting.isActive override if not explicitly 'blocked'.
+                                    const hasSchedule = !!start;
+                                    const isCurrentlyActive = setting.isActive || (start && now >= start && (!end || now <= end));
+                                    const isUpcoming = start && now < start;
+                                    const isExpired = end && now > end;
+                                    
+                                    const hasQuestions = qCount > 0;
+                                    const canTake = hasQuestions && isCurrentlyActive;
                                     const canViewResults = isDone && exam.status === 'Published' && setting.isPublished;
 
-                                    return (
-                                        <div key={subj.id} className="border rounded-lg p-4 flex flex-col justify-between hover:border-indigo-200 transition-colors">
-                                            <div>
-                                                <p className="font-bold text-gray-800">{subj.name}</p>
-                                                <p className="text-sm text-gray-500">{qCount} Questions</p>
-                                            </div>
+                                    const session = (students || []).find(s => s.id === currentUser.id)?.activeExamSession;
+                                    const isLockedByOtherDevice = session && session.deviceId !== deviceId && session.examId === exam.id && (session.subjectId === subj.id || session.subjectName === subj.name);
 
-                                            <div className="mt-4">
-                                                {isDone ? (
-                                                    <div className="space-y-2">
-                                                        <span className="flex items-center gap-2 text-green-600 font-medium text-sm">
-                                                            <CheckCircle className="w-4 h-4" /> Completed
-                                                        </span>
-                                                        {canViewResults && (
-                                                            <Button
-                                                                onClick={() => handleViewAnswers(exam.id, subj.name, subj.id)}
-                                                                variant="secondary"
-                                                                className="w-full text-xs h-8 flex items-center justify-center gap-2"
-                                                            >
-                                                                <Eye className="w-3 h-3" /> View Answers
-                                                            </Button>
+                                    return (
+                                        <div key={subj.id} className={cn(
+                                            "bg-gray-50/50 rounded-2xl p-4 border transition-all hover:shadow-sm flex flex-col justify-between",
+                                            canTake ? "border-indigo-200 bg-white" : "border-gray-100"
+                                        )}>
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div className="min-w-0">
+                                                    <p className="font-black text-gray-900 leading-tight truncate">{subj.name}</p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{qCount} Questions</span>
+                                                        {setting.duration > 0 && (
+                                                            <>
+                                                                <span className="text-gray-300">•</span>
+                                                                <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-tighter">{setting.duration} Mins</span>
+                                                            </>
                                                         )}
                                                     </div>
-                                                ) : qCount > 0 ? (
-                                                    <Button
+                                                </div>
+                                                {isDone && (
+                                                    <span className="shrink-0 p-1 px-2 bg-green-100 text-green-700 text-[10px] font-black rounded-lg uppercase tracking-tighter">Finished</span>
+                                                )}
+                                            </div>
+
+                                            {/* Time Info / Scheduled Badge */}
+                                    {(start || end) && !isDone && (
+                                        <div className="mb-4">
+                                            {isUpcoming ? (
+                                                <div className="bg-amber-50 border border-amber-100 rounded-xl p-2.5 flex items-center gap-2">
+                                                    <Clock className="w-4 h-4 text-amber-600" />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Scheduled</span>
+                                                        <span className="text-xs font-bold text-amber-600">
+                                                            {start.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1">
+                                                    {end && !isExpired && (
+                                                        <p className="text-[10px] text-indigo-600 font-bold flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" />
+                                                            Ends: {end.toLocaleString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
+                                                    )}
+                                                    {isExpired && (
+                                                        <p className="text-[10px] text-red-500 font-bold flex items-center gap-1">
+                                                            <XCircle className="w-3 h-3" />
+                                                            Expired
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                            <div className="mt-auto">
+                                                {isDone ? (
+                                                    canViewResults ? (
+                                                        <button
+                                                            onClick={() => handleViewAnswers(exam.id, subj.name, subj.id)}
+                                                            className="w-full py-2 bg-white border border-gray-200 text-indigo-600 font-black text-[10px] uppercase tracking-widest rounded-xl shadow-sm active:scale-95 transition-all"
+                                                        >
+                                                            View Answers
+                                                        </button>
+                                                    ) : (
+                                                        <div className="w-full py-2 bg-gray-100 text-gray-400 font-bold text-[10px] text-center uppercase tracking-widest rounded-xl">
+                                                            Awaiting Result
+                                                        </div>
+                                                    )
+                                                ) : isLockedByOtherDevice ? (
+                                                    <div className="flex items-center gap-2 py-2 px-3 bg-amber-50 text-amber-600 rounded-xl text-[10px] font-black uppercase border border-amber-100 leading-tight">
+                                                        <Lock className="w-3.5 h-3.5 shrink-0" />
+                                                        Active elsewhere
+                                                    </div>
+                                                ) : hasQuestions ? (
+                                                    <button
                                                         onClick={() => handleStartExam(exam.id, subj.name)}
-                                                        variant="primary"
-                                                        className="w-full text-sm"
                                                         disabled={!canTake}
-                                                        title={!canTake ? "Exam is currently closed by your mentor" : "Start Exam"}
+                                                        className={cn(
+                                                            "w-full py-2.5 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95 shadow-md",
+                                                            canTake 
+                                                                ? "bg-indigo-600 text-white shadow-indigo-100" 
+                                                                : "bg-gray-200 text-gray-400 border border-gray-100 shadow-none cursor-not-allowed"
+                                                        )}
                                                     >
-                                                        {canTake ? "Take Exam" : (setting.isActive ? "Scheduled" : "Closed")}
-                                                    </Button>
+                                                        {canTake ? "Start Exam" : (
+                                                            !hasQuestions ? "No Questions" :
+                                                            isUpcoming ? "Scheduled" : 
+                                                            isExpired ? "Expired" : "Disabled"
+                                                        )}
+                                                    </button>
                                                 ) : (
-                                                    <span className="text-gray-400 text-sm italic">No Questions</span>
+                                                    <div className="w-full py-2 bg-gray-100 text-gray-400 font-bold text-[10px] text-center uppercase tracking-widest rounded-xl">
+                                                        No Questions
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -467,7 +615,7 @@ const StudentExamView = () => {
                             const isCorrect = isMCQ && q.correctAnswer === myAns;
 
                             return (
-                                <div key={q.id} className={clsx(
+                                <div key={q.id} className={cn(
                                     "p-6 rounded-xl border relative overflow-hidden",
                                     isMCQ
                                         ? (isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")
@@ -484,7 +632,7 @@ const StudentExamView = () => {
                                     <div className="pl-8 space-y-4">
                                         <div className="bg-white/50 p-3 rounded-lg">
                                             <p className="text-xs uppercase font-bold text-gray-500 mb-1">Your Answer:</p>
-                                            <p className={clsx("font-medium",
+                                            <p className={cn("font-medium",
                                                 isMCQ && (isCorrect ? "text-green-700" : "text-red-700")
                                             )}>
                                                 {myAns || "(Skipped)"}
@@ -582,21 +730,27 @@ const StudentExamView = () => {
                                     {q.type === 'MCQ' ? (
                                         <div className="space-y-2">
                                             {q.options.map((opt, i) => (
-                                                <label key={i} className={clsx(
-                                                    "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                                                <label key={i} className={cn(
+                                                    "flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-95 cursor-pointer touch-manipulation",
                                                     answers[q.id] === opt
-                                                        ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200"
-                                                        : "bg-white border-gray-200 hover:bg-gray-50"
+                                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100 ring-2 ring-indigo-200"
+                                                        : "bg-white border-gray-100 text-gray-700 hover:border-indigo-200 shadow-sm"
                                                 )}>
+                                                    <div className={cn(
+                                                        "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0",
+                                                        answers[q.id] === opt ? "bg-white border-white" : "border-gray-200"
+                                                    )}>
+                                                        {answers[q.id] === opt && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>}
+                                                    </div>
+                                                    <span className="text-sm font-bold">{opt}</span>
                                                     <input
                                                         type="radio"
                                                         name={`q-${q.id}`}
                                                         value={opt}
                                                         checked={answers[q.id] === opt}
                                                         onChange={() => handleAnswerChange(q.id, opt)}
-                                                        className="text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                                                        className="hidden"
                                                     />
-                                                    <span className="text-gray-700">{opt}</span>
                                                 </label>
                                             ))}
                                         </div>

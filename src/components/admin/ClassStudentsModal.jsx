@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Search, Trash2, ArrowRightLeft, UserX, AlertTriangle } from 'lucide-react';
+import { Search, Trash2, ArrowRightLeft, UserX, AlertTriangle, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 
@@ -17,7 +18,7 @@ export const ClassStudentsModal = ({
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStudent, setSelectedStudent] = useState(null);
-    const [actionType, setActionType] = useState(null); // 'transfer' | 'delete'
+    const [actionType, setActionType] = useState(null); // 'transfer' | 'delete' | 'transfer-confirm'
     const [targetClassId, setTargetClassId] = useState('');
 
     if (!isOpen || !classItem) return null;
@@ -40,11 +41,15 @@ export const ClassStudentsModal = ({
     const handleConfirm = () => {
         if (actionType === 'delete') {
             onDelete(selectedStudent.id);
+            handleCancelAction();
         } else if (actionType === 'transfer') {
             if (!targetClassId) return;
+            // Move to confirmation step
+            setActionType('transfer-confirm');
+        } else if (actionType === 'transfer-confirm') {
             onTransfer(selectedStudent.id, targetClassId);
+            handleCancelAction();
         }
-        handleCancelAction();
     };
 
     const handleCancelAction = () => {
@@ -57,37 +62,63 @@ export const ClassStudentsModal = ({
     const renderActionModal = () => {
         if (!selectedStudent) return null;
 
-        const isDelete = actionType === 'delete';
-        const title = isDelete ? 'Remove Student' : 'Transfer Student';
+        if (actionType === 'delete') {
+            return (
+                <ConfirmationModal
+                    isOpen={true}
+                    onClose={handleCancelAction}
+                    onConfirm={handleConfirm}
+                    title="Remove Student"
+                    message={`Are you sure you want to remove ${selectedStudent.name}? This action cannot be undone.`}
+                    confirmText="Remove"
+                    isDanger
+                />
+            );
+        }
 
-        return (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/20 backdrop-blur-[1px] animate-in fade-in duration-200">
-                <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden p-6 border border-gray-100 transform transition-all scale-100 opacity-100 animate-in zoom-in-95 duration-200">
-                    <div className="flex flex-col items-center text-center mb-6">
-                        <div className={clsx(
-                            "w-12 h-12 rounded-full flex items-center justify-center mb-3",
-                            isDelete ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
-                        )}>
-                            {isDelete ? <UserX className="w-6 h-6" /> : <ArrowRightLeft className="w-6 h-6" />}
+        if (actionType === 'transfer-confirm') {
+            const targetClass = classes.find(c => c.id === targetClassId);
+            return (
+                <ConfirmationModal
+                    isOpen={true}
+                    onClose={() => setActionType('transfer')}
+                    onConfirm={handleConfirm}
+                    title="Confirm Transfer"
+                    message={`Are you sure you want to transfer ${selectedStudent.name} to Class ${targetClass?.name}-${targetClass?.division}?`}
+                    confirmText="Yes, Transfer"
+                />
+            );
+        }
+
+        if (actionType === 'transfer') {
+            return createPortal(
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden p-6 border border-gray-100 transform transition-all scale-100 opacity-100 animate-in zoom-in-95 duration-200 relative">
+                        <button
+                            onClick={handleCancelAction}
+                            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        
+                        <div className="flex flex-col items-center text-center mb-6">
+                            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-indigo-100 text-indigo-600 shadow-sm">
+                                <ArrowRightLeft className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">Transfer Student</h3>
+                            <p className="text-sm text-gray-500 mt-1 font-medium">
+                                Select destination class for {selectedStudent.name}
+                            </p>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                            {isDelete
-                                ? `Are you sure you want to remove ${selectedStudent.name}? This action cannot be undone.`
-                                : `Select destination class for ${selectedStudent.name}`
-                            }
-                        </p>
-                    </div>
 
-                    {!isDelete && (
                         <div className="mb-6 text-left">
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Target Class</label>
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Target Class</label>
                             <select
                                 value={targetClassId}
                                 onChange={(e) => setTargetClassId(e.target.value)}
-                                className="w-full p-2.5 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white outline-none transition-all shadow-sm"
                             >
-                                <option value="">Select Class...</option>
+                                <option value="">Select Destination...</option>
                                 {classes
                                     .filter(c => c.id !== classItem.id) // Exclude current
                                     .map(c => (
@@ -97,28 +128,30 @@ export const ClassStudentsModal = ({
                                     ))}
                             </select>
                         </div>
-                    )}
 
-                    <div className="flex gap-3">
-                        <Button
-                            variant="secondary"
-                            onClick={handleCancelAction}
-                            className="flex-1"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant={isDelete ? "danger" : "default"}
-                            onClick={handleConfirm}
-                            disabled={!isDelete && !targetClassId}
-                            className="flex-1"
-                        >
-                            {isDelete ? "Remove" : "Transfer"}
-                        </Button>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="secondary"
+                                onClick={handleCancelAction}
+                                className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-100"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleConfirm}
+                                disabled={!targetClassId}
+                                className="flex-1 shadow-md shadow-indigo-100"
+                            >
+                                Continue
+                            </Button>
+                        </div>
                     </div>
-                </div>
-            </div>
-        );
+                </div>,
+                document.body
+            );
+        }
+
+        return null;
     };
 
     return (
@@ -153,26 +186,26 @@ export const ClassStudentsModal = ({
                                         className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors group"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shadow-sm">
                                                 {index + 1}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-gray-900">{student.name}</p>
-                                                <p className="text-xs text-gray-500">{student.registerNo || 'No Reg No'}</p>
+                                                <p className="font-bold text-gray-900 text-sm">{student.name}</p>
+                                                <p className="text-[11px] text-gray-400 font-medium tracking-tight uppercase">{student.registerNo || 'No Reg No'}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center gap-1.5">
                                             <button
                                                 onClick={() => handleActionClick(student, 'transfer')}
-                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                title="Transfer"
+                                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all border border-transparent hover:border-indigo-100 shadow-sm sm:shadow-none"
+                                                title="Transfer Student"
                                             >
                                                 <ArrowRightLeft className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleActionClick(student, 'delete')}
-                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                title="Remove"
+                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 shadow-sm sm:shadow-none"
+                                                title="Remove Student"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -183,9 +216,9 @@ export const ClassStudentsModal = ({
                         )}
                     </div>
 
-                    <div className="pt-4 border-t mt-auto flex justify-between items-center text-sm text-gray-500">
-                        <span>Total: {classStudents.length} Students</span>
-                        <Button variant="secondary" onClick={onClose}>Close</Button>
+                    <div className="pt-4 border-t mt-auto flex justify-between items-center">
+                        <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">{classStudents.length} Students</span>
+                        <Button variant="secondary" onClick={onClose} className="px-6">Close</Button>
                     </div>
                 </div>
             </Modal>

@@ -219,14 +219,52 @@ const StudentRamadan = () => {
         if (!data || data.length === 0) return null;
 
         return (
-            <Card className="mt-8 border border-gray-100 shadow-sm bg-white overflow-hidden">
-                <div className={`p-4 border-b ${type === 'fasting' ? 'bg-indigo-50/50 border-indigo-100' : 'bg-purple-50/50 border-purple-100'}`}>
-                    <h3 className={`font-bold flex items-center gap-2 ${type === 'fasting' ? 'text-indigo-900' : 'text-purple-900'}`}>
+            <Card className="mt-8 border border-gray-100 shadow-sm bg-white overflow-hidden rounded-3xl">
+                <div className={`p-5 border-b ${type === 'fasting' ? 'bg-indigo-50/50 border-indigo-100' : 'bg-purple-50/50 border-purple-100'}`}>
+                    <h3 className={`font-black flex items-center gap-2 ${type === 'fasting' ? 'text-indigo-900' : 'text-purple-900'}`}>
                         <Trophy className={`w-5 h-5 ${type === 'fasting' ? 'text-indigo-500' : 'text-purple-500'}`} />
-                        Class Leaderboard
+                        Class Top 10
                     </h3>
                 </div>
-                <div className="overflow-x-auto">
+                
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-50">
+                    {data.slice(0, 10).map((student) => {
+                        const isMe = student.id === currentUser?.id;
+                        return (
+                            <div key={student.id} className={clsx("p-4 flex items-center justify-between", isMe && (type === 'fasting' ? "bg-indigo-50/50" : "bg-purple-50/50"))}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                                        {student.rank === 1 ? <Trophy className="w-5 h-5 text-yellow-500" /> :
+                                            student.rank === 2 ? <Medal className="w-5 h-5 text-gray-400" /> :
+                                                student.rank === 3 ? <Medal className="w-5 h-5 text-orange-600" /> :
+                                                    <span className="text-sm font-black text-gray-400">{student.rank}</span>}
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-gray-900 text-sm flex items-center gap-2">
+                                            {student.name}
+                                            {isMe && <span className="text-[8px] font-black px-1.5 py-0.5 bg-white text-gray-400 rounded border border-gray-100 uppercase tracking-widest">YOU</span>}
+                                        </p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                                            {type === 'fasting' ? 'Fasting Record' : `Juz ${student.juz} • Pg ${student.lastPage}`}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className={clsx("text-lg font-black leading-none", type === 'fasting' ? 'text-indigo-600' : 'text-purple-600')}>
+                                        {type === 'fasting' ? student.totalFasts : student.completedKhatms}
+                                    </p>
+                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                                        {type === 'fasting' ? 'Fasts' : 'Khatms'}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
                             <tr>
@@ -390,22 +428,22 @@ const StudentRamadan = () => {
                         <div className="grid grid-cols-5 md:grid-cols-10 gap-2 sm:gap-4 mt-6">
                             {RAMADAN_DAYS.map(day => {
                                 const log = getLogForDay(day);
-                                let bgClass = "bg-gray-50 hover:bg-indigo-50 border-gray-200 text-gray-600";
-                                if (log?.status === 'Fasting') bgClass = "bg-green-100 border-green-300 text-green-800 font-bold shadow-sm";
-                                if (log?.status === 'Not Fasting') bgClass = "bg-red-100 border-red-300 text-red-800 font-bold shadow-sm";
-                                if (log?.status === 'Excused') bgClass = "bg-yellow-100 border-yellow-300 text-yellow-800 font-bold shadow-sm";
+                                let bgClass = "bg-white hover:bg-indigo-50 border-gray-100 text-gray-400";
+                                if (log?.status === 'Fasting') bgClass = "bg-green-500 border-green-500 text-white font-black shadow-lg shadow-green-100";
+                                if (log?.status === 'Not Fasting') bgClass = "bg-red-500 border-red-500 text-white font-black shadow-lg shadow-red-100";
+                                if (log?.status === 'Excused') bgClass = "bg-orange-500 border-orange-500 text-white font-black shadow-lg shadow-orange-100";
 
                                 return (
                                     <button
                                         key={day}
                                         onClick={() => setSelectedDay(parseInt(day))}
                                         className={clsx(
-                                            "aspect-square flex flex-col items-center justify-center rounded-xl border transition-all duration-200",
+                                            "aspect-square flex flex-col items-center justify-center rounded-2xl border transition-all duration-200 active:scale-95",
                                             bgClass
                                         )}
                                     >
-                                        <span className="text-xs sm:text-sm font-medium opacity-80 mb-1">Day</span>
-                                        <span className="text-lg sm:text-xl">{day}</span>
+                                        <span className="text-[8px] uppercase tracking-widest font-black opacity-60 mb-1">Day</span>
+                                        <span className="text-lg font-black leading-none">{day}</span>
                                     </button>
                                 );
                             })}

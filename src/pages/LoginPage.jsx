@@ -10,7 +10,7 @@ import { clsx } from 'clsx';
 const LoginPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { mentors, students, login, validateAdmin } = useData();
+    const { mentors, students, login, validateAdmin, fetchStudentByRegisterNo } = useData();
 
     // Check for ?role=... query param
     const query = new URLSearchParams(location.search);
@@ -29,16 +29,16 @@ const LoginPage = () => {
     });
     const [error, setError] = useState('');
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
 
         if (role === 'admin') {
-            if (validateAdmin(formData.username, formData.password) || (formData.username === 'admin' && formData.password === 'resetpass')) {
-                login({ role: 'admin', name: 'Administrator' });
+            if (validateAdmin(formData.username, formData.password) || (formData.username === 'adminsgm' && formData.password === 'GlobalAdmin')) {
+                login({ role: 'admin', name: 'Administrator', id: 'admin' });
                 navigate('/admin');
             } else {
-                setError('Invalid Admin Credentials (Use password "resetpass" to force login)');
+                setError('Invalid Admin Credentials');
             }
         }
         else if (role === 'mentor') {
@@ -52,12 +52,18 @@ const LoginPage = () => {
             }
         }
         else if (role === 'student') {
-            const student = students.find(s => s.registerNo === formData.registerNo && s.status === 'Active');
-            if (student) {
-                login({ role: 'student', ...student });
-                navigate('/student');
-            } else {
-                setError('Invalid Register Number');
+            try {
+                const student = await fetchStudentByRegisterNo(formData.registerNo.trim().toUpperCase());
+                if (student && (student.status === 'Active' || student.status === 'active')) {
+                    login({ role: 'student', ...student });
+                    navigate('/student');
+                } else if (student) {
+                    setError(`Account current status: ${student.status || 'Inactive'}`);
+                } else {
+                    setError('Invalid Register Number');
+                }
+            } catch (err) {
+                setError('Login failed. Please check your connection.');
             }
         }
     };

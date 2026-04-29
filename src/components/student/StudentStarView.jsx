@@ -209,27 +209,27 @@ const StudentStarView = () => {
             {/* View Header */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Star className="w-8 h-8 text-yellow-500 fill-yellow-500" />
-                        Star of the Month
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 flex items-center gap-2 md:gap-3">
+                        <Star className="w-8 h-8 md:w-10 md:h-10 text-yellow-500 fill-yellow-500" />
+                        Class Stars
                     </h1>
-                    <p className="text-gray-500">View the top performers of your class</p>
+                    <p className="text-sm md:text-base text-gray-500 font-medium mt-0.5 md:mt-1">Meet the top performers of this month.</p>
                 </div>
-                <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                <div className="flex bg-gray-50 border border-gray-200 rounded-2xl p-1.5 shadow-sm w-full md:w-auto">
                     <select
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                        className="p-2 text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer"
+                        className="p-1 px-3 text-xs md:text-sm font-black uppercase tracking-widest text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer flex-1 md:flex-none"
                     >
                         {months.map((m, i) => (
                             <option key={i} value={i}>{m}</option>
                         ))}
                     </select>
-                    <div className="w-px bg-gray-200 my-1"></div>
+                    <div className="w-px bg-gray-200 my-1.5"></div>
                     <select
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(Number(e.target.value))}
-                        className="p-2 text-sm font-medium text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer"
+                        className="p-1 px-3 text-xs md:text-sm font-black uppercase tracking-widest text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer flex-1 md:flex-none"
                     >
                         {years.map(y => (
                             <option key={y} value={y}>{y}</option>
@@ -258,40 +258,46 @@ const StudentStarView = () => {
                 <div className="space-y-6">
                     {/* Celebration Button for Winner */}
                     {isMeWinner && !showPoster && (
-                        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_auto] animate-gradient rounded-xl p-8 text-center text-white shadow-xl relative overflow-hidden">
-                            <div className="absolute inset-0 bg-white/10 backdrop-blur-[1px] opacity-0 hover:opacity-100 transition-opacity pointer-events-none"></div>
+                        <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 rounded-3xl p-6 md:p-8 text-center text-white shadow-xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                                <Trophy className="w-48 h-48" />
+                            </div>
                             <div className="relative z-10">
-                                <h2 className="text-3xl font-bold mb-2">You are the Star! 🌟</h2>
-                                <p className="mb-6 text-indigo-100">Congratulations on your outstanding performance this month.</p>
+                                <h2 className="text-2xl md:text-4xl font-black mb-2 drop-shadow-lg">You are the Star! 🌟</h2>
+                                <p className="mb-6 text-indigo-100 text-sm md:text-base font-medium">Congratulations for your outstanding spiritual progress.</p>
                                 <button
                                     onClick={handleCelebrate}
-                                    className="px-8 py-3 bg-white text-indigo-600 rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 mx-auto"
+                                    className="px-8 py-3.5 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center gap-2 mx-auto"
                                 >
-                                    <PartyPopper className="w-5 h-5" /> Celebrate & Get Certificate
+                                    <PartyPopper className="w-5 h-5" /> Get Your Certificate
                                 </button>
                             </div>
                         </div>
                     )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                         {winners.map(winner => (
-                            <div key={winner.id} className={`relative rounded-2xl p-6 text-center shadow-lg overflow-hidden ${winner.id === currentUser.id ? 'bg-indigo-600 text-white ring-4 ring-yellow-400 ring-offset-2' : 'bg-white text-gray-800 border border-gray-200'}`}>
+                            <div key={winner.id} className={clsx(
+                                "relative rounded-3xl p-6 text-center shadow-lg overflow-hidden transition-all hover:scale-[1.02]",
+                                winner.id === currentUser.id 
+                                    ? "bg-gradient-to-br from-indigo-600 to-indigo-800 text-white ring-4 ring-yellow-400 ring-offset-4" 
+                                    : "bg-white text-gray-800 border border-gray-100"
+                            )}>
                                 <div className="flex flex-col items-center relative z-10">
-                                    <div className="w-20 h-20 rounded-full p-1 mb-4 bg-gray-100">
-                                        <div className="w-full h-full rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-3xl font-bold border-2 border-white">
+                                    <div className="w-20 h-20 rounded-full p-1 mb-4 bg-gray-100 shadow-inner">
+                                        <div className="w-full h-full rounded-full bg-white text-indigo-600 flex items-center justify-center text-3xl font-black border-2 border-indigo-50">
                                             {winner.name.charAt(0)}
                                         </div>
                                     </div>
-                                    <h3 className="text-xl font-bold mb-1">{winner.name}</h3>
-                                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${winner.id === currentUser.id ? 'text-indigo-200' : 'text-gray-400'}`}>
+                                    <h3 className="text-xl font-black mb-1">{winner.name}</h3>
+                                    <p className={clsx("text-[10px] font-black uppercase tracking-widest mb-1", winner.id === currentUser.id ? 'text-indigo-200' : 'text-gray-400')}>
                                         {months[selectedMonth]} {selectedYear}
                                     </p>
-                                    <p className={`text-sm mb-4 ${winner.id === currentUser.id ? 'text-indigo-100' : 'text-gray-600'}`}>
-                                        {winner.id === currentUser.id ? 'You' : `Rank #1`}
+                                    <p className={clsx("text-sm font-bold mb-4", winner.id === currentUser.id ? 'text-indigo-100' : 'text-gray-500')}>
+                                        {winner.id === currentUser.id ? 'Winner (You)' : `Top Rank #1`}
                                     </p>
 
-                                    <div className={`px-4 py-1 rounded-full text-sm font-bold ${winner.id === currentUser.id ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700'}`}>
-                                        {winner.finalScore.toFixed(1)}% Score
+                                    <div className={clsx("px-5 py-2 rounded-2xl text-xs font-black uppercase tracking-wider", winner.id === currentUser.id ? 'bg-white/10 text-white' : 'bg-indigo-50 text-indigo-700 shadow-sm')}>
+                                        {winner.finalScore.toFixed(0)}% Score
                                     </div>
                                 </div>
                             </div>
@@ -299,22 +305,34 @@ const StudentStarView = () => {
                     </div>
 
                     {/* Simple List for others */}
-                    <Card className="max-w-3xl mx-auto">
-                        <div className="p-4 border-b border-gray-100 font-bold text-gray-700">Top Performers</div>
-                        <div className="divide-y divide-gray-100">
-                            {results.slice(0, 10).map((student, idx) => (
-                                <div key={student.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
-                                    <div className="flex items-center gap-3">
-                                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${idx < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>
-                                            {idx + 1}
-                                        </span>
-                                        <span className={student.id === currentUser.id ? 'font-bold text-indigo-600' : 'text-gray-700'}>
-                                            {student.name} {student.id === currentUser.id && '(You)'}
-                                        </span>
+                    <Card className="max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+                        <div className="p-5 border-b border-gray-50 font-black text-gray-400 text-[10px] uppercase tracking-widest">Other Top Performers</div>
+                        <div className="divide-y divide-gray-50">
+                            {results.slice(0, 10).map((student, idx) => {
+                                const isMe = student.id === currentUser.id;
+                                return (
+                                    <div key={student.id} className={clsx("flex items-center justify-between p-4 px-5 transition-colors", isMe ? "bg-indigo-50" : "bg-white hover:bg-gray-50")}>
+                                        <div className="flex items-center gap-4">
+                                            <span className={clsx(
+                                                "w-6 h-6 flex items-center justify-center rounded-lg text-xs font-black",
+                                                idx < 3 ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-400"
+                                            )}>
+                                                {idx + 1}
+                                            </span>
+                                            <div>
+                                                <span className={clsx("block text-sm font-black", isMe ? "text-indigo-700" : "text-gray-900")}>
+                                                    {student.name}
+                                                </span>
+                                                {isMe && <span className="text-[8px] font-black uppercase tracking-tighter text-indigo-400 leading-none">Your Rank</span>}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block font-black text-gray-900 leading-none">{student.finalScore.toFixed(0)}</span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-gray-300">Score</span>
+                                        </div>
                                     </div>
-                                    <span className="font-mono font-medium text-gray-600">{student.finalScore.toFixed(0)}%</span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </Card>
                 </div>

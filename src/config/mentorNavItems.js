@@ -15,17 +15,27 @@ import {
     Star,
     Moon,
     Trophy,
-    Book
+    Book,
+    Repeat,
+    ClipboardList,
+    Bell,
+    UserPlus,
+    FileBarChart
 } from 'lucide-react';
 
 export const MENTOR_NAV_ITEMS = [
     { id: 'attendance', icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
+    { id: 'tasks', icon: ClipboardList, label: 'Professional Tasks', path: '/mentor/tasks' },
+    { id: 'evaluations', icon: FileBarChart, label: 'Monthly Evaluation', path: '/mentor/evaluations' },
+    { id: 'notifications', icon: Bell, label: 'Notifications', path: '/mentor/notifications' },
+    { id: 'admissions', icon: UserPlus, label: 'Admission Request', path: '/mentor/admissions' },
     { id: 'leaves', icon: UserCheck, label: 'Leave Requests', path: '/mentor/leaves' },
     { id: 'chat', icon: MessageSquare, label: 'Chat', path: '/mentor/chat' },
     { id: 'activities', icon: Layers, label: 'Activities', path: '/mentor/activities' },
     { id: 'logbook', icon: BookOpen, label: 'Class Log Book', path: '/mentor/logbook' },
     { id: 'subjects', icon: Book, label: 'Subjects (Books)', path: '/mentor/subjects' },
     { id: 'prayer', icon: Calendar, label: 'Prayer Chart', path: '/mentor/prayer-chart' },
+    { id: 'quran-recitation', icon: BookOpen, label: 'Quran Recitation', path: '/mentor/quran-recitation' },
     { id: 'ramadan', icon: Moon, label: 'Ramadan', path: '/mentor/ramadan' },
     { id: 'print', icon: Printer, label: 'Print Attendance', path: '/mentor/print' },
     { id: 'questions', icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
@@ -34,6 +44,7 @@ export const MENTOR_NAV_ITEMS = [
     { id: 'stats', icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
     { id: 'leaderboard', icon: Trophy, label: 'Leaderboard', path: '/mentor/leaderboard' },
     { id: 'batches', icon: Users, label: 'Batches', path: '/mentor/batches' },
+    { id: 'substitution', icon: Repeat, label: 'Class Substitution', path: '/mentor/substitution' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/mentor/settings' },
     { id: 'help', icon: Info, label: 'Help', path: '/mentor/help' },
 ];

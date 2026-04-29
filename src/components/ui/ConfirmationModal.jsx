@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, AlertTriangle } from 'lucide-react';
 import { Button } from './Button';
 import { clsx } from 'clsx';
@@ -6,8 +7,8 @@ import { clsx } from 'clsx';
 export const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Delete", cancelText = "Cancel", isDanger = false, autoClose = true, children }) => {
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    return createPortal(
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden transform transition-all scale-100 opacity-100 animate-in zoom-in-95 duration-200">
                 <div className="p-6 relative">
                     <button
@@ -57,6 +58,7 @@ export const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, 
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

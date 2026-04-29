@@ -99,6 +99,22 @@ const StarOfTheMonth = () => {
         if (selectedClassId === 'All') return;
         try {
             await saveStarDeclaration({ classId: selectedClassId, month: selectedMonth, year: selectedYear, status: 'Declared' });
+            
+            // Send notification to the class
+            const { addNotification } = useData(); // Correctly get addNotification if not in destructuring (it is)
+            const className = classes.find(c => c.id === selectedClassId)?.name || 'your class';
+            
+            await addNotification({
+                title: 'Star of the Month Declared!',
+                message: `The Star of the Month results for ${months[selectedMonth]} ${selectedYear} have been declared for ${className}. Check it out!`,
+                audience: 'specific_class',
+                classId: selectedClassId,
+                senderId: currentUser.id,
+                senderName: currentUser.name,
+                senderRole: 'Mentor',
+                type: 'star'
+            });
+
         } catch (error) {
             console.error("Failed to declare results", error);
             alert("Database quota exceeded or network error. Please try again later.");

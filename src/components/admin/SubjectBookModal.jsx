@@ -31,46 +31,45 @@ const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
         }
 
         setUploadingChapter(chapterIndex);
-        const newUrls = [];
-
+        
         try {
-            // Upload all files in parallel
+            // 1. Parallel Cloud Storage Upload
             const uploadPromises = imageFiles.map(async (file) => {
                 const ext = file.name.split('.').pop() || 'png';
-                const uniqueId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+                const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+                // Reverting to 'chapter_' to match existing security rules
                 const fileName = `subject_books/${subject.id}/chapter_${chapterIndex}/${uniqueId}.${ext}`;
                 const storageRef = ref(storage, fileName);
-
                 const snapshot = await uploadBytes(storageRef, file);
                 return await getDownloadURL(snapshot.ref);
             });
 
             const uploadedUrls = await Promise.all(uploadPromises);
-            newUrls.push(...uploadedUrls);
-
+            
+            // 2. Prepare Data
             const currentChapterData = chapterData[chapterIndex] || { images: [], isRevealedToStudents: false };
             const updatedChapterData = {
                 ...chapterData,
                 [chapterIndex]: {
                     ...currentChapterData,
-                    images: [...(currentChapterData.images || []), ...newUrls]
+                    images: [...(currentChapterData.images || []), ...uploadedUrls]
                 }
             };
 
-            // Update all subjects in parallel
-            await Promise.all(
-                subjectGroup.subjectIds.map(id => updateSubject(id, { chapterData: updatedChapterData }))
-            );
+            // 3. Batch Database Updates
+            const updateIds = subjectGroup.subjectIds;
+            await Promise.all(updateIds.map(id => updateSubject(id, { chapterData: updatedChapterData })));
 
-            showAlert('Success', `${newUrls.length} pages uploaded successfully to Chapter ${chapterIndex}.`, 'success');
+            showAlert('Success', `${uploadedUrls.length} pages added to Chapter ${chapterIndex}`, 'success');
         } catch (error) {
-            console.error('Error uploading files:', error);
-            showAlert('Error', 'Failed to upload one or more files.', 'error');
+            console.error('CRITICAL UPLOAD ERROR:', error);
+            const errorMsg = error.code === 'storage/unauthorized' 
+                ? 'Permission denied. Please check storage rules.' 
+                : `Failed: ${error.message || 'Unknown error occurred'}`;
+            showAlert('Upload Error', errorMsg, 'error');
         } finally {
             setUploadingChapter(null);
-            if (fileInputRefs.current[chapterIndex]) {
-                fileInputRefs.current[chapterIndex].value = '';
-            }
+            if (fileInputRefs.current[chapterIndex]) fileInputRefs.current[chapterIndex].value = '';
         }
     };
 

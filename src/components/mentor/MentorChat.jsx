@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell, Trash2, Star } from 'lucide-react';
+import { MessageSquare, Settings, Send, Search, User, CheckCircle, XCircle, Bell, Trash2, Star, Shield } from 'lucide-react';
 import { PollCard } from '../chat/PollCard';
 import { StarCard } from '../chat/StarCard';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
@@ -41,7 +41,9 @@ const MentorChat = () => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const scrollRef = useRef(null);
 
-    // Filter students belonging to mentor's classes
+    // Robust ID handling
+    const currentUserId = currentUser?.id || (currentUser?.role === 'admin' ? 'admin' : null);
+
     // Filter students belonging to mentor's classes
     const assignedClassIds = currentUser?.assignedClassIds || [];
     const myStudents = students.filter(s => {
@@ -58,7 +60,7 @@ const MentorChat = () => {
     const selectedStudent = myStudents.find(s => s.id === selectedStudentId);
 
     // Get specific mentor object
-    const selectedMentor = mentors.find(m => m.id === selectedMentorId);
+    const selectedMentor = mentors.find(m => m.id === selectedMentorId) || (selectedMentorId === 'admin' ? { id: 'admin', name: 'Administrator' } : null);
 
     // Messages for the selected conversation (could be student or mentor or group)
     const activeChatId = activeTab === 'mentors' ? selectedMentorId : selectedStudentId;
@@ -67,8 +69,8 @@ const MentorChat = () => {
     const currentMessages = chatMessages.filter(m =>
         isGroupChat
             ? m.receiverId === activeChatId
-            : (m.senderId === currentUser.id && m.receiverId === activeChatId) ||
-            (m.senderId === activeChatId && m.receiverId === currentUser.id)
+            : (m.senderId === currentUserId && m.receiverId === activeChatId) ||
+            (m.senderId === activeChatId && m.receiverId === currentUserId)
     ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     // Scroll to bottom on new message
@@ -97,7 +99,7 @@ const MentorChat = () => {
     useEffect(() => {
         if (activeChatId) {
             const unreadIds = currentMessages
-                .filter(m => m.receiverId === currentUser.id && !m.isRead)
+                .filter(m => m.receiverId === currentUserId && !m.isRead)
                 .map(m => m.id);
 
             if (unreadIds.length > 0) {
@@ -112,12 +114,17 @@ const MentorChat = () => {
         if (activeTab !== 'mentors') setSelectedMentorId(null);
     }, [activeTab]);
 
+    // Clear selections when changing class filter
+    useEffect(() => {
+        setSelectedStudentId(null);
+    }, [selectedFilter]);
+
     const handleSend = (e) => {
         e.preventDefault();
-        if (!messageInput.trim() || !activeChatId) return;
+        if (!messageInput.trim() || !activeChatId || !currentUserId) return;
 
         sendMessage({
-            senderId: currentUser.id,
+            senderId: currentUserId,
             receiverId: activeChatId,
             classId: (activeTab === 'inbox' && !isGroupChat) ? selectedStudent?.classId : null,
             details: messageInput,
@@ -127,7 +134,7 @@ const MentorChat = () => {
         // If there's a Star Card pending, send it as a separate message
         if (starCardData && activeTab === 'inbox' && !isGroupChat) {
             sendMessage({
-                senderId: currentUser.id,
+                senderId: currentUserId,
                 receiverId: activeChatId,
                 classId: selectedStudent?.classId,
                 details: JSON.stringify(starCardData),
@@ -162,7 +169,7 @@ const MentorChat = () => {
         });
 
         sendMessage({
-            senderId: currentUser.id,
+            senderId: currentUserId,
             receiverId: selectedStudentId,
             classId: selectedStudent?.classId,
             details: details,
@@ -176,29 +183,24 @@ const MentorChat = () => {
     };
 
     const confirmDelete = () => {
-        if (!activeChatId) return;
-        deleteChatConversation(activeChatId, currentUser.id);
+        if (!activeChatId || !currentUserId) return;
+        deleteChatConversation(activeChatId, currentUserId);
         setIsDeleteModalOpen(false);
     };
 
-    // Helper to get unread count for a student
-    const getUnreadCount = (chatId, isGroup) => {
-        if (isGroup) return 0; // Simple approach for now
-        return chatMessages.filter(m => m.senderId === chatId && m.receiverId === currentUser.id && !m.isRead).length;
+    // Helper to get unread count
+    const getUnreadCount = (chatId) => {
+        return chatMessages.filter(m => m.senderId === chatId && m.receiverId === currentUserId && !m.isRead).length;
     };
 
     // Helper to get last message
     const getLastMessage = (chatId, isGroup) => {
-        if (isGroup) {
-            const msgs = chatMessages.filter(m => m.receiverId === chatId)
-                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            return msgs.length > 0 ? msgs[0] : null;
-        }
-        const msgs = chatMessages.filter(m =>
-            (m.senderId === currentUser.id && m.receiverId === chatId) ||
-            (m.senderId === chatId && m.receiverId === currentUser.id)
+        const lastMsg = chatMessages.filter(m =>
+            isGroup ? m.receiverId === chatId :
+                ((m.senderId === currentUserId && m.receiverId === chatId) ||
+                    (m.senderId === chatId && m.receiverId === currentUserId))
         ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        return msgs.length > 0 ? msgs[0] : null;
+        return lastMsg.length > 0 ? lastMsg[0] : null;
     };
 
     // Generate Group objects for each assigned class
@@ -213,22 +215,31 @@ const MentorChat = () => {
         };
     });
 
+    // Helper for complex sorting (Unread first, then by timestamp)
+    const getSortWeight = (chatId, isGroup) => {
+        const unreadCount = getUnreadCount(chatId);
+        const lastMsg = getLastMessage(chatId, isGroup);
+        const timestamp = lastMsg ? new Date(lastMsg.timestamp).getTime() : 0;
+        // Apply huge weight for unread status to ensure they stay at top
+        return (unreadCount > 0 ? 1e15 : 0) + timestamp;
+    };
+
     const filteredStudents = [
-        ...mentorGroupObjs.filter(g => g.name.toLowerCase().includes(searchQuery.toLowerCase())),
+        ...mentorGroupObjs.filter(g => {
+            const matchesSearch = g.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesFilter = selectedFilter === 'All' || g.classId === selectedFilter;
+            return matchesSearch && matchesFilter;
+        }),
         ...myStudents.filter(s =>
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.registerNo?.toLowerCase().includes(searchQuery.toLowerCase())
-        ).sort((a, b) => {
-            const lastMsgA = getLastMessage(a.id, false);
-            const lastMsgB = getLastMessage(b.id, false);
-            const timeA = lastMsgA ? new Date(lastMsgA.timestamp).getTime() : 0;
-            const timeB = lastMsgB ? new Date(lastMsgB.timestamp).getTime() : 0;
-            return timeB - timeA;
-        })
-    ];
+        )
+    ].sort((a, b) => getSortWeight(b.id, !!b.isGroup) - getSortWeight(a.id, !!a.isGroup));
 
     const allMentorsGroupObj = { id: allMentorsGroupId, name: 'All Mentors (Group)', isGroup: true };
+    const adminObj = { id: 'admin', name: 'Administrator', isSpecial: true };
     const filteredMentors = [
+        ...(adminObj.name.toLowerCase().includes(searchQuery.toLowerCase()) ? [adminObj] : []),
         ...(allMentorsGroupObj.name.toLowerCase().includes(searchQuery.toLowerCase()) ? [allMentorsGroupObj] : []),
         ...mentors.filter(m =>
             m.id !== currentUser.id &&
@@ -247,16 +258,17 @@ const MentorChat = () => {
         return setting ? setting.isEnabled : false;
     };
 
-    const unreadMentorsCount = chatMessages.filter(m =>
-        m.receiverId === currentUser.id &&
+    const unreadInboxCount = chatMessages.filter(m =>
+        m.receiverId === currentUserId &&
         !m.isRead &&
-        mentors.some(mentor => mentor.id === m.senderId)
+        !mentors.some(mentor => mentor.id === m.senderId) &&
+        m.senderId !== 'admin'
     ).length;
 
-    const unreadInboxCount = chatMessages.filter(m =>
-        m.receiverId === currentUser.id &&
+    const unreadMentorsCount = chatMessages.filter(m =>
+        m.receiverId === currentUserId &&
         !m.isRead &&
-        !mentors.some(mentor => mentor.id === m.senderId)
+        (mentors.some(mentor => mentor.id === m.senderId) || m.senderId === 'admin')
     ).length;
 
     return (
@@ -357,7 +369,7 @@ const MentorChat = () => {
                                 ) : (
                                     filteredStudents.map(student => {
                                         const unread = getUnreadCount(student.id);
-                                        const lastMsg = getLastMessage(student.id);
+                                        const lastMsg = getLastMessage(student.id, false);
                                         return (
                                             <button
                                                 key={student.id}
@@ -388,7 +400,7 @@ const MentorChat = () => {
                                                     </div>
                                                     <p className={clsx("text-sm truncate", unread > 0 ? "font-medium text-gray-800" : "text-gray-500")}>
                                                         {lastMsg ? (
-                                                            lastMsg.senderId === currentUser.id
+                                                            lastMsg.senderId === currentUserId
                                                                 ? `You: ${lastMsg.type === 'reminder' ? 'Sent a reminder' : lastMsg.details}`
                                                                 : (lastMsg.type === 'reminder' ? 'Sent a reminder' : lastMsg.details)
                                                         ) : "No messages yet"}
@@ -404,7 +416,7 @@ const MentorChat = () => {
                                 ) : (
                                     filteredMentors.map(mentor => {
                                         const unread = getUnreadCount(mentor.id);
-                                        const lastMsg = getLastMessage(mentor.id);
+                                        const lastMsg = getLastMessage(mentor.id, false);
                                         return (
                                             <button
                                                 key={mentor.id}
@@ -415,8 +427,11 @@ const MentorChat = () => {
                                                 )}
                                             >
                                                 <div className="relative">
-                                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold shrink-0">
-                                                        {mentor.name.charAt(0)}
+                                                    <div className={clsx(
+                                                        "w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0",
+                                                        mentor.isSpecial ? "bg-indigo-600 text-white" : "bg-indigo-100 text-indigo-600"
+                                                    )}>
+                                                        {mentor.isSpecial ? <Shield className="w-5 h-5" /> : mentor.name.charAt(0)}
                                                     </div>
                                                     {unread > 0 && (
                                                         <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs flex items-center justify-center rounded-full border-2 border-white">
@@ -435,7 +450,7 @@ const MentorChat = () => {
                                                     </div>
                                                     <p className={clsx("text-sm truncate", unread > 0 ? "font-medium text-gray-800" : "text-gray-500")}>
                                                         {lastMsg ? (
-                                                            lastMsg.senderId === currentUser.id
+                                                            lastMsg.senderId === currentUserId
                                                                 ? `You: ${lastMsg.details}`
                                                                 : lastMsg.details
                                                         ) : "No messages yet"}
@@ -473,12 +488,15 @@ const MentorChat = () => {
                                             className={clsx("flex items-center gap-3 p-2 rounded-lg transition-colors", !isGroupChat && "cursor-pointer hover:bg-gray-50")}
                                             onClick={() => { if (activeTab === 'inbox' && !isGroupChat) setIsProfileModalOpen(true) }}
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                                                {isGroupChat ? 'G' : (activeTab === 'inbox' ? selectedStudent?.name.charAt(0) : selectedMentor?.name.charAt(0))}
+                                            <div className={clsx(
+                                                "w-10 h-10 rounded-full flex items-center justify-center font-bold",
+                                                selectedMentorId === 'admin' ? "bg-indigo-600 text-white" : "bg-indigo-100 text-indigo-600"
+                                            )}>
+                                                {selectedMentorId === 'admin' ? <Shield className="w-5 h-5" /> : (isGroupChat ? 'G' : (activeTab === 'inbox' ? selectedStudent?.name.charAt(0) : selectedMentor?.name.charAt(0)))}
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-gray-900">
-                                                    {isGroupChat ? (activeTab === 'inbox' ? 'My Students (Group)' : 'All Mentors (Group)') : (activeTab === 'inbox' ? selectedStudent?.name : `Mentor ${selectedMentor?.name}`)}
+                                                    {selectedMentorId === 'admin' ? 'School Administrator' : (isGroupChat ? (activeTab === 'inbox' ? 'My Students (Group)' : 'All Mentors (Group)') : (activeTab === 'inbox' ? selectedStudent?.name : `Mentor ${selectedMentor?.name}`))}
                                                 </h3>
                                                 {activeTab === 'inbox' && !isGroupChat && (
                                                     <span className="text-gray-500 text-xs">Class {classes.find(c => c.id === selectedStudent?.classId)?.name} - {classes.find(c => c.id === selectedStudent?.classId)?.division}</span>
@@ -508,7 +526,7 @@ const MentorChat = () => {
                                         </div>
                                     ) : (
                                         currentMessages.map(msg => {
-                                            const isMe = msg.senderId === currentUser.id;
+                                            const isMe = msg.senderId === currentUserId;
                                             let senderName = '';
                                             if (isGroupChat && !isMe) {
                                                 const senderStudent = students.find(s => s.id === msg.senderId);
@@ -520,7 +538,7 @@ const MentorChat = () => {
                                                 <div
                                                     key={msg.id}
                                                     className={clsx(
-                                                        "flex flex-col max-w-[70%]",
+                                                        "flex flex-col max-w-[80%]",
                                                         isMe ? "ml-auto items-end" : "mr-auto items-start"
                                                     )}
                                                 >
@@ -529,10 +547,10 @@ const MentorChat = () => {
                                                     )}
                                                     <div
                                                         className={clsx(
-                                                            "px-4 py-2 rounded-2xl",
+                                                            "px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm transition-all animate-in zoom-in-95",
                                                             isMe
                                                                 ? "bg-indigo-600 text-white rounded-br-none"
-                                                                : "bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm"
+                                                                : "bg-white border border-gray-100 text-gray-800 rounded-bl-none"
                                                         )}
                                                     >
                                                         {msg.type === 'reminder' ? (
@@ -543,12 +561,16 @@ const MentorChat = () => {
                                                             msg.details
                                                         )}
                                                     </div>
-                                                    <span className="text-[10px] text-gray-400 mt-1 px-1">
-                                                        {format(new Date(msg.timestamp), 'h:mm a')}
+                                                    <div className="flex items-center gap-1.5 mt-1 px-1">
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase">
+                                                            {format(new Date(msg.timestamp), 'h:mm a')}
+                                                        </span>
                                                         {isMe && (
-                                                            <span className="ml-1">{msg.isRead ? '• Read' : '• Sent'}</span>
+                                                            <span className={clsx("text-[9px] font-black uppercase", msg.isRead ? "text-indigo-400" : "text-gray-300")}>
+                                                                • {msg.isRead ? 'Seen' : 'Sent'}
+                                                            </span>
                                                         )}
-                                                    </span>
+                                                    </div>
                                                 </div>
                                             )
                                         })
@@ -585,7 +607,7 @@ const MentorChat = () => {
                                             type="button"
                                             variant="outline"
                                             onClick={handleReminder}
-                                            disabled={!isChatEnabled(selectedStudent.classId)}
+                                            disabled={!isChatEnabled(selectedStudent?.classId)}
                                             title="Send Pending Work Reminder"
                                             className="bg-yellow-50 text-yellow-600 border-yellow-100 hover:bg-yellow-100 px-3"
                                         >

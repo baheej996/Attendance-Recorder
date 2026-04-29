@@ -206,35 +206,35 @@ const PrayerChart = () => {
                                     </div>
                                 ) : (
                                     currentMonthData.map(({ date, record, count }) => (
-                                        <div key={date.toString()} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                            <div className="flex items-center gap-4">
+                                        <div key={date.toString()} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                            <div className="flex items-center gap-3">
                                                 <div className={clsx(
-                                                    "w-10 h-10 rounded-lg flex flex-col items-center justify-center border",
-                                                    count === 5 ? "bg-green-50 border-green-200 text-green-700" : "bg-white border-gray-200 text-gray-700"
+                                                    "w-12 h-12 rounded-2xl flex flex-col items-center justify-center border-2 shrink-0",
+                                                    count === 5 ? "bg-green-500 border-green-500 text-white shadow-lg shadow-green-100" : "bg-white border-gray-100 text-gray-700 shadow-sm"
                                                 )}>
-                                                    <span className="text-xs font-bold uppercase">{format(date, 'MMM')}</span>
-                                                    <span className="text-lg font-bold leading-none">{format(date, 'd')}</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none mb-0.5">{format(date, 'MMM')}</span>
+                                                    <span className="text-lg font-black leading-none">{format(date, 'd')}</span>
                                                 </div>
-                                                <div className="flex gap-1">
-                                                    {PRAYERS.map(p => {
-                                                        const isDone = record && record.prayers && (record.prayers[p.id] || record.prayers[p.id[0]]); // Handle legacy keys
-                                                        return (
-                                                            <div key={p.id} className={clsx(
-                                                                "w-3 h-3 rounded-full",
-                                                                isDone ? "bg-green-500" : "bg-gray-200"
-                                                            )} title={p.label} />
-                                                        );
-                                                    })}
+                                                <div>
+                                                    <p className="font-black text-gray-900 leading-none mb-1.5">{format(date, 'EEEE')}</p>
+                                                    <div className="flex gap-1">
+                                                        {PRAYERS.map(p => {
+                                                            const isDone = record && record.prayers && (record.prayers[p.id] || record.prayers[p.id[0]]);
+                                                            return (
+                                                                <div key={p.id} className={clsx(
+                                                                    "w-2.5 h-2.5 rounded-full",
+                                                                    isDone ? "bg-green-500" : "bg-gray-200"
+                                                                )} />
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="text-sm font-medium">
-                                                {count === 5 ? (
-                                                    <span className="text-green-600 flex items-center gap-1">
-                                                        <Trophy className="w-3 h-3" /> Perfect
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-500">{count}/5</span>
-                                                )}
+                                            <div className="text-right">
+                                                <span className={clsx("text-lg font-black leading-none", count === 5 ? "text-green-600" : "text-gray-400")}>
+                                                    {count}/5
+                                                </span>
+                                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">Prayers</p>
                                             </div>
                                         </div>
                                     ))
@@ -265,29 +265,29 @@ const PrayerChart = () => {
                                             key={prayer.id}
                                             onClick={() => handleToggle(prayer.id)}
                                             className={clsx(
-                                                "flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all duration-200",
+                                                "flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 active:scale-[0.98] touch-manipulation",
                                                 isCompleted
-                                                    ? "border-green-500 bg-green-50"
-                                                    : "border-transparent bg-gray-50 hover:bg-gray-100"
+                                                    ? "border-green-500 bg-green-500 text-white shadow-lg shadow-green-100"
+                                                    : "border-gray-50 bg-gray-50 text-gray-900 hover:border-gray-200"
                                             )}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className={clsx("p-2 rounded-lg", prayer.bg, prayer.color)}>
+                                                <div className={clsx("p-2.5 rounded-xl", isCompleted ? "bg-white/20 text-white" : `${prayer.bg} ${prayer.color}`)}>
                                                     <Icon className="w-6 h-6" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-bold text-gray-900">{prayer.label}</h3>
-                                                    <p className="text-xs text-gray-500">
-                                                        {isCompleted ? 'Completed' : 'Not marked yet'}
+                                                    <h3 className="font-black leading-tight">{prayer.label}</h3>
+                                                    <p className={clsx("text-[10px] font-bold uppercase tracking-widest mt-0.5", isCompleted ? "text-white/80" : "text-gray-400")}>
+                                                        {isCompleted ? 'Recited' : 'Pending'}
                                                     </p>
                                                 </div>
                                             </div>
 
                                             <div className={clsx(
-                                                "w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors",
-                                                isCompleted ? "bg-green-500 border-green-500" : "border-gray-300"
+                                                "w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors",
+                                                isCompleted ? "bg-white border-white" : "border-gray-200 bg-white"
                                             )}>
-                                                {isCompleted && <CheckCircle className="w-4 h-4 text-white" />}
+                                                {isCompleted && <CheckCircle className="w-5 h-5 text-green-500" />}
                                             </div>
                                         </div>
                                     );

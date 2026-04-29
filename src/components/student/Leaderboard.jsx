@@ -213,65 +213,151 @@ const Leaderboard = () => {
                 </Card>
             )}
 
-            {/* Leaderboard List */}
-            <Card className="overflow-hidden border border-gray-100 shadow-sm">
+            {/* Leaderboard List (Desktop Table / Mobile Podium + Cards) */}
+            <div className="animate-in fade-in duration-700">
                 {!selectedExamId ? (
-                    <div className="p-12 text-center text-gray-500">
+                    <Card className="p-12 text-center text-gray-500 border border-gray-100 shadow-sm">
                         Select an exam to view rankings.
-                    </div>
+                    </Card>
                 ) : leaderboardData.length === 0 ? (
-                    <div className="p-12 text-center text-gray-500">
+                    <Card className="p-12 text-center text-gray-500 border border-gray-100 shadow-sm">
                         No results found.
-                    </div>
+                    </Card>
                 ) : (
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
-                            <tr>
-                                <th className="p-4 w-16 text-center">Rank</th>
-                                <th className="p-4">Student</th>
-                                <th className="p-4 text-right">Missed</th>
-                                <th className="p-4 text-right">Points</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 text-sm">
+                    <>
+                        {/* Mobile Podium View */}
+                        <div className="md:hidden mb-8 grid grid-cols-3 gap-2 items-end px-2 pt-4">
+                            {/* 2nd Place */}
+                            {leaderboardData[1] && (
+                                <div className="flex flex-col items-center">
+                                    <div className="relative mb-2">
+                                        <div className="w-16 h-16 rounded-full bg-gray-100 border-2 border-gray-300 flex items-center justify-center text-xl font-black text-gray-400">
+                                            {leaderboardData[1].name.charAt(0)}
+                                        </div>
+                                        <div className="absolute -top-2 -right-1 bg-gray-400 text-white p-1 rounded-full border-2 border-white">
+                                            <Medal className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                    <div className="h-20 w-full bg-gradient-to-t from-gray-200 to-gray-100 rounded-t-xl flex flex-col items-center justify-center p-2 text-center">
+                                        <span className="text-[10px] font-black text-gray-500 uppercase leading-none mb-1">2nd</span>
+                                        <span className="text-[8px] font-bold text-gray-600 truncate w-full">{leaderboardData[1].name.split(' ')[0]}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 1st Place */}
+                            {leaderboardData[0] && (
+                                <div className="flex flex-col items-center scale-110 z-10">
+                                    <div className="relative mb-3">
+                                        <div className="w-20 h-20 rounded-full bg-yellow-50 border-2 border-yellow-400 flex items-center justify-center text-2xl font-black text-yellow-600 shadow-lg">
+                                            {leaderboardData[0].name.charAt(0)}
+                                        </div>
+                                        <div className="absolute -top-3 -right-1 bg-yellow-400 text-white p-1.5 rounded-full border-2 border-white shadow-md animate-bounce">
+                                            <Crown className="w-5 h-5" />
+                                        </div>
+                                    </div>
+                                    <div className="h-28 w-full bg-gradient-to-t from-yellow-100 to-yellow-50 rounded-t-2xl flex flex-col items-center justify-center p-2 text-center border-x border-t border-yellow-200 shadow-sm">
+                                        <span className="text-xs font-black text-yellow-700 uppercase leading-none mb-1">1st</span>
+                                        <span className="text-[10px] font-black text-yellow-800 truncate w-full">{leaderboardData[0].name.split(' ')[0]}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 3rd Place */}
+                            {leaderboardData[2] && (
+                                <div className="flex flex-col items-center">
+                                    <div className="relative mb-2">
+                                        <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-500 flex items-center justify-center text-xl font-black text-amber-600">
+                                            {leaderboardData[2].name.charAt(0)}
+                                        </div>
+                                        <div className="absolute -top-2 -right-1 bg-amber-600 text-white p-1 rounded-full border-2 border-white">
+                                            <Medal className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                    <div className="h-16 w-full bg-gradient-to-t from-amber-100/50 to-amber-50/50 rounded-t-xl flex flex-col items-center justify-center p-2 text-center">
+                                        <span className="text-[10px] font-black text-amber-700 uppercase leading-none mb-1">3rd</span>
+                                        <span className="text-[8px] font-bold text-amber-800 truncate w-full">{leaderboardData[2].name.split(' ')[0]}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <Card className="hidden md:block overflow-hidden border border-gray-100 shadow-sm">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
+                                    <tr>
+                                        <th className="p-4 w-16 text-center">Rank</th>
+                                        <th className="p-4">Student</th>
+                                        <th className="p-4 text-right">Missed</th>
+                                        <th className="p-4 text-right">Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-sm">
+                                    {leaderboardData.map((student, index) => {
+                                        const isMe = student.id === currentUser.id;
+                                        return (
+                                            <tr key={student.id} className={clsx("hover:bg-gray-50 transition-colors", isMe && "bg-indigo-50 hover:bg-indigo-100")}>
+                                                <td className="p-4 text-center flex justify-center items-center">
+                                                    {getRankDisplay(student.rank)}
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="font-semibold text-gray-900">
+                                                        {student.name}
+                                                        {isMe && <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-full">YOU</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-right font-bold text-red-500">-{student.marksMissed}</td>
+                                                <td className="p-4 text-right">
+                                                    <span className="font-medium text-gray-900">{student.totalMarks}</span>
+                                                    <span className="text-xs text-gray-500 ml-1">/ {student.totalMaxMarks}</span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </Card>
+
+                        {/* Mobile Rankings List */}
+                        <div className="md:hidden space-y-2 pb-20">
                             {leaderboardData.map((student, index) => {
                                 const isMe = student.id === currentUser.id;
+                                if (student.rank <= 3) return null; // Already in podium
+
                                 return (
-                                    <tr
+                                    <div 
                                         key={student.id}
                                         className={clsx(
-                                            "hover:bg-gray-50 transition-colors",
-                                            isMe && "bg-indigo-50 hover:bg-indigo-100"
+                                            "flex items-center justify-between p-4 bg-white rounded-2xl border transition-all",
+                                            isMe ? "border-indigo-400 bg-indigo-50 shadow-md ring-1 ring-indigo-200" : "border-gray-100"
                                         )}
                                     >
-                                        <td className="p-4 text-center flex justify-center items-center">
-                                            {getRankDisplay(student.rank)}
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="font-semibold text-gray-900">
-                                                {student.name}
-                                                {isMe && <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-full">YOU</span>}
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-xs font-black text-gray-500">
+                                                {student.rank}
                                             </div>
-                                            {viewMode !== 'class' && (
-                                                <div className="text-xs text-gray-500">
-                                                    {classes.find(c => c.id === student.classId)?.name}-{classes.find(c => c.id === student.classId)?.division}
+                                            <div>
+                                                <div className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                                                    {student.name}
+                                                    {isMe && <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] font-black rounded uppercase">You</span>}
                                                 </div>
-                                            )}
-                                        </td>
-                                        <td className="p-4 text-right font-bold text-red-500">
-                                            -{student.marksMissed}
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <span className="font-medium text-gray-900">{student.totalMarks}</span>
-                                            <span className="text-xs text-gray-500 ml-1">/ {student.totalMaxMarks}</span>
-                                        </td>
-                                    </tr>
+                                                <div className="text-[10px] text-gray-400 font-medium">
+                                                    {student.totalMarks} / {student.totalMaxMarks} Points
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-sm font-black text-red-500">-{student.marksMissed}</div>
+                                            <div className="text-[8px] font-black uppercase text-gray-400 tracking-tighter">Missed</div>
+                                        </div>
+                                    </div>
                                 );
                             })}
-                        </tbody>
-                    </table>
+                        </div>
+                    </>
                 )}
-            </Card>
+            </div>
         </div>
     );
 };

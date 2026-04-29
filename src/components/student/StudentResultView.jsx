@@ -187,8 +187,8 @@ const StudentResultView = () => {
                                     </div>
                                 </div>
 
-                                {/* Detailed Table */}
-                                <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+                                {/* Detailed Results (Desktop Table / Mobile Cards) */}
+                                <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 shadow-sm">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
@@ -228,6 +228,48 @@ const StudentResultView = () => {
                                             })}
                                         </tbody>
                                     </table>
+                                </div>
+
+                                {/* Mobile Cards View */}
+                                <div className="md:hidden space-y-3">
+                                    {myResults.map(r => {
+                                        const max = getMaxMarks(r.subjectId);
+                                        const percent = (r.marks / max) * 100;
+                                        let grade = 'F';
+                                        if (percent >= 90) grade = 'A+';
+                                        else if (percent >= 80) grade = 'A';
+                                        else if (percent >= 70) grade = 'B';
+                                        else if (percent >= 60) grade = 'C';
+                                        else if (percent >= 50) grade = 'D';
+
+                                        return (
+                                            <div key={r.id} className="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{getSubjectName(r.subjectId)}</p>
+                                                        <h4 className="text-lg font-bold text-gray-900">{r.marks} <span className="text-sm text-gray-400 font-medium">/ {max}</span></h4>
+                                                    </div>
+                                                    <span className={`px-3 py-1 text-xs font-black rounded-lg ${
+                                                        grade.startsWith('A') ? 'bg-green-100 text-green-700' :
+                                                        grade === 'B' ? 'bg-blue-100 text-blue-700' :
+                                                        grade === 'F' ? 'bg-red-100 text-red-700' :
+                                                        'bg-yellow-100 text-yellow-700'
+                                                    }`}>
+                                                        GRADE {grade}
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className={clsx(
+                                                            "h-full rounded-full transition-all duration-1000",
+                                                            percent >= 40 ? "bg-indigo-500" : "bg-red-500"
+                                                        )}
+                                                        style={{ width: `${percent}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </>
                         )}

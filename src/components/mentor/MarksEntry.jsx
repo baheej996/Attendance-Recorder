@@ -7,6 +7,7 @@ import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
 import ExamGradingModal from './ExamGradingModal';
 
+// MarksEntry Component v2.1 - Smart Config Dashboard Update
 const MarksEntry = () => {
     const {
         subjects, exams, students, results,
@@ -31,6 +32,58 @@ const MarksEntry = () => {
     // Grading Modal State
     const [gradingModalOpen, setGradingModalOpen] = useState(false);
     const [currentStudentForGrading, setCurrentStudentForGrading] = useState(null);
+
+    // Master Heartbeat: Forces UI re-calculation for scheduling every 10 seconds
+    const [tick, setTick] = useState(0);
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 10000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Robust Parser: Handles AM/PM, legacy DD-MM-YYYY, and ISO across all browsers
+    const parseFlexDate = (val) => {
+        if (!val) return null;
+        let cleanVal = val.trim();
+        
+        // Match: 24-04-2026 04:45 PM or 24/04/2026 etc.
+        const parts = cleanVal.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})\s+(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+        if (parts) {
+            let [_, d, m, y, h, mins, ampm] = parts;
+            h = parseInt(h);
+            if (ampm) {
+                ampm = ampm.toUpperCase();
+                if (ampm === 'PM' && h < 12) h += 12;
+                if (ampm === 'AM' && h === 12) h = 0;
+            }
+            cleanVal = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${h.toString().padStart(2, '0')}:${mins}`;
+        } else {
+            // Fallback for YYYY-MM-DD formats
+            cleanVal = cleanVal.replace(' ', 'T');
+        }
+
+        try {
+            const d = new Date(cleanVal);
+            if (isNaN(d.getTime())) return null;
+            // Assume IST if no timezone provided
+            if (!cleanVal.includes('+') && !cleanVal.includes('Z')) {
+                return new Date(cleanVal + ":00+05:30");
+            }
+            return d;
+        } catch (e) {
+            return null;
+        }
+    };
+    
+    // Now derived from Tick
+    const now = new Date();
+
+    // Enhanced Helper: Standard format for native browser inputs
+    const formatDateForInput = (val) => {
+        const d = parseFlexDate(val);
+        if (!d) return '';
+        const pad = (n) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
 
     // Helper: partial reset
     const resetSelection = (level) => {
@@ -582,117 +635,205 @@ const MarksEntry = () => {
                     </Card>
                 </div>
 
-                <div className="grid gap-6">
-                    {subjectStats.list.length === 0 ? (
-                        <div className="text-center py-16 text-gray-400 bg-white rounded-2xl border-2 border-dashed">
-                            No subjects found for this class.
+                <div className="grid gap-6">                    {subjectStats.list.length === 0 ? (
+                        <div className="text-center py-20 bg-gray-50/50 rounded-[2.5rem] border-2 border-dashed border-gray-200">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Search className="w-8 h-8 text-gray-300" />
+                            </div>
+                            <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">No subjects found for this class.</p>
                         </div>
                     ) : (
-                        subjectStats.list.map(sub => {
-                            // Use unique Class ID for Settings Key to ensure division-level control
-                            const setting = examSettings.find(s => s.examId === selectedExamId && s.classId === selectedClassId && s.subjectId === sub.name)
-                                || { isActive: false, isPublished: false, startTime: '', endTime: '' };
+                        <div className="grid gap-8">
+                            {subjectStats.list.map((sub, index) => {
+                                // Prioritize GUID-based setting, fallback to Name-based for legacy support
+                                const setting = examSettings.find(s => 
+                                    s.examId === selectedExamId && 
+                                    s.classId === selectedClassId && 
+                                    s.subjectId === sub.id
+                                ) || examSettings.find(s => 
+                                    s.examId === selectedExamId && 
+                                    s.classId === selectedClassId && 
+                                    s.subjectId === sub.name
+                                ) || { isActive: false, isPublished: false, startTime: '', endTime: '', duration: 0 };
 
-                            const handleToggleActive = (e) => {
-                                e.stopPropagation();
-                                updateExamSetting(selectedExamId, selectedClassId, sub.name, { isActive: !setting.isActive });
-                            };
+                                const start = parseFlexDate(setting.startTime);
+                                const end = parseFlexDate(setting.endTime);
+                                const isScheduled = start && now < start;
+                                const isCurrentlyActive = setting.isActive || (start && now >= start && (!end || now <= end));
 
-                            const handleTogglePublish = (e) => {
-                                e.stopPropagation();
-                                updateExamSetting(selectedExamId, selectedClassId, sub.name, { isPublished: !setting.isPublished });
-                            };
+                                const handleToggleActive = (e) => {
+                                    e.stopPropagation();
+                                    updateExamSetting(selectedExamId, selectedClassId, sub.id, { isActive: !setting.isActive, subjectName: sub.name });
+                                };
 
-                            const handleDateChange = (type, value) => {
-                                updateExamSetting(selectedExamId, selectedClassId, sub.name, { [type]: value });
-                            };
+                                const handleTogglePublish = (e) => {
+                                    e.stopPropagation();
+                                    updateExamSetting(selectedExamId, selectedClassId, sub.id, { isPublished: !setting.isPublished, subjectName: sub.name });
+                                };
 
-                            return (
-                                <Card
-                                    key={sub.id}
-                                    className="flex flex-col p-0 overflow-hidden border border-gray-100 hover:shadow-lg transition-all"
-                                >
-                                    {/* Header / Main Click Area */}
-                                    <div
-                                        onClick={() => setSelectedSubjectId(sub.id)}
-                                        className="p-4 sm:p-6 cursor-pointer bg-white hover:bg-gray-50 transition-colors border-b border-gray-100"
+                                const handleSettingChange = (type, value) => {
+                                    if (type === 'endTime' && setting.startTime && value && value <= setting.startTime) {
+                                        showAlert('Invalid Time', 'End time cannot be before or equal to start time.', 'error');
+                                        return;
+                                    }
+                                    updateExamSetting(selectedExamId, selectedClassId, sub.id, { [type]: value, subjectName: sub.name });
+                                };
+
+                                return (
+                                    <div 
+                                        key={sub.id}
+                                        className="group bg-white rounded-3xl border border-gray-100 hover:border-indigo-200 transition-all duration-300 overflow-hidden shadow-sm hover:shadow-xl"
                                     >
-                                        <div className="flex justify-between items-center sm:items-start gap-2">
-                                            <div className="min-w-0">
-                                                <h3 className="font-bold text-lg sm:text-xl text-gray-900 truncate">{sub.name}</h3>
-                                                <p className="text-gray-500 text-xs sm:text-sm mt-0.5 sm:mt-1">Max Marks: {sub.maxMarks}</p>
+                                        <div className="p-6 sm:p-8">
+                                            {/* Top Row: Subject Info & Actions */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+                                                <div className="flex items-center gap-5">
+                                                    <div className={clsx(
+                                                        "w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black shadow-inner",
+                                                        sub.isEntered ? "bg-green-50 text-green-600" : "bg-indigo-50 text-indigo-600"
+                                                    )}>
+                                                        {sub.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-black text-2xl text-gray-900 tracking-tight">{sub.name}</h3>
+                                                        <div className="flex items-center gap-3 mt-1">
+                                                            <span className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Max Marks: {sub.maxMarks}</span>
+                                                            {sub.isEntered ? (
+                                                                <span className="px-2.5 py-1 bg-green-100 text-green-700 text-[9px] font-black uppercase tracking-widest rounded-md">Entered</span>
+                                                            ) : (
+                                                                <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[9px] font-black uppercase tracking-widest rounded-md">Pending</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedSubjectId(sub.id);
+                                                            setCurrentStudentForGrading(null);
+                                                            handleOpenModal(selectedExamId, sub.name, sub.maxMarks);
+                                                        }}
+                                                        className="flex-1 sm:flex-none px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all active:scale-95 text-center"
+                                                    >
+                                                        Enter Marks
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                                                {sub.isEntered ? (
-                                                    <span className="px-2 sm:px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] sm:text-xs font-bold">Entered</span>
-                                                ) : (
-                                                    <span className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-[10px] sm:text-xs font-bold">Pending</span>
-                                                )}
-                                                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" />
+
+                                            {/* Middle Row: Two Prominent Toggles */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                {/* Status Toggle */}
+                                                <button
+                                                    onClick={handleToggleActive}
+                                                    className={clsx(
+                                                        "flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-widest",
+                                                        isCurrentlyActive 
+                                                            ? "bg-green-50 border-green-200 text-green-700 shadow-sm shadow-green-100" 
+                                                            : isScheduled 
+                                                                ? "bg-amber-50 border-amber-200 text-amber-700"
+                                                                : "bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100"
+                                                    )}
+                                                >
+                                                    {isCurrentlyActive ? (
+                                                        <>
+                                                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                                            Active
+                                                        </>
+                                                    ) : isScheduled ? (
+                                                        <>
+                                                            <Clock className="w-4 h-4 text-amber-500" />
+                                                            Scheduled
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <PauseCircle className="w-4 h-4" />
+                                                            Inactive
+                                                        </>
+                                                    )}
+                                                </button>
+
+                                                {/* Visibility Toggle */}
+                                                <button
+                                                    onClick={handleTogglePublish}
+                                                    className={clsx(
+                                                        "flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-widest",
+                                                        setting.isPublished 
+                                                            ? "bg-indigo-50 border-indigo-200 text-indigo-700" 
+                                                            : "bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100"
+                                                    )}
+                                                >
+                                                    {setting.isPublished ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                                    {setting.isPublished ? "Published" : "Hidden"}
+                                                </button>
+                                            </div>
+
+                                            {/* Bottom Row: Date/Time & Duration */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                <div className="bg-white border-2 border-gray-100/50 rounded-2xl p-3 hover:border-gray-200 transition-colors focus-within:border-indigo-300 relative group/input">
+                                                    <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">Start Time</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="datetime-local"
+                                                            className="flex-1 bg-transparent text-sm font-bold text-gray-700 outline-none px-1"
+                                                            value={formatDateForInput(setting.startTime)}
+                                                            onChange={(e) => handleSettingChange('startTime', e.target.value)}
+                                                        />
+                                                        {setting.startTime && (
+                                                            <button 
+                                                                onClick={() => handleSettingChange('startTime', '')}
+                                                                className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="bg-white border-2 border-gray-100/50 rounded-2xl p-3 hover:border-gray-200 transition-colors focus-within:border-indigo-300 relative group/input">
+                                                    <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">End Time</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="datetime-local"
+                                                            className="flex-1 bg-transparent text-sm font-bold text-gray-700 outline-none px-1"
+                                                            value={formatDateForInput(setting.endTime)}
+                                                            onChange={(e) => handleSettingChange('endTime', e.target.value)}
+                                                        />
+                                                        {setting.endTime && (
+                                                            <button 
+                                                                onClick={() => handleSettingChange('endTime', '')}
+                                                                className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="bg-white border-2 border-gray-100/50 rounded-2xl p-3 hover:border-gray-200 transition-colors focus-within:border-indigo-300 relative group/input">
+                                                    <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">Timer (Mins)</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            placeholder="No Timer"
+                                                            className="flex-1 bg-transparent text-sm font-bold text-indigo-700 outline-none px-1"
+                                                            value={setting.duration || ''}
+                                                            onChange={(e) => handleSettingChange('duration', e.target.value)}
+                                                        />
+                                                        {setting.duration > 0 && (
+                                                            <button 
+                                                                onClick={() => handleSettingChange('duration', 0)}
+                                                                className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Controls Footer */}
-                                    <div className="p-4 bg-gray-50 flex flex-col gap-3">
-                                        <div className="flex items-center justify-between gap-4">
-                                            {/* Activation Control */}
-                                            <div
-                                                onClick={handleToggleActive}
-                                                className={clsx(
-                                                    "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border",
-                                                    setting.isActive
-                                                        ? "bg-green-100 border-green-200 text-green-700"
-                                                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-100"
-                                                )}
-                                            >
-                                                {setting.isActive ? <Play className="w-4 h-4 fill-current" /> : <PauseCircle className="w-4 h-4" />}
-                                                <span className="text-xs font-bold uppercase">{setting.isActive ? "Active" : "Inactive"}</span>
-                                            </div>
-
-                                            {/* Publish Control */}
-                                            <div
-                                                onClick={handleTogglePublish}
-                                                className={clsx(
-                                                    "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border",
-                                                    setting.isPublished
-                                                        ? "bg-indigo-100 border-indigo-200 text-indigo-700"
-                                                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-100"
-                                                )}
-                                            >
-                                                {setting.isPublished ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                                <span className="text-xs font-bold uppercase">{setting.isPublished ? "Published" : "Hidden"}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Auto Schedule */}
-                                        <div className="grid grid-cols-2 gap-2 text-xs">
-                                            <div>
-                                                <label className="text-gray-500 font-semibold mb-1 block">Start</label>
-                                                <input
-                                                    type="datetime-local"
-                                                    className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:border-indigo-500"
-                                                    value={setting.startTime || ''}
-                                                    onChange={(e) => handleDateChange('startTime', e.target.value)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-gray-500 font-semibold mb-1 block">End</label>
-                                                <input
-                                                    type="datetime-local"
-                                                    className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:border-indigo-500"
-                                                    value={setting.endTime || ''}
-                                                    onChange={(e) => handleDateChange('endTime', e.target.value)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Card>
-                            );
-                        }))
-                    }
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -723,7 +864,11 @@ const MarksEntry = () => {
                         <span className="sm:hidden">Total:</span>
                         <span className="font-bold text-gray-900 ml-1">{classStudents.length}</span>
                     </div>
-                    <div className="flex gap-1 sm:gap-3 shrink-0 ml-1">
+                    <div className="flex gap-2 sm:gap-3 shrink-0">
+                        <div className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-100 shadow-sm">
+                            <Clock className="w-3.5 h-3.5 animate-spin-slow" />
+                            <span className="text-[10px] font-black uppercase tracking-tighter">Live Sync</span>
+                        </div>
                         <Button
                             onClick={handleDelete}
                             variant="danger"

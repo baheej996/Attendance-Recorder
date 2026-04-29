@@ -83,37 +83,40 @@ const StudentActivities = () => {
         <div className="space-y-6 max-w-5xl mx-auto">
             {/* Header / Stats */}
             {/* Header / Stats */}
-            <div className="grid grid-cols-3 gap-3 md:gap-6">
-                <Card className="p-3 md:p-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
-                    <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 text-center md:text-left">
-                        <div className="p-2 md:p-3 bg-white/20 rounded-xl">
-                            <Trophy className="w-5 h-5 md:w-8 md:h-8 text-yellow-300" />
+            <div className="grid grid-cols-3 gap-2 md:gap-6">
+                <Card className="p-2 md:p-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-1/2 -translate-y-1/2">
+                        <Trophy className="w-16 h-16" />
+                    </div>
+                    <div className="relative z-10 flex flex-col items-center justify-center md:items-start md:justify-start gap-1 md:gap-4 text-center md:text-left">
+                        <div className="p-1.5 md:p-3 bg-white/20 rounded-xl hidden md:block">
+                            <Trophy className="w-4 h-4 md:w-8 md:h-8 text-yellow-300" />
                         </div>
                         <div>
-                            <p className="text-indigo-100 text-[10px] md:text-base font-medium leading-tight">Class Rank</p>
-                            <h2 className="text-lg md:text-3xl font-bold leading-tight">#{stats.rank}</h2>
+                            <p className="text-indigo-100 text-[8px] md:text-base font-black uppercase tracking-widest leading-none mb-1">Rank</p>
+                            <h2 className="text-base md:text-3xl font-black leading-tight">#{stats.rank}</h2>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-3 md:p-6 bg-white border-l-2 md:border-l-4 border-l-green-500 shadow-sm">
-                    <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 text-center md:text-left">
-                        <div className="p-2 md:p-3 bg-green-50 rounded-xl text-green-600">
-                            <Target className="w-5 h-5 md:w-8 md:h-8" />
+                <Card className="p-2 md:p-6 bg-white border-l-4 border-l-green-500 shadow-sm relative overflow-hidden">
+                    <div className="relative z-10 flex flex-col items-center justify-center md:items-start md:justify-start gap-1 md:gap-4 text-center md:text-left">
+                        <div className="p-1.5 md:p-3 bg-green-50 rounded-xl text-green-600 hidden md:block">
+                            <Target className="w-4 h-4 md:w-8 md:h-8" />
                         </div>
                         <div>
-                            <p className="text-gray-500 text-[10px] md:text-base font-medium leading-tight">Points</p>
-                            <h2 className="text-lg md:text-3xl font-bold text-gray-900 leading-tight">{stats.points}</h2>
+                            <p className="text-gray-400 text-[8px] md:text-base font-black uppercase tracking-widest leading-none mb-1">Points</p>
+                            <h2 className="text-base md:text-3xl font-black text-gray-900 leading-tight">{stats.points}</h2>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-3 md:p-6 bg-white border-l-2 md:border-l-4 border-l-blue-500 shadow-sm">
-                    <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 text-center md:text-left">
-                        <div className="p-2 md:p-3 bg-blue-50 rounded-xl text-blue-600">
-                            <CheckCircle className="w-5 h-5 md:w-8 md:h-8" />
+                <Card className="p-2 md:p-6 bg-white border-l-4 border-l-blue-500 shadow-sm relative overflow-hidden">
+                    <div className="relative z-10 flex flex-col items-center justify-center md:items-start md:justify-start gap-1 md:gap-4 text-center md:text-left">
+                        <div className="p-1.5 md:p-3 bg-blue-50 rounded-xl text-blue-600 hidden md:block">
+                            <CheckCircle className="w-4 h-4 md:w-8 md:h-8" />
                         </div>
                         <div>
-                            <p className="text-gray-500 text-[10px] md:text-base font-medium leading-tight">Done</p>
-                            <h2 className="text-lg md:text-3xl font-bold text-gray-900 leading-tight">{stats.percentage}%</h2>
+                            <p className="text-gray-400 text-[8px] md:text-base font-black uppercase tracking-widest leading-none mb-1">Done</p>
+                            <h2 className="text-base md:text-3xl font-black text-gray-900 leading-tight">{stats.percentage}%</h2>
                         </div>
                     </div>
                 </Card>
@@ -131,38 +134,46 @@ const StudentActivities = () => {
                                 <p className="text-gray-500 italic p-4 bg-gray-50 rounded-lg text-center">No pending activities! 🎉</p>
                             ) : (
                                 pending.map(activity => (
-                                    <Card key={activity.id} className="p-4 border-l-4 border-l-orange-500 shadow-md ring-1 ring-orange-100 hover:ring-orange-300 transition-all">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="font-bold text-gray-900">{activity.title}</h4>
-                                                    {activity.subjectId && subjects.find(s => s.id === activity.subjectId) && (
-                                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
-                                                            {subjects.find(s => s.id === activity.subjectId).name}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-gray-600 text-sm mt-1">{activity.description}</p>
-                                                <div className="flex gap-4 mt-3 text-xs text-gray-500 font-medium">
-                                                    <span className="bg-orange-50 px-2 py-1 rounded text-orange-600">Max Points: {activity.maxPoints}</span>
-                                                    <span className="bg-gray-100 px-2 py-1 rounded text-gray-600">Due: {activity.dueDate || 'No Date'}</span>
-                                                </div>
-                                                {activity.studentCanMarkDone && (
-                                                    <div className="mt-4 pt-3 border-t border-orange-100 space-y-2">
-                                                        <p className="text-xs text-indigo-600 font-medium bg-indigo-50 px-2 py-1 inline-block rounded">
-                                                            Teacher has enabled self-marking 📝
-                                                        </p>
-                                                        <button
-                                                            onClick={() => markActivityAsDone(activity.id, currentUser.id, activity.maxPoints)}
-                                                            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition flex justify-center items-center gap-2"
-                                                        >
-                                                            <CheckCircle className="w-4 h-4" />
-                                                            Mark as Done
-                                                        </button>
+                                    <Card key={activity.id} className="p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all rounded-3xl group">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <h4 className="font-black text-gray-900 leading-tight">{activity.title}</h4>
+                                                        {activity.subjectId && subjects.find(s => s.id === activity.subjectId) && (
+                                                            <span className="text-[9px] font-black px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full uppercase tracking-tighter">
+                                                                {subjects.find(s => s.id === activity.subjectId).name}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                )}
+                                                    <p className="text-gray-500 text-xs leading-relaxed line-clamp-2 md:line-clamp-none group-hover:line-clamp-none transition-all">{activity.description}</p>
+                                                </div>
+                                                <div className="shrink-0 flex flex-col items-end gap-1">
+                                                    <span className="px-2 py-1 bg-orange-100 text-orange-700 text-[9px] font-black rounded-lg uppercase tracking-widest animate-pulse">Pending</span>
+                                                    <div className="text-[10px] font-black text-gray-400">{activity.maxPoints} PTS</div>
+                                                </div>
                                             </div>
-                                            <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded animate-pulse mt-1 shrink-0">Pending</span>
+                                            
+                                            <div className="grid grid-cols-2 gap-3 text-[10px] md:text-xs">
+                                                <div className="bg-gray-50 p-2 rounded-xl border border-gray-100/50">
+                                                    <p className="text-gray-400 font-bold uppercase tracking-tighter mb-0.5">Due Date</p>
+                                                    <p className="text-gray-700 font-black">{activity.dueDate || 'Open'}</p>
+                                                </div>
+                                                <div className="bg-gray-50 p-2 rounded-xl border border-gray-100/50">
+                                                    <p className="text-gray-400 font-bold uppercase tracking-tighter mb-0.5">Reference</p>
+                                                    <p className="text-gray-700 font-black truncate">#{activity.id.slice(-6)}</p>
+                                                </div>
+                                            </div>
+
+                                            {activity.studentCanMarkDone && (
+                                                <button
+                                                    onClick={() => markActivityAsDone(activity.id, currentUser.id, activity.maxPoints)}
+                                                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-black transition-all flex justify-center items-center gap-2 shadow-lg shadow-indigo-200 active:scale-95"
+                                                >
+                                                    <CheckCircle className="w-4 h-4" />
+                                                    COMPLETE NOW
+                                                </button>
+                                            )}
                                         </div>
                                     </Card>
                                 ))

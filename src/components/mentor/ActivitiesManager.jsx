@@ -22,12 +22,14 @@ const ActivitiesManager = () => {
     const [expandedActivityId, setExpandedActivityId] = useState(null);
     const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, activityId: null, isBulk: false });
     const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-    const [isBatchShare, setIsBatchShare] = useState(false); // New state
-    const [isBatchDelete, setIsBatchDelete] = useState(false); // New state for delete
-    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false); // Settings Modal
-    const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false); // Report Dropdown State
-    const [expandedReportType, setExpandedReportType] = useState(null); // Mobile report row expansion
-    const [pendingReportConfig, setPendingReportConfig] = useState(null); // { timeframe: string, format: 'copy' | 'pdf' }
+    const [isBatchShare, setIsBatchShare] = useState(false);
+    const [isAllottedShare, setIsAllottedShare] = useState(false);
+    const [selectedShareClassIds, setSelectedShareClassIds] = useState([]); // Added missing state
+    const [isBatchDelete, setIsBatchDelete] = useState(false);
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+    const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false);
+    const [expandedReportType, setExpandedReportType] = useState(null);
+    const [pendingReportConfig, setPendingReportConfig] = useState(null);
     const reportDropdownRef = useRef(null);
 
     // Close Report Dropdown on outside click
@@ -63,46 +65,40 @@ const ActivitiesManager = () => {
         studentCanMarkDone: false // New field
     });
 
+    const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
+        ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
+        : classes, [classes, currentUser]);
+
     const handleCreateOrUpdate = (e) => {
         e.preventDefault();
-        if (!newActivity.title || !newActivity.classId) return;
+        if (!newActivity.title || (!newActivity.classId && !isAllottedShare)) return;
 
-        // Duplicate Check
-        // Clean strings for comparison
+        // Duplicate Check (for primary class)
         const cleanTitle = newActivity.title.trim().toLowerCase();
+        const primaryClassId = newActivity.classId;
 
-        const isDuplicate = activities.some(a =>
-            a.id !== editingActivityId && // Ignore self if editing
-            a.status !== 'Deleted' && // Ignore deleted? Actually we usually hard delete, but if soft delete, check. Assuming hard delete from context.
-            a.classId === newActivity.classId &&
-            a.subjectId === newActivity.subjectId &&
-            a.title.trim().toLowerCase() === cleanTitle
-        );
-
-        if (isDuplicate) {
-            setShowDuplicateWarning(true);
-            return;
-        }
-
+        // If batch share, we use the logic for batch
         if (editingActivityId) {
             updateActivity(editingActivityId, newActivity);
         } else {
             if (isBatchShare) {
-                // Batch Creation Logic
-                const selectedClass = classes.find(c => c.id === newActivity.classId);
+                const selectedClass = classes.find(c => c.id === primaryClassId);
                 if (selectedClass) {
-                    // Find all classes with the same Grade Name
                     const batchClasses = classes.filter(c => c.name === selectedClass.name);
-
                     batchClasses.forEach(batchClass => {
-                        // Optional: Check strictly for duplicates to avoid spamming? 
-                        // For now, let's just create it. The context might handle ID generation.
-                        // We should reuse the newActivity object but swap the classId.
                         addActivity({ ...newActivity, classId: batchClass.id });
                     });
                 }
+            } else if (isAllottedShare) {
+                // Share with ONLY the individually selected allotted classes
+                if (selectedShareClassIds.length === 0) {
+                    addActivity(newActivity);
+                } else {
+                    selectedShareClassIds.forEach(cid => {
+                        addActivity({ ...newActivity, classId: cid });
+                    });
+                }
             } else {
-                // Single Class Creation
                 addActivity(newActivity);
             }
         }
@@ -112,7 +108,9 @@ const ActivitiesManager = () => {
 
     const openCreateModal = () => {
         setEditingActivityId(null);
-        setIsBatchShare(false); // Reset
+        setIsBatchShare(false);
+        setIsAllottedShare(false); // Reset
+        setSelectedShareClassIds([]); 
         let defaultStudentMarkDone = false;
 
         // If a class is already selected, use its default config
@@ -192,9 +190,7 @@ const ActivitiesManager = () => {
         setIsBatchDelete(false); // Reset
     };
 
-    const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
-        ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
-        : classes, [classes, currentUser]);
+
 
     const { classFeatureFlags, updateClassFeatureFlags } = useData();
 
@@ -938,122 +934,186 @@ const ActivitiesManager = () => {
             {/* Create Activity Modal */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-md p-6">
-                        <div className="flex justify-between items-center mb-4">
+                    <Card className="w-full max-w-md flex flex-col max-h-[90vh]">
+                        <div className="flex justify-between items-center p-6 border-b border-gray-100 flex-shrink-0">
                             <h2 className="text-xl font-bold">{editingActivityId ? 'Edit Activity' : 'Create Activity'}</h2>
-                            <button onClick={closeModal}><XCircle className="w-6 h-6 text-gray-400" /></button>
+                            <button onClick={closeModal} className="hover:bg-gray-100 rounded-full p-1 transition-colors">
+                                <XCircle className="w-6 h-6 text-gray-400" />
+                            </button>
                         </div>
-                        <form onSubmit={handleCreateOrUpdate} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                                <Input
-                                    value={newActivity.title}
-                                    onChange={e => setNewActivity({ ...newActivity, title: e.target.value })}
-                                    placeholder="e.g. Science Project"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea
-                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    rows="3"
-                                    value={newActivity.description}
-                                    onChange={e => setNewActivity({ ...newActivity, description: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                                <select
-                                    className="w-full p-2 border rounded-lg"
-                                    value={newActivity.classId}
-                                    onChange={(e) => {
-                                        const cid = e.target.value;
-                                        setNewActivity(prev => {
-                                            const classConfig = classFeatureFlags?.find(f => f.classId === cid);
-                                            const defaultMarkDone = classConfig?.studentCanMarkActivities || false;
-                                            return { ...prev, classId: cid, studentCanMarkDone: defaultMarkDone };
-                                        });
-                                    }}
-                                    required
-                                >
-                                    <option value="">Select Class</option>
-                                    {availableClasses.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
-                                    ))}
-                                </select>
-                            </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-6 pt-2 custom-scrollbar">
+                            <form id="activityForm" onSubmit={handleCreateOrUpdate} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <Input
+                                        value={newActivity.title}
+                                        onChange={e => setNewActivity({ ...newActivity, title: e.target.value })}
+                                        placeholder="e.g. Science Project"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea
+                                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        rows="3"
+                                        value={newActivity.description}
+                                        onChange={e => setNewActivity({ ...newActivity, description: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                                    <select
+                                        className="w-full p-2 border rounded-lg"
+                                        value={newActivity.classId}
+                                        onChange={(e) => {
+                                            const cid = e.target.value;
+                                            setNewActivity(prev => {
+                                                const classConfig = classFeatureFlags?.find(f => f.classId === cid);
+                                                const defaultMarkDone = classConfig?.studentCanMarkActivities || false;
+                                                return { ...prev, classId: cid, studentCanMarkDone: defaultMarkDone };
+                                            });
+                                        }}
+                                        required
+                                    >
+                                        <option value="">Select Class</option>
+                                        {availableClasses.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name} - {c.division}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                            {!editingActivityId && (
-                                <div className={`flex items-start gap-2 p-3 rounded-lg border ${newActivity.classId ? 'bg-indigo-50 border-indigo-100' : 'bg-gray-50 border-gray-200 opacity-75'}`}>
+                                {!editingActivityId && (
+                                    <div className="space-y-3">
+                                        <div className={`p-3 rounded-lg border transition-all ${newActivity.classId ? 'bg-indigo-50 border-indigo-100' : 'bg-gray-50 border-gray-200 opacity-75'}`}>
+                                            <div className="flex items-start gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="batchShare"
+                                                    checked={isBatchShare}
+                                                    onChange={e => {
+                                                        const checked = e.target.checked;
+                                                        setIsBatchShare(checked);
+                                                        if (checked) setIsAllottedShare(false);
+                                                    }}
+                                                    disabled={!newActivity.classId}
+                                                    className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:cursor-not-allowed"
+                                                />
+                                                <label htmlFor="batchShare" className={`text-sm cursor-pointer select-none ${!newActivity.classId ? 'cursor-not-allowed text-gray-500' : 'text-indigo-900'}`}>
+                                                    <span className="font-semibold block">Share with entire batch</span>
+                                                    <span className={`text-xs ${!newActivity.classId ? 'text-gray-400' : 'text-indigo-700'}`}>
+                                                        {newActivity.classId
+                                                            ? <>Create for all divisions of <strong>Class {classes.find(c => c.id === newActivity.classId)?.name}</strong>.</>
+                                                            : "Select a Class above to enable this option."}
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className={`p-3 rounded-lg border transition-all ${newActivity.classId || (isAllottedShare && availableClasses.length > 0) ? 'bg-purple-50 border-purple-100' : 'bg-gray-50 border-gray-200 opacity-75'}`}>
+                                            <div className="flex items-start gap-2 mb-1">
+                                                <input
+                                                    type="checkbox"
+                                                    id="allottedShare"
+                                                    checked={isAllottedShare}
+                                                    onChange={e => {
+                                                        const checked = e.target.checked;
+                                                        setIsAllottedShare(checked);
+                                                        if (checked) {
+                                                            setIsBatchShare(false);
+                                                            setSelectedShareClassIds(availableClasses.map(c => c.id));
+                                                        } else {
+                                                            setSelectedShareClassIds([]);
+                                                        }
+                                                    }}
+                                                    className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                                />
+                                                <label htmlFor="allottedShare" className="text-sm cursor-pointer select-none text-purple-900 font-semibold block">
+                                                    Share with allotted classes
+                                                    <span className="text-xs text-purple-700 block font-normal mt-0.5">
+                                                        Select specific classes assigned to you.
+                                                    </span>
+                                                </label>
+                                            </div>
+
+                                            {isAllottedShare && availableClasses.length > 0 && (
+                                                <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-purple-100">
+                                                    {availableClasses.map(cls => (
+                                                        <label key={cls.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/50 cursor-pointer transition-colors border border-transparent hover:border-purple-200">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedShareClassIds.includes(cls.id)}
+                                                                onChange={e => {
+                                                                    if (e.target.checked) {
+                                                                        setSelectedShareClassIds(prev => [...prev, cls.id]);
+                                                                    } else {
+                                                                        setSelectedShareClassIds(prev => prev.filter(id => id !== cls.id));
+                                                                    }
+                                                                }}
+                                                                className="h-3.5 w-3.5 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                                            />
+                                                            <span className="text-xs font-medium text-purple-800">{cls.name}-{cls.division}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject (Optional)</label>
+                                    <select
+                                        className="w-full p-2 border rounded-lg"
+                                        value={newActivity.subjectId}
+                                        onChange={e => setNewActivity({ ...newActivity, subjectId: e.target.value })}
+                                    >
+                                        <option value="">Select Subject</option>
+                                        {availableSubjects.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Points</label>
+                                        <Input
+                                            type="number"
+                                            value={newActivity.maxPoints}
+                                            onChange={e => setNewActivity({ ...newActivity, maxPoints: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                                        <Input
+                                            type="date"
+                                            value={newActivity.dueDate}
+                                            onChange={e => setNewActivity({ ...newActivity, dueDate: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 p-3 rounded-lg border bg-gray-50/50 border-gray-200">
                                     <input
                                         type="checkbox"
-                                        id="batchShare"
-                                        checked={isBatchShare}
-                                        onChange={e => setIsBatchShare(e.target.checked)}
-                                        disabled={!newActivity.classId}
-                                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:cursor-not-allowed"
+                                        id="studentCanMarkDone"
+                                        checked={newActivity.studentCanMarkDone}
+                                        onChange={e => setNewActivity({ ...newActivity, studentCanMarkDone: e.target.checked })}
+                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                     />
-                                    <label htmlFor="batchShare" className={`text-sm cursor-pointer select-none ${!newActivity.classId ? 'cursor-not-allowed text-gray-500' : 'text-indigo-900'}`}>
-                                        <span className="font-semibold block">Share with entire batch</span>
-                                        <span className={`text-xs ${!newActivity.classId ? 'text-gray-400' : 'text-indigo-700'}`}>
-                                            {newActivity.classId
-                                                ? <>Create this activity for all <strong>Class {classes.find(c => c.id === newActivity.classId)?.name}</strong> divisions (e.g. A, B, C...).</>
-                                                : "Select a Class above to enable this option."}
-                                        </span>
+                                    <label htmlFor="studentCanMarkDone" className="text-sm cursor-pointer select-none text-gray-800 flex-1">
+                                        <span className="font-semibold block">Student can mark as done</span>
+                                        <span className="text-xs text-gray-500">Allow students to self-report completion.</span>
                                     </label>
                                 </div>
-                            )}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Subject (Optional)</label>
-                                <select
-                                    className="w-full p-2 border rounded-lg"
-                                    value={newActivity.subjectId}
-                                    onChange={e => setNewActivity({ ...newActivity, subjectId: e.target.value })}
-                                >
-                                    <option value="">Select Subject</option>
-                                    {availableSubjects.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Points</label>
-                                    <Input
-                                        type="number"
-                                        value={newActivity.maxPoints}
-                                        onChange={e => setNewActivity({ ...newActivity, maxPoints: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                                    <Input
-                                        type="date"
-                                        value={newActivity.dueDate}
-                                        onChange={e => setNewActivity({ ...newActivity, dueDate: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                            </form>
+                        </div>
 
-                            <div className="flex items-center gap-2 p-3 rounded-lg border bg-gray-50/50 border-gray-200">
-                                <input
-                                    type="checkbox"
-                                    id="studentCanMarkDone"
-                                    checked={newActivity.studentCanMarkDone}
-                                    onChange={e => setNewActivity({ ...newActivity, studentCanMarkDone: e.target.checked })}
-                                    className="mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                />
-                                <label htmlFor="studentCanMarkDone" className="text-sm cursor-pointer select-none text-gray-800 flex-1">
-                                    <span className="font-semibold block">Student can mark as done</span>
-                                    <span className="text-xs text-gray-500">Allow students to self-report completion on their dashboard.</span>
-                                </label>
-                            </div>
-
-                            <Button type="submit" className="w-full">
+                        <div className="p-6 border-t border-gray-100 flex-shrink-0">
+                            <Button type="submit" form="activityForm" className="w-full py-3 text-base shadow-lg shadow-indigo-200 transition-transform active:scale-[0.98]">
                                 {editingActivityId ? 'Update Activity' : 'Create Activity'}
                             </Button>
-                        </form>
+                        </div>
                     </Card>
                 </div>
             )}

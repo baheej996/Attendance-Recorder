@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { CheckCircle, XCircle, Clock, User } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, User, Trash2 } from 'lucide-react';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 
 const AdminRequests = () => {
-    const { adminRequests, resolveAdminRequest } = useData();
+    const { adminRequests, resolveAdminRequest, deleteAdminRequest } = useData();
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, requestId: null });
 
     // Filter for pending requests
@@ -29,6 +29,8 @@ const AdminRequests = () => {
             resolveAdminRequest(requestId, 'Resolved');
         } else if (type === 'dismiss') {
             resolveAdminRequest(requestId, 'Dismissed');
+        } else if (type === 'delete') {
+            deleteAdminRequest(requestId);
         }
 
         setConfirmModal({ isOpen: false, type: null, requestId: null });
@@ -40,13 +42,15 @@ const AdminRequests = () => {
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
                 onConfirm={executeAction}
-                title={confirmModal.type === 'resolve' ? "Complete Request?" : "Dismiss Request?"}
+                title={confirmModal.type === 'resolve' ? "Complete Request?" : confirmModal.type === 'delete' ? "Delete Request?" : "Dismiss Request?"}
                 message={confirmModal.type === 'resolve'
                     ? "This will mark the request as resolved. Ensure you have completed the requested changes."
-                    : "This will remove the request without taking action. Are you sure?"}
-                confirmText={confirmModal.type === 'resolve' ? "Mark Resolved" : "Dismiss"}
+                    : confirmModal.type === 'delete'
+                        ? "This will permanently delete this request record from the history. This cannot be undone."
+                        : "This will remove the request without taking action. Are you sure?"}
+                confirmText={confirmModal.type === 'resolve' ? "Mark Resolved" : confirmModal.type === 'delete' ? "Delete Permanently" : "Dismiss"}
                 cancelText="Cancel"
-                isDanger={confirmModal.type === 'dismiss'}
+                isDanger={confirmModal.type === 'dismiss' || confirmModal.type === 'delete'}
             />
 
             <div>
@@ -93,12 +97,21 @@ const AdminRequests = () => {
                                             >
                                                 <CheckCircle className="w-4 h-4" /> Resolve
                                             </Button>
-                                            <Button
-                                                onClick={() => handleAction(request.id, 'dismiss')}
-                                                className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2"
-                                            >
-                                                <XCircle className="w-4 h-4" /> Dismiss
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    onClick={() => handleAction(request.id, 'dismiss')}
+                                                    className="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2"
+                                                >
+                                                    <XCircle className="w-4 h-4" /> Dismiss
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleAction(request.id, 'delete')}
+                                                    className="px-3 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-100 transition-colors"
+                                                    title="Delete permanently"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 </Card>
@@ -121,9 +134,18 @@ const AdminRequests = () => {
                                         </div>
                                         <p className="text-gray-500 text-sm truncate sm:max-w-xs">{request.details}</p>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-full text-xs font-bold w-fit ${request.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                                        }`}>
-                                        {request.status}
+                                    <div className="flex items-center gap-3">
+                                        <div className={`px-3 py-1 rounded-full text-xs font-bold w-fit ${request.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                                            }`}>
+                                            {request.status}
+                                        </div>
+                                        <button
+                                            onClick={() => handleAction(request.id, 'delete')}
+                                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Delete permanently"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
                             ))}

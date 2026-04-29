@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
-import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info } from 'lucide-react';
+import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, Sparkles, Book, CheckCircle, Moon, GraduationCap, Users } from 'lucide-react';
+import { STUDENT_NAV_ITEMS } from '../../config/studentNavItems';
+import { MENTOR_NAV_ITEMS } from '../../config/mentorNavItems';
 
 const FeatureToggle = ({ label, description, icon: Icon, isEnabled, onToggle }) => (
     <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:border-indigo-100 transition-colors">
@@ -28,76 +30,125 @@ const FeatureToggle = ({ label, description, icon: Icon, isEnabled, onToggle }) 
 );
 
 const FeatureControl = () => {
-    const { studentFeatureFlags, updateStudentFeatureFlags } = useData();
+    const { studentFeatureFlags, updateStudentFeatureFlags, mentorFeatureFlags, updateMentorFeatureFlags } = useData();
     const { showAlert } = useUI();
-    const features = [
-        { key: 'overview', label: 'Overview', description: 'Student dashboard with quick stats.', icon: Calendar },
-        { key: 'activities', label: 'Activities', description: 'Assignments and projects for students.', icon: Layers },
-        { key: 'exams', label: 'Online Exams', description: 'MCQ based online examinations.', icon: FileText },
-        { key: 'results', label: 'Report Card', description: 'View exam results and progress.', icon: FileText },
-        { key: 'leave', label: 'Leave Applications', description: 'Apply for leave and view status.', icon: Calendar },
-        { key: 'chat', label: 'Mentor Chat', description: 'Messaging system with mentors.', icon: MessageSquare },
-        { key: 'prayer', label: 'Prayer Chart', description: 'Daily prayer tracking.', icon: BookOpen },
-        { key: 'history', label: 'Class History', description: 'View past class logs.', icon: Clock },
-        { key: 'leaderboard', label: 'Leaderboard', description: 'Class rankings and points.', icon: Trophy },
-        { key: 'star', label: 'Star of the Month', description: 'Monthly student recognition.', icon: Star },
-        { key: 'help', label: 'Help Section', description: 'Guides and FAQs.', icon: Info },
-    ];
+    const [activeTab, setActiveTab] = useState('student');
 
-    const [localFlags, setLocalFlags] = useState({});
-    const [hasChanges, setHasChanges] = useState(false);
+    // Extract features directly from configurations
+    // Make sure to add a fallback description if it's missing in the mentor config
+    const studentFeatures = STUDENT_NAV_ITEMS.map(item => ({
+        key: item.key || item.id, // Fallback to id if key not present
+        label: item.label,
+        description: item.description || `Manage ${item.label.toLowerCase()} feature.`,
+        icon: item.icon
+    }));
+
+    const mentorFeatures = MENTOR_NAV_ITEMS.map(item => ({
+        key: item.key || item.id,
+        label: item.label,
+        description: item.description || `Manage ${item.label.toLowerCase()} feature.`,
+        icon: item.icon
+    }));
+
+    const [localStudentFlags, setLocalStudentFlags] = useState({});
+    const [localMentorFlags, setLocalMentorFlags] = useState({});
 
     useEffect(() => {
         if (studentFeatureFlags) {
-            // Ensure all features have an explicit true/false value
             const explicitFlags = {};
-            features.forEach(f => {
-                explicitFlags[f.key] = studentFeatureFlags[f.key] !== false;
-            });
-            setLocalFlags(explicitFlags);
+            studentFeatures.forEach(f => explicitFlags[f.key] = studentFeatureFlags[f.key] !== false);
+            setLocalStudentFlags(explicitFlags);
         }
     }, [studentFeatureFlags]);
 
-    const handleToggle = async (key) => {
-        // Optimistic UI update
-        const currentValue = localFlags[key] === undefined ? true : localFlags[key];
+    useEffect(() => {
+        if (mentorFeatureFlags) {
+            const explicitFlags = {};
+            mentorFeatures.forEach(f => explicitFlags[f.key] = mentorFeatureFlags[f.key] !== false);
+            setLocalMentorFlags(explicitFlags);
+        } else {
+            // Default all mentor features to true if missing
+            const defaultFlags = {};
+            mentorFeatures.forEach(f => defaultFlags[f.key] = true);
+            setLocalMentorFlags(defaultFlags);
+        }
+    }, [mentorFeatureFlags]);
+
+    const handleToggle = async (key, type) => {
+        const isStudent = type === 'student';
+        const currentFlags = isStudent ? localStudentFlags : localMentorFlags;
+        const setLocalFlags = isStudent ? setLocalStudentFlags : setLocalMentorFlags;
+        const updateFlags = isStudent ? updateStudentFeatureFlags : updateMentorFeatureFlags;
+        const activeFeatures = isStudent ? studentFeatures : mentorFeatures;
+
+        const currentValue = currentFlags[key] === undefined ? true : currentFlags[key];
         const newStatus = !currentValue;
-        const updatedFlags = { ...localFlags, [key]: newStatus };
+        const updatedFlags = { ...currentFlags, [key]: newStatus };
 
         setLocalFlags(updatedFlags);
 
-        // Auto-save to Firebase
         try {
-            await updateStudentFeatureFlags(updatedFlags);
-            showAlert('Success', `${features.find(f => f.key === key)?.label} ${newStatus ? 'Enabled' : 'Disabled'} successfully.`, 'success');
+            await updateFlags(updatedFlags);
+            showAlert('Success', `${activeFeatures.find(f => f.key === key)?.label} ${newStatus ? 'Enabled' : 'Disabled'} successfully.`, 'success');
         } catch (error) {
             console.error("Error updating features:", error);
             showAlert('Error', 'Failed to update feature.', 'error');
             // Revert on failure
-            setLocalFlags(localFlags);
+            setLocalFlags(currentFlags);
         }
     };
 
     // Features array moved up to state boundary
+
+    const renderToggles = (featuresList, flags, type) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {featuresList.map(f => (
+                <FeatureToggle
+                    key={f.key}
+                    {...f}
+                    isEnabled={flags[f.key] !== false} // Default to true if undefined
+                    onToggle={() => handleToggle(f.key, type)}
+                />
+            ))}
+        </div>
+    );
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Feature Control</h2>
-                    <p className="text-gray-500">Enable or disable features for the Student Panel. Changes are saved automatically.</p>
+                    <p className="text-gray-500">Enable or disable features for panels. New pages added to the app will automatically appear here. Changes are saved automatically.</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {features.map(f => (
-                    <FeatureToggle
-                        key={f.key}
-                        {...f}
-                        isEnabled={localFlags[f.key] !== false} // Default to true if undefined
-                        onToggle={() => handleToggle(f.key)}
-                    />
-                ))}
+            <div className="flex gap-2 p-1 bg-gray-100/50 rounded-xl w-fit">
+                <button
+                    onClick={() => setActiveTab('student')}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
+                        activeTab === 'student'
+                            ? 'bg-white text-indigo-600 shadow-sm border border-gray-200/50'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                    }`}
+                >
+                    <GraduationCap className="w-4 h-4" />
+                    Student Features
+                </button>
+                <button
+                    onClick={() => setActiveTab('mentor')}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
+                        activeTab === 'mentor'
+                            ? 'bg-white text-indigo-600 shadow-sm border border-gray-200/50'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                    }`}
+                >
+                    <Users className="w-4 h-4" />
+                    Mentor Features
+                </button>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                {activeTab === 'student' ? renderToggles(studentFeatures, localStudentFlags, 'student') : renderToggles(mentorFeatures, localMentorFlags, 'mentor')}
             </div>
         </div>
     );

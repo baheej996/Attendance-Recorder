@@ -4,10 +4,10 @@ import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload, Settings, Clock } from 'lucide-react';
+import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload, Settings, Clock, Share2, CornerDownRight, Check, Send, Inbox } from 'lucide-react';
 
 const QuestionBank = () => {
-    const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser, examSettings, updateExamSetting } = useData();
+    const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser, examSettings, updateExamSetting, mentors, questionSuggestions, suggestQuestions, resolveQuestionSuggestion } = useData();
     const { showAlert, showConfirm } = useUI();
 
     // Mentor specific filtering
@@ -50,6 +50,12 @@ const QuestionBank = () => {
     const [correctAnswer, setCorrectAnswer] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]);
+    
+    // Sharing modal state
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [shareWithBatch, setShareWithBatch] = useState(true);
+    const [targetDivisions, setTargetDivisions] = useState([]); // Array of specific class IDs (GUIDs)
+    const [suggestTargetMentors, setSuggestTargetMentors] = useState([]);
 
     // Helpers
     const getSetting = (examId, classId, subjectId) => {
@@ -60,10 +66,36 @@ const QuestionBank = () => {
         updateExamSetting(examId, classId, subjectId, updates);
     };
 
-    const openEditor = (examId, classId, subjectId) => {
-        setContext({ examId, classId, subjectId });
+    const openEditor = (examId, className, subjectId) => {
+        setContext({ examId, classId: className, subjectId }); // context.classId carries the human class name here
         setIsEditorOpen(true);
         resetForm();
+
+        // Default: match all divisions of this class name that are assigned to the mentor
+        const defaultDivisions = classes
+            .filter(c => c.name === className && assignedClassIds.includes(c.id))
+            .map(c => c.id);
+        setTargetDivisions(defaultDivisions);
+        
+        // Let's defer loading to when the modal opens if possible. Or set it here.
+    };
+
+    const openShareModal = () => {
+        if (currentQuestions.length > 0) {
+            const firstQ = currentQuestions[0];
+            if (firstQ.shareMode === 'Specific') {
+                setShareWithBatch(false);
+                setTargetDivisions(firstQ.targetDivisions || []);
+            } else {
+                setShareWithBatch(true);
+                const defaultDivisions = classes
+                    .filter(c => c.name === context.classId && assignedClassIds.includes(c.id))
+                    .map(c => c.id);
+                setTargetDivisions(defaultDivisions);
+            }
+        }
+        setSuggestTargetMentors([]);
+        setIsShareModalOpen(true);
     };
 
     const resetForm = () => {
@@ -75,6 +107,7 @@ const QuestionBank = () => {
         setAllowAttachments(false);
         setEditingId(null);
         setQType('MCQ');
+        setShareWithBatch(true);
     };
 
     const handleImageUpload = (e) => {
@@ -192,34 +225,161 @@ const QuestionBank = () => {
     };
 
     // Filter questions for the modal
-    const currentQuestions = questions.filter(q =>
-        q.examId === context.examId &&
-        q.classId === context.classId &&
-        q.subjectId === context.subjectId
+    const currentQuestions = questions.filter(q => {
+        if (q.examId !== context.examId || q.subjectId !== context.subjectId) return false;
+        
+        // Legacy questions (before shareMode existed)
+        if (!q.shareMode) {
+            return q.classId === context.classId || assignedClassIds.includes(q.classId);
+        }
+        
+        if (q.shareMode === 'Batch') {
+            return q.classId === context.classId;
+        }
+        
+        if (q.shareMode === 'Specific') {
+            return q.targetDivisions?.some(t => assignedClassIds.includes(t));
+        }
+        
+        return false;
+    });
+
+    // Sharing Modal Actions
+    const handleSaveSharingSettings = () => {
+        if (!shareWithBatch && targetDivisions.length === 0) {
+            return showAlert("Error", "Please select at least one division.", "error");
+        }
+
+        currentQuestions.forEach(q => {
+            updateQuestion(q.id, {
+                shareMode: shareWithBatch ? 'Batch' : 'Specific',
+                targetDivisions: !shareWithBatch ? targetDivisions : [],
+                classId: context.classId // Normalize base classId to the Standard
+            });
+        });
+        setIsShareModalOpen(false);
+        showAlert("Saved", "Question visibility settings updated.", "success");
+    };
+
+    const handleSuggestQuestions = () => {
+        if (suggestTargetMentors.length === 0) return showAlert("Error", "Select at least one mentor.", "error");
+        if (currentQuestions.length === 0) return showAlert("Error", "No questions to suggest.", "error");
+        
+        const suggestionPack = {
+            senderId: currentUser.id,
+            senderName: currentUser.name,
+            examId: context.examId,
+            examName: exams.find(e => e.id === context.examId)?.name,
+            classId: context.classId,
+            subjectId: context.subjectId,
+            questions: currentQuestions
+        };
+        
+        suggestTargetMentors.forEach(mId => {
+            suggestQuestions({ ...suggestionPack, receiverId: mId });
+        });
+        
+        setIsShareModalOpen(false);
+        showAlert("Suggested!", "Questions sent to selected mentors for review.", "success");
+    };
+
+    const [activeTab, setActiveTab] = useState('questions'); // 'questions' | 'settings' // For the modal later?
+    
+    // Mentor assignments for same standard
+    const mentorsForSameClass = mentors.filter(m => 
+        m.id !== currentUser.id && 
+        m.assignedClassIds?.some(assignedId => 
+            classes.find(c => c.id === assignedId)?.name === context.classId
+        )
     );
 
-    const [activeTab, setActiveTab] = useState('questions'); // 'questions' | 'settings'
+    const myPendingSuggestions = questionSuggestions?.filter(s => s.receiverId === currentUser.id && s.status === 'Pending') || [];
+
+    const handleAcceptSuggestion = (suggestion) => {
+        const myDivisionsForThisClass = classes
+            .filter(c => c.name === suggestion.classId && assignedClassIds.includes(c.id))
+            .map(c => c.id);
+
+        if (myDivisionsForThisClass.length === 0) {
+            return showAlert("Cannot Accept", `You are not assigned to any divisions for Class ${suggestion.classId} anymore.`, "error");
+        }
+
+        let importedCount = 0;
+
+        suggestion.questions.forEach(q => {
+            const isBatch = q.shareMode === 'Batch' || (!q.shareMode && q.classId === suggestion.classId);
+            if (isBatch) return; // Batch questions are already visible due to global matching
+
+            const { id, shareMode, targetDivisions, ...newQ } = q;
+            addQuestion({ 
+                ...newQ, 
+                shareMode: 'Specific', 
+                targetDivisions: myDivisionsForThisClass,
+                classId: suggestion.classId 
+            });
+            importedCount++;
+        });
+
+        resolveQuestionSuggestion(suggestion.id, "Accepted");
+        showAlert(
+            importedCount > 0 ? "Questions Accepted" : "No New Copies Needed", 
+            importedCount > 0 ? `Imported ${importedCount} specific question(s) to your division(s).` : `All suggested questions are Batch questions and naturally updated globally.`, 
+            "success"
+        );
+    };
+
+    const handleRejectSuggestion = (id) => {
+        resolveQuestionSuggestion(id, "Rejected");
+    };
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
-            {/* Header / Exam Selection */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            {/* Header / Tab Selection */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Advanced Question Bank</h2>
                     <p className="text-gray-500 text-sm">Manage questions, scheduling, and activation per subject.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Select Exam Context:</label>
-                    <select
-                        value={selectedExamId}
-                        onChange={e => setSelectedExamId(e.target.value)}
-                        className="rounded-lg border-gray-300 shadow-sm p-2 bg-gray-50 border min-w-[200px]"
+                <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+                    <button
+                        onClick={() => setActiveTab('questions')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'questions' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600 hover:text-gray-800'}`}
                     >
-                        <option value="">-- Choose Exam --</option>
-                        {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                    </select>
+                        Question Bank
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('suggestions')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'suggestions' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600 hover:text-gray-800'}`}
+                    >
+                        <Inbox className="w-4 h-4" />
+                        Review Suggestions
+                        {myPendingSuggestions.length > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                                {myPendingSuggestions.length}
+                            </span>
+                        )}
+                    </button>
                 </div>
             </div>
+
+            {activeTab === 'questions' && (
+                <>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div>
+                        <h3 className="font-bold text-gray-700 flex items-center gap-2"><Settings className="w-4 h-4 text-indigo-500"/> Exam Selection</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Select Exam Context:</label>
+                        <select
+                            value={selectedExamId}
+                            onChange={e => setSelectedExamId(e.target.value)}
+                            className="rounded-lg border-gray-300 shadow-sm p-2 bg-gray-50 border min-w-[200px]"
+                        >
+                            <option value="">-- Choose Exam --</option>
+                            {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+                    </div>
+                </div>
 
             {!selectedExamId ? (
                 <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
@@ -323,14 +483,22 @@ const QuestionBank = () => {
                         </button>
 
                         <div className="p-6 border-b border-gray-100 bg-white">
-                            <div className="mb-4">
-                                <h3 className="text-xl font-bold text-gray-800">
-                                    {context.subjectId} <span className="text-gray-400 font-normal">/ Class {context.classId}</span>
-                                </h3>
-                                <p className="text-gray-500 text-sm">Manage questions and exam settings for this subject.</p>
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-800">
+                                        {context.subjectId} <span className="text-gray-400 font-normal">/ Class {context.classId}</span>
+                                    </h3>
+                                    <p className="text-gray-500 text-sm">Manage questions and exam settings for this subject.</p>
+                                </div>
+                                
+                                <Button 
+                                    onClick={openShareModal}
+                                    variant="primary" 
+                                    className="flex items-center gap-2 shadow-md"
+                                >
+                                    <Share2 className="w-4 h-4" /> Save & Share
+                                </Button>
                             </div>
-
-
                         </div>
 
                         {/* Exam Duration Settings Banner */}
@@ -438,17 +606,19 @@ const QuestionBank = () => {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 mb-[2px]">
-                                            <input
-                                                type="checkbox"
-                                                id="allowAttachments"
-                                                checked={allowAttachments}
-                                                onChange={(e) => setAllowAttachments(e.target.checked)}
-                                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                            />
-                                            <label htmlFor="allowAttachments" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
-                                                Allow Attachments
-                                            </label>
+                                        <div className="flex flex-col gap-3">
+                                                <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="allowAttachments"
+                                                        checked={allowAttachments}
+                                                        onChange={(e) => setAllowAttachments(e.target.checked)}
+                                                        className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                                    />
+                                                    <label htmlFor="allowAttachments" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                                                        Allow Attachments
+                                                    </label>
+                                                </div>
                                         </div>
                                     </div>
 
@@ -560,6 +730,171 @@ const QuestionBank = () => {
                     </Card >
                 </div >
             )}
+            </>
+            )}
+
+            {activeTab === 'suggestions' && (
+                <div className="space-y-4">
+                    <h3 className="text-xl font-bold text-gray-800">Pending Suggestions</h3>
+                    {myPendingSuggestions.length === 0 ? (
+                        <div className="text-center py-20 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                            <Inbox className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500 text-lg">You have no pending question suggestions right now.</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-4">
+                            {myPendingSuggestions.map(s => (
+                                <Card key={s.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-indigo-500">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-gray-800">{s.subjectId}</span>
+                                            <span className="text-sm text-gray-400">/ Class {s.classId} /</span>
+                                            <span className="text-sm text-gray-500 font-medium">{s.examName || s.examId}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-2">
+                                            <span className="font-semibold text-gray-800">{s.senderName}</span> has suggested a question set containing <span className="font-semibold text-indigo-600">{s.questions?.length || 0}</span> question(s).
+                                        </p>
+                                        <span className="text-xs text-gray-400">Sent on {new Date(s.timestamp).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="flex gap-2 shrink-0">
+                                        <Button onClick={() => handleAcceptSuggestion(s)} variant="primary" className="flex items-center gap-1 bg-green-600 hover:bg-green-700 shadow border-none">
+                                            <Check className="w-4 h-4" /> Accept
+                                        </Button>
+                                        <Button onClick={() => handleRejectSuggestion(s.id)} variant="secondary" className="flex items-center gap-1 hover:bg-red-50 text-red-600 hover:text-red-700 border-none transition-colors">
+                                            <Trash2 className="w-4 h-4" /> Reject
+                                        </Button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Share Questions Modal */}
+            {isShareModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <Card className="w-full max-w-lg bg-white shadow-2xl rounded-2xl overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <Share2 className="w-5 h-5 text-indigo-600" />
+                                Share & Settings
+                            </h3>
+                            <button onClick={() => setIsShareModalOpen(false)} className="text-gray-400 hover:text-gray-700 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto max-h-[70vh] flex flex-col gap-8">
+                            
+                            {/* VISIBILITY SETTINGS */}
+                            <div className="space-y-4">
+                                <div>
+                                    <h4 className="font-bold text-gray-800 text-base mb-1">Question Visibility</h4>
+                                    <p className="text-xs text-gray-500 mb-3">Who should see the questions for this subject?</p>
+                                </div>
+                                
+                                <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                    <label className="flex items-start gap-3 cursor-pointer group">
+                                        <input 
+                                            type="radio" 
+                                            checked={shareWithBatch} 
+                                            onChange={() => setShareWithBatch(true)}
+                                            className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-gray-800 group-hover:text-indigo-700 transition-colors">Share with entire Batch (Standard {context.classId})</span>
+                                            <span className="text-xs text-gray-500 mt-0.5">All students in all divisions will see this question set.</span>
+                                        </div>
+                                    </label>
+
+                                    <div className="border-t border-gray-200 my-2"></div>
+
+                                    <label className="flex items-start gap-3 cursor-pointer group">
+                                        <input 
+                                            type="radio" 
+                                            checked={!shareWithBatch} 
+                                            onChange={() => setShareWithBatch(false)}
+                                            className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-gray-800 group-hover:text-indigo-700 transition-colors">Share only with specific Divisions</span>
+                                            <span className="text-xs text-gray-500 mt-0.5">Select which of your assigned divisions should receive this.</span>
+                                        </div>
+                                    </label>
+
+                                    {!shareWithBatch && (
+                                        <div className="ml-7 pt-2 grid grid-cols-2 gap-2">
+                                            {classes
+                                                .filter(c => c.name === context.classId && assignedClassIds.includes(c.id))
+                                                .map(cls => (
+                                                    <label key={cls.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-100 hover:border-indigo-200 cursor-pointer shadow-sm">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={targetDivisions.includes(cls.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) setTargetDivisions(prev => [...prev, cls.id]);
+                                                                else setTargetDivisions(prev => prev.filter(id => id !== cls.id));
+                                                            }}
+                                                            className="rounded text-indigo-600 focus:ring-indigo-500"
+                                                        />
+                                                        <span className="text-sm font-medium text-gray-700">{cls.name}-{cls.division}</span>
+                                                    </label>
+                                                ))
+                                            }
+                                        </div>
+                                    )}
+                                </div>
+                                <Button onClick={handleSaveSharingSettings} variant="primary" className="w-full">
+                                    Save Visibility Settings
+                                </Button>
+                            </div>
+
+                            {/* SUGGESTION MODULE */}
+                            {!shareWithBatch && (
+                                <div className="space-y-4 pt-6 border-t border-gray-200">
+                                    <div>
+                                        <h4 className="font-bold text-gray-800 text-base mb-1">Suggest to Mentors</h4>
+                                        <p className="text-xs text-gray-500 mb-3">Send this set of questions to other mentors teaching this subject.</p>
+                                    </div>
+                                    
+                                    {mentorsForSameClass.length === 0 ? (
+                                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-sm text-gray-500 italic">
+                                            No other mentors are assigned to Standard {context.classId}.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                                                {mentorsForSameClass.map(m => (
+                                                    <label key={m.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-indigo-300 cursor-pointer transition-colors bg-white">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={suggestTargetMentors.includes(m.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) setSuggestTargetMentors(prev => [...prev, m.id]);
+                                                                else setSuggestTargetMentors(prev => prev.filter(id => id !== m.id));
+                                                            }}
+                                                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                                                        />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-gray-800">{m.name}</span>
+                                                            <span className="text-xs text-gray-500">{m.email}</span>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <Button onClick={handleSuggestQuestions} variant="secondary" className="w-full flex items-center justify-center gap-2">
+                                                <Send className="w-4 h-4" /> Send Suggestion Pack
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+                </div>
+            )}
+
         </div >
     );
 };

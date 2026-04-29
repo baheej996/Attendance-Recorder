@@ -13,24 +13,49 @@ import StudentLoginPage from './pages/StudentLoginPage'; // Import StudentLoginP
 import ErrorBoundary from './components/ErrorBoundary';
 
 import { UIProvider } from './contexts/UIContext';
-import { useData } from './contexts/DataContext'; // Import useData
-import InstallPrompt from './components/pwa/InstallPrompt'; // Import InstallPrompt
+import { NotificationProvider } from './contexts/NotificationContext';
+import { useData } from './contexts/DataContext';
+import InstallPrompt from './components/pwa/InstallPrompt';
+import NotificationPrompt from './components/pwa/NotificationPrompt';
+import UpdateNotification from './components/system/UpdateNotification';
 
 function App() {
   return (
     <ErrorBoundary>
       <DataProvider>
         <UIProvider>
-          <AppContent />
+          <NotificationProvider>
+            <AppContent />
+          </NotificationProvider>
         </UIProvider>
       </DataProvider>
     </ErrorBoundary>
   );
 }
 
+import { requestFirebaseNotificationPermission, onMessageListener } from './utils/fcm';
+import { useUI } from './contexts/UIContext';
+
 // Extract content to use hooks inside DataProvider
 const AppContent = () => {
-  const { institutionSettings } = useData();
+  const { institutionSettings, currentUser } = useData();
+  const { showAlert } = useUI();
+
+  // FCM Management
+  React.useEffect(() => {
+    if (currentUser?.id) {
+      requestFirebaseNotificationPermission(currentUser.id);
+    }
+  }, [currentUser?.id]);
+
+  // Handle Foreground Messages
+  React.useEffect(() => {
+    const unsub = onMessageListener().then((payload) => {
+      console.log('Received foreground message:', payload);
+      showAlert(payload.notification.title, payload.notification.body, 'info');
+    });
+    return () => {}; // No direct unsub for this specific listener which is promise-based
+  }, []);
 
   React.useEffect(() => {
     if (institutionSettings?.favicon) {
@@ -48,7 +73,9 @@ const AppContent = () => {
 
   return (
     <Router>
+      <UpdateNotification />
       <InstallPrompt />
+      <NotificationPrompt />
       <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
         <Routes>
           {/* Dedicated Student Login - Moved to top for priority */}

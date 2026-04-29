@@ -136,47 +136,52 @@ const StudentLeave = () => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Leave Applications</h1>
-                    <p className="text-gray-500">Request leave and track status</p>
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 flex items-center gap-2">
+                        <FileText className="w-8 h-8 text-indigo-600" />
+                        Leave Hub
+                    </h1>
+                    <p className="text-sm md:text-base text-gray-500 font-medium mt-0.5">Request absence and track approvals</p>
                 </div>
                 {!showForm && (
-                    <Button onClick={() => setShowForm(true)} className="gap-2 flex items-center">
+                    <Button onClick={() => setShowForm(true)} className="gap-2 flex items-center rounded-2xl font-black text-xs uppercase tracking-widest px-6 py-3 w-full md:w-auto shadow-lg shadow-indigo-100 active:scale-95 transition-all">
                         <Plus className="w-4 h-4" /> New Application
                     </Button>
                 )}
             </div>
 
             {showForm && (
-                <Card className="p-6 border-l-4 border-l-indigo-500 animate-in fade-in slide-in-from-top-4">
-                    <h3 className="font-bold text-lg mb-4">{editingId ? 'Edit Application' : 'New Leave Application'}</h3>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <Card className="p-6 border border-indigo-100 bg-white rounded-3xl shadow-xl animate-in fade-in slide-in-from-top-4">
+                    <h3 className="font-black text-lg mb-6 text-gray-900 underline decoration-indigo-200 decoration-4 underline-offset-4">
+                        {editingId ? 'Edit Record' : 'Create Application'}
+                    </h3>
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Starts</label>
                                 <input
                                     type="date"
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm focus:ring-2 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
                                     value={formData.startDate}
                                     onChange={e => setFormData({ ...formData, startDate: e.target.value })}
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Ends</label>
                                 <input
                                     type="date"
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm focus:ring-2 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
                                     value={formData.endDate}
                                     onChange={e => setFormData({ ...formData, endDate: e.target.value })}
                                 />
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Type of Leave</label>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Category</label>
                             <select
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                className="w-full p-3 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm focus:ring-2 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all appearance-none"
                                 value={formData.type}
                                 onChange={e => setFormData({ ...formData, type: e.target.value })}
                             >
@@ -187,19 +192,23 @@ const StudentLeave = () => {
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Reason / Explanation</label>
                             <textarea
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none"
-                                placeholder="Please explain why you need leave..."
+                                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-medium text-sm focus:ring-2 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all h-28 resize-none"
+                                placeholder="Why do you need this leave?"
                                 value={formData.reason}
                                 onChange={e => setFormData({ ...formData, reason: e.target.value })}
                             />
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-2">
-                            <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
-                            <Button type="submit" disabled={isSubmitting}>{editingId ? 'Update Application' : 'Submit Application'}</Button>
+                        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+                            <Button type="button" variant="secondary" onClick={handleCancel} className="w-full sm:w-1/3 rounded-2xl font-black text-xs uppercase tracking-widest py-3 hover:bg-gray-100">
+                                Dismiss
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-2/3 rounded-2xl font-black text-xs uppercase tracking-widest py-3 shadow-lg shadow-indigo-100 active:scale-95 transition-all">
+                                {editingId ? 'Update Record' : 'Send Request'}
+                            </Button>
                         </div>
                     </form>
                 </Card>
@@ -207,64 +216,67 @@ const StudentLeave = () => {
 
             <div className="space-y-4">
                 {myRequests.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
-                        <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <h3 className="text-gray-900 font-medium">No Applications Yet</h3>
-                        <p className="text-gray-500 text-sm">You haven't applied for any leave yet.</p>
+                    <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                        <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                            <FileText className="w-8 h-8 text-gray-300" />
+                        </div>
+                        <h3 className="text-lg font-black text-gray-900">No Applications</h3>
+                        <p className="text-gray-400 text-xs font-medium mt-1">You haven't requested any leave yet.</p>
                     </div>
                 ) : (
                     myRequests.map(req => (
-                        <Card key={req.id} className="p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-bold text-gray-800">{req.type}</h4>
-                                        <div className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                                            {differenceInDays(new Date(req.endDate), new Date(req.startDate)) + 1} Days
+                        <Card key={req.id} className="p-5 overflow-hidden rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 bg-white">
+                            <div className="space-y-4">
+                                <div className="flex items-start justify-between">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-black text-gray-900 leading-tight">{req.type}</h4>
+                                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                                                {differenceInDays(new Date(req.endDate), new Date(req.startDate)) + 1} Days
+                                            </span>
                                         </div>
+                                        <p className="text-xs font-medium text-gray-500 line-clamp-2 leading-relaxed">{req.reason}</p>
                                     </div>
-                                    <p className="text-sm text-gray-600 line-clamp-2">{req.reason}</p>
-                                    <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
-                                        <span className="flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {format(new Date(req.startDate), 'MMM d, yyyy')} - {format(new Date(req.endDate), 'MMM d, yyyy')}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="w-3 h-3" />
-                                            Applied on {format(new Date(req.createdAt), 'MMM d')}
-                                        </span>
+                                    <div className="shrink-0">
+                                        {getStatusBadge(req.status)}
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                    {getStatusBadge(req.status)}
 
-                                    {req.status === 'Pending' && (
-                                        <div className="flex gap-2">
-                                            <Button
-                                                size="sm"
-                                                variant="secondary"
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 border-y border-gray-50">
+                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        {format(new Date(req.startDate), 'MMM d')} - {format(new Date(req.endDate), 'MMM d')}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        Applied {format(new Date(req.createdAt), 'MMM d')}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-4">
+                                    {req.status === 'Pending' ? (
+                                        <div className="flex gap-2 w-full md:w-auto">
+                                            <button
                                                 onClick={() => handleEdit(req)}
-                                                className="text-xs h-7 px-2 flex items-center"
+                                                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-50 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 active:scale-95 transition-all border border-gray-100"
                                             >
-                                                <Edit2 className="w-3 h-3 mr-1" /> Edit
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="danger"
+                                                <Edit2 className="w-3 h-3" /> Edit
+                                            </button>
+                                            <button
                                                 onClick={() => handleDelete(req.id)}
-                                                className="text-xs h-7 px-2 flex items-center"
+                                                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 active:scale-95 transition-all border border-red-100"
                                             >
-                                                <Trash2 className="w-3 h-3 mr-1" /> Delete
-                                            </Button>
+                                                <Trash2 className="w-3 h-3" /> Delete
+                                            </button>
                                         </div>
-                                    )}
-
-                                    {req.comment && (
-                                        <div className="text-xs text-right max-w-[200px] text-gray-500 bg-gray-50 p-2 rounded">
-                                            <span className="font-semibold block text-indigo-700">Mentor Note:</span>
-                                            {req.comment}
+                                    ) : (
+                                        <div className="flex-1">
+                                            {req.comment && (
+                                                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-1">Mentor Remark</p>
+                                                    <p className="text-xs font-medium text-gray-600 leading-relaxed italic">"{req.comment}"</p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

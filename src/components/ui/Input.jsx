@@ -2,9 +2,9 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-export const Input = ({ label, error, className, ...props }) => {
+export const Input = ({ label, error, className, containerClassName, ...props }) => {
     return (
-        <div className="w-full">
+        <div className={twMerge("w-full", containerClassName)}>
             {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
             <input
                 className={twMerge(clsx(
@@ -19,9 +19,9 @@ export const Input = ({ label, error, className, ...props }) => {
     );
 };
 
-export const Select = ({ label, error, options, className, ...props }) => {
+export const Select = ({ label, error, options, className, containerClassName, ...props }) => {
     return (
-        <div className="w-full">
+        <div className={twMerge("w-full", containerClassName)}>
             {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
             <select
                 className={twMerge(clsx(

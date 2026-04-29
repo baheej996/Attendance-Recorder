@@ -8,7 +8,7 @@ import ClassFeatureModal from './ClassFeatureModal';
 import LiveClassModal from './LiveClassModal';
 
 const Batches = () => {
-    const { currentUser, classes, students } = useData();
+    const { currentUser, classes, students, liveClasses, substitutionRequests } = useData();
     const [expandedClasses, setExpandedClasses] = useState({});
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [currentPreviewStudentId, setCurrentPreviewStudentId] = useState(null);
@@ -114,17 +114,42 @@ const Batches = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                                        {(() => {
+                                            const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+                                            const activeSub = (substitutionRequests || []).find(r => r.classId === cls.id && r.status === 'Accepted' && r.date === todayStr && r.substituteLiveLink);
+                                            let liveClassData = liveClasses?.find(lc => lc.classId === cls.id && lc.isEnabled && lc.link);
+
+                                            if (liveClassData && activeSub) {
+                                                liveClassData = { ...liveClassData, link: activeSub.substituteLiveLink };
+                                            }
+
+                                            if (!liveClassData) return null;
+
+                                            return (
+                                                <a
+                                                    href={liveClassData.link}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-md shadow-green-500/20 text-sm font-bold animate-pulse hover:animate-none"
+                                                    title="Start Live Class Instantly"
+                                                >
+                                                    <Video className="w-4 h-4" />
+                                                    Start Class
+                                                </a>
+                                            );
+                                        })()}
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setLiveClassModalData({ isOpen: true, classId: cls.id, classNameStr: `${cls.name}-${cls.division}` });
                                             }}
                                             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm text-sm font-medium"
-                                            title="Live Class Schedule"
+                                            title="Live Class Settings"
                                         >
-                                            <Video className="w-4 h-4" />
-                                            Live Class
+                                            <Settings className="w-4 h-4" />
+                                            Live Schedule
                                         </button>
                                         <button
                                             onClick={(e) => {

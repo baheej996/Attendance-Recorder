@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, X } from 'lucide-react';
+import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, X, Book, CheckCircle, Moon } from 'lucide-react';
 
 const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDisabled, globalDisabledReason, disabledTheme = 'red', onToggle }) => {
     const themeColors = {
@@ -115,12 +115,15 @@ const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }
 
     const features = [
         { key: 'activities', label: 'Activities', description: 'Enable assignments and projects.', icon: Layers },
+        { key: 'subjects', label: 'Subjects', description: 'Enable subject viewing.', icon: Book },
         { key: 'exams', label: 'Online Exams', description: 'Enable MCQ based online examinations.', icon: FileText },
         { key: 'results', label: 'Report Card', description: 'Allow viewing of exam results.', icon: FileText },
         { key: 'leave', label: 'Leave Applications', description: 'Allow applying for leave.', icon: Calendar },
         { key: 'chat', label: 'Mentor Chat', description: 'Enable direct messaging.', icon: MessageSquare },
         { key: 'prayer', label: 'Prayer Chart', description: 'Enable daily prayer tracking.', icon: BookOpen },
+        { key: 'ramadan', label: 'Ramadan', description: 'Enable Ramadan tracking.', icon: Moon },
         { key: 'history', label: 'Class History', description: 'Allow viewing of class logs.', icon: Clock },
+        { key: 'attendanceHistory', label: 'Attendance History', description: 'Allow viewing of attendance.', icon: CheckCircle },
         { key: 'leaderboard', label: 'Leaderboard', description: 'Show class rankings and points.', icon: Trophy },
         { key: 'star', label: 'Star of the Month', description: 'Show monthly student recognition.', icon: Star },
     ];

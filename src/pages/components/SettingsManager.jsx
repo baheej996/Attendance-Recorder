@@ -4,16 +4,23 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Save, Building, Calendar, User, Type, UserCog, Lock } from 'lucide-react';
+import { Save, Building, Calendar, User, Type, UserCog, Lock, AlertTriangle, Trash2, RefreshCw, ArrowLeftRight } from 'lucide-react';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
+import { AdminAuthModal } from '../../components/ui/AdminAuthModal';
 
 const SettingsManager = () => {
-    const { institutionSettings, updateInstitutionSettings, updateAdminCredentials, validateAdmin } = useData();
+    const { institutionSettings, updateInstitutionSettings, updateAdminCredentials, validateAdmin, resetData, repairAttendanceData } = useData();
     const { showAlert } = useUI();
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+    const [isRepairing, setIsRepairing] = useState(false);
+    const [isAdminAuthOpen, setIsAdminAuthOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         tagline: '',
         academicYear: '',
-        chiefMentor: ''
+        chiefMentor: '',
+        favicon: '',
+        signatureImage: null
     });
     const [adminData, setAdminData] = useState({
         currentPassword: '',
@@ -25,8 +32,11 @@ const SettingsManager = () => {
     const [adminMessage, setAdminMessage] = useState({ type: '', text: '' });
 
     useEffect(() => {
-        if (institutionSettings) {
-            setFormData(institutionSettings);
+        if (institutionSettings && Object.keys(institutionSettings).length > 0) {
+            setFormData(prev => ({
+                ...prev,
+                ...institutionSettings
+            }));
         }
     }, [institutionSettings]);
 
@@ -86,12 +96,39 @@ const SettingsManager = () => {
         // Wait, I can try to access the context's state if I expose it. 
         // Let's expose `adminCredentials` in DataContext first? No, I viewed the file, I didn't expose it.
         // Let's blind check? validateAdmin(storedUsername...?)
-        // Re-plan: update SettingsManager to include "Current Username" field in the Admin form.
+    };
+
+    const checkAuthBeforeReset = () => {
+        setIsResetModalOpen(false);
+        setIsAdminAuthOpen(true);
+    };
+
+    const handleRepair = async () => {
+        setIsRepairing(true);
+        try {
+            const count = await repairAttendanceData();
+            showAlert('Repair Complete', `Successfully repaired ${count} attendance records.`, 'success');
+        } catch (error) {
+            showAlert('Repair Failed', 'System error during data repair.', 'error');
+        } finally {
+            setIsRepairing(false);
+        }
+    };
+
+    const handleFinalReset = async () => {
+        try {
+            await resetData();
+            setIsAdminAuthOpen(false);
+            showAlert('Reset Complete', "System Factory Reset Complete. All data has been erased.", 'success');
+            setTimeout(() => window.location.reload(), 2000);
+        } catch (error) {
+            showAlert('Reset Failed', "A system error occurred during reset.", 'error');
+        }
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 p-4 -mx-4 sm:-mx-6 lg:-mx-8 sticky top-0 z-10 border-b border-gray-200 shadow-sm">
+        <div className="w-full max-w-5xl space-y-6 animate-in fade-in duration-300">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/95 backdrop-blur-sm py-4 sticky top-[64px] z-20 border-b border-gray-200 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Institution Settings</h2>
                     <p className="text-sm text-gray-500">Configure global application details</p>
@@ -350,7 +387,74 @@ const SettingsManager = () => {
                     </div>
                 </form>
             </Card>
-        </div >
+            <Card className="border-amber-100 bg-amber-50/20">
+                <div className="p-6">
+                    <h3 className="text-lg font-bold text-amber-700 flex items-center gap-2 mb-2">
+                        <RefreshCw className="w-5 h-5" />
+                        Maintenance & Sync
+                    </h3>
+                    <p className="text-amber-600/80 text-sm mb-6">
+                        If historical attendance records are not appearing in the mentor panel, use this tool to synchronize them with their correct classes.
+                    </p>
+                    <Button
+                        onClick={handleRepair}
+                        disabled={isRepairing}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white border-none shadow-md shadow-amber-100"
+                    >
+                        {isRepairing ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Repairing Data...
+                            </>
+                        ) : (
+                            <>
+                                <ArrowLeftRight className="w-4 h-4" />
+                                Sync & Repair Attendance Data
+                            </>
+                        )}
+                    </Button>
+                </div>
+            </Card>
+
+            <Card className="border-red-100 bg-red-50/30">
+                <div className="p-6">
+                    <h3 className="text-lg font-bold text-red-700 flex items-center gap-2 mb-2">
+                        <AlertTriangle className="w-5 h-5" />
+                        Danger Zone
+                    </h3>
+                    <p className="text-red-600/80 text-sm mb-6">
+                        Perform a hard reset of the system. This will permanently remove all classes, mentors, students, and attendance records. Your admin account will remain.
+                    </p>
+                    <Button
+                        onClick={() => setIsResetModalOpen(true)}
+                        variant="danger"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-100"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        Reset All System Data
+                    </Button>
+                </div>
+            </Card>
+
+            <ConfirmationModal
+                isOpen={isResetModalOpen}
+                onClose={() => setIsResetModalOpen(false)}
+                onConfirm={checkAuthBeforeReset}
+                title="System Reset"
+                message="DANGER: This will permanently delete ALL Classes, Mentors, Students, and Attendance records. This action cannot be undone. Are you absolutely sure?"
+                confirmText="Yes, Proceed"
+                cancelText="Cancel"
+                isDanger
+            />
+
+            <AdminAuthModal
+                isOpen={isAdminAuthOpen}
+                onClose={() => setIsAdminAuthOpen(false)}
+                onSuccess={handleFinalReset}
+                title="Security Verification"
+                message="To perform a factory reset, please verify your Admin identity."
+            />
+        </div>
     );
 };
 

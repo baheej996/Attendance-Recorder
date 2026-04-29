@@ -8,18 +8,26 @@ const MentorSubjects = () => {
     const { currentUser, classes, subjects, updateSubject } = useData();
     const { showAlert } = useUI();
     const [viewingData, setViewingData] = useState(null); // { subjectName: '', chapterIndex: 1, images: [] }
+    const [expandedClassId, setExpandedClassId] = useState(null);
     const [expandedSubjectId, setExpandedSubjectId] = useState(null);
 
     const assignedClasses = classes.filter(c => currentUser?.assignedClassIds?.includes(c.id));
 
     // Group subjects by class
     const subjectsByClass = assignedClasses.map(cls => {
-        const classSubjects = subjects.filter(s => s.classId === cls.id);
+        const classSubjects = subjects.filter(s => s.classId === cls.id && s.isClassSubject !== false);
         return {
             classDetails: cls,
             subjects: classSubjects
         };
     }).filter(group => group.subjects.length > 0);
+
+    // Auto-expand first class if only one exists
+    React.useEffect(() => {
+        if (subjectsByClass.length === 1 && !expandedClassId) {
+            setExpandedClassId(subjectsByClass[0].classDetails.id);
+        }
+    }, [subjectsByClass]);
 
     const handleToggleReveal = async (subject, chapterIndex) => {
         try {
@@ -64,112 +72,137 @@ const MentorSubjects = () => {
                     <p>There are no subjects assigned to your classes yet.</p>
                 </Card>
             ) : (
-                <div className="space-y-8">
-                    {subjectsByClass.map(group => (
-                        <div key={group.classDetails.id} className="space-y-4">
-                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
-                                <Layers className="w-5 h-5 text-indigo-500" />
-                                {group.classDetails.name} - {group.classDetails.division}
-                            </h3>
-                            <div className="grid grid-cols-1 gap-4">
-                                {group.subjects.map(subject => {
-                                    const totalChapters = Number(subject.totalChapters) || 0;
-                                    const chapterData = subject.chapterData || {};
-                                    const isExpanded = expandedSubjectId === subject.id;
-
-                                    return (
-                                        <Card key={subject.id} className="overflow-hidden flex flex-col transition-all border border-gray-100 shadow-sm">
-                                            {/* Subject Header */}
-                                            <div 
-                                                className="p-4 bg-gray-50 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors"
-                                                onClick={() => setExpandedSubjectId(isExpanded ? null : subject.id)}
-                                            >
-                                                <div>
-                                                    <div className="flex items-center gap-3 mb-1">
-                                                        <h4 className="font-bold text-gray-900 text-lg">{subject.name}</h4>
-                                                        {!subject.isExamSubject && (
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-2 py-1 rounded">Non-Exam</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500 flex items-center gap-1.5">
-                                                        <BookOpen className="w-4 h-4" />
-                                                        {totalChapters > 0 ? `${totalChapters} Chapters` : 'No Chapters Configured'}
-                                                    </div>
-                                                </div>
-                                                <div className="p-2 bg-white rounded-full text-gray-400 shadow-sm border border-gray-100">
-                                                    {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                                                </div>
+                <div className="space-y-4">
+                    {subjectsByClass.map(group => {
+                        const isClassExpanded = expandedClassId === group.classDetails.id;
+                        return (
+                            <div key={group.classDetails.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                <div 
+                                    className={`p-5 flex items-center justify-between cursor-pointer transition-colors ${isClassExpanded ? 'bg-indigo-50/50' : 'hover:bg-gray-50'}`}
+                                    onClick={() => setExpandedClassId(isClassExpanded ? null : group.classDetails.id)}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2.5 rounded-xl transition-colors ${isClassExpanded ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-indigo-50 text-indigo-600'}`}>
+                                            <Layers className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-black text-gray-900 leading-none mb-1">
+                                                {group.classDetails.name} - {group.classDetails.division}
+                                            </h3>
+                                            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                                {group.subjects.length} Assigned {group.subjects.length === 1 ? 'Subject' : 'Subjects'}
                                             </div>
-                                            
-                                            {/* Chapters List */}
-                                            {isExpanded && totalChapters > 0 && (
-                                                <div className="divide-y divide-gray-100 border-t border-gray-100">
-                                                    {Array.from({ length: totalChapters }, (_, i) => i + 1).map(chapterIndex => {
-                                                        const currentChapterData = chapterData[chapterIndex] || { images: [], isRevealedToStudents: false };
-                                                        const hasBook = currentChapterData.images.length > 0;
-                                                        const isRevealed = currentChapterData.isRevealedToStudents;
+                                        </div>
+                                    </div>
+                                    <div className={`p-2 rounded-lg border transition-all ${isClassExpanded ? 'bg-white border-indigo-200 text-indigo-600 rotate-180' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                                        <ChevronDown className="w-5 h-5" />
+                                    </div>
+                                </div>
 
-                                                        return (
-                                                            <div key={chapterIndex} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white hover:bg-slate-50 transition-colors">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
-                                                                        CH {chapterIndex}
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="font-bold text-gray-800">Chapter {chapterIndex}</div>
-                                                                        <div className="text-xs text-gray-500">
-                                                                            {hasBook ? `${currentChapterData.images.length} pages available` : 'No pages uploaded yet'}
-                                                                        </div>
-                                                                    </div>
+                                {isClassExpanded && (
+                                    <div className="p-5 bg-white border-t border-gray-100 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {group.subjects.map(subject => {
+                                                const totalChapters = Number(subject.totalChapters) || 0;
+                                                const chapterData = subject.chapterData || {};
+                                                const isExpanded = expandedSubjectId === subject.id;
+
+                                                return (
+                                                    <Card key={subject.id} className="overflow-hidden flex flex-col transition-all border border-gray-100 shadow-sm">
+                                                        {/* Subject Header */}
+                                                        <div 
+                                                            className="p-4 bg-gray-50 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors"
+                                                            onClick={() => setExpandedSubjectId(isExpanded ? null : subject.id)}
+                                                        >
+                                                            <div>
+                                                                <div className="flex items-center gap-3 mb-1">
+                                                                    <h4 className="font-bold text-gray-900 text-lg">{subject.name}</h4>
+                                                                    {!subject.isExamSubject && (
+                                                                        <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-2 py-1 rounded">Class Only</span>
+                                                                    )}
                                                                 </div>
-
-                                                                <div className="flex items-center gap-4 self-start sm:self-auto ml-[52px] sm:ml-0">
-                                                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                                                        <div className="relative">
-                                                                            <input 
-                                                                                type="checkbox" 
-                                                                                className="sr-only peer"
-                                                                                checked={isRevealed}
-                                                                                onChange={() => handleToggleReveal(subject, chapterIndex)}
-                                                                                disabled={!hasBook}
-                                                                            />
-                                                                            <div className={`w-10 h-6 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 transition-colors ${!hasBook ? 'bg-gray-100' : isRevealed ? 'bg-indigo-600' : 'bg-gray-300'} peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}></div>
-                                                                        </div>
-                                                                        <span className={`text-xs font-semibold select-none transition-colors ${!hasBook ? 'text-gray-400' : isRevealed ? 'text-indigo-600' : 'text-gray-600 group-hover:text-gray-900'}`}>
-                                                                            {!hasBook ? 'Unavailable' : isRevealed ? 'Revealed ' : 'Hidden'}
-                                                                        </span>
-                                                                    </label>
-
-                                                                    <div className="w-px h-6 bg-gray-200 hidden sm:block"></div>
-
-                                                                    <button
-                                                                        onClick={() => setViewingData({
-                                                                            subjectName: subject.name,
-                                                                            chapterIndex,
-                                                                            images: currentChapterData.images
-                                                                        })}
-                                                                        disabled={!hasBook}
-                                                                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors ${
-                                                                            hasBook 
-                                                                            ? 'bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white' 
-                                                                            : 'bg-gray-50 text-gray-300 border border-gray-100 cursor-not-allowed hidden sm:flex'
-                                                                        }`}
-                                                                    >
-                                                                        <Eye className="w-4 h-4" />
-                                                                        View Book
-                                                                    </button>
+                                                                <div className="text-sm text-gray-500 flex items-center gap-1.5">
+                                                                    <BookOpen className="w-4 h-4" />
+                                                                    {totalChapters > 0 ? `${totalChapters} Chapters` : 'No Chapters Configured'}
                                                                 </div>
                                                             </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </Card>
-                                    );
-                                })}
+                                                            <div className="p-2 bg-white rounded-full text-gray-400 shadow-sm border border-gray-100">
+                                                                {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Chapters List */}
+                                                        {isExpanded && totalChapters > 0 && (
+                                                            <div className="divide-y divide-gray-100 border-t border-gray-100">
+                                                                {Array.from({ length: totalChapters }, (_, i) => i + 1).map(chapterIndex => {
+                                                                    const currentChapterData = chapterData[chapterIndex] || { images: [], isRevealedToStudents: false };
+                                                                    const hasBook = currentChapterData.images.length > 0;
+                                                                    const isRevealed = currentChapterData.isRevealedToStudents;
+
+                                                                    return (
+                                                                        <div key={chapterIndex} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white hover:bg-slate-50 transition-colors">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
+                                                                                    CH {chapterIndex}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="font-bold text-gray-800">Chapter {chapterIndex}</div>
+                                                                                    <div className="text-xs text-gray-500">
+                                                                                        {hasBook ? `${currentChapterData.images.length} pages available` : 'No pages uploaded yet'}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="flex items-center gap-4 self-start sm:self-auto ml-[52px] sm:ml-0">
+                                                                                <label className="flex items-center gap-2 cursor-pointer group">
+                                                                                    <div className="relative">
+                                                                                        <input 
+                                                                                            type="checkbox" 
+                                                                                            className="sr-only peer"
+                                                                                            checked={isRevealed}
+                                                                                            onChange={() => handleToggleReveal(subject, chapterIndex)}
+                                                                                            disabled={!hasBook}
+                                                                                        />
+                                                                                        <div className={`w-10 h-6 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 transition-colors ${!hasBook ? 'bg-gray-100' : isRevealed ? 'bg-indigo-600' : 'bg-gray-300'} peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}></div>
+                                                                                    </div>
+                                                                                    <span className={`text-xs font-semibold select-none transition-colors ${!hasBook ? 'text-gray-400' : isRevealed ? 'text-indigo-600' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                                                                                        {!hasBook ? 'Unavailable' : isRevealed ? 'Revealed ' : 'Hidden'}
+                                                                                    </span>
+                                                                                </label>
+
+                                                                                <div className="w-px h-6 bg-gray-200 hidden sm:block"></div>
+
+                                                                                <button
+                                                                                    onClick={() => setViewingData({
+                                                                                        subjectName: subject.name,
+                                                                                        chapterIndex,
+                                                                                        images: currentChapterData.images
+                                                                                    })}
+                                                                                    disabled={!hasBook}
+                                                                                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors ${
+                                                                                        hasBook 
+                                                                                        ? 'bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white' 
+                                                                                        : 'bg-gray-50 text-gray-300 border border-gray-100 cursor-not-allowed hidden sm:flex'
+                                                                                    }`}
+                                                                                >
+                                                                                    <Eye className="w-4 h-4" />
+                                                                                    View Book
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </Card>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

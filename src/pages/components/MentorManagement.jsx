@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { UserPlus, User, Check, Trash2, Edit, BookOpen, Users, X, Plus, Search, Phone } from 'lucide-react';
+import { UserPlus, User, Check, Trash2, Edit, BookOpen, Users, X, Plus, Search, Phone, ExternalLink, ShieldCheck } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useNavigate } from 'react-router-dom';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Modal } from '../../components/ui/Modal';
 
 const MentorManagement = () => {
-    const { mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors, classes, students } = useData();
+    const { mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors, classes, students, impersonate } = useData();
     const { showAlert } = useUI();
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({ name: '', email: '', password: '', qualification: '', contactNumber: '', profilePhoto: '', assignedClassIds: [] });
     const [editingId, setEditingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,6 +24,17 @@ const MentorManagement = () => {
     const [deleteConfig, setDeleteConfig] = useState({ isOpen: false, id: null, type: 'single' });
     const [selectedIds, setSelectedIds] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Filter available classes for assignment
+    const availableClassOptions = useMemo(() => {
+        return classes
+            .filter(cls => {
+                const assignedMentor = mentors.find(m => m.assignedClassIds.includes(cls.id));
+                // Show if unassigned OR assigned to current mentor (when editing)
+                return !assignedMentor || (editingId && assignedMentor.id === editingId);
+            })
+            .map(c => ({ id: c.id, label: `${c.name} - ${c.division}` }));
+    }, [classes, mentors, editingId]);
 
     const filteredMentors = mentors.filter(m =>
         m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -156,6 +170,12 @@ const MentorManagement = () => {
         }
     };
 
+    const handleDirectSignIn = (mentor) => {
+        impersonate({ role: 'mentor', ...mentor });
+        showAlert(`Signed in as ${mentor.name}`, "Redirecting to mentor portal...", 'success');
+        setTimeout(() => navigate('/mentor'), 1000);
+    };
+
     const toggleClass = (classId) => {
         setFormData(prev => {
             const current = prev.assignedClassIds || [];
@@ -179,7 +199,7 @@ const MentorManagement = () => {
     };
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
+        <div className="space-y-6 w-full animate-in fade-in duration-300">
             <ConfirmationModal
                 isOpen={deleteConfig.isOpen}
                 onClose={() => setDeleteConfig({ isOpen: false, id: null, type: 'single' })}
@@ -263,45 +283,15 @@ const MentorManagement = () => {
 
                         {error && <p className="text-sm text-red-500">{error}</p>}
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Assign Classes</label>
-                            {classes.length === 0 ? (
-                                <p className="text-sm text-gray-500 italic">No classes available. Add classes first.</p>
-                            ) : (
-                                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto border rounded-xl p-2 bg-gray-50">
-                                    {classes.filter(cls => {
-                                        const assignedMentor = mentors.find(m => m.assignedClassIds.includes(cls.id));
-                                        // Show if unassigned OR assigned to current mentor (when editing)
-                                        return !assignedMentor || (editingId && assignedMentor.id === editingId);
-                                    }).map(cls => {
-                                        const isSelected = formData.assignedClassIds.includes(cls.id);
-                                        return (
-                                            <div key={cls.id} className="flex items-center justify-between p-2 rounded-lg border bg-white shadow-sm">
-                                                <span className="text-sm font-medium text-gray-700">{cls.name}-{cls.division}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => toggleClass(cls.id)}
-                                                    className={clsx(
-                                                        "px-3 py-1 text-xs rounded-full border transition-colors",
-                                                        isSelected
-                                                            ? "bg-indigo-600 text-white border-indigo-600"
-                                                            : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
-                                                    )}
-                                                >
-                                                    {isSelected ? 'Selected' : 'Select'}
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                    {classes.filter(cls => {
-                                        const assignedMentor = mentors.find(m => m.assignedClassIds.includes(cls.id));
-                                        return !assignedMentor || (editingId && assignedMentor.id === editingId);
-                                    }).length === 0 && (
-                                            <p className="text-sm text-gray-500 italic text-center py-2">All classes are currently assigned.</p>
-                                        )}
-                                </div>
-                            )}
-                        </div>
+                        <SearchableSelect
+                            label="Assign Classes"
+                            placeholder="Type to search and add classes..."
+                            isMulti={true}
+                            options={availableClassOptions}
+                            value={formData.assignedClassIds}
+                            onChange={(vals) => setFormData(p => ({ ...p, assignedClassIds: vals }))}
+                            error={availableClassOptions.length === 0 && !editingId ? "No classes available to assign." : ""}
+                        />
 
                         <div className="flex gap-2 pt-2">
                             <Button type="button" onClick={handleCloseModal} className="flex-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200">
@@ -316,7 +306,7 @@ const MentorManagement = () => {
                 </div>
             </Modal>
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 p-4 -mx-4 sm:-mx-6 lg:-mx-8 sticky top-0 z-10 border-b border-gray-200 shadow-sm">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/95 backdrop-blur-sm py-4 sticky top-[64px] z-20 border-b border-gray-200 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Mentor Management</h2>
                     <p className="text-sm text-gray-500">Manage mentors and class assignments</p>
@@ -382,9 +372,17 @@ const MentorManagement = () => {
                 ) : (
                     <div className="space-y-4">
                         {filteredMentors.map((mentor) => {
+                            // Filter classes to only those that actually exist in the current classes array
+                            const assignedClasses = (mentor.assignedClassIds || [])
+                                .map(cid => classes.find(c => c.id === cid))
+                                .filter(Boolean);
+                            
+                            const validClassIds = assignedClasses.map(c => c.id);
+
                             const totalStudents = students.filter(s =>
-                                mentor.assignedClassIds.includes(s.classId) && s.status === 'Active'
+                                validClassIds.includes(s.classId) && s.status === 'Active'
                             ).length;
+                            
                             const isSelected = selectedIds.includes(mentor.id);
 
                             return (
@@ -422,7 +420,7 @@ const MentorManagement = () => {
                                             <div className="flex flex-wrap gap-2 mt-2 mb-2 text-xs font-medium text-gray-500">
                                                 <span className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200 shadow-sm whitespace-nowrap">
                                                     <BookOpen className="w-3 h-3 text-indigo-500" />
-                                                    {mentor.assignedClassIds.length} Classes
+                                                    {assignedClasses.length} Classes
                                                 </span>
                                                 <span className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200 shadow-sm whitespace-nowrap">
                                                     <Users className="w-3 h-3 text-green-500" />
@@ -431,15 +429,12 @@ const MentorManagement = () => {
                                             </div>
 
                                             <div className="mt-1 flex flex-wrap gap-1">
-                                                {mentor.assignedClassIds.length > 0 ? (
-                                                    mentor.assignedClassIds.map(cid => {
-                                                        const cls = classes.find(c => c.id === cid);
-                                                        return cls ? (
-                                                            <span key={cid} className="px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded text-xs text-indigo-700">
-                                                                {cls.name}-{cls.division}
-                                                            </span>
-                                                        ) : null;
-                                                    })
+                                                {assignedClasses.length > 0 ? (
+                                                    assignedClasses.map(cls => (
+                                                        <span key={cls.id} className="px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded text-xs text-indigo-700">
+                                                            {cls.name}-{cls.division}
+                                                        </span>
+                                                    ))
                                                 ) : (
                                                     <span className="text-xs text-gray-400 italic">No classes assigned</span>
                                                 )}
@@ -447,23 +442,31 @@ const MentorManagement = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex sm:flex-col gap-2 w-full sm:w-auto pl-8 sm:pl-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200">
                                         <button
-                                            onClick={() => handleEdit(mentor)}
-                                            className="flex-1 sm:flex-none p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border sm:border-0 border-gray-200 flex justify-center items-center"
-                                            title="Edit Mentor"
+                                            onClick={() => handleDirectSignIn(mentor)}
+                                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm active:scale-95 font-bold text-[10px] whitespace-nowrap"
                                         >
-                                            <Edit className="w-5 h-5" />
-                                            <span className="ml-2 text-sm sm:hidden">Edit</span>
+                                            <ShieldCheck className="w-3 h-3" />
+                                            Log In
                                         </button>
-                                        <button
-                                            onClick={() => confirmDelete(mentor.id)}
-                                            className="flex-1 sm:flex-none p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border sm:border-0 border-gray-200 flex justify-center items-center"
-                                            title="Delete Mentor"
-                                        >
-                                            <Trash2 className="w-5 h-5" />
-                                            <span className="ml-2 text-sm sm:hidden">Delete</span>
-                                        </button>
+
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => handleEdit(mentor)}
+                                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => confirmDelete(mentor.id)}
+                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors "
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );

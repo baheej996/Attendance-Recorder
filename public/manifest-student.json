@@ -1,6 +1,6 @@
 {
-    "name": "Student Portal",
-    "short_name": "Student",
+    "name": "Samastha E-Learning Student",
+    "short_name": "Samastha Student",
     "start_url": "/student-login",
     "display": "standalone",
     "background_color": "#ffffff",
@@ -8,13 +8,13 @@
     "description": "Student Login for Attendance Recorder",
     "icons": [
         {
-            "src": "/logo.png",
+            "src": "/favicon.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "/logo.png",
+            "src": "/favicon.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"

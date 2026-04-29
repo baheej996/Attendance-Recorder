@@ -11,7 +11,7 @@ const DAYS_OF_WEEK = [
 ];
 
 const LiveClassModal = ({ isOpen, onClose, classId, className }) => {
-    const { liveClasses, updateLiveClassConfig } = useData();
+    const { liveClasses, classes, updateLiveClassConfig } = useData();
     const { showAlert } = useUI();
 
     const [link, setLink] = useState('');
@@ -23,19 +23,25 @@ const LiveClassModal = ({ isOpen, onClose, classId, className }) => {
     useEffect(() => {
         if (isOpen && classId) {
             const existingConfig = liveClasses?.find(lc => lc.classId === classId);
+            const classItem = classes?.find(c => c.id === classId);
+
+            // Admins can set a global start time and days for a class. We prioritize those.
+            const adminTime = classItem?.startTime || '';
+            const adminDays = classItem?.days && classItem.days.length > 0 ? classItem.days : null;
+
             if (existingConfig) {
                 setLink(existingConfig.link || '');
-                setTime(existingConfig.time || '');
-                setSelectedDays(existingConfig.selectedDays || []);
+                setTime(adminTime || existingConfig.time || '');
+                setSelectedDays(adminDays || existingConfig.selectedDays || DAYS_OF_WEEK);
                 setIsEnabled(existingConfig.isEnabled || false);
             } else {
                 setLink('');
-                setTime('');
-                setSelectedDays(DAYS_OF_WEEK); // default to all days
+                setTime(adminTime || '');
+                setSelectedDays(adminDays || DAYS_OF_WEEK);
                 setIsEnabled(false);
             }
         }
-    }, [isOpen, classId, liveClasses]);
+    }, [isOpen, classId, liveClasses, classes]);
 
     if (!isOpen) return null;
 
@@ -51,6 +57,19 @@ const LiveClassModal = ({ isOpen, onClose, classId, className }) => {
         if (isEnabled && (!link || !time || selectedDays.length === 0)) {
             showAlert('Error', 'Please fill all details if the live class is enabled.', 'error');
             return;
+        }
+
+        // Strict URL Validation
+        if (isEnabled && link) {
+            try {
+                const url = new URL(link);
+                if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+                    throw new Error('Invalid protocol');
+                }
+            } catch (e) {
+                showAlert('Error', 'Please enter a valid meeting URL (e.g., starting with https://).', 'error');
+                return;
+            }
         }
 
         setIsSaving(true);
@@ -85,7 +104,7 @@ const LiveClassModal = ({ isOpen, onClose, classId, className }) => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">Live Class Settings</h2>
-                            <p className="text-sm text-gray-500">Class {className}</p>
+                            <p className="text-sm text-gray-500">Class {className} · Global IST Sync</p>
                         </div>
                     </div>
                     <button
@@ -135,7 +154,7 @@ const LiveClassModal = ({ isOpen, onClose, classId, className }) => {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
-                                Daily Time
+                                Daily Time (India Time - IST)
                             </label>
                             <input
                                 type="time"
@@ -144,6 +163,9 @@ const LiveClassModal = ({ isOpen, onClose, classId, className }) => {
                                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                                 disabled={!isEnabled}
                             />
+                            <p className="text-[10px] text-indigo-600 mt-1 font-medium">
+                                Entering time in IST ensures students worldwide see the link at the correct moment. (Pre-filled from Admin settings if available)
+                            </p>
                         </div>
 
                         <div>

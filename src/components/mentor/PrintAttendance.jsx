@@ -64,10 +64,15 @@ const PrintAttendance = () => {
         let previousTotal = 0;
 
         studentRecords.forEach(record => {
-            const rDate = new Date(record.date);
-            const rMonth = rDate.getMonth();
-            const rYear = rDate.getFullYear();
-            const rDay = rDate.getDate();
+            if (!record.date) return;
+            
+            // Safe parsing of YYYY-MM-DD string to avoid timezone shifts
+            const parts = record.date.split('-');
+            if (parts.length !== 3) return;
+            
+            const rYear = parseInt(parts[0], 10);
+            const rMonth = parseInt(parts[1], 10) - 1; // Convert 01-12 to 0-11
+            const rDay = parseInt(parts[2], 10);
 
             // Check if Present
             const isPresent = record.status === 'Present';
@@ -78,7 +83,7 @@ const PrintAttendance = () => {
                 if (isPresent) currentMonthStats.total++;
             }
             // Previous Logic (Strictly before this month)
-            else if (rDate < new Date(selectedYear, selectedMonth, 1)) {
+            else if (rYear < selectedYear || (rYear === selectedYear && rMonth < selectedMonth)) {
                 if (isPresent) previousTotal++;
             }
         });
@@ -95,7 +100,7 @@ const PrintAttendance = () => {
         const date = new Date(selectedYear, selectedMonth, day);
         const dayIndex = date.getDay(); // 0 = Sun
         const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-        return { letter: days[dayIndex], isWeekend: dayIndex === 0 || dayIndex === 6, isSunday: dayIndex === 0 };
+        return { letter: days[dayIndex], dayIndex, isWeekend: dayIndex === 0 || dayIndex === 6, isSunday: dayIndex === 0 };
     };
 
     // Calculate Working Days
@@ -115,13 +120,16 @@ const PrintAttendance = () => {
         let previous = 0;
 
         uniqueDates.forEach(dateStr => {
-            const d = new Date(dateStr);
-            const rMonth = d.getMonth();
-            const rYear = d.getFullYear();
+            if (!dateStr) return;
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return;
+
+            const rYear = parseInt(parts[0], 10);
+            const rMonth = parseInt(parts[1], 10) - 1;
 
             if (rMonth === selectedMonth && rYear === selectedYear) {
                 thisMonth++;
-            } else if (d < new Date(selectedYear, selectedMonth, 1)) {
+            } else if (rYear < selectedYear || (rYear === selectedYear && rMonth < selectedMonth)) {
                 previous++;
             }
         });
@@ -262,7 +270,8 @@ const PrintAttendance = () => {
 
                                         {/* Vertical Day Names */}
                                         {daysArray.map(day => {
-                                            const { letter, isSunday } = getDayLetter(day);
+                                            const { dayIndex, isSunday } = getDayLetter(day);
+                                            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                                             return (
                                                 <th key={`day-${day}`} className={clsx(
                                                     "border border-black w-6 min-w-[1.5rem] relative align-bottom p-0", // Reduced to w-6
@@ -270,12 +279,7 @@ const PrintAttendance = () => {
                                                 )}>
                                                     <div className="flex items-end justify-center h-full pb-1">
                                                         <span className="block [writing-mode:vertical-lr] rotate-180 text-[9px] font-normal leading-none whitespace-nowrap">
-                                                            {isSunday ? 'Sunday' :
-                                                                letter === 'M' ? 'Monday' :
-                                                                    letter === 'T' ? 'Tuesday' :
-                                                                        letter === 'W' ? 'Wednesday' :
-                                                                            letter === 'F' ? 'Friday' :
-                                                                                letter === 'S' ? 'Saturday' : ''}
+                                                            {dayNames[dayIndex]}
                                                         </span>
                                                     </div>
                                                 </th>
