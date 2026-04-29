@@ -1,4 +1,5 @@
 import React from 'react';
+import InstitutionDirectory from '../components/mentor/InstitutionDirectory';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare, Users, Video, ShieldCheck, ExternalLink, Trophy } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -523,6 +524,7 @@ const MentorDashboard = () => {
                         <Route path="/marks" element={<MarksEntry />} />
                         <Route path="/stats" element={<MentorStats />} />
                         <Route path="/leaderboard" element={<MentorLeaderboard />} />
+                        <Route path="/directory" element={<InstitutionDirectory />} />
                         <Route path="/star-student" element={<StarOfTheMonth />} />
                         <Route path="/batches" element={<Batches />} />
                         <Route path="/substitution" element={

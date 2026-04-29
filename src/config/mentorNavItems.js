@@ -43,6 +43,7 @@ export const MENTOR_NAV_ITEMS = [
     { id: 'star-student', icon: Star, label: 'Star of the Month', path: '/mentor/star-student' },
     { id: 'stats', icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
     { id: 'leaderboard', icon: Trophy, label: 'Leaderboard', path: '/mentor/leaderboard' },
+    { id: 'directory', icon: Users, label: 'Institution Directory', path: '/mentor/directory' },
     { id: 'batches', icon: Users, label: 'Batches', path: '/mentor/batches' },
     { id: 'substitution', icon: Repeat, label: 'Class Substitution', path: '/mentor/substitution' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/mentor/settings' },

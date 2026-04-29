@@ -14,7 +14,8 @@ import {
     where,
     limit,
     orderBy,
-    serverTimestamp
+    serverTimestamp,
+    getCountFromServer
 } from 'firebase/firestore';
 
 const DataContext = createContext();
@@ -25,6 +26,7 @@ export const DataProvider = ({ children }) => {
     // --- State Definitions ---
     const [classes, setClasses] = useState([]);
     const [students, setStudents] = useState([]);
+    const [allStudents, setAllStudents] = useState([]);
     const [mentors, setMentors] = useState([]);
     const [attendance, setAttendance] = useState([]);
     const [subjects, setSubjects] = useState([]);
@@ -72,8 +74,16 @@ export const DataProvider = ({ children }) => {
     const [examSettings, setExamSettings] = useState([]);
     const [studentStatuses, setStudentStatuses] = useState(['Active', 'Inactive', 'Viva pending', 'Exam pending', 'Payment Pending', 'Suspended', 'Dismissed']);
     const [logLimit, setLogLimit] = useState(10);
+    const [allStudentsLimit, setAllStudentsLimit] = useState(10);
+    const [allMentorsLimit, setAllMentorsLimit] = useState(10);
+    const [allClassesLimit, setAllClassesLimit] = useState(10);
+
+    const [totalCounts, setTotalCounts] = useState({ students: 0, mentors: 0, classes: 0 });
 
     const loadMoreLogs = () => setLogLimit(prev => prev + 10);
+    const loadMoreAllStudents = () => setAllStudentsLimit(prev => prev + 10);
+    const loadMoreAllMentors = () => setAllMentorsLimit(prev => prev + 10);
+    const loadMoreAllClasses = () => setAllClassesLimit(prev => prev + 10);
 
     // System Versioning
     const [appVersion] = useState(1777391306000); // Internal Build Timestamp
@@ -166,12 +176,37 @@ export const DataProvider = ({ children }) => {
         };
     }, []);
 
+    useEffect(() => {
+        const fetchTotalCounts = async () => {
+            try {
+                const [studentSnap, mentorSnap, classSnap] = await Promise.all([
+                    getCountFromServer(collection(db, 'students')),
+                    getCountFromServer(collection(db, 'mentors')),
+                    getCountFromServer(collection(db, 'classes'))
+                ]);
+                setTotalCounts({
+                    students: studentSnap.data().count,
+                    mentors: mentorSnap.data().count,
+                    classes: classSnap.data().count
+                });
+            } catch (error) {
+                console.error("Error fetching total counts:", error);
+            }
+        };
+
+        fetchTotalCounts();
+        // Refresh counts every 5 minutes or when data changes significantly
+        const interval = setInterval(fetchTotalCounts, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
+
     // 2. User-Specific / Heavy Subscriptions (Filtered for Performance)
     useEffect(() => {
         if (!currentUser) {
             // Clear specific data on logout
             setAttendance([]);
             setStudents([]);
+            setAllStudents([]);
             setResults([]);
             setPrayerRecords([]);
             setQuranRecitations([]);
@@ -208,6 +243,12 @@ export const DataProvider = ({ children }) => {
             );
         } else if (currentUser.role === 'mentor') {
             const assignedClassIds = currentUser.assignedClassIds || (currentUser.classId ? [currentUser.classId] : []);
+
+            unsubs.push(
+                subscribe('students', setAllStudents, orderBy('name'), limit(allStudentsLimit)),
+                subscribe('mentors', setMentors, orderBy('name'), limit(allMentorsLimit)),
+                subscribe('classes', setClasses, orderBy('name'), limit(allClassesLimit))
+            );
 
             if (assignedClassIds.length > 0) {
                 unsubs.push(
@@ -1343,6 +1384,8 @@ export const DataProvider = ({ children }) => {
     const value = {
         classes, addClass, updateClass, deleteClass, deleteClasses, transferStudentsAndBulkDeleteClass,
         students, addStudent, updateStudent, deleteStudent, deleteStudents, deleteAllStudents,
+        allStudents, 
+        
         mentors, addMentor, updateMentor, deleteMentor, deleteMentors,
         attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds,
         subjects, addSubject, updateSubject, deleteSubject, deleteSubjects,
@@ -1360,11 +1403,17 @@ export const DataProvider = ({ children }) => {
         adminCredentials, updateAdminCredentials, validateAdmin,
         studentStatuses, updateStudentStatuses,
 
+        // Pagination & Counts
+        allStudentsLimit, setAllStudentsLimit, loadMoreAllStudents,
+        allMentorsLimit, setAllMentorsLimit, loadMoreAllMentors,
+        allClassesLimit, setAllClassesLimit, loadMoreAllClasses,
+        totalCounts,
+
         activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
         activitySubmissions, markActivityAsDone, markActivityAsPending, getStudentActivityPoints,
 
         logEntries, addLogEntry, updateLogEntry, deleteLogEntry,
-        logLimit, loadMoreLogs,
+        logLimit, setLogLimit, loadMoreLogs,
         syllabusStatuses, syncSyllabusStatus,
         prayerRecords, addPrayerRecord, getPrayerRecordsByStudent, deletePrayerRecordsForStudents,
         leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests,
