@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2, Trophy } from 'lucide-react';
 import { clsx } from 'clsx';
 import ClassManagement from './components/ClassManagement';
 import AdminLiveClasses from './components/AdminLiveClasses';
@@ -19,6 +19,7 @@ import SubstitutionManager from './components/SubstitutionManager';
 import TaskManager from './components/TaskManager';
 import AdminChat from './components/AdminChat';
 import AdminNotifications from '../components/admin/AdminNotifications';
+import AdminMentorLeaderboard from '../components/admin/AdminMentorLeaderboard';
 import MentorEvaluation from './components/MentorEvaluation';
 import Help from './Help';
 import { useData } from '../contexts/DataContext';
@@ -280,6 +281,7 @@ const AdminDashboard = () => {
             case 'notifications': return <AdminNotifications />;
             case 'evaluations': return <EvaluationManager />;
             case 'mentor-evaluation': return <MentorEvaluation />;
+            case 'leaderboard': return <AdminMentorLeaderboard />;
             case 'settings': return <SettingsManager />;
             case 'help': return <Help />;
             default: return <DashboardHome />;
@@ -367,6 +369,7 @@ const AdminDashboard = () => {
                                     <SidebarItem icon={ClipboardList} label="Tasks" active={activeTab === 'tasks'} onClick={() => handleTabChange('tasks')} badge={pendingTasksCount} isMobile />
                                     <SidebarItem icon={FileBarChart} label="Mentor Evaluation" active={activeTab === 'mentor-evaluation'} onClick={() => handleTabChange('mentor-evaluation')} isMobile />
                                     <SidebarItem icon={FileBarChart} label="Evaluations" active={activeTab === 'evaluations'} onClick={() => handleTabChange('evaluations')} isMobile />
+                                    <SidebarItem icon={Trophy} label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => handleTabChange('leaderboard')} isMobile />
                                 </nav>
                             </div>
 
@@ -414,6 +417,7 @@ const AdminDashboard = () => {
                                 <SidebarItem icon={ClipboardList} label="Tasks" active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} badge={pendingTasksCount} />
                                 <SidebarItem icon={BarChart2} label="Mentor Evaluation" active={activeTab === 'mentor-evaluation'} onClick={() => setActiveTab('mentor-evaluation')} />
                                 <SidebarItem icon={FileBarChart} label="Evaluations" active={activeTab === 'evaluations'} onClick={() => setActiveTab('evaluations')} />
+                                <SidebarItem icon={Trophy} label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => setActiveTab('leaderboard')} />
                             </nav>
                         </div>
 

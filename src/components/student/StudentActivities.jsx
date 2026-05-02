@@ -1,12 +1,23 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Layers, CheckCircle, Clock, Trophy, Target } from 'lucide-react';
 
 const StudentActivities = () => {
     const { currentUser, activities, activitySubmissions, students, subjects, markActivityAsDone } = useData();
+    const [markingIds, setMarkingIds] = useState(new Set()); // track in-flight mark requests
 
     if (!currentUser) return null;
+
+    const handleMarkDone = useCallback(async (activityId, points) => {
+        if (markingIds.has(activityId)) return; // already in-flight, ignore
+        setMarkingIds(prev => new Set([...prev, activityId]));
+        try {
+            await markActivityAsDone(activityId, currentUser.id, points, currentUser.classId);
+        } finally {
+            setMarkingIds(prev => { const s = new Set(prev); s.delete(activityId); return s; });
+        }
+    }, [markingIds, markActivityAsDone, currentUser?.id]);
 
     // 1. Get Activities for My Class
     const myActivities = useMemo(() => {
@@ -38,13 +49,21 @@ const StudentActivities = () => {
         const activeActivityIds = new Set(myActivities.map(a => a.id));
 
         const studentScores = classStudents.map(student => {
+            // Deduplicate: only one submission per activityId counts
+            const seenActivityIds = new Set();
             const points = activitySubmissions
                 .filter(s =>
                     s.studentId === student.id &&
                     s.status === 'Completed' &&
-                    activeActivityIds.has(s.activityId) // Only count if activity is invalid/active
+                    activeActivityIds.has(s.activityId) &&
+                    !seenActivityIds.has(s.activityId) // skip duplicates
                 )
-                .reduce((sum, s) => sum + (Number(s.points) || 0), 0);
+                .reduce((sum, s) => {
+                    seenActivityIds.add(s.activityId); // mark as seen
+                    // Always use the CURRENT activity maxPoints, not the stale stored value
+                    const act = myActivities.find(a => a.id === s.activityId);
+                    return sum + (Number(act?.maxPoints) || 0);
+                }, 0);
             return { ...student, points };
         });
 
@@ -167,11 +186,15 @@ const StudentActivities = () => {
 
                                             {activity.studentCanMarkDone && (
                                                 <button
-                                                    onClick={() => markActivityAsDone(activity.id, currentUser.id, activity.maxPoints)}
-                                                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-black transition-all flex justify-center items-center gap-2 shadow-lg shadow-indigo-200 active:scale-95"
+                                                    onClick={() => handleMarkDone(activity.id, activity.maxPoints)}
+                                                    disabled={markingIds.has(activity.id)}
+                                                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-black transition-all flex justify-center items-center gap-2 shadow-lg shadow-indigo-200 active:scale-95"
                                                 >
-                                                    <CheckCircle className="w-4 h-4" />
-                                                    COMPLETE NOW
+                                                    {markingIds.has(activity.id) ? (
+                                                        <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Marking...</>
+                                                    ) : (
+                                                        <><CheckCircle className="w-4 h-4" /> COMPLETE NOW</>
+                                                    )}
                                                 </button>
                                             )}
                                         </div>
@@ -203,7 +226,7 @@ const StudentActivities = () => {
                                                 </div>
                                                 <p className="text-gray-500 text-sm mt-1">{activity.description}</p>
                                                 <div className="flex gap-4 mt-3 text-xs text-gray-400 font-medium">
-                                                    <span>Points Earned: {activity.submission.points}/{activity.maxPoints}</span>
+                                                    <span>Points Earned: {activity.maxPoints}/{activity.maxPoints}</span>
                                                     <span>Completed: {new Date(activity.submission.timestamp).toLocaleDateString()}</span>
                                                 </div>
                                             </div>

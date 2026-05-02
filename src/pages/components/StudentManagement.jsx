@@ -718,7 +718,7 @@ const StudentManagement = () => {
                 </div>
             )}
 
-            <Card className="flex flex-col h-[calc(100vh-200px)] md:h-[800px]">
+            <Card className="flex flex-col h-[calc(100vh-200px)] md:h-[800px] p-3 md:p-4">
                 <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-6 p-1">
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900">Student Directory</h3>
@@ -777,6 +777,7 @@ const StudentManagement = () => {
                                 </th>
                                 <th className="px-4 py-3">Name</th>
                                 <th className="px-4 py-3">Reg No</th>
+                                <th className="px-4 py-3">UID</th>
                                 <th className="px-4 py-3">Class</th>
                                 <th className="px-4 py-3">Mentor</th>
                                 <th className="px-4 py-3">Status</th>
@@ -800,8 +801,9 @@ const StudentManagement = () => {
                                         </td>
                                         <td className="px-4 py-3 font-medium text-gray-900">{student.name}</td>
                                         <td className="px-4 py-3">{student.registerNo}</td>
-                                        <td className="px-4 py-3">
-                                            <span className="px-2 py-0.5 bg-gray-100 rounded text-xs leading-none">
+                                        <td className="px-4 py-3 font-medium text-gray-900">{student.uid || 'N/A'}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className="px-2 py-0.5 bg-gray-100 rounded text-xs leading-none font-medium text-gray-600">
                                                 {studentClass ? `${studentClass.name}-${studentClass.division}` : 'N/A'}
                                             </span>
                                         </td>
@@ -853,7 +855,7 @@ const StudentManagement = () => {
                             })}
                             {paginatedStudents.length === 0 && (
                                 <tr>
-                                    <td colSpan="7" className="px-4 py-12 text-center text-gray-400 font-medium italic">
+                                    <td colSpan="8" className="px-4 py-12 text-center text-gray-400 font-medium italic">
                                         {searchTerm || filterStandard || filterDivision ? "No students found matching your filters." : "No students in the directory."}
                                     </td>
                                 </tr>

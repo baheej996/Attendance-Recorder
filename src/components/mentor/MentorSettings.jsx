@@ -8,7 +8,7 @@ import { clsx } from 'clsx';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 const MentorSettings = () => {
-    const { mentorSettings, updateMentorSettings, currentUser, updateMentorProfile, addAdminRequest } = useData();
+    const { mentorSettings, updateMentorSettings, currentUser, updateMentor, addAdminRequest } = useData();
     const [items, setItems] = useState([]);
     const [showToast, setShowToast] = useState({ show: false, message: '', type: 'success' });
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null });
@@ -100,7 +100,7 @@ const MentorSettings = () => {
     };
 
     const saveSignature = () => {
-        updateMentorProfile(currentUser.id, { signature: signaturePreview });
+        updateMentor(currentUser.id, { signature: signaturePreview });
         showSuccessToast('Digital signature saved.');
     };
 

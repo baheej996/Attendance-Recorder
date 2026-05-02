@@ -62,6 +62,7 @@ const PrayerChart = () => {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         addPrayerRecord({
             studentId: currentUser.id,
+            classId: currentUser.classId, // Required for mentor's classId-based subscription
             date: dateStr,
             prayers: stats
         });

@@ -24,10 +24,12 @@ export const useData = () => useContext(DataContext);
 
 export const DataProvider = ({ children }) => {
     // --- State Definitions ---
-    const [classes, setClasses] = useState([]);
-    const [students, setStudents] = useState([]);
     const [allStudents, setAllStudents] = useState([]);
+    const [students, setStudents] = useState([]);
     const [mentors, setMentors] = useState([]);
+    const [allMentors, setAllMentors] = useState([]);
+    const [classes, setClasses] = useState([]);
+    const [allClasses, setAllClasses] = useState([]);
     const [attendance, setAttendance] = useState([]);
     const [subjects, setSubjects] = useState([]);
     const [exams, setExams] = useState([]);
@@ -70,6 +72,11 @@ export const DataProvider = ({ children }) => {
     const [adminRequests, setAdminRequests] = useState([]);
     const [chatSettings, setChatSettings] = useState([]);
     const [mentorSettings, setMentorSettings] = useState({ sidebarOrder: [] });
+
+    // Mentor Performance Leaderboard
+    const [leaderboardRules, setLeaderboardRules] = useState([]);
+    const [leaderboardCompletions, setLeaderboardCompletions] = useState([]);
+    const [leaderboardSettings, setLeaderboardSettings] = useState({ isVisibleToMentors: false });
     const [allMentorSettings, setAllMentorSettings] = useState([]); // Buffer for all settings if needed
     const [examSettings, setExamSettings] = useState([]);
     const [studentStatuses, setStudentStatuses] = useState(['Active', 'Inactive', 'Viva pending', 'Exam pending', 'Payment Pending', 'Suspended', 'Dismissed']);
@@ -90,10 +97,10 @@ export const DataProvider = ({ children }) => {
     const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
 
     const [institutionSettings, setInstitutionSettings] = useState({
-        name: 'Attendance Recorder',
-        tagline: 'Track Smart, Act Fast',
-        academicYear: '2024-2025',
-        chiefMentor: 'Dr. Principal',
+        name: 'Samastha E-Learning',
+        tagline: 'Realizing the real path',
+        academicYear: '2026-2027',
+        chiefMentor: 'OP Siraj Faizy',
         favicon: '/favicon.png' 
     });
     const [adminCredentials, setAdminCredentials] = useState({ username: 'adminsgm', password: 'GlobalAdmin' });
@@ -128,12 +135,20 @@ export const DataProvider = ({ children }) => {
     // --- Firestore Listeners ---
     
     // Helper to subscribe to a collection with custom query constraints
+    // IMPORTANT: The error handler is critical — without it, one failing query
+    // (e.g. a missing Firestore composite index) silently crashes the entire
+    // useEffect and breaks ALL subscriptions for the user, not just the one that failed.
     const subscribe = (collectionName, setState, ...constraints) => {
         const q = query(collection(db, collectionName), ...constraints);
-        return onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setState(data);
-        });
+        return onSnapshot(q, 
+            (snapshot) => {
+                const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                setState(data);
+            },
+            (error) => {
+                console.error(`[DataContext] Subscription failed for '${collectionName}':`, error.message);
+            }
+        );
     };
 
     // 1. Global / Lightweight Subscriptions (Always needed)
@@ -148,6 +163,12 @@ export const DataProvider = ({ children }) => {
             subscribe('liveClasses', setLiveClasses),
             subscribe('syllabi', setSyllabi),
             subscribe('syllabusStatus', setSyllabusStatuses),
+            subscribe('chatSettings', setChatSettings),
+            // Global: needed by both students and mentors for prayer/substitution features
+            subscribe('specialPrayers', setSpecialPrayers),
+            subscribe('substitutionRequests', setSubstitutionRequests),
+            subscribe('questions', setQuestions),
+            subscribe('examSettings', setExamSettings),
         ];
 
         const settingsUnsub = onSnapshot(collection(db, 'settings'), (snapshot) => {
@@ -166,6 +187,9 @@ export const DataProvider = ({ children }) => {
                     const list = doc.data().list || [];
                     setStudentStatuses(list.includes('Inactive') ? list : (list.length > 0 ? [...list, 'Inactive'] : ['Active', 'Inactive', 'Viva pending', 'Exam pending', 'Payment Pending', 'Suspended', 'Dismissed']));
                 }
+                if (doc.id === 'leaderboard') {
+                    setLeaderboardSettings(prev => ({ ...prev, ...doc.data() }));
+                }
             });
         });
 
@@ -178,6 +202,7 @@ export const DataProvider = ({ children }) => {
 
     useEffect(() => {
         // We use lightweight snapshots for counts since getCountFromServer may have compatibility issues in this specific environment
+        // These listeners will provide the true institutional totals even when browsing with limits
         const countUnsubs = [
             onSnapshot(collection(db, 'students'), snap => setTotalCounts(prev => ({ ...prev, students: snap.size }))),
             onSnapshot(collection(db, 'mentors'), snap => setTotalCounts(prev => ({ ...prev, mentors: snap.size }))),
@@ -216,24 +241,72 @@ export const DataProvider = ({ children }) => {
                 subscribe('quranProgress', setQuranProgress, where('studentId', '==', uid)),
                 subscribe('studentResponses', setStudentResponses, where('studentId', '==', uid)),
                 subscribe('leaveRequests', setLeaveRequests, where('studentId', '==', uid)),
+                subscribe('ramadanLogs', setRamadanLogs, where('studentId', '==', uid)),
                 
                 // Only data relevant to their class
                 subscribe('exams', setExams, where('classId', '==', cid)),
                 subscribe('activities', setActivities, where('classId', '==', cid)),
-                subscribe('chatMessages', setChatMessages, where('classId', '==', cid), orderBy('timestamp', 'desc'), limit(150)),
+                subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : [''])),
+                // Chat: fetch group messages by classId (no orderBy to avoid composite index error)
+                subscribe('chatMessages', setChatMessages, where('classId', '==', cid), limit(150)),
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', uid), where('isRead', '==', false)),
+                // Broadcast notifications: all, students-wide, and specific-class
                 subscribe('notifications', setNotifications, where('audience', 'in', ['students', 'all', 'specific_class'])),
+                subscribe('starDeclarations', setStarDeclarations, where('classId', '==', cid)),
                 
                 // Limited classmate info for leaderboards
                 subscribe('students', setStudents, where('classId', '==', cid))
             );
+
+            // Separate listener: direct messages TO this student (mentor→student DMs stored without classId)
+            // These must be MERGED into chatMessages, not replace them
+            const directMsgQ = query(collection(db, 'chatMessages'), where('receiverId', '==', uid), limit(150));
+            const directMsgUnsub = onSnapshot(directMsgQ, (snap) => {
+                const directMsgs = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                setChatMessages(prev => {
+                    const existingIds = new Set(prev.map(m => m.id));
+                    const newMsgs = directMsgs.filter(m => !existingIds.has(m.id));
+                    return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
+                });
+            });
+            unsubs.push(directMsgUnsub);
+
+            // Separate listener: messages SENT by this student (so sent messages appear immediately)
+            const sentMsgQ = query(collection(db, 'chatMessages'), where('senderId', '==', uid), limit(150));
+            const sentMsgUnsub = onSnapshot(sentMsgQ, (snap) => {
+                const sentMsgs = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                setChatMessages(prev => {
+                    const existingIds = new Set(prev.map(m => m.id));
+                    const newMsgs = sentMsgs.filter(m => !existingIds.has(m.id));
+                    return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
+                });
+            });
+            unsubs.push(sentMsgUnsub);
+
+            // Separate listener: notifications sent specifically to THIS student (audience == 'specific_student')
+            // Cannot be combined with the audience 'in' query above (different field filter),
+            // so we merge them client-side like we do for direct chat messages.
+            const specificNotifQ = query(
+                collection(db, 'notifications'),
+                where('audience', '==', 'specific_student'),
+                where('targetId', '==', uid)
+            );
+            const specificNotifUnsub = onSnapshot(specificNotifQ, (snap) => {
+                const specificNotifs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+                setNotifications(prev => {
+                    const existingIds = new Set(prev.map(n => n.id));
+                    const newNotifs = specificNotifs.filter(n => !existingIds.has(n.id));
+                    return newNotifs.length > 0 ? [...prev, ...newNotifs] : prev;
+                });
+            });
+            unsubs.push(specificNotifUnsub);
         } else if (currentUser.role === 'mentor') {
             const assignedClassIds = currentUser.assignedClassIds || (currentUser.classId ? [currentUser.classId] : []);
 
             unsubs.push(
                 subscribe('students', setAllStudents, orderBy('name'), limit(allStudentsLimit)),
-                subscribe('mentors', setMentors, orderBy('name'), limit(allMentorsLimit)),
-                subscribe('classes', setClasses, orderBy('name'), limit(allClassesLimit))
+                subscribe('mentors', setAllMentors, orderBy('name'), limit(allMentorsLimit)),
+                subscribe('classes', setAllClasses, orderBy('name'), limit(allClassesLimit))
             );
 
             if (assignedClassIds.length > 0) {
@@ -242,23 +315,37 @@ export const DataProvider = ({ children }) => {
                     subscribe('attendance', setAttendance, where('classId', 'in', assignedClassIds), limit(2000)), 
                     subscribe('exams', setExams, where('classId', 'in', assignedClassIds)),
                     subscribe('results', setResults, where('classId', 'in', assignedClassIds), limit(2000)),
-                    subscribe('chatMessages', setChatMessages, where('classId', 'in', assignedClassIds), orderBy('timestamp', 'desc'), limit(400)),
+                    subscribe('chatMessages', setChatMessages, where('classId', 'in', assignedClassIds), limit(400)),
                     subscribe('activities', setActivities, where('classId', 'in', assignedClassIds)),
                     subscribe('quranRecitations', setQuranRecitations, where('classId', 'in', assignedClassIds)),
-                    subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds))
+                    subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds)),
+                    subscribe('activitySubmissions', setActivitySubmissions, limit(2000)),
+                    // Previously missing — caused empty data on Prayer, Star, Ramadan, Substitution pages
+                    subscribe('prayerRecords', setPrayerRecords, where('classId', 'in', assignedClassIds)),
+                    subscribe('ramadanLogs', setRamadanLogs, where('classId', 'in', assignedClassIds)),
+                    subscribe('quranProgress', setQuranProgress, where('classId', 'in', assignedClassIds)),
+                    subscribe('starDeclarations', setStarDeclarations, where('classId', 'in', assignedClassIds)),
+                    subscribe('studentResponses', setStudentResponses, where('classId', 'in', assignedClassIds), limit(2000))
                 );
             }
 
             unsubs.push(
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', currentUser.id), where('isRead', '==', false)),
                 subscribe('mentorTasks', setMentorTasks, where('mentorId', '==', currentUser.id)),
-                subscribe('notifications', setNotifications, orderBy('createdAt', 'desc'), limit(100))
+                subscribe('evaluationForms', setEvaluationForms),
+                subscribe('evaluationSubmissions', setEvaluationSubmissions, where('mentorId', '==', currentUser.id)),
+                subscribe('questionSuggestions', setQuestionSuggestions, where('receiverId', '==', currentUser.id)),
+                subscribe('notifications', setNotifications, orderBy('createdAt', 'desc'), limit(100)),
+                // Mentor needs to see their own admission requests for the request history panel
+                subscribe('admissionRequests', setAdmissionRequests, where('mentorId', '==', currentUser.id)),
+                subscribe('leaderboardRules', setLeaderboardRules),
+                subscribe('leaderboardCompletions', setLeaderboardCompletions)
             );
         } else if (currentUser.role === 'admin') {
             unsubs.push(
                 subscribe('students', (data) => { setStudents(data); setAllStudents(data); }),
-                subscribe('mentors', setMentors),
-                subscribe('classes', setClasses),
+                subscribe('mentors', (data) => { setMentors(data); setAllMentors(data); }),
+                subscribe('classes', (data) => { setClasses(data); setAllClasses(data); }),
                 subscribe('exams', setExams),
                 subscribe('activities', setActivities),
                 subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(1000)),
@@ -269,7 +356,10 @@ export const DataProvider = ({ children }) => {
                 subscribe('admissionRequests', setAdmissionRequests),
                 subscribe('evaluationForms', setEvaluationForms),
                 subscribe('evaluationSubmissions', setEvaluationSubmissions),
-                subscribe('adminRequests', setAdminRequests)
+                subscribe('activitySubmissions', setActivitySubmissions),
+                subscribe('adminRequests', setAdminRequests),
+                subscribe('leaderboardRules', setLeaderboardRules),
+                subscribe('leaderboardCompletions', setLeaderboardCompletions)
             );
             
             // Note: Admins may still need full attendance/results for reports, 
@@ -280,6 +370,8 @@ export const DataProvider = ({ children }) => {
     }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit]);
 
     // Separate Effect for Log Pagination (to avoid re-subscribing to everything else)
+    // NOTE: where('classId') + orderBy('timestamp') requires a Firestore composite index.
+    // We use where-only queries and sort client-side to avoid this requirement.
     useEffect(() => {
         if (!currentUser) {
             setLogEntries([]);
@@ -288,25 +380,35 @@ export const DataProvider = ({ children }) => {
 
         let q;
         if (currentUser.role === 'student') {
-            q = query(collection(db, 'logEntries'), where('classId', '==', currentUser.classId), orderBy('timestamp', 'desc'), limit(logLimit));
+            // No orderBy — sort client-side to avoid composite index requirement
+            q = query(collection(db, 'logEntries'), where('classId', '==', currentUser.classId), limit(logLimit));
         } else if (currentUser.role === 'mentor') {
             const assignedClassIds = currentUser.assignedClassIds || (currentUser.classId ? [currentUser.classId] : []);
             if (assignedClassIds.length > 0) {
-                q = query(collection(db, 'logEntries'), where('classId', 'in', assignedClassIds), orderBy('timestamp', 'desc'), limit(logLimit));
+                q = query(collection(db, 'logEntries'), where('classId', 'in', assignedClassIds), limit(logLimit));
             } else {
                 setLogEntries([]);
                 return;
             }
         } else if (currentUser.role === 'admin') {
+            // Admin has no where clause, orderBy alone is fine (no composite index needed)
             q = query(collection(db, 'logEntries'), orderBy('timestamp', 'desc'), limit(logLimit));
         }
 
         if (!q) return;
 
-        const unsub = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setLogEntries(data);
-        });
+        const unsub = onSnapshot(q,
+            (snapshot) => {
+                const data = snapshot.docs
+                    .map(doc => ({ ...doc.data(), id: doc.id }))
+                    // Client-side sort — same result, no index needed
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                setLogEntries(data);
+            },
+            (error) => {
+                console.error('[DataContext] logEntries subscription failed:', error.message);
+            }
+        );
 
         return () => unsub();
     }, [currentUser, logLimit]);
@@ -322,6 +424,24 @@ export const DataProvider = ({ children }) => {
             }
         }
     }, [currentUser, allMentorSettings]);
+
+    // Keep currentUser in sync with institutional data (mentors/students)
+    useEffect(() => {
+        if (!currentUser) return;
+        const source = currentUser.role === 'mentor' ? mentors : (currentUser.role === 'student' ? students : []);
+        const fresh = source.find(u => u.id === currentUser.id);
+        if (fresh) {
+            // Deep check for changes that affect the session
+            const hasChanged = fresh.name !== currentUser.name || 
+                               fresh.signature !== currentUser.signature || 
+                               fresh.classId !== currentUser.classId ||
+                               JSON.stringify(fresh.assignedClassIds) !== JSON.stringify(currentUser.assignedClassIds);
+            
+            if (hasChanged) {
+                setCurrentUser(prev => ({ ...prev, ...fresh }));
+            }
+        }
+    }, [mentors, students, currentUser?.id]);
 
     // --- Helper Logic for Notifications (defined early for scope) ---
     const addNotification = async (notif) => {
@@ -365,12 +485,24 @@ export const DataProvider = ({ children }) => {
                 if (instDoc.empty || !hasSetting('institution')) {
                     console.log("Initializing institution settings...");
                     await setDoc(institutionRef, {
-                        name: 'Attendance Recorder',
-                        tagline: 'Track Smart, Act Fast',
-                        academicYear: '2024-2025',
-                        chiefMentor: 'Dr. Principal',
+                        name: 'Samastha E-Learning',
+                        tagline: 'Realizing the real path',
+                        academicYear: '2026-2027',
+                        chiefMentor: 'OP Siraj Faizy',
                         favicon: '/favicon.png'
                     });
+                } else {
+                    // Force update if still showing old name
+                    const currentInst = instDoc.docs.find(d => d.id === 'institution')?.data();
+                    if (currentInst && (currentInst.name === 'Attendance Recorder' || currentInst.name === 'SMART MADRASA')) {
+                        console.log("Applying branding migration...");
+                        await setDoc(institutionRef, {
+                            name: 'Samastha E-Learning',
+                            tagline: 'Realizing the real path',
+                            academicYear: '2026-2027',
+                            chiefMentor: 'OP Siraj Faizy'
+                        }, { merge: true });
+                    }
                 }
 
                 if (!hasSetting('admin')) {
@@ -648,8 +780,20 @@ export const DataProvider = ({ children }) => {
 
 
     // Students
-    const addStudent = async (student) => await addDoc(collection(db, 'students'), { ...student, status: 'Active' });
-    const updateStudent = async (id, updated) => await updateDoc(doc(db, 'students', id), updated);
+    const addStudent = async (student) => {
+        const normalized = { 
+            ...student, 
+            registerNo: student.registerNo?.trim().toUpperCase(),
+            status: student.status || 'Active' 
+        };
+        return await addDoc(collection(db, 'students'), normalized);
+    };
+    const updateStudent = async (id, data) => {
+        const normalized = { ...data };
+        if (normalized.registerNo) normalized.registerNo = normalized.registerNo.trim().toUpperCase();
+        await updateDoc(doc(db, 'students', id), normalized);
+        if (currentUser?.id === id) setCurrentUser(prev => ({ ...prev, ...normalized }));
+    };
     const deleteStudent = async (id) => await deleteDoc(doc(db, 'students', id));
     const deleteStudents = async (ids) => {
         const batch = writeBatch(db);
@@ -673,7 +817,10 @@ export const DataProvider = ({ children }) => {
 
     // Mentors
     const addMentor = async (mentor) => await addDoc(collection(db, 'mentors'), mentor);
-    const updateMentor = async (id, updated) => await updateDoc(doc(db, 'mentors', id), updated);
+    const updateMentor = async (id, updated) => {
+        await updateDoc(doc(db, 'mentors', id), updated);
+        if (currentUser?.id === id) setCurrentUser(prev => ({ ...prev, ...updated }));
+    };
     const deleteMentor = async (id) => await deleteDoc(doc(db, 'mentors', id));
     const deleteMentors = async (ids) => {
         const batch = writeBatch(db);
@@ -1076,26 +1223,64 @@ export const DataProvider = ({ children }) => {
         if (act) await updateDoc(doc(db, 'activities', id), { status: act.status === 'Active' ? 'Inactive' : 'Active' });
     };
 
-    const markActivityAsDone = async (activityId, studentId, points = 0) => {
-        // Check existing
+    const markActivityAsDone = async (activityId, studentId, points = 0, classId = null) => {
+        // Find existing submission (handle potential duplicates by taking the first one)
         const existing = activitySubmissions.find(s => s.activityId === activityId && s.studentId === studentId);
+        
+        // Resolve Class ID: Priority: 1. Passed classId, 2. Activity's classId, 3. Student's classId, 4. Fallback
+        let targetClassId = classId;
+        if (!targetClassId) {
+            const act = activities.find(a => a.id === activityId);
+            targetClassId = act?.classId;
+        }
+        if (!targetClassId) {
+            const student = (students.length > 0 ? students : allStudents).find(s => s.id === studentId);
+            targetClassId = student?.classId || '';
+        }
+
+        const submissionData = { 
+            activityId, 
+            studentId, 
+            classId: targetClassId, 
+            status: 'Completed', 
+            points, 
+            timestamp: new Date().toISOString() 
+        };
+
         if (existing) {
-            await updateDoc(doc(db, 'activitySubmissions', existing.id), { status: 'Completed', points, timestamp: new Date().toISOString() });
+            await updateDoc(doc(db, 'activitySubmissions', existing.id), submissionData);
         } else {
-            await addDoc(collection(db, 'activitySubmissions'), { activityId, studentId, status: 'Completed', points, timestamp: new Date().toISOString() });
+            await addDoc(collection(db, 'activitySubmissions'), submissionData);
         }
     };
 
     const markActivityAsPending = async (activityId, studentId) => {
-        const existing = activitySubmissions.find(s => s.activityId === activityId && s.studentId === studentId);
-        if (existing) await deleteDoc(doc(db, 'activitySubmissions', existing.id));
+        const duplicates = activitySubmissions.filter(s => s.activityId === activityId && s.studentId === studentId);
+        if (duplicates.length === 0) return;
+
+        const batch = writeBatch(db);
+        duplicates.forEach(docSnap => {
+            batch.delete(doc(db, 'activitySubmissions', docSnap.id));
+        });
+        await batch.commit();
     };
 
-    const getStudentActivityPoints = (studentId) => {
+    const getStudentActivityPoints = (studentId, classId) => {
+        // Only count points from submissions whose activity is still Active
+        const activeActivities = activities.filter(
+            a => a.status === 'Active' && (!classId || a.classId === classId)
+        );
+        const activeActivityMap = new Map(activeActivities.map(a => [a.id, a]));
         return activitySubmissions
-            .filter(s => s.studentId === studentId && s.status === 'Completed')
-            .reduce((sum, s) => sum + (Number(s.points) || 0), 0);
+            .filter(s =>
+                s.studentId === studentId &&
+                s.status === 'Completed' &&
+                activeActivityMap.has(s.activityId)
+            )
+            // Always read current maxPoints from activity, not stale stored s.points
+            .reduce((sum, s) => sum + (Number(activeActivityMap.get(s.activityId)?.maxPoints) || 0), 0);
     };
+
 
     // Log Entries
     const addLogEntry = async (entry) => {
@@ -1188,7 +1373,10 @@ export const DataProvider = ({ children }) => {
     const addPrayerRecord = async (record) => {
         // Composite ID for uniqueness per day per student
         const docId = `${record.date}_${record.studentId}`;
-        await setDoc(doc(db, 'prayerRecords', docId), { ...record, timestamp: new Date().toISOString() });
+        // classId is required so the mentor's subscription (filtered by classId) can find these records
+        const student = students.find(s => s.id === record.studentId) || allStudents.find(s => s.id === record.studentId);
+        const classId = record.classId || student?.classId || null;
+        await setDoc(doc(db, 'prayerRecords', docId), { ...record, classId, timestamp: new Date().toISOString() });
     };
     const getPrayerRecordsByStudent = (studentId) => prayerRecords.filter(r => r.studentId === studentId); // Local filter is fine as we sync all
 
@@ -1355,10 +1543,19 @@ export const DataProvider = ({ children }) => {
 
     // --- Login Helpers (Direct DB Queries to avoid massive full-list reads) ---
     const fetchStudentByRegisterNo = async (regNo) => {
-        const q = query(collection(db, 'students'), where('registerNo', '==', regNo), limit(1));
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return null;
-        return { ...snapshot.docs[0].data(), id: snapshot.docs[0].id };
+        const cleanReg = regNo.trim().toUpperCase();
+        const searchTerms = [cleanReg, cleanReg.toLowerCase()];
+        const fieldNames = ['registerNo', 'regNo', 'uid'];
+
+        for (const field of fieldNames) {
+            for (const term of searchTerms) {
+                const q = query(collection(db, 'students'), where(field, '==', term), limit(1));
+                const s = await getDocs(q);
+                if (!s.empty) return { ...s.docs[0].data(), id: s.docs[0].id };
+            }
+        }
+
+        return null;
     };
 
     const fetchMentorByEmail = async (email) => {
@@ -1395,6 +1592,8 @@ export const DataProvider = ({ children }) => {
         allMentorsLimit, setAllMentorsLimit, loadMoreAllMentors,
         allClassesLimit, setAllClassesLimit, loadMoreAllClasses,
         totalCounts,
+        allMentors,
+        allClasses,
 
         activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
         activitySubmissions, markActivityAsDone, markActivityAsPending, getStudentActivityPoints,
@@ -1481,17 +1680,25 @@ export const DataProvider = ({ children }) => {
 
         // Ramadan & Quran Tracking
         ramadanLogs,
-        addRamadanLog: async (log) => await addDoc(collection(db, 'ramadanLogs'), { ...log, timestamp: new Date().toISOString() }),
+        addRamadanLog: async (log) => {
+            // classId is required so the mentor's classId-based subscription can find these logs
+            const student = students.find(s => s.id === log.studentId) || allStudents.find(s => s.id === log.studentId);
+            const classId = log.classId || student?.classId || null;
+            return await addDoc(collection(db, 'ramadanLogs'), { ...log, classId, timestamp: new Date().toISOString() });
+        },
         updateRamadanLog: async (id, u) => await updateDoc(doc(db, 'ramadanLogs', id), u),
         deleteRamadanLog: async (id) => await deleteDoc(doc(db, 'ramadanLogs', id)),
 
         quranProgress,
         updateQuranProgress: async (studentId, data) => {
             const existing = quranProgress.find(q => q.studentId === studentId);
+            // classId is required so the mentor's classId-based subscription can find this progress
+            const student = students.find(s => s.id === studentId) || allStudents.find(s => s.id === studentId);
+            const classId = data.classId || existing?.classId || student?.classId || null;
             if (existing) {
-                await updateDoc(doc(db, 'quranProgress', existing.id), { ...data, lastUpdated: new Date().toISOString() });
+                await updateDoc(doc(db, 'quranProgress', existing.id), { ...data, classId, lastUpdated: new Date().toISOString() });
             } else {
-                await addDoc(collection(db, 'quranProgress'), { studentId, ...data, lastUpdated: new Date().toISOString() });
+                await addDoc(collection(db, 'quranProgress'), { studentId, ...data, classId, lastUpdated: new Date().toISOString() });
             }
         },
 
@@ -1512,6 +1719,46 @@ export const DataProvider = ({ children }) => {
         
         evaluationSubmissions,
         submitEvaluationResponse: async (response) => await addDoc(collection(db, 'evaluationSubmissions'), { ...response, submittedAt: new Date().toISOString() }),
+
+        // Mentor Performance Leaderboard
+        leaderboardRules,
+        leaderboardCompletions,
+        leaderboardSettings,
+        addLeaderboardRule: async (rule) => await addDoc(collection(db, 'leaderboardRules'), { ...rule, createdAt: new Date().toISOString() }),
+        updateLeaderboardRule: async (id, updates) => await updateDoc(doc(db, 'leaderboardRules', id), updates),
+        deleteLeaderboardRule: async (id) => {
+            // Also delete all completions for this rule
+            const batch = writeBatch(db);
+            batch.delete(doc(db, 'leaderboardRules', id));
+            leaderboardCompletions.filter(c => c.ruleId === id).forEach(c => batch.delete(doc(db, 'leaderboardCompletions', c.id)));
+            await batch.commit();
+        },
+        toggleLeaderboardCompletion: async (ruleId, mentorId, month, currentUser) => {
+            const existing = leaderboardCompletions.find(c => c.ruleId === ruleId && c.mentorId === mentorId && c.month === month);
+            if (existing) {
+                await deleteDoc(doc(db, 'leaderboardCompletions', existing.id));
+            } else {
+                await addDoc(collection(db, 'leaderboardCompletions'), {
+                    ruleId, mentorId, month,
+                    completedAt: new Date().toISOString(),
+                    markedBy: currentUser?.id || 'admin'
+                });
+            }
+        },
+        duplicateRulesForMonth: async (sourceMonth, targetMonth) => {
+            const sourceRules = leaderboardRules.filter(r => r.month === sourceMonth);
+            const batch = writeBatch(db);
+            sourceRules.forEach(rule => {
+                const newRef = doc(collection(db, 'leaderboardRules'));
+                const { id, createdAt, ...rest } = rule;
+                batch.set(newRef, { ...rest, month: targetMonth, createdAt: new Date().toISOString() });
+            });
+            await batch.commit();
+        },
+        updateLeaderboardSettings: async (settings) => {
+            await setDoc(doc(db, 'settings', 'leaderboard'), settings, { merge: true });
+            setLeaderboardSettings(prev => ({ ...prev, ...settings }));
+        },
     };
 
     return (

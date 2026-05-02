@@ -910,7 +910,7 @@ const ActivitiesManager = () => {
                                                             <button
                                                                 onClick={() => {
                                                                     if (isDone) markActivityAsPending(activity.id, student.id);
-                                                                    else markActivityAsDone(activity.id, student.id, activity.maxPoints);
+                                                                    else markActivityAsDone(activity.id, student.id, activity.maxPoints, activity.classId);
                                                                 }}
                                                                 className={`p-2 rounded-full transition-colors ${isDone
                                                                     ? 'bg-green-100 text-green-600 hover:bg-green-200'

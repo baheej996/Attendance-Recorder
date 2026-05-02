@@ -15,8 +15,10 @@ import {
     ArrowRight,
     Bookmark,
     Clock,
-    Search
+    Search,
+    Download
 } from 'lucide-react';
+import ZoomableImage from '../ui/ZoomableImage';
 
 const StudentSubjects = () => {
     const { currentUser, subjects } = useData();
@@ -216,15 +218,47 @@ const StudentSubjects = () => {
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Chapter {viewingData.chapterIndex} • Page {currentPageIndex + 1}/{viewingData.images.length}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setViewingData(null)} className="w-12 h-12 bg-white/10 text-white rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all border border-white/10"><X className="w-6 h-6" /></button>
+                            <div className="flex items-center gap-3">
+                                <a 
+                                    href={viewingData.images[currentPageIndex]} 
+                                    download={`${viewingData.subjectName}_Ch${viewingData.chapterIndex}_Page${currentPageIndex + 1}.jpg`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Download Page
+                                </a>
+                                <button onClick={() => setViewingData(null)} className="w-12 h-12 bg-white/10 text-white rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all border border-white/10"><X className="w-6 h-6" /></button>
+                            </div>
                         </div>
-                        <div className="flex-1 w-full flex items-center justify-center p-6 md:p-12 relative overflow-hidden">
-                            <motion.img key={currentPageIndex} src={viewingData.images[currentPageIndex]} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border-4 border-white/5 bg-white" />
-                            <div className="absolute inset-0 flex"><div className="w-1/2 h-full cursor-w-resize" onClick={prevPage} /><div className="w-1/2 h-full cursor-e-resize" onClick={nextPage} /></div>
+                        <div className="flex-1 w-full flex items-center justify-center relative overflow-hidden">
+                            <ZoomableImage 
+                                key={currentPageIndex} 
+                                src={viewingData.images[currentPageIndex]} 
+                                alt={`Page ${currentPageIndex + 1}`}
+                            />
+                            <div className="absolute inset-0 flex pointer-events-none">
+                                <div className="w-1/2 h-full cursor-w-resize pointer-events-auto" onClick={prevPage} />
+                                <div className="w-1/2 h-full cursor-e-resize pointer-events-auto" onClick={nextPage} />
+                            </div>
                         </div>
                         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-10 p-4 bg-white/10 backdrop-blur-xl rounded-[2.5rem] border border-white/10 shadow-2xl">
                             <button onClick={prevPage} disabled={currentPageIndex === 0} className={cn("p-4 rounded-2xl transition-all", currentPageIndex === 0 ? "opacity-20 pointer-events-none" : "text-white bg-white/10 hover:bg-white/20")}><ChevronLeft className="w-6 h-6" /></button>
-                            <div className="text-white font-black text-2xl tracking-tighter">{currentPageIndex + 1} <span className="text-gray-500 text-sm mx-1">/</span> {viewingData.images.length}</div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="number"
+                                    value={currentPageIndex + 1}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        if (val >= 1 && val <= viewingData.images.length) {
+                                            setCurrentPageIndex(val - 1);
+                                        }
+                                    }}
+                                    className="w-16 bg-white/10 border border-white/10 text-white font-black text-2xl text-center rounded-xl py-1 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                />
+                                <span className="text-gray-500 text-sm font-bold uppercase tracking-widest">of {viewingData.images.length}</span>
+                            </div>
                             <button onClick={nextPage} disabled={currentPageIndex === viewingData.images.length - 1} className={cn("p-4 rounded-2xl transition-all", currentPageIndex === viewingData.images.length - 1 ? "opacity-20 pointer-events-none" : "text-white bg-white/10 hover:bg-white/20")}><ChevronRight className="w-6 h-6" /></button>
                         </div>
                     </motion.div>

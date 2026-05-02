@@ -72,6 +72,8 @@ const StudentChat = () => {
         sendMessage({
             senderId: currentUserId,
             receiverId: activeChatId,
+            // Always include classId so messages are visible to mentor's classId-based subscription
+            classId: currentUser.classId || null,
             details: messageInput,
             type: 'text'
         });

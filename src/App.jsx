@@ -17,7 +17,6 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { useData } from './contexts/DataContext';
 import InstallPrompt from './components/pwa/InstallPrompt';
 import NotificationPrompt from './components/pwa/NotificationPrompt';
-import UpdateNotification from './components/system/UpdateNotification';
 
 function App() {
   return (
@@ -73,7 +72,6 @@ const AppContent = () => {
 
   return (
     <Router>
-      <UpdateNotification />
       <InstallPrompt />
       <NotificationPrompt />
       <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">

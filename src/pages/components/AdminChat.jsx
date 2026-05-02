@@ -98,9 +98,22 @@ const AdminChat = () => {
         e.preventDefault();
         if (!messageInput.trim() || !selectedContactId || !currentUserId) return;
 
+        // Resolve classId so the recipient's classId-based subscription can see this message.
+        // For student recipients: use the student's own classId.
+        // For mentor recipients: use their first assigned class as a routing key.
+        let classId = null;
+        if (activeTab === 'students') {
+            const recipientStudent = students.find(s => s.id === selectedContactId);
+            classId = recipientStudent?.classId || null;
+        } else if (activeTab === 'mentors') {
+            const recipientMentor = mentors.find(m => m.id === selectedContactId);
+            classId = recipientMentor?.assignedClassIds?.[0] || null;
+        }
+
         sendMessage({
             senderId: currentUserId,
             receiverId: selectedContactId,
+            classId,
             details: messageInput,
             type: 'text'
         });

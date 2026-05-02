@@ -350,6 +350,11 @@ const MentorDashboard = () => {
                         <CalendarDays className="w-6 h-6" />
                         Mentor Panel
                     </h1>
+                    {currentUser?.name && (
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 ml-8 truncate">
+                            {currentUser.name}
+                        </p>
+                    )}
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -409,10 +414,17 @@ const MentorDashboard = () => {
                     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
                     <div className="relative bg-white w-64 h-full shadow-xl flex flex-col">
                         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                            <h1 className="text-xl font-bold text-purple-600 flex items-center gap-2">
-                                <CalendarDays className="w-6 h-6" />
-                                Mentor Panel
-                            </h1>
+                            <div>
+                                <h1 className="text-xl font-bold text-purple-600 flex items-center gap-2">
+                                    <CalendarDays className="w-6 h-6" />
+                                    Mentor Panel
+                                </h1>
+                                {currentUser?.name && (
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 ml-8 truncate">
+                                        {currentUser.name}
+                                    </p>
+                                )}
+                            </div>
                             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-gray-500 hover:bg-gray-100 rounded-full">
                                 <Users className="w-5 h-5" />
                             </button>
@@ -462,10 +474,17 @@ const MentorDashboard = () => {
             {/* Main Content */}
             <div className="flex-1 overflow-auto print:overflow-visible flex flex-col h-full">
                 {/* Mobile Header */}
-                <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 shrink-0">
-                    <div className="flex items-center gap-2">
-                        <CalendarDays className="w-6 h-6 text-purple-600" />
-                        <span className="font-bold text-gray-900">Mentor Panel</span>
+                <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 shrink-0 print:hidden">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                            <CalendarDays className="w-6 h-6 text-purple-600" />
+                            <span className="font-bold text-gray-900">Mentor Panel</span>
+                        </div>
+                        {currentUser?.name && (
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-8 truncate max-w-[150px]">
+                                {currentUser.name}
+                            </p>
+                        )}
                     </div>
                     <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg">
                         <Layers className="w-6 h-6" />
@@ -473,7 +492,7 @@ const MentorDashboard = () => {
                 </div>
                 
                 {currentUser?.isImpersonating && (
-                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 flex items-center justify-between text-white shrink-0 animate-in slide-in-from-top duration-300">
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 flex items-center justify-between text-white shrink-0 animate-in slide-in-from-top duration-300 print:hidden">
                         <div className="flex items-center gap-2">
                             <ShieldCheck className="w-4 h-4" />
                             <span className="text-xs font-bold uppercase tracking-wider">

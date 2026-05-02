@@ -48,12 +48,14 @@ export const calculateStudentStarScores = ({
         );
         const workingDays = classAttendanceDates.size || 1;
 
-        const activeActivityList = activities.filter(a =>
-            a.classId === classId &&
-            a.createdAt &&
-            isSameMonth(new Date(a.createdAt), startDate) &&
-            isSameYear(new Date(a.createdAt), startDate)
-        );
+        const activeActivityList = activities.filter(a => {
+            if (a.classId !== classId || a.status !== 'Active') return false;
+            // Use dueDate if set, otherwise fall back to createdAt
+            const refDateStr = a.dueDate || a.createdAt;
+            if (!refDateStr) return false;
+            const refDate = new Date(refDateStr);
+            return isSameMonth(refDate, startDate) && isSameYear(refDate, startDate);
+        });
         const activeActivities = activeActivityList.length || 1;
         const activeActivityIds = activeActivityList.map(a => a.id);
 
@@ -87,14 +89,19 @@ export const calculateStudentStarScores = ({
         let activityScore = 0;
         let completedCount = 0;
         if (config.activities && stats.activeActivityIds.length > 0) {
-            const activeIds = stats.activeActivityIds || [];
-            const studentSubmissions = activitySubmissions.filter(s =>
-                s.studentId === student.id &&
-                s.status === 'Completed' &&
-                activeIds.includes(s.activityId)
+            const activeIds = new Set(stats.activeActivityIds);
+            // Use a Set to deduplicate: multiple submissions for the same activity count as ONE completion
+            const completedActivityIds = new Set(
+                activitySubmissions
+                    .filter(s =>
+                        s.studentId === student.id &&
+                        s.status === 'Completed' &&
+                        activeIds.has(s.activityId)
+                    )
+                    .map(s => s.activityId)
             );
-            completedCount = studentSubmissions.length;
-            activityScore = (completedCount / stats.activeActivityIds.length) * 100;
+            completedCount = completedActivityIds.size;
+            activityScore = Math.min((completedCount / stats.activeActivityIds.length) * 100, 100);
         }
 
         // --- Prayer Score ---

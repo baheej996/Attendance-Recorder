@@ -63,66 +63,56 @@ const EvaluationResponses = ({ form, onClose }) => {
     const ResponseDetail = ({ sub, isBulk = false }) => {
         const mentor = mentors.find(m => m.id === sub.mentorId);
         return (
-            <Card className={`p-8 bg-white ${isBulk ? 'mb-8 border-2 border-indigo-100 shadow-lg' : 'print:p-0 print:shadow-none'}`}>
-                <div className="flex justify-between items-start mb-8 pb-6 border-b border-gray-100">
+            <Card className={`p-6 bg-white ${isBulk ? 'mb-6 border border-gray-200 shadow-sm' : 'print:p-0 print:shadow-none print:border-none'}`}>
+                <div className="flex justify-between items-start mb-4 pb-3 border-b border-gray-200">
                     <div>
-                        <h1 className="text-2xl font-black text-gray-900 tracking-tight">{form.title}</h1>
-                        <p className="text-gray-500 font-medium">{form.month} {form.year}</p>
-                        <div className="mt-4 inline-flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100">
-                            <div className="w-8 h-8 rounded-full bg-indigo-200 text-indigo-700 flex items-center justify-center font-bold">
-                                {mentor?.name?.charAt(0) || '?'}
-                            </div>
-                            <div>
-                                <div className="font-bold text-indigo-900 text-sm">
-                                    {mentor?.name || 'Unknown Mentor'}
-                                </div>
-                                <div className="text-xs text-indigo-600 font-medium">Submitted on {new Date(sub.submittedAt).toLocaleString()}</div>
-                            </div>
-                        </div>
+                        <h1 className="text-xl font-bold text-gray-900 tracking-tight">{form.title}</h1>
+                        <p className="text-gray-500 text-xs font-medium">{form.month} {form.year} • {mentor?.name || 'Unknown Mentor'}</p>
+                        <p className="text-[10px] text-gray-400">Submitted: {new Date(sub.submittedAt).toLocaleString()}</p>
                     </div>
                     {!isBulk && (
                         <div className="flex items-center gap-2 print:hidden">
-                            <Button variant="secondary" onClick={() => handleCopyText(sub)} className="gap-2">
+                            <Button variant="secondary" onClick={() => handleCopyText(sub)} className="gap-2 h-9 text-xs">
                                 <Clipboard className="w-4 h-4" /> Copy Text
                             </Button>
-                            <Button variant="primary" onClick={handlePrint} className="gap-2">
+                            <Button variant="primary" onClick={handlePrint} className="gap-2 h-9 text-xs">
                                 <Download className="w-4 h-4" /> Save PDF
                             </Button>
                         </div>
                     )}
                 </div>
 
-                <div className="space-y-10">
+                <div className="space-y-6">
                     {form.sections.map((sec, idx) => (
                         <div key={sec.id} className="break-inside-avoid">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b-2 border-gray-100 pb-2">
-                                <span className="bg-gray-100 text-gray-600 w-6 h-6 rounded flex items-center justify-center text-xs">{(idx + 1).toString().padStart(2, '0')}</span>
+                            <h3 className="text-sm font-bold text-indigo-700 mb-3 border-b border-indigo-50 pb-1 flex items-center gap-2">
+                                <span className="bg-indigo-50 text-indigo-600 w-5 h-5 rounded flex items-center justify-center text-[10px]">{(idx + 1)}</span>
                                 {sec.title}
                             </h3>
-                            <div className="space-y-6">
+                            <div className="space-y-3">
                                 {sec.questions.map(q => {
                                     const answer = sub.answers[q.id];
                                     return (
-                                        <div key={q.id} className="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                                            <div className="font-semibold text-gray-700 mb-2">{q.label}</div>
-                                            <div className="text-gray-900 font-medium">
+                                        <div key={q.id} className="text-sm leading-tight border-b border-gray-50 pb-2 last:border-0">
+                                            <div className="font-bold text-gray-600 mb-1">{q.label}</div>
+                                            <div className="text-gray-900">
                                                 {!answer ? (
-                                                    <span className="text-gray-400 italic">No answer provided</span>
+                                                    <span className="text-gray-300 italic text-xs">No answer provided</span>
                                                 ) : q.type === 'file' ? (
-                                                    <a href={answer.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">
-                                                        <FileText className="w-4 h-4" /> {answer.name || 'View Attachment'}
+                                                    <a href={answer.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1 text-xs">
+                                                        <FileText className="w-3.5 h-3.5" /> {answer.name || 'View Attachment'}
                                                     </a>
                                                 ) : q.type === 'checkbox' && Array.isArray(answer) ? (
-                                                    <ul className="list-disc pl-5">
-                                                        {answer.map((a, i) => <li key={i}>{a}</li>)}
-                                                    </ul>
+                                                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                                        {answer.map((a, i) => <span key={i} className="flex items-center gap-1.5"><CheckCircle className="w-3 h-3 text-green-500" /> {a}</span>)}
+                                                    </div>
                                                 ) : q.type === 'rating' ? (
-                                                    <div className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-md border border-gray-200">
-                                                        <span className="text-indigo-600 font-bold">{answer}</span> 
-                                                        <span className="text-gray-400 text-xs">/ {q.max}</span>
+                                                    <div className="inline-flex items-center gap-2 bg-gray-50 px-2 py-0.5 rounded border border-gray-100 text-xs font-bold">
+                                                        <span className="text-indigo-600">{answer}</span> 
+                                                        <span className="text-gray-400">/ {q.max}</span>
                                                     </div>
                                                 ) : (
-                                                    <div className="whitespace-pre-wrap">{answer}</div>
+                                                    <div className="whitespace-pre-wrap text-[13px]">{answer}</div>
                                                 )}
                                             </div>
                                         </div>

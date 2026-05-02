@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
-import { Book, Eye, EyeOff, BookOpen, Layers, ChevronDown, ChevronUp } from 'lucide-react';
+import { Book, Eye, EyeOff, BookOpen, Layers, ChevronDown, ChevronUp, Download, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import ZoomableImage from '../ui/ZoomableImage';
 
 const MentorSubjects = () => {
     const { currentUser, classes, subjects, updateSubject } = useData();
@@ -10,6 +11,8 @@ const MentorSubjects = () => {
     const [viewingData, setViewingData] = useState(null); // { subjectName: '', chapterIndex: 1, images: [] }
     const [expandedClassId, setExpandedClassId] = useState(null);
     const [expandedSubjectId, setExpandedSubjectId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(0);
+    const containerRef = React.useRef(null);
 
     const assignedClasses = classes.filter(c => currentUser?.assignedClassIds?.includes(c.id));
 
@@ -28,6 +31,38 @@ const MentorSubjects = () => {
             setExpandedClassId(subjectsByClass[0].classDetails.id);
         }
     }, [subjectsByClass]);
+
+    // Intersection Observer to track current page
+    React.useEffect(() => {
+        if (!viewingData) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const index = parseInt(entry.target.getAttribute('data-index'));
+                        if (!isNaN(index)) setCurrentPage(index);
+                    }
+                });
+            },
+            { threshold: 0.5, root: containerRef.current }
+        );
+
+        const timeout = setTimeout(() => {
+            const pages = document.querySelectorAll('.chapter-page');
+            pages.forEach((page) => observer.observe(page));
+        }, 500);
+
+        return () => {
+            clearTimeout(timeout);
+            observer.disconnect();
+        };
+    }, [viewingData]);
+
+    const scrollToPage = (index) => {
+        const el = document.getElementById(`page-${index}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+    };
 
     const handleToggleReveal = async (subject, chapterIndex) => {
         try {
@@ -173,11 +208,14 @@ const MentorSubjects = () => {
                                                                                 <div className="w-px h-6 bg-gray-200 hidden sm:block"></div>
 
                                                                                 <button
-                                                                                    onClick={() => setViewingData({
-                                                                                        subjectName: subject.name,
-                                                                                        chapterIndex,
-                                                                                        images: currentChapterData.images
-                                                                                    })}
+                                                                                    onClick={() => {
+                                                                                        setCurrentPage(0);
+                                                                                        setViewingData({
+                                                                                            subjectName: subject.name,
+                                                                                            chapterIndex,
+                                                                                            images: currentChapterData.images
+                                                                                        });
+                                                                                    }}
                                                                                     disabled={!hasBook}
                                                                                     className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors ${
                                                                                         hasBook 
@@ -209,42 +247,110 @@ const MentorSubjects = () => {
             {/* Book Viewer Modal */}
             {viewingData && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-in fade-in duration-200">
-                    <button 
-                        onClick={() => setViewingData(null)}
-                        className="absolute top-4 right-4 p-2 bg-white/10 text-white rounded-full hover:bg-white/20 transition-colors z-50 shadow-lg backdrop-blur-sm"
-                    >
-                        ✕
-                    </button>
-                    
-                    <div className="w-full max-w-5xl h-[90vh] flex flex-col bg-black rounded-xl overflow-hidden shadow-2xl relative border border-white/10">
-                        {/* Header Overlay */}
-                        <div className="absolute top-0 w-full p-4 bg-gradient-to-b from-black/90 to-transparent z-10 flex justify-between items-center pointer-events-none">
-                            <div className="text-white">
-                                <h3 className="font-bold text-xl drop-shadow-md flex items-center gap-2">
-                                    <Book className="w-5 h-5 text-indigo-400" />
-                                    {viewingData.subjectName}
-                                </h3>
-                                <div className="text-gray-300 font-medium drop-shadow-sm flex items-center gap-2 mt-1">
-                                    <span className="bg-indigo-600/80 px-2 py-0.5 rounded text-xs text-white">Chapter {viewingData.chapterIndex}</span>
-                                    <span>{viewingData.images.length} Pages</span>
+                    <div className="w-full max-w-6xl h-[95vh] flex flex-col bg-black rounded-[2rem] overflow-hidden shadow-2xl relative border border-white/10">
+                        {/* Header Overlay - Solid Backdrop */}
+                        <div className="absolute top-0 w-full p-4 bg-gray-900/95 backdrop-blur-md shadow-2xl z-20 flex justify-between items-center border-b border-white/10 px-6">
+                            <div className="text-white flex items-center gap-4">
+                                <button 
+                                    onClick={() => setViewingData(null)}
+                                    className="w-12 h-12 bg-white/5 hover:bg-white/10 text-white rounded-2xl flex items-center justify-center transition-all border border-white/10"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                                <div>
+                                    <h3 className="font-black text-xl tracking-tight leading-none mb-1">
+                                        {viewingData.subjectName}
+                                    </h3>
+                                    <div className="text-gray-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <span className="bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded">Chapter {viewingData.chapterIndex}</span>
+                                        <span>{viewingData.images.length} Digital Pages</span>
+                                    </div>
                                 </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-6 pointer-events-auto">
+                                {/* Navigation Controls */}
+                                <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/10 shadow-inner">
+                                    <button 
+                                        onClick={() => scrollToPage(Math.max(0, currentPage - 1))}
+                                        disabled={currentPage === 0}
+                                        className="p-2.5 text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all disabled:opacity-20"
+                                    >
+                                        <ChevronLeft className="w-5 h-5" />
+                                    </button>
+                                    
+                                    <div className="flex items-center gap-2 px-3">
+                                        <input 
+                                            type="number" 
+                                            value={currentPage + 1}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                if (val >= 1 && val <= viewingData.images.length) {
+                                                    scrollToPage(val - 1);
+                                                }
+                                            }}
+                                            className="w-12 bg-transparent text-white font-black text-xl outline-none text-center border-b-2 border-indigo-500/50 focus:border-indigo-500"
+                                        />
+                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">/ {viewingData.images.length}</span>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => scrollToPage(Math.min(viewingData.images.length - 1, currentPage + 1))}
+                                        disabled={currentPage === viewingData.images.length - 1}
+                                        className="p-2.5 text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all disabled:opacity-20"
+                                    >
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                {/* Download Global Button */}
+                                <a 
+                                    href={viewingData.images[currentPage]} 
+                                    download={`${viewingData.subjectName}_Ch${viewingData.chapterIndex}_P${currentPage + 1}.jpg`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hidden md:flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Download Page {currentPage + 1}
+                                </a>
                             </div>
                         </div>
 
                         {/* Scrolling Pages Container */}
-                        <div className="flex-1 overflow-y-auto px-4 pt-24 pb-12 snap-y snap-mandatory scroll-smooth relative z-0 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
-                            <div className="flex flex-col items-center gap-16 max-w-3xl mx-auto">
+                        <div 
+                            ref={containerRef}
+                            className="flex-1 overflow-y-auto px-4 pt-32 pb-12 snap-y snap-mandatory scroll-smooth relative z-0 hide-scrollbar" 
+                            style={{ scrollbarWidth: 'none' }}
+                        >
+                            <div className="flex flex-col items-center gap-20 w-full max-w-4xl mx-auto">
                                 {viewingData.images.map((url, index) => (
-                                    <div key={index} className="relative w-full snap-start shrink-0 flex items-center justify-center min-h-[50vh]">
-                                        <div className="absolute -top-8 left-0 right-0 text-center text-gray-500 font-bold tracking-widest text-sm uppercase drop-shadow-sm">
-                                            — Page {index + 1} —
+                                    <div 
+                                        key={index} 
+                                        id={`page-${index}`} 
+                                        data-index={index}
+                                        className="chapter-page relative w-full snap-start shrink-0 flex flex-col items-center justify-center min-h-[70vh] py-8"
+                                    >
+                                        <div className="w-full max-w-2xl flex justify-between items-center mb-6 px-4">
+                                            <div className="text-gray-500 font-black tracking-widest text-[10px] uppercase">— Digital Page {index + 1} —</div>
+                                            <a 
+                                                href={url} 
+                                                download={`${viewingData.subjectName}_Ch${viewingData.chapterIndex}_P${index + 1}.jpg`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 px-5 py-2.5 bg-white/5 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/10 hover:bg-white/10"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                                Download Page
+                                            </a>
                                         </div>
-                                        <img 
-                                            src={url} 
-                                            alt={`Chapter ${viewingData.chapterIndex} Page ${index + 1}`} 
-                                            className="max-w-full max-h-[85vh] object-contain rounded-md shadow-[0_0_40px_rgba(255,255,255,0.05)] bg-white pointer-events-auto"
-                                            loading="lazy"
-                                        />
+                                        <div className="w-full h-[85vh]">
+                                            <ZoomableImage 
+                                                src={url} 
+                                                alt={`Chapter ${viewingData.chapterIndex} Page ${index + 1}`} 
+                                                className="rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] bg-white overflow-hidden border border-white/5"
+                                            />
+                                        </div>
                                     </div>
                                 ))}
                             </div>

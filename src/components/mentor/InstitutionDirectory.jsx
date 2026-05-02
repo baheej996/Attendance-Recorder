@@ -21,7 +21,7 @@ import { clsx } from 'clsx';
 
 const InstitutionDirectory = () => {
     const { 
-        allStudents, mentors, classes, currentUser, studentStatuses, 
+        allStudents, allMentors, allClasses, mentors, classes, currentUser, studentStatuses, 
         allStudentsLimit, loadMoreAllStudents, setAllStudentsLimit,
         allMentorsLimit, loadMoreAllMentors, setAllMentorsLimit,
         allClassesLimit, loadMoreAllClasses, setAllClassesLimit,
@@ -30,15 +30,6 @@ const InstitutionDirectory = () => {
     const [activeTab, setActiveTab] = useState('students'); // 'students', 'mentors', 'classes'
     const [searchQuery, setSearchQuery] = useState('');
     
-    // Auto-increase limit when searching to satisfy "but while searching it should be shown"
-    React.useEffect(() => {
-        if (searchQuery.length > 2) {
-            if (activeTab === 'students' && allStudentsLimit < 10000) setAllStudentsLimit(10000);
-            if (activeTab === 'mentors' && allMentorsLimit < 10000) setAllMentorsLimit(10000);
-            if (activeTab === 'classes' && allClassesLimit < 10000) setAllClassesLimit(10000);
-        }
-    }, [searchQuery, activeTab, allStudentsLimit, allMentorsLimit, allClassesLimit, setAllStudentsLimit, setAllMentorsLimit, setAllClassesLimit]);
-
     // Filters
     const [filters, setFilters] = useState({
         studentClass: 'all',
@@ -47,6 +38,29 @@ const InstitutionDirectory = () => {
         mentorStatus: 'all',
         classMentor: 'all'
     });
+
+    // UI Pagination (Local)
+    const [localLimit, setLocalLimit] = useState(10);
+
+    // Auto-increase Firestore limit when searching or filtering to satisfy "search all the data"
+    React.useEffect(() => {
+        const hasActiveFilters = searchQuery.length > 0 || 
+                               filters.studentClass !== 'all' || 
+                               filters.studentStatus !== 'all' || 
+                               filters.studentMentor !== 'all' ||
+                               filters.mentorStatus !== 'all' ||
+                               filters.classMentor !== 'all';
+
+        if (hasActiveFilters) {
+            // Boost Firestore limits to "all" (effectively 10000) so we can filter client-side across everything
+            if (activeTab === 'students' && allStudentsLimit < 10000) setAllStudentsLimit(10000);
+            if (activeTab === 'mentors' && allMentorsLimit < 10000) setAllMentorsLimit(10000);
+            if (activeTab === 'classes' && allClassesLimit < 10000) setAllClassesLimit(10000);
+        }
+        
+        // Reset local limit when filters change
+        setLocalLimit(10);
+    }, [searchQuery, activeTab, filters, setAllStudentsLimit, setAllMentorsLimit, setAllClassesLimit]);
 
     const [selectedClassId, setSelectedClassId] = useState(null);
 
@@ -85,7 +99,7 @@ const InstitutionDirectory = () => {
 
     // 2. Mentors List
     const mentorsList = useMemo(() => {
-        return mentors.map(m => {
+        return allMentors.map(m => {
             const assignedClasses = classes.filter(c => m.assignedClassIds?.includes(c.id));
             const mentorStudents = allStudents.filter(s => m.assignedClassIds?.includes(s.classId));
             return {
@@ -95,11 +109,11 @@ const InstitutionDirectory = () => {
                 classNames: assignedClasses.map(c => `${c.name}-${c.division}`).join(', ') || 'None'
             };
         });
-    }, [mentors, classes, allStudents]);
+    }, [allMentors, classes, allStudents]);
 
     // 3. Classes List
     const classesList = useMemo(() => {
-        return classes.map(c => {
+        return allClasses.map(c => {
             const classStudents = allStudents.filter(s => s.classId === c.id);
             const mentor = getMentorForClass(c.id);
             return {
@@ -109,14 +123,15 @@ const InstitutionDirectory = () => {
                 mentorId: mentor?.id
             };
         });
-    }, [classes, allStudents, mentors]);
+    }, [allClasses, allStudents, mentors]);
 
     // --- Search & Filter Logic ---
     const filteredData = useMemo(() => {
         const query = searchQuery.toLowerCase();
 
+        let results = [];
         if (activeTab === 'students') {
-            return studentsList.filter(s => {
+            results = studentsList.filter(s => {
                 const matchesSearch = 
                     String(s.name || '').toLowerCase().includes(query) ||
                     String(s.uid || '').toLowerCase().includes(query) ||
@@ -130,33 +145,33 @@ const InstitutionDirectory = () => {
 
                 return matchesSearch && matchesClass && matchesStatus && matchesMentor;
             });
-        }
-
-        if (activeTab === 'mentors') {
-            return mentorsList.filter(m => {
+        } else if (activeTab === 'mentors') {
+            results = mentorsList.filter(m => {
                 const matchesSearch = 
                     m.name?.toLowerCase().includes(query) ||
                     m.classNames?.toLowerCase().includes(query);
                 
                 return matchesSearch;
             });
-        }
-
-        if (activeTab === 'classes') {
-            return classesList.filter(c => {
+        } else if (activeTab === 'classes') {
+            results = classesList.filter(c => {
                 const matchesSearch = 
                     c.name?.toLowerCase().includes(query) ||
                     c.division?.toLowerCase().includes(query) ||
                     c.mentorName?.toLowerCase().includes(query);
                 
                 const matchesMentor = filters.classMentor === 'all' || c.mentorId === filters.classMentor;
-
                 return matchesSearch && matchesMentor;
             });
         }
 
-        return [];
+        return results;
     }, [activeTab, searchQuery, filters, studentsList, mentorsList, classesList]);
+
+    // Data to be displayed after UI pagination
+    const displayData = useMemo(() => {
+        return filteredData.slice(0, localLimit);
+    }, [filteredData, localLimit]);
 
     // --- Sub-View: Students for a specific class ---
     const selectedClassStudents = useMemo(() => {
@@ -276,20 +291,35 @@ const InstitutionDirectory = () => {
                             <>
                                 <select 
                                     className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500"
-                                    value={filters.studentClass}
-                                    onChange={(e) => setFilters({...filters, studentClass: e.target.value})}
-                                >
-                                    <option value="all">All Classes</option>
-                                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}-{c.division}</option>)}
-                                </select>
-                                <select 
-                                    className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500"
                                     value={filters.studentMentor}
-                                    onChange={(e) => setFilters({...filters, studentMentor: e.target.value})}
+                                    onChange={(e) => {
+                                        setFilters({
+                                            ...filters, 
+                                            studentMentor: e.target.value,
+                                            studentClass: 'all' // Reset class when mentor changes to avoid invalid selection
+                                        });
+                                    }}
                                 >
                                     <option value="all">All Mentors</option>
                                     {mentors.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
+
+                                <select 
+                                    className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500"
+                                    value={filters.studentClass}
+                                    onChange={(e) => setFilters({...filters, studentClass: e.target.value})}
+                                >
+                                    <option value="all">All Classes</option>
+                                    {classes
+                                        .filter(c => {
+                                            if (filters.studentMentor === 'all') return true;
+                                            const selectedMentor = mentors.find(m => m.id === filters.studentMentor);
+                                            return selectedMentor?.assignedClassIds?.includes(c.id) || selectedMentor?.classId === c.id;
+                                        })
+                                        .map(c => <option key={c.id} value={c.id}>{c.name}-{c.division}</option>)
+                                    }
+                                </select>
+
                                 <select 
                                     className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-500"
                                     value={filters.studentStatus}
@@ -361,7 +391,7 @@ const InstitutionDirectory = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredData.map((item, idx) => (
+                                {displayData.map((item, idx) => (
                                     <tr key={item.id} className="group hover:bg-indigo-50/30 transition-colors border-b border-gray-50 last:border-0">
                                         {activeTab === 'students' && (
                                             <>
@@ -489,34 +519,14 @@ const InstitutionDirectory = () => {
 
                 {/* Footer / Load More */}
                 <div className="p-6 bg-gray-50/50 border-t border-gray-50 flex items-center justify-center">
-                    {activeTab === 'students' && (
+                    {filteredData.length > localLimit && (
                         <Button 
-                            variant="secondary" 
-                            onClick={loadMoreAllStudents}
-                            className="bg-white border-gray-200 text-indigo-600 font-bold px-8 shadow-sm hover:bg-indigo-50"
+                            variant="primary" 
+                            onClick={() => setLocalLimit(prev => prev + 10)}
+                            className="bg-indigo-600 text-white font-bold px-12 shadow-lg shadow-indigo-200 hover:bg-indigo-700"
                         >
-                            <Briefcase className="w-4 h-4 mr-2" />
-                            Load More Students
-                        </Button>
-                    )}
-                    {activeTab === 'mentors' && (
-                        <Button 
-                            variant="secondary" 
-                            onClick={loadMoreAllMentors}
-                            className="bg-white border-gray-200 text-purple-600 font-bold px-8 shadow-sm hover:bg-purple-50"
-                        >
-                            <Briefcase className="w-4 h-4 mr-2" />
-                            Load More Mentors
-                        </Button>
-                    )}
-                    {activeTab === 'classes' && (
-                        <Button 
-                            variant="secondary" 
-                            onClick={loadMoreAllClasses}
-                            className="bg-white border-gray-200 text-emerald-600 font-bold px-8 shadow-sm hover:bg-emerald-50"
-                        >
-                            <Briefcase className="w-4 h-4 mr-2" />
-                            Load More Classes
+                            <ArrowRight className="w-4 h-4 mr-2" />
+                            Show More Results ({filteredData.length - localLimit} remaining)
                         </Button>
                     )}
                 </div>

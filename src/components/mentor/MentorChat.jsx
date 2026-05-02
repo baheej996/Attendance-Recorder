@@ -126,7 +126,11 @@ const MentorChat = () => {
         sendMessage({
             senderId: currentUserId,
             receiverId: activeChatId,
-            classId: (activeTab === 'inbox' && !isGroupChat) ? selectedStudent?.classId : null,
+            // For student DMs: use student's classId so the mentor's classId-based subscription sees it
+            // For mentor-to-mentor: use sender's first class so it appears in the recipient's subscription
+            classId: (activeTab === 'inbox' && !isGroupChat)
+                ? selectedStudent?.classId
+                : (assignedClassIds[0] || null),
             details: messageInput,
             type: 'text'
         });
