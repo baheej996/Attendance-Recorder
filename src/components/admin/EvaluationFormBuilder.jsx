@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Save, X, Plus, Trash2, GripVertical, Settings2, FileText, CalendarDays, Layers } from 'lucide-react';
+import { Save, X, Plus, Trash2, GripVertical, Settings2, FileText, CalendarDays, Layers, Copy } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 
 const QUESTION_TYPES = [
@@ -95,6 +95,28 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
     const removeQuestion = (secId, qId) => {
         setSections(sections.map(s => {
             if (s.id === secId) return { ...s, questions: s.questions.filter(q => q.id !== qId) };
+            return s;
+        }));
+    };
+
+    const copyQuestion = (secId, qId) => {
+        setSections(sections.map(s => {
+            if (s.id === secId) {
+                const qIdx = s.questions.findIndex(q => q.id === qId);
+                if (qIdx === -1) return s;
+                
+                const originalQ = s.questions[qIdx];
+                const copiedQ = {
+                    ...JSON.parse(JSON.stringify(originalQ)),
+                    id: `q_${Date.now()}_copy`,
+                    label: `${originalQ.label} (Copy)`
+                };
+                
+                const newQuestions = [...s.questions];
+                newQuestions.splice(qIdx + 1, 0, copiedQ);
+                
+                return { ...s, questions: newQuestions };
+            }
             return s;
         }));
     };
@@ -292,8 +314,18 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
 
                                         <div className="mt-6 flex justify-end items-center gap-4 border-t border-gray-100 pt-4">
                                             <button 
+                                                onClick={() => copyQuestion(sec.id, q.id)}
+                                                className="text-gray-400 hover:text-indigo-600 p-2 rounded hover:bg-indigo-50 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                                                title="Duplicate Question"
+                                            >
+                                                <Copy className="w-4 h-4" />
+                                                Duplicate
+                                            </button>
+                                            <div className="w-px h-6 bg-gray-200"></div>
+                                            <button 
                                                 onClick={() => removeQuestion(sec.id, q.id)}
                                                 className="text-gray-400 hover:text-red-600 p-2 rounded hover:bg-red-50 transition-colors"
+                                                title="Delete Question"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
