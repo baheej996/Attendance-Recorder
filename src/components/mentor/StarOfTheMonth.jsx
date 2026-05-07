@@ -8,8 +8,21 @@ import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYe
 import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StarOfTheMonth = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig, requireFeature } = useData();
     const navigate = useNavigate();
+
+    // Request heavy datasets On-Demand
+    useEffect(() => {
+        const un1 = requireFeature('attendance');
+        const un2 = requireFeature('activities');
+        const un3 = requireFeature('prayer');
+        const un4 = requireFeature('quran');
+        const un5 = requireFeature('ramadan');
+        
+        return () => {
+            un1(); un2(); un3(); un4(); un5();
+        };
+    }, [requireFeature]);
 
     // State for selectors
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

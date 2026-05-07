@@ -11,7 +11,7 @@ import { StudentProfileModal } from '../../components/mentor/StudentProfileModal
 import { Eye } from 'lucide-react';
 
 const AttendanceRecorder = () => {
-    const { classes, students, attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds, currentUser } = useData();
+    const { classes, students, attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds, currentUser, requireFeature } = useData();
     const [selectedClassId, setSelectedClassId] = useState('');
     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [records, setRecords] = useState({}); // { studentId: 'Present' | 'Absent' }
@@ -19,6 +19,10 @@ const AttendanceRecorder = () => {
     const [showPopup, setShowPopup] = useState(false);
     const [msg, setMsg] = useState('');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    useEffect(() => {
+        return requireFeature('attendance');
+    }, [requireFeature]);
 
     // Confirmation State
     const [confirmConfig, setConfirmConfig] = useState({

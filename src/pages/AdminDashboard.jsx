@@ -10,6 +10,7 @@ import SubjectManager from '../components/admin/SubjectManager';
 import ExamManager from '../components/admin/ExamManager';
 import BulkTransfer from '../components/admin/BulkTransfer';
 import SyllabusManager from '../components/admin/SyllabusManager'; // New
+import SyllabusTracker from '../components/admin/SyllabusTracker'; // New
 import AdminAdmissionRequests from '../components/admin/AdminAdmissionRequests';
 import AdminRequests from './components/AdminRequests';
 import EvaluationManager from '../components/admin/EvaluationManager';
@@ -27,6 +28,7 @@ import { useUI } from '../contexts/UIContext';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { AdminAuthModal } from '../components/ui/AdminAuthModal';
 import { Card, CardHeader } from '../components/ui/Card';
+import CountryStatsChart from '../components/admin/CountryStatsChart';
 
 const DashboardHome = ({ onTabChange }) => {
     const { classes, mentors, students } = useData();
@@ -222,6 +224,10 @@ const DashboardHome = ({ onTabChange }) => {
                     </div>
                 </Card>
             </div>
+
+            <div className="w-full">
+                <CountryStatsChart students={students} />
+            </div>
         </div >
     );
 };
@@ -269,6 +275,7 @@ const AdminDashboard = () => {
             case 'students': return <StudentManagement />;
             case 'subjects': return <SubjectManager />;
             case 'syllabus': return <SyllabusManager />; // New
+            case 'syllabus-tracker': return <SyllabusTracker />; // New
             case 'exams': return <ExamManager />;
 
             case 'bulk-transfer': return <BulkTransfer />;
@@ -380,6 +387,7 @@ const AdminDashboard = () => {
                                 <nav className="flex flex-col p-2 space-y-1">
                                     <SidebarItem icon={BookOpen} label="Subjects" active={activeTab === 'subjects'} onClick={() => handleTabChange('subjects')} isMobile />
                                     <SidebarItem icon={FileText} label="Syllabus" active={activeTab === 'syllabus'} onClick={() => handleTabChange('syllabus')} isMobile />
+                                    <SidebarItem icon={ClipboardList} label="Syllabus Tracker" active={activeTab === 'syllabus-tracker'} onClick={() => handleTabChange('syllabus-tracker')} isMobile />
                                     <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => handleTabChange('exams')} isMobile />
                                 </nav>
                             </div>
@@ -428,6 +436,7 @@ const AdminDashboard = () => {
                             <nav className="flex flex-col p-2 space-y-1">
                                 <SidebarItem icon={BookOpen} label="Subjects" active={activeTab === 'subjects'} onClick={() => setActiveTab('subjects')} />
                                 <SidebarItem icon={FileText} label="Syllabus" active={activeTab === 'syllabus'} onClick={() => setActiveTab('syllabus')} />
+                                <SidebarItem icon={ClipboardList} label="Syllabus Tracker" active={activeTab === 'syllabus-tracker'} onClick={() => setActiveTab('syllabus-tracker')} />
                                 <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => setActiveTab('exams')} />
                             </nav>
                         </div>

@@ -1,19 +1,30 @@
 import React, { useMemo, useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Users, BookOpen, GraduationCap, ChevronDown, ChevronUp, Eye, Settings, Video } from 'lucide-react';
+import { 
+    Users, BookOpen, GraduationCap, ChevronDown, ChevronUp, 
+    Eye, Settings, Video, Download, FileSpreadsheet, FileText 
+} from 'lucide-react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { clsx } from 'clsx';
 import { StudentProfileModal } from './StudentProfileModal';
 import ClassFeatureModal from './ClassFeatureModal';
 import LiveClassModal from './LiveClassModal';
 
 const Batches = () => {
-    const { currentUser, classes, students, liveClasses, substitutionRequests } = useData();
+    const { 
+        currentUser, classes, students, liveClasses, substitutionRequests,
+        getHistoricalAttendanceStats, getStudentActivityPoints, institutionSettings
+    } = useData();
     const [expandedClasses, setExpandedClasses] = useState({});
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [currentPreviewStudentId, setCurrentPreviewStudentId] = useState(null);
     const [featureModalData, setFeatureModalData] = useState({ isOpen: false, classId: null, classNameStr: '' });
     const [liveClassModalData, setLiveClassModalData] = useState({ isOpen: false, classId: null, classNameStr: '' });
+    const [exportingId, setExportingId] = useState(null);
+    const [showExportMenu, setShowExportMenu] = useState(null);
 
     // Memoize the filtering to avoid recalculation on every render
     const assignedClasses = useMemo(() => {
@@ -46,12 +57,86 @@ const Batches = () => {
         }));
     };
 
-    // Initialize all classes as expanded by default (optional, can stay as empty object for collapsed)
-    // useEffect(() => {
-    //      const initial = {};
-    //      assignedClasses.forEach(c => initial[c.id] = true);
-    //      setExpandedClasses(initial);
-    // }, [assignedClasses]);
+    const handleExport = async (cls, classStudents, format) => {
+        setExportingId(cls.id);
+        setShowExportMenu(null);
+        try {
+            const now = new Date();
+            const stats = await getHistoricalAttendanceStats(cls.id, now.getFullYear(), now.getMonth());
+            
+            const exportData = classStudents.map(s => {
+                const points = getStudentActivityPoints(s.id, cls.id);
+                const prevTotal = stats.studentTotals[s.id] || 0;
+                // Calculate rough attendance % (this is simplified for the export)
+                const attendanceRate = stats.totalWorkingDays > 0 
+                    ? ((prevTotal / stats.totalWorkingDays) * 100).toFixed(1) + '%' 
+                    : 'N/A';
+
+                return {
+                    'Reg No': s.registerNo,
+                    'Name': s.name,
+                    'Gender': s.gender || 'Male',
+                    'Parent Phone': s.parentPhone || '',
+                    'Address': s.address || '',
+                    'Status': s.status,
+                    'Attendance Rate': attendanceRate,
+                    'Activity Points': points,
+                    'UID': s.uid || ''
+                };
+            });
+
+            const fileName = `${cls.name}_${cls.division}_Export_${now.toISOString().split('T')[0]}`;
+
+            if (format === 'excel') {
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+                
+                // Add Summary Sheet
+                const summaryData = [
+                    ['Institution', institutionSettings.name || 'Samastha E-Learning'],
+                    ['Class', `${cls.name}-${cls.division}`],
+                    ['Mentor', currentUser.name],
+                    ['Export Date', now.toLocaleString()],
+                    ['Total Students', classStudents.length],
+                    ['Total Working Days (to date)', stats.totalWorkingDays]
+                ];
+                const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+                XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+
+                XLSX.writeFile(workbook, `${fileName}.xlsx`);
+            } else {
+                // PDF Export
+                const doc = new jsPDF('p', 'mm', 'a4');
+                doc.setFontSize(18);
+                doc.text(institutionSettings.name || 'Samastha E-Learning', 14, 20);
+                doc.setFontSize(12);
+                doc.text(`Class: ${cls.name}-${cls.division} | Mentor: ${currentUser.name}`, 14, 30);
+                doc.text(`Date: ${now.toLocaleDateString()} | Total Students: ${classStudents.length}`, 14, 37);
+                
+                const tableColumn = ["Reg No", "Name", "Gender", "Status", "Att. %", "Points"];
+                const tableRows = exportData.map(s => [
+                    s['Reg No'], s['Name'], s['Gender'], s['Status'], s['Attendance Rate'], s['Activity Points']
+                ]);
+
+                autoTable(doc, {
+                    head: [tableColumn],
+                    body: tableRows,
+                    startY: 45,
+                    theme: 'grid',
+                    styles: { fontSize: 8 },
+                    headStyles: { fillStyle: [79, 70, 229] } // Indigo-600
+                });
+
+                doc.save(`${fileName}.pdf`);
+            }
+        } catch (error) {
+            console.error("Export failed:", error);
+            alert("Export failed. Please try again.");
+        } finally {
+            setExportingId(null);
+        }
+    };
 
 
     return (
@@ -98,9 +183,9 @@ const Batches = () => {
                         const isExpanded = expandedClasses[cls.id];
 
                         return (
-                            <Card key={cls.id} className="overflow-hidden border border-gray-200 shadow-sm transition-all duration-300">
+                            <Card key={cls.id} className="overflow-visible border border-gray-200 shadow-sm transition-all duration-300">
                                 <div
-                                    className="p-6 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-gray-100/50 transition-colors"
+                                    className="p-6 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-gray-100/50 transition-colors rounded-t-xl"
                                     onClick={() => toggleClass(cls.id)}
                                 >
                                     <div className="flex items-center gap-4">
@@ -162,6 +247,47 @@ const Batches = () => {
                                             <Settings className="w-4 h-4" />
                                             Features
                                         </button>
+
+                                        {/* Export Dropdown */}
+                                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={() => setShowExportMenu(showExportMenu === cls.id ? null : cls.id)}
+                                                disabled={exportingId === cls.id}
+                                                className={clsx(
+                                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all shadow-sm text-sm font-medium border",
+                                                    exportingId === cls.id 
+                                                        ? "bg-gray-50 text-gray-400 border-gray-200" 
+                                                        : "bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700"
+                                                )}
+                                                title="Export Class Data"
+                                            >
+                                                {exportingId === cls.id ? (
+                                                    <div className="w-4 h-4 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <Download className="w-4 h-4" />
+                                                )}
+                                                {exportingId === cls.id ? 'Exporting...' : 'Export'}
+                                            </button>
+
+                                            {showExportMenu === cls.id && (
+                                                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                                    <button
+                                                        onClick={() => handleExport(cls, classStudents, 'excel')}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 flex items-center gap-2"
+                                                    >
+                                                        <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                                                        Export to Excel
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleExport(cls, classStudents, 'pdf')}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 flex items-center gap-2"
+                                                    >
+                                                        <FileText className="w-4 h-4 text-red-600" />
+                                                        Export to PDF
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
 
                                         <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
                                             Active Batch

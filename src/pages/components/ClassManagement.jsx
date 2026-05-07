@@ -11,6 +11,8 @@ import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
 import { Modal } from '../../components/ui/Modal';
 import { ClassStudentsModal } from '../../components/admin/ClassStudentsModal';
 import { DeleteClassSafeguardModal } from '../../components/admin/DeleteClassSafeguardModal';
+import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { FileSpreadsheet, FileText } from 'lucide-react';
 
 // Keeping ClassAllotmentModal as it was part of the file logic
 const ClassAllotmentModal = ({ isOpen, onClose, classItem, mentors, updateMentor, showAlert }) => {
@@ -509,6 +511,33 @@ const ClassManagement = () => {
         return assignedCount > 1;
     });
 
+    const getExportData = () => {
+        return classes.map(c => {
+            const assignedMentors = mentors.filter(m => (m.assignedClassIds || []).includes(c.id)).map(m => m.name).join(', ');
+            const studentCount = students.filter(s => s.classId === c.id).length;
+            return {
+                'Class Name': c.name || '',
+                Division: c.division || '',
+                'Start Time': c.startTime || '',
+                'End Time': c.endTime || '',
+                'Conducting Days': Array.isArray(c.days) ? c.days.join(', ') : '',
+                'Student Count': studentCount,
+                Mentors: assignedMentors || 'Unassigned'
+            };
+        });
+    };
+
+    const handleExportExcel = () => {
+        exportToExcel(getExportData(), 'Classes_Export');
+    };
+
+    const handleExportPDF = () => {
+        const data = getExportData();
+        const headers = ['Class Name', 'Division', 'Start Time', 'End Time', 'Days', 'Students', 'Mentors'];
+        const body = data.map(d => [d['Class Name'], d.Division, d['Start Time'], d['End Time'], d['Conducting Days'], d['Student Count'], d.Mentors]);
+        exportToPDF(body, headers, 'Classes_Export', 'Classes Directory');
+    };
+
     return (
         <div className="space-y-6 w-full animate-in fade-in duration-300">
             {classesWithMultipleMentors.length > 0 && (
@@ -716,6 +745,12 @@ const ClassManagement = () => {
                                 ))}
                             </Select>
                             <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <Button onClick={handleExportExcel} className="h-11 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-3" title="Export Excel">
+                                    <FileSpreadsheet className="w-4 h-4" />
+                                </Button>
+                                <Button onClick={handleExportPDF} className="h-11 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 px-3" title="Export PDF">
+                                    <FileText className="w-4 h-4" />
+                                </Button>
                                 <BulkUploadButton onUploadSuccess={handleBulkUpload} type="class" />
                                 <Button onClick={handleOpenModal} className="h-11 flex items-center justify-center gap-2 whitespace-nowrap px-4">
                                     <Plus className="w-4 h-4" />

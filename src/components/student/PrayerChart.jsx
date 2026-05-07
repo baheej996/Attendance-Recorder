@@ -23,6 +23,8 @@ const PrayerChart = () => {
     const [stats, setStats] = useState({});
     const [toast, setToast] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [historyRecords, setHistoryRecords] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
 
     const enabledSpecialPrayers = useMemo(() => {
         if (!currentUser?.classId) return [];
@@ -42,17 +44,31 @@ const PrayerChart = () => {
         if (!currentUser) return;
         setLoading(true);
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
-        const record = records.find(r => r.date === dateStr);
+        // Check both global records and historyRecords
+        const record = [...records, ...historyRecords].find(r => r.date === dateStr);
 
         if (record && record.prayers) {
-            // Load saved state (merges regular + special)
             setStats(record.prayers);
         } else {
-            // Reset to empty
             setStats({});
         }
         setLoading(false);
-    }, [selectedDate, currentUser, records]);
+    }, [selectedDate, currentUser, records, historyRecords]);
+
+    // Fetch history records when month changes
+    useEffect(() => {
+        if (!currentUser || !showHistory) return;
+        
+        const fetchHistory = async () => {
+            setHistoryLoading(true);
+            const monthStr = format(historyMonth, 'yyyy-MM');
+            const data = await getPrayerRecordsForMonth(currentUser.id, monthStr);
+            setHistoryRecords(data);
+            setHistoryLoading(false);
+        };
+
+        fetchHistory();
+    }, [historyMonth, currentUser, showHistory]);
 
     const handleToggle = (prayerId) => {
         setStats(prev => ({ ...prev, [prayerId]: !prev[prayerId] }));
@@ -97,9 +113,15 @@ const PrayerChart = () => {
 
         const daysInMonth = eachDayOfInterval({ start, end: effectiveEnd });
 
+        // Merge sources to ensure latest data is visible even if not yet in historyRecords fetch
+        const combined = [...historyRecords];
+        records.forEach(r => {
+            if (!combined.some(h => h.id === r.id)) combined.push(r);
+        });
+
         return daysInMonth.map(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
-            const record = records.find(r => r.date === dateStr);
+            const record = combined.find(r => r.date === dateStr);
             const count = record && record.prayers ? Object.values(record.prayers).filter(Boolean).length : 0;
             return {
                 date: day,
@@ -107,7 +129,7 @@ const PrayerChart = () => {
                 count
             };
         }).reverse(); // Show latest first
-    }, [historyMonth, records]);
+    }, [historyMonth, records, historyRecords]);
 
     const monthStats = useMemo(() => {
         const totalPrayers = currentMonthData.reduce((acc, curr) => acc + curr.count, 0);
@@ -199,11 +221,19 @@ const PrayerChart = () => {
                                 {monthStats.total} / {monthStats.max} Prayers
                             </div>
                         </div>
-                        <div className="p-0">
+                        <div className="p-0 min-h-[300px] relative">
+                            {historyLoading && (
+                                <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                        <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Loading Records...</span>
+                                    </div>
+                                </div>
+                            )}
                             <div className="divide-y divide-gray-100">
                                 {currentMonthData.length === 0 ? (
-                                    <div className="p-8 text-center text-gray-500">
-                                        No days to display.
+                                    <div className="p-12 text-center text-gray-400 italic">
+                                        No days to display for this month.
                                     </div>
                                 ) : (
                                     currentMonthData.map(({ date, record, count }) => (

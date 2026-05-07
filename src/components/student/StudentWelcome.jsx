@@ -25,12 +25,13 @@ import {
     User,
     Shield,
     Sparkles,
-    ArrowRight
+    ArrowRight,
+    MessageCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const StudentWelcome = () => {
-    const { currentUser, classes, mentors, liveClasses, substitutionRequests, studentFeatureFlags, classFeatureFlags, activities, activitySubmissions, exams, results, unreadChats } = useData();
+    const { currentUser, classes, mentors, liveClasses, substitutionRequests, studentFeatureFlags, classFeatureFlags, activities, activitySubmissions, exams, results, unreadChats, requireFeature } = useData();
     const navigate = useNavigate();
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -38,6 +39,15 @@ const StudentWelcome = () => {
         const timer = setInterval(() => setCurrentTime(new Date()), 10000); // 10s is enough for dash refresh
         return () => clearInterval(timer);
     }, []);
+
+    useEffect(() => {
+        const cleanupResults = requireFeature('results');
+        const cleanupActivities = requireFeature('activities');
+        return () => {
+            cleanupResults();
+            cleanupActivities();
+        };
+    }, [requireFeature]);
 
     if (!currentUser) return null;
 
@@ -199,6 +209,7 @@ const StudentWelcome = () => {
         { icon: CheckCircle, label: 'Attendance', path: '/student/attendance', key: 'attendanceHistory', color: 'bg-teal-500', badge: unreadAttendanceCount },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard', key: 'leaderboard', color: 'bg-yellow-500' },
         { icon: Star, label: 'Star', path: '/student/star-student', key: 'star', color: 'bg-amber-400', badge: unreadStarCount },
+        { icon: MessageCircle, label: 'Feedback', path: '/student/feedback', key: 'feedback', color: 'bg-rose-500' },
         { icon: Info, label: 'Help', path: '/student/help', key: 'help', color: 'bg-gray-500' },
     ].filter(item => isFeatureEnabled(item.key));
 

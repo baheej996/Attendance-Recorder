@@ -27,10 +27,22 @@ const MentorEvaluation = () => {
         logEntries, 
         quranRecitations,
         addNotification,
-        currentUser 
+        currentUser,
+        requireFeature
     } = useData();
 
     const [search, setSearch] = useState('');
+
+    React.useEffect(() => {
+        const un1 = requireFeature('attendance');
+        const un2 = requireFeature('activities');
+        const un3 = requireFeature('quran');
+        return () => {
+            un1();
+            un2();
+            un3();
+        };
+    }, [requireFeature]);
 
     const mentorStats = useMemo(() => {
         return mentors.filter(m => 

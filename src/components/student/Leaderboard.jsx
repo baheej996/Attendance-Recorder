@@ -66,10 +66,14 @@ const ConfettiExplosion = () => {
 };
 
 const Leaderboard = () => {
-    const { currentUser, exams, subjects, results, students, classes } = useData();
+    const { currentUser, exams, subjects, results, students, classes, requireFeature } = useData();
     const [selectedExamId, setSelectedExamId] = useState('');
     const [viewMode, setViewMode] = useState('class'); // class, batch, global
     const [showConfetti, setShowConfetti] = useState(true);
+
+    React.useEffect(() => {
+        return requireFeature('results');
+    }, [requireFeature]);
 
     const publishedExams = exams.filter(e => e.status === 'Published');
 

@@ -7,7 +7,7 @@ import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Uplo
 import { cn } from '../../utils/cn';
 
 const StudentExamView = () => {
-    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings, students, updateStudent } = useData();
+    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings, students, updateStudent, requireFeature } = useData();
     const { showAlert, showConfirm } = useUI();
     const [activeExamId, setActiveExamId] = useState(null);
     const [selectedSubjectId, setSelectedSubjectId] = useState(null); // This is Subject NAME (linked to questions)
@@ -16,6 +16,10 @@ const StudentExamView = () => {
     const [viewingMode, setViewingMode] = useState(false); // false = taking, true = viewing result
 
     const studentClass = classes.find(c => c.id === currentUser?.classId);
+
+    React.useEffect(() => {
+        return requireFeature('results');
+    }, [requireFeature]);
     
     // Unique Device Fingerprint (Stored in browser session)
     const [deviceId] = useState(() => {

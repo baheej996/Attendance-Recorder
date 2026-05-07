@@ -23,6 +23,8 @@ import StudentSubjects from '../components/student/StudentSubjects';
 import AttendanceHistory from '../components/student/AttendanceHistory';
 import StudentWelcome from '../components/student/StudentWelcome';
 import StudentNotifications from '../components/student/StudentNotifications';
+import FeedbackPortal from '../components/student/FeedbackPortal';
+import StudentProfileModal from '../components/student/StudentProfileModal';
 
 import Help from './Help';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
@@ -52,10 +54,27 @@ const SidebarItem = ({ icon: Icon, label, path, active, onClick, hasNotification
 );
 
 const StudentDashboard = () => {
-    const { currentUser, logout, activities, activitySubmissions, classes, mentors, studentFeatureFlags, classFeatureFlags, attendance, exams, results, liveClasses, substitutionRequests, unreadChats, notifications, students } = useData();
+    const { currentUser, logout, activities, activitySubmissions, classes, mentors, studentFeatureFlags, classFeatureFlags, attendance, exams, results, liveClasses, substitutionRequests, unreadChats, notifications, students, requireFeature } = useData();
     const location = useLocation();
     const navigate = useNavigate();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+    // Check if profile is incomplete
+    const isProfileIncomplete = !currentUser?.fatherName || !currentUser?.motherName || !currentUser?.livingCountry || !currentUser?.livingState || !currentUser?.nativeCountry || !currentUser?.nativeState || !currentUser?.contactNo || !currentUser?.whatsappNo;
+
+    React.useEffect(() => {
+        const cleanupAttendance = requireFeature('attendance');
+        const cleanupResults = requireFeature('results');
+        const cleanupActivities = requireFeature('activities');
+        const cleanupPrayer = requireFeature('prayer');
+        return () => {
+            cleanupAttendance();
+            cleanupResults();
+            cleanupActivities();
+            cleanupPrayer();
+        };
+    }, [requireFeature]);
 
 
     // --- Dynamic Calculations ---
@@ -267,15 +286,27 @@ const StudentDashboard = () => {
                 isExamActive && "opacity-0 -translate-x-full pointer-events-none"
             )}>
                 <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="flex items-center gap-3 mb-8 sticky top-0 bg-white z-10 pb-4 border-b border-gray-50/50">
-                        <div className="p-2 bg-indigo-600 rounded-lg">
+                    <button 
+                        onClick={() => setIsProfileModalOpen(true)}
+                        className="w-full flex items-center gap-3 mb-8 sticky top-0 bg-white z-10 pb-4 border-b border-gray-50/50 text-left hover:bg-gray-50 transition-colors p-2 -mx-2 rounded-xl group"
+                        title={isProfileIncomplete ? "Complete your profile" : "View Profile"}
+                    >
+                        <div className="p-2 bg-indigo-600 rounded-lg group-hover:bg-indigo-700 transition-colors relative">
                             <GraduationCap className="w-6 h-6 text-white" />
+                            {isProfileIncomplete && (
+                                <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center bg-white rounded-full">
+                                    <span className="h-2.5 w-2.5 bg-red-500 rounded-full flex shadow-sm animate-pulse"></span>
+                                </span>
+                            )}
                         </div>
-                        <div className="overflow-hidden">
-                            <h1 className="text-xl font-bold text-gray-900 truncate">{currentUser.name}</h1>
+                        <div className="overflow-hidden relative flex-1">
+                            <h1 className="text-xl font-bold text-gray-900 truncate group-hover:text-indigo-700 transition-colors pr-6">{currentUser.name}</h1>
                             <p className="text-xs text-gray-500">Academic Tracker</p>
+                            {isProfileIncomplete && (
+                                <AlertTriangle className="w-4 h-4 text-red-500 absolute top-1/2 -translate-y-1/2 right-1 animate-pulse" />
+                            )}
                         </div>
-                    </div>
+                    </button>
 
                     <nav className="space-y-1">
                         {navItems.map((item) => (
@@ -339,12 +370,25 @@ const StudentDashboard = () => {
                                 Back
                             </button>
                         ) : (
-                            <>
-                                <div className="p-2 bg-indigo-600 rounded-lg">
+                            <button 
+                                onClick={() => setIsProfileModalOpen(true)}
+                                className="flex items-center gap-2 hover:bg-gray-50 p-1.5 -ml-1.5 rounded-lg transition-colors text-left"
+                            >
+                                <div className="p-2 bg-indigo-600 rounded-lg relative">
                                     <GraduationCap className="w-5 h-5 text-white" />
+                                    {isProfileIncomplete && (
+                                        <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center bg-white rounded-full">
+                                            <span className="h-2.5 w-2.5 bg-red-500 rounded-full flex shadow-sm animate-pulse"></span>
+                                        </span>
+                                    )}
                                 </div>
-                                <span className="font-bold text-gray-900 truncate max-w-[150px]">{currentUser.name}</span>
-                            </>
+                                <div className="flex items-center gap-1">
+                                    <span className="font-bold text-gray-900 truncate max-w-[120px]">{currentUser.name}</span>
+                                    {isProfileIncomplete && (
+                                        <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
+                                    )}
+                                </div>
+                            </button>
                         )}
                     </div>
                     
@@ -361,6 +405,13 @@ const StudentDashboard = () => {
 
 
 
+
+                {/* Profile Modal */}
+                <StudentProfileModal 
+                    isOpen={isProfileModalOpen} 
+                    onClose={() => setIsProfileModalOpen(false)} 
+                    currentUser={currentUser} 
+                />
 
                 {currentUser.status === 'Active' ? (
                     <Routes>
@@ -553,6 +604,7 @@ const StudentDashboard = () => {
                         <Route path="/leaderboard" element={<Leaderboard />} />
                         <Route path="/star-student" element={<StudentStarView />} />
                         <Route path="/notifications" element={<StudentNotifications />} />
+                        <Route path="/feedback" element={<FeedbackPortal />} />
                         <Route path="/help" element={<Help />} />
                     </Routes>
                 ) : (

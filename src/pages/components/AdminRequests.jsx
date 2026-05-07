@@ -6,7 +6,7 @@ import { CheckCircle, XCircle, Clock, User, Trash2 } from 'lucide-react';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 
 const AdminRequests = () => {
-    const { adminRequests, resolveAdminRequest, deleteAdminRequest } = useData();
+    const { adminRequests, updateAdminRequest, deleteAdminRequest, classes, mentors, students } = useData();
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, requestId: null });
 
     // Filter for pending requests
@@ -26,9 +26,9 @@ const AdminRequests = () => {
         if (!type || !requestId) return;
 
         if (type === 'resolve') {
-            resolveAdminRequest(requestId, 'Resolved');
+            updateAdminRequest(requestId, { status: 'Resolved' });
         } else if (type === 'dismiss') {
-            resolveAdminRequest(requestId, 'Dismissed');
+            updateAdminRequest(requestId, { status: 'Dismissed' });
         } else if (type === 'delete') {
             deleteAdminRequest(requestId);
         }
@@ -54,8 +54,8 @@ const AdminRequests = () => {
             />
 
             <div>
-                <h2 className="text-2xl font-bold text-gray-900">Mentor Requests</h2>
-                <p className="text-gray-500">Manage profile update requests from mentors.</p>
+                <h2 className="text-2xl font-bold text-gray-900">General Requests</h2>
+                <p className="text-gray-500">Manage profile update requests from mentors and students.</p>
             </div>
 
             <div className="grid gap-6">
@@ -72,22 +72,40 @@ const AdminRequests = () => {
                         </Card>
                     ) : (
                         <div className="space-y-4">
-                            {pendingRequests.map(request => (
+                            {pendingRequests.map(request => {
+                                const isStudent = !!request.studentId;
+                                const student = isStudent ? students.find(s => s.id === request.studentId) : null;
+                                const studentClass = student ? classes.find(c => c.id === student.classId) : null;
+                                const assignedMentor = student ? mentors.find(m => m.assignedClassIds?.includes(student.classId)) : null;
+
+                                return (
                                 <Card key={request.id} className="p-6 border-l-4 border-l-yellow-400">
                                     <div className="flex flex-col md:flex-row justify-between gap-4">
                                         <div>
                                             <div className="flex items-center gap-2 mb-2">
-                                                <span className="font-bold text-gray-900 text-lg">{request.mentorName}</span>
-                                                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                    <User className="w-3 h-3" /> Mentor
+                                                <span className="font-bold text-gray-900 text-lg">
+                                                    {request.mentorName || request.studentName}
+                                                </span>
+                                                <span className={`text-sm px-2 py-0.5 rounded-full flex items-center gap-1 ${isStudent ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}>
+                                                    <User className="w-3 h-3" /> {isStudent ? 'Student' : 'Mentor'}
                                                 </span>
                                             </div>
+
+                                            {isStudent && student && (
+                                                <div className="flex flex-wrap gap-2 mb-3 text-xs">
+                                                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded">Reg No: <b>{student.registerNo || 'N/A'}</b></span>
+                                                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded">Class: <b>{studentClass ? `${studentClass.name}-${studentClass.division}` : 'N/A'}</b></span>
+                                                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded">Mentor: <b>{assignedMentor ? assignedMentor.name : 'N/A'}</b></span>
+                                                </div>
+                                            )}
+
                                             <div className="text-sm text-gray-500 mb-4">
                                                 Requested on {new Date(request.timestamp).toLocaleDateString()} at {new Date(request.timestamp).toLocaleTimeString()}
+                                                {request.type && <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs">{request.type}</span>}
                                             </div>
                                             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 text-gray-800">
                                                 <p className="font-medium text-xs text-yellow-700 uppercase tracking-wide mb-1">Request Details:</p>
-                                                {request.details}
+                                                {request.details || request.message}
                                             </div>
                                         </div>
                                         <div className="flex flex-row md:flex-col gap-2 min-w-[140px] justify-center">
@@ -115,7 +133,8 @@ const AdminRequests = () => {
                                         </div>
                                     </div>
                                 </Card>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </section>
@@ -129,10 +148,10 @@ const AdminRequests = () => {
                                 <div key={request.id} className="bg-white border border-gray-200 p-4 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-2 mb-1 sm:mb-0">
-                                            <span className="font-bold text-gray-700">{request.mentorName}</span>
+                                            <span className="font-bold text-gray-700">{request.mentorName || request.studentName}</span>
                                             <span className="hidden sm:inline mx-2 text-gray-300">|</span>
                                         </div>
-                                        <p className="text-gray-500 text-sm truncate sm:max-w-xs">{request.details}</p>
+                                        <p className="text-gray-500 text-sm truncate sm:max-w-xs">{request.details || request.message}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className={`px-3 py-1 rounded-full text-xs font-bold w-fit ${request.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'

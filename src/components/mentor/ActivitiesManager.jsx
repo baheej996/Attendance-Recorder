@@ -13,7 +13,7 @@ const ActivitiesManager = () => {
     const {
         activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
         classes, students, subjects, currentUser,
-        activitySubmissions, markActivityAsDone, markActivityAsPending
+        activitySubmissions, markActivityAsDone, markActivityAsPending, requireFeature
     } = useData();
 
     // UI States
@@ -34,6 +34,8 @@ const ActivitiesManager = () => {
 
     // Close Report Dropdown on outside click
     useEffect(() => {
+        const cleanup = requireFeature('activities');
+        
         const handleClickOutside = (event) => {
             if (reportDropdownRef.current && !reportDropdownRef.current.contains(event.target)) {
                 setIsReportDropdownOpen(false);
@@ -44,9 +46,10 @@ const ActivitiesManager = () => {
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => {
+            cleanup();
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isReportDropdownOpen]);
+    }, [isReportDropdownOpen, requireFeature]);
 
     // Filter/Search States
     const [selectedClassId, setSelectedClassId] = useState('all');

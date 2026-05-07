@@ -6,10 +6,14 @@ import jsPDF from 'jspdf';
 import { ReportCardPDFTemplate } from '../ui/ReportCardPDFTemplate';
 
 const StudentResultView = () => {
-    const { currentUser, exams, subjects, results, students, institutionSettings } = useData();
+    const { currentUser, exams, subjects, results, students, institutionSettings, requireFeature } = useData();
     const [selectedExamId, setSelectedExamId] = useState('');
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const pdfRef = useRef(null);
+
+    React.useEffect(() => {
+        return requireFeature('results');
+    }, [requireFeature]);
 
     // Filter published exams only
     const publishedExams = exams.filter(e => e.status === 'Published');

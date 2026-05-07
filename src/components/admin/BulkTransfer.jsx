@@ -5,8 +5,12 @@ import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 
 const BulkTransfer = () => {
-    const { classes, students, updateStudent, exams, results, subjects, addClass } = useData();
+    const { classes, students, updateStudent, exams, results, subjects, addClass, requireFeature } = useData();
     const { showAlert } = useUI();
+
+    React.useEffect(() => {
+        return requireFeature('results');
+    }, [requireFeature]);
 
     // Steps: 1 = Selection, 2 = Review
     const [step, setStep] = useState(1);

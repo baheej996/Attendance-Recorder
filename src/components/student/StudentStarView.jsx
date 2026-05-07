@@ -8,7 +8,20 @@ import { toPng } from 'html-to-image';
 import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StudentStarView = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, starDeclarations, starConfigs, mentors } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, starDeclarations, starConfigs, mentors, requireFeature } = useData();
+
+    // Request heavy datasets On-Demand
+    React.useEffect(() => {
+        const un1 = requireFeature('attendance');
+        const un2 = requireFeature('activities');
+        const un3 = requireFeature('prayer');
+        const un4 = requireFeature('quran');
+        const un5 = requireFeature('ramadan');
+        
+        return () => {
+            un1(); un2(); un3(); un4(); un5();
+        };
+    }, [requireFeature]);
 
     // State
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

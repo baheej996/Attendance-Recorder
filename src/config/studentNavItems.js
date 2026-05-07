@@ -1,7 +1,7 @@
 import { 
     Home, LayoutDashboard, Layers, Book, FileText, Calendar, 
     MessageSquare, BookOpen, Moon, History, CheckCircle, 
-    Trophy, Star, Bell, Info 
+    Trophy, Star, Bell, Info, MessageCircle 
 } from 'lucide-react';
 
 export const STUDENT_NAV_ITEMS = [
@@ -21,5 +21,6 @@ export const STUDENT_NAV_ITEMS = [
     { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard', key: 'leaderboard', description: 'Class rankings and points.' },
     { icon: Star, label: 'Star of the Month', path: '/student/star-student', key: 'star', description: 'Monthly student recognition.' },
     { icon: Bell, label: 'Notifications', path: '/student/notifications', key: 'notifications', description: 'System notifications and alerts.' },
+    { icon: MessageCircle, label: 'Feedback', path: '/student/feedback', key: 'feedback', description: 'Student assessment and parent feedback form.' },
     { icon: Info, label: 'Help', path: '/student/help', key: 'help', description: 'Guides and FAQs.' },
 ];

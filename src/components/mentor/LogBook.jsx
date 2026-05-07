@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { BookOpen, Save, Trash2, History, Filter, Search, Edit, PieChart as PieChartIcon, CheckCircle, Trophy, User } from 'lucide-react';
+import { BookOpen, Save, Trash2, History, Filter, Search, Edit, PieChart as PieChartIcon, CheckCircle, Trophy, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -9,6 +9,7 @@ import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const LogBook = () => {
+    console.log('[LogBook] Rendering...');
     const { classes, subjects, logEntries, addLogEntry, updateLogEntry, deleteLogEntry, currentUser, mentors, syllabi, logLimit, loadMoreLogs, syllabusStatuses } = useData();
     const { showAlert } = useUI();
 
@@ -16,8 +17,11 @@ const LogBook = () => {
         chapter: '',
         heading: '',
         remarks: '',
+        completionStatus: 'fully',
         sharedClassIds: []
     });
+
+    const [monthOffset, setMonthOffset] = useState(0); // 0 = current month, -1 = last month, etc.
 
     const [editingId, setEditingId] = useState(null);
 
@@ -33,9 +37,11 @@ const LogBook = () => {
 
     // Filter classes assigned to this mentor
     const assignedClasses = useMemo(() => {
-        if (!currentUser || !currentUser.assignedClassIds) return [];
-        return classes.filter(c => currentUser.assignedClassIds.includes(c.id));
-    }, [classes, currentUser]);
+        const ids = currentUser?.assignedClassIds || [];
+        return classes
+            .filter(c => ids.includes(c.id))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [classes, currentUser?.assignedClassIds?.join(',')]);
 
     // Filter subjects for the unique FILTER dropdown
     const filterSubjects = useMemo(() => {
@@ -126,7 +132,9 @@ const LogBook = () => {
              targetSubjects = targetSubjects.filter(s => s.id === filter.subjectId);
         }
 
-        const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
+        const targetDate = new Date();
+        targetDate.setMonth(targetDate.getMonth() + monthOffset);
+        const currentMonthName = targetDate.toLocaleString('default', { month: 'long' });
 
         return targetSubjects.map(subj => {
             const plan = syllabi.find(s => 
@@ -160,7 +168,7 @@ const LogBook = () => {
                 isCompleted
             };
         }).filter(Boolean);
-    }, [filter, classes, subjects, syllabi, syllabusStatuses]);
+    }, [filter, classes, subjects, syllabi, syllabusStatuses, monthOffset]);
 
 
     const handleSubmit = async (e) => {
@@ -183,7 +191,7 @@ const LogBook = () => {
         const basePayload = {
             chapter: formData.chapter,
             heading: formData.heading,
-            remarks: formData.remarks,
+            completionStatus: formData.completionStatus,
             mentorId: currentUser?.id,
             date
         };
@@ -234,7 +242,7 @@ const LogBook = () => {
                 }
             }
 
-            setFormData({ chapter: '', heading: '', remarks: '', sharedClassIds: [] });
+            setFormData({ chapter: '', heading: '', remarks: '', completionStatus: 'fully', sharedClassIds: [] });
         } catch (error) {
             console.error(error);
             showAlert('Error', 'An error occurred while saving the log.', 'error');
@@ -252,7 +260,7 @@ const LogBook = () => {
         setFormData({
             chapter: log.chapter,
             heading: log.heading || '',
-            remarks: log.remarks || '',
+            completionStatus: log.completionStatus || 'fully',
             sharedClassIds: []
         });
 
@@ -273,7 +281,7 @@ const LogBook = () => {
 
     const handleCancelEdit = () => {
         setEditingId(null);
-        setFormData({ chapter: '', heading: '', remarks: '', sharedClassIds: [] });
+        setFormData({ chapter: '', heading: '', remarks: '', completionStatus: 'fully', sharedClassIds: [] });
     };
 
     const displayedLogs = useMemo(() => {
@@ -414,6 +422,31 @@ const LogBook = () => {
                                     />
                                 </div>
 
+                                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50">
+                                    <label className="block text-xs font-bold text-indigo-900 uppercase tracking-wider mb-3">Syllabus Completion</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, completionStatus: 'partially' })}
+                                            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${formData.completionStatus === 'partially' ? 'bg-amber-100 border-amber-300 text-amber-700 shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-200'}`}
+                                        >
+                                            Partially Completed
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, completionStatus: 'fully' })}
+                                            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${formData.completionStatus === 'fully' ? 'bg-green-100 border-green-300 text-green-700 shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-green-200'}`}
+                                        >
+                                            Fully Completed
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-indigo-600 mt-2 font-medium">
+                                        {formData.completionStatus === 'fully' 
+                                            ? '✓ This chapter will be marked as DONE in targets.' 
+                                            : '⚠ Progress tracked, but target remains pending.'}
+                                    </p>
+                                </div>
+
                                 {otherClasses.length > 0 && (
                                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Share With Other Classes</label>
@@ -467,29 +500,27 @@ const LogBook = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {displayedStats.map((stat, idx) => (
                                 <div key={`${stat.classId}-${stat.subjectId}`} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3 transition-all hover:shadow-md">
-                                    <div className="w-12 h-12 shrink-0 relative">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={[
-                                                        { name: 'Covered', value: stat.uniqueChapters },
-                                                        { name: 'Remaining', value: Math.max(0, stat.totalChapters - stat.uniqueChapters) }
-                                                    ]}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={20}
-                                                    outerRadius={30}
-                                                    fill="#8884d8"
-                                                    paddingAngle={0}
-                                                    dataKey="value"
-                                                    startAngle={90}
-                                                    endAngle={-270}
-                                                >
-                                                    <Cell key="cell-0" fill="#4f46e5" />
-                                                    <Cell key="cell-1" fill="#f3f4f6" />
-                                                </Pie>
-                                            </PieChart>
-                                        </ResponsiveContainer>
+                                    <div className="w-12 h-12 shrink-0 relative flex items-center justify-center">
+                                        <PieChart width={48} height={48}>
+                                            <Pie
+                                                data={[
+                                                    { name: 'Covered', value: stat.uniqueChapters },
+                                                    { name: 'Remaining', value: Math.max(0, stat.totalChapters - stat.uniqueChapters) }
+                                                ]}
+                                                cx={24}
+                                                cy={24}
+                                                innerRadius={15}
+                                                outerRadius={22}
+                                                fill="#8884d8"
+                                                paddingAngle={0}
+                                                dataKey="value"
+                                                startAngle={90}
+                                                endAngle={-270}
+                                            >
+                                                <Cell key="cell-0" fill="#4f46e5" />
+                                                <Cell key="cell-1" fill="#f3f4f6" />
+                                            </Pie>
+                                        </PieChart>
                                         <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700">
                                             {stat.percentage}%
                                         </div>
@@ -544,6 +575,9 @@ const LogBook = () => {
                                                     </span>
                                                     <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
                                                         {log.subjectName}
+                                                    </span>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${log.completionStatus === 'fully' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                        {log.completionStatus === 'fully' ? 'Fully Done' : 'Partial'}
                                                     </span>
                                                     <span className="text-[9px] text-gray-400 ml-auto sm:ml-2 font-medium">
                                                         {new Date(log.timestamp).toLocaleDateString()}
@@ -609,7 +643,25 @@ const LogBook = () => {
                                             <BookOpen className="w-4 h-4 text-indigo-600" />
                                             Active Syllabus Targets
                                         </div>
-                                        <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-medium">{new Date().toLocaleString('default', { month: 'long' })}</span>
+                                        <div className="flex items-center gap-1.5 bg-gray-50 p-1 rounded-lg border border-gray-200 no-print">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setMonthOffset(prev => prev - 1)}
+                                                className="p-1 hover:bg-white hover:shadow-sm rounded transition-all text-gray-500"
+                                            >
+                                                <ChevronLeft className="w-4 h-4" />
+                                            </button>
+                                            <span className="text-[10px] text-indigo-700 px-1 py-0.5 rounded font-black uppercase min-w-[70px] text-center">
+                                                {new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset).toLocaleString('default', { month: 'short', year: 'numeric' })}
+                                            </span>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setMonthOffset(prev => prev + 1)}
+                                                className="p-1 hover:bg-white hover:shadow-sm rounded transition-all text-gray-500"
+                                            >
+                                                <ChevronRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </h3>
                                     
                                     <div className="space-y-3">
@@ -635,6 +687,7 @@ const LogBook = () => {
                                                         const isChCompleted = logEntries.some(l => 
                                                             l.classId === filter.classId && 
                                                             l.subjectId === target.subjectId && 
+                                                            l.completionStatus === 'fully' &&
                                                             (l.chapter.toLowerCase().trim() === chNum.toString() || l.chapter.toLowerCase().trim() === logLower)
                                                         );
                                                         return (

@@ -7,7 +7,12 @@ import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 const MentorQuranRecitation = () => {
-    const { currentUser, classes = [], students = [], quranRecitations = [] } = useData();
+    const { currentUser, classes = [], students = [], quranRecitations = [], requireFeature } = useData();
+
+    // Data Subscription
+    React.useEffect(() => {
+        return requireFeature('quran');
+    }, [requireFeature]);
 
     // Default to today
     const now = new Date();

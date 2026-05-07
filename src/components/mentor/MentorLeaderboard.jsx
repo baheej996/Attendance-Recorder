@@ -219,12 +219,16 @@ const PerformanceLeaderboard = () => {
 
 // ── Main MentorLeaderboard ──────────────────────────────────────────────────
 const MentorLeaderboard = () => {
-    const { currentUser, exams, subjects, results, students, classes, leaderboardSettings } = useData();
+    const { currentUser, exams, subjects, results, students, classes, leaderboardSettings, requireFeature } = useData();
     const [activeTab, setActiveTab] = useState('exam');
     const [selectedExamId, setSelectedExamId] = useState('');
     const [selectedClassId, setSelectedClassId] = useState('');
     const [viewMode, setViewMode] = useState('class');
     const [showConfetti, setShowConfetti] = useState(true);
+
+    React.useEffect(() => {
+        return requireFeature('results');
+    }, [requireFeature]);
 
     const performanceEnabled = leaderboardSettings?.isVisibleToMentors;
 

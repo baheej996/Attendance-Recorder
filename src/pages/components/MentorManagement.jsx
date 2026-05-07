@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { UserPlus, User, Check, Trash2, Edit, BookOpen, Users, X, Plus, Search, Phone, ExternalLink, ShieldCheck } from 'lucide-react';
+import { UserPlus, User, Check, Trash2, Edit, BookOpen, Users, X, Plus, Search, Phone, ExternalLink, ShieldCheck, Calendar, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,6 +12,8 @@ import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Modal } from '../../components/ui/Modal';
+import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { FileSpreadsheet, FileText } from 'lucide-react';
 
 const MentorManagement = () => {
     const { mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors, classes, students, impersonate } = useData();
@@ -24,6 +26,7 @@ const MentorManagement = () => {
     const [deleteConfig, setDeleteConfig] = useState({ isOpen: false, id: null, type: 'single' });
     const [selectedIds, setSelectedIds] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [timetableModal, setTimetableModal] = useState({ isOpen: false, mentor: null });
 
     // Filter available classes for assignment
     const availableClassOptions = useMemo(() => {
@@ -168,6 +171,39 @@ const MentorManagement = () => {
         } else {
             setSelectedIds(mentors.map(m => m.id));
         }
+    };
+
+    const getExportData = () => {
+        return mentors.map(m => {
+            const assignedClasses = (m.assignedClassIds || [])
+                .map(cid => classes.find(c => c.id === cid))
+                .filter(Boolean);
+            
+            const validClassIds = assignedClasses.map(c => c.id);
+            const totalStudents = students.filter(s =>
+                validClassIds.includes(s.classId) && s.status === 'Active'
+            ).length;
+            
+            return {
+                Name: m.name || '',
+                Email: m.email || '',
+                'Contact Number': m.contactNumber || '',
+                Qualification: m.qualification || '',
+                'Assigned Classes': assignedClasses.map(c => `${c.name}-${c.division}`).join(', ') || 'None',
+                'Total Students': totalStudents
+            };
+        });
+    };
+
+    const handleExportExcel = () => {
+        exportToExcel(getExportData(), 'Mentors_Export');
+    };
+
+    const handleExportPDF = () => {
+        const data = getExportData();
+        const headers = ['Name', 'Email', 'Contact Number', 'Qualification', 'Assigned Classes', 'Total Students'];
+        const body = data.map(d => [d.Name, d.Email, d['Contact Number'], d.Qualification, d['Assigned Classes'], d['Total Students']]);
+        exportToPDF(body, headers, 'Mentors_Export', 'Mentors Directory');
     };
 
     const handleDirectSignIn = (mentor) => {
@@ -334,6 +370,12 @@ const MentorManagement = () => {
                                 />
                             </div>
                             <div className="flex gap-2">
+                                <Button onClick={handleExportExcel} className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200" title="Export Excel">
+                                    <FileSpreadsheet className="w-4 h-4" />
+                                </Button>
+                                <Button onClick={handleExportPDF} className="flex-1 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200" title="Export PDF">
+                                    <FileText className="w-4 h-4" />
+                                </Button>
                                 <div className="flex-1">
                                     <BulkUploadButton onUploadSuccess={handleBulkUpload} type="mentor" />
                                 </div>
@@ -451,6 +493,14 @@ const MentorManagement = () => {
                                             Log In
                                         </button>
 
+                                        <button
+                                            onClick={() => setTimetableModal({ isOpen: true, mentor })}
+                                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-all shadow-sm active:scale-95 font-bold text-[10px] whitespace-nowrap"
+                                        >
+                                            <Calendar className="w-3 h-3" />
+                                            Timetable
+                                        </button>
+
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => handleEdit(mentor)}
@@ -474,6 +524,113 @@ const MentorManagement = () => {
                     </div>
                 )}
             </Card>
+
+            {/* Timetable Modal */}
+            <Modal
+                isOpen={timetableModal.isOpen}
+                onClose={() => setTimetableModal({ isOpen: false, mentor: null })}
+                title={`Full Timetable Matrix: ${timetableModal.mentor?.name}`}
+                className="!max-w-6xl"
+            >
+                <div className="space-y-4">
+                    {(() => {
+                        const assignedClasses = (timetableModal.mentor?.assignedClassIds || [])
+                            .map(cid => classes.find(c => c.id === cid))
+                            .filter(Boolean);
+
+                        if (assignedClasses.length === 0) {
+                            return <p className="text-center py-12 text-gray-400 italic bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">No classes assigned to this mentor.</p>;
+                        }
+
+                        // Define Days
+                        const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                        
+                        // Extract unique time slots
+                        const rawSlots = [...new Set(assignedClasses.map(c => 
+                            c.startTime && c.endTime ? `${c.startTime} - ${c.endTime}` : null
+                        ))].filter(Boolean);
+
+                        // Sort slots by start time
+                        const sortedSlots = rawSlots.sort((a, b) => {
+                            const startA = a.split(' - ')[0];
+                            const startB = b.split(' - ')[0];
+                            return startA.localeCompare(startB);
+                        });
+
+                        const formatTime = (timeRange) => {
+                            return timeRange.split(' - ').map(t => {
+                                let [h, m] = t.split(':');
+                                let hr = parseInt(h);
+                                let am = hr >= 12 ? 'PM' : 'AM';
+                                return `${hr % 12 || 12}:${m} ${am}`;
+                            }).join(' - ');
+                        };
+
+                        return (
+                            <div className="border border-gray-100 rounded-2xl shadow-sm overflow-hidden bg-white">
+                                <table className="w-full border-collapse bg-white text-sm">
+                                    <thead>
+                                        <tr className="bg-indigo-600 text-white">
+                                            <th className="p-4 text-left border-r border-indigo-500/30 w-32 bg-indigo-700">Day / Time</th>
+                                            {sortedSlots.map(slot => (
+                                                <th key={slot} className="p-4 text-center border-r border-indigo-500/30 min-w-[140px]">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <Clock className="w-4 h-4 opacity-70" />
+                                                        <span className="font-bold tracking-tight leading-tight">{formatTime(slot)}</span>
+                                                    </div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {DAYS.map((day, dIdx) => (
+                                            <tr key={day} className={clsx("group transition-colors", dIdx % 2 === 0 ? "bg-white" : "bg-gray-50/30")}>
+                                                <td className="p-4 font-bold text-gray-900 border-r border-gray-100 bg-inherit whitespace-nowrap">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={clsx("w-1.5 h-5 rounded-full", dIdx % 2 === 0 ? "bg-indigo-500" : "bg-purple-500")}></div>
+                                                        {day}
+                                                    </div>
+                                                </td>
+                                                {sortedSlots.map(slot => {
+                                                    const classAtTime = assignedClasses.find(c => 
+                                                        (c.days || []).includes(day) && 
+                                                        (`${c.startTime} - ${c.endTime}` === slot)
+                                                    );
+
+                                                    return (
+                                                        <td key={slot} className="p-2 border-r border-gray-100 align-middle">
+                                                            {classAtTime ? (
+                                                                <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl shadow-sm transition-all transform hover:scale-[1.02] cursor-default">
+                                                                    <div className="flex flex-col items-center text-center gap-1">
+                                                                        <div className="p-1.5 bg-white text-indigo-600 rounded-lg shadow-sm">
+                                                                            <BookOpen className="w-4 h-4" />
+                                                                        </div>
+                                                                        <span className="font-black text-indigo-900 leading-none whitespace-nowrap">Class {classAtTime.name}</span>
+                                                                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px] font-black uppercase tracking-widest mt-1">
+                                                                            Div {classAtTime.division}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="h-full flex items-center justify-center py-4 opacity-10">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                    })()}
+                    <div className="pt-4 flex justify-end">
+                        <Button onClick={() => setTimetableModal({ isOpen: false, mentor: null })} className="px-10 h-11 rounded-xl shadow-lg shadow-gray-200">Close View</Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

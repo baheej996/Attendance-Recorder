@@ -6,12 +6,26 @@ import { FileText, Plus, Copy, Trash2, Edit2, Play, Pause, Eye, FileBarChart, Ch
 import EvaluationFormBuilder from './EvaluationFormBuilder';
 import EvaluationResponses from './EvaluationResponses';
 
-const EvaluationManager = () => {
-    const { evaluationForms, deleteEvaluationForm, updateEvaluationForm, createEvaluationForm, addNotification, evaluationSubmissions } = useData();
+const EvaluationManager = ({ type = 'mentor' }) => {
+    const { 
+        evaluationForms, deleteEvaluationForm, updateEvaluationForm, createEvaluationForm, 
+        studentEvaluationTemplates, deleteStudentEvaluationTemplate, updateStudentEvaluationTemplate, createStudentEvaluationTemplate,
+        parentFeedbackTemplates, deleteParentFeedbackTemplate, updateParentFeedbackTemplate, createParentFeedbackTemplate,
+        addNotification, evaluationSubmissions, studentEvaluations, parentFeedbacks 
+    } = useData();
     const [view, setView] = useState('list'); // list, builder, responses
     const [selectedForm, setSelectedForm] = useState(null);
 
-    const sortedForms = [...(evaluationForms || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const forms = type === 'student' ? studentEvaluationTemplates : type === 'parent' ? parentFeedbackTemplates : evaluationForms;
+    
+    // Select the correct submissions collection
+    const submissions = type === 'student' ? studentEvaluations : type === 'parent' ? parentFeedbacks : evaluationSubmissions;
+    
+    const deleteFunc = type === 'student' ? deleteStudentEvaluationTemplate : type === 'parent' ? deleteParentFeedbackTemplate : deleteEvaluationForm;
+    const updateFunc = type === 'student' ? updateStudentEvaluationTemplate : type === 'parent' ? updateParentFeedbackTemplate : updateEvaluationForm;
+    const createFunc = type === 'student' ? createStudentEvaluationTemplate : type === 'parent' ? createParentFeedbackTemplate : createEvaluationForm;
+
+    const sortedForms = [...(forms || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const handleCreateNew = () => {
         setSelectedForm(null);
@@ -19,29 +33,15 @@ const EvaluationManager = () => {
     };
 
     const handleEdit = (form) => {
-        // Create a deep copy to avoid mutating state directly in the builder before save
         setSelectedForm(JSON.parse(JSON.stringify(form)));
         setView('builder');
     };
 
-    const handleDuplicate = async (form) => {
-        const { id, createdAt, status, ...rest } = form;
-        const newForm = {
-            ...rest,
-            title: `${form.title} (Copy)`,
-            status: 'Draft',
-            createdAt: new Date().toISOString()
-        };
-        // We need to call createEvaluationForm, but we can just use DataContext or handle it here if it's tricky.
-        // Actually DataContext has `createEvaluationForm`. Let's assume it's imported from useData. 
-        // Oh wait, createEvaluationForm is in DataContext. I'll import it.
-    };
-
     const togglePublish = async (form) => {
         const newStatus = form.status === 'Published' ? 'Draft' : 'Published';
-        await updateEvaluationForm(form.id, { status: newStatus });
+        await updateFunc(form.id, { status: newStatus });
         
-        if (newStatus === 'Published') {
+        if (newStatus === 'Published' && type === 'mentor') {
             await addNotification({
                 title: 'New Evaluation Pending',
                 message: `The ${form.month} ${form.year} Monthly Evaluation is now available. Please complete it.`,
@@ -56,14 +56,20 @@ const EvaluationManager = () => {
 
     if (view === 'builder') {
         return <EvaluationFormBuilder 
+                    templateType={type}
                     initialData={selectedForm} 
                     onClose={() => setView('list')} 
                 />;
     }
 
     if (view === 'responses') {
+        const filteredSubmissions = (submissions || []).filter(s => 
+            (type === 'mentor' ? s.formId === selectedForm.id : s.templateId === selectedForm.id)
+        );
         return <EvaluationResponses 
+                    type={type}
                     form={selectedForm} 
+                    submissions={filteredSubmissions}
                     onClose={() => setView('list')} 
                 />;
     }
@@ -74,13 +80,15 @@ const EvaluationManager = () => {
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         <FileBarChart className="w-6 h-6 text-indigo-600" />
-                        Monthly Evaluations
+                        {type === 'student' ? 'Student Evaluation Templates' : type === 'parent' ? 'Parent Feedback Templates' : 'Monthly Mentor Evaluations'}
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">Create dynamic evaluation forms and collect responses from Mentors.</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                        {type === 'student' ? 'Design monthly evaluation cards for students.' : type === 'parent' ? 'Design feedback forms for parents.' : 'Create dynamic evaluation forms for Mentors.'}
+                    </p>
                 </div>
                 <Button variant="primary" onClick={handleCreateNew} className="gap-2">
                     <Plus className="w-4 h-4" />
-                    Create New Form
+                    Create New {type === 'mentor' ? 'Form' : 'Template'}
                 </Button>
             </div>
 
@@ -109,8 +117,8 @@ const EvaluationManager = () => {
                                     {form.sections?.reduce((sum, sec) => sum + (sec.questions?.length || 0), 0) || 0}
                                 </span> <span className="text-[10px] uppercase font-bold text-gray-400">Qs</span>
                             </div>
-                            <div className="ml-auto flex items-center gap-1.5 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-black ring-1 ring-red-200">
-                                {(evaluationSubmissions || []).filter(s => s.formId === form.id).length} Responses
+                            <div className="ml-auto flex items-center gap-1.5 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-black ring-1 ring-indigo-200">
+                                {(submissions || []).filter(s => (type === 'mentor' ? s.formId === form.id : s.templateId === form.id)).length} Responses
                             </div>
                         </div>
 
@@ -134,7 +142,7 @@ const EvaluationManager = () => {
                             </button>
                         </div>
                         
-                        {/* More Actions (Absolute positioning overlay on hover) */}
+                        {/* More Actions */}
                         <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                                 onClick={() => togglePublish(form)}
@@ -146,7 +154,7 @@ const EvaluationManager = () => {
                             <button 
                                 onClick={() => {
                                     const { id, createdAt, status, ...rest } = form;
-                                    createEvaluationForm({
+                                    createFunc({
                                         ...rest,
                                         title: `${form.title} (Copy)`,
                                         status: 'Draft'
@@ -159,8 +167,8 @@ const EvaluationManager = () => {
                             </button>
                             <button 
                                 onClick={() => {
-                                    if(window.confirm("Are you sure you want to delete this form? Any mentor responses tied to this form may become orphaned.")) {
-                                        deleteEvaluationForm(form.id);
+                                    if(window.confirm("Are you sure you want to delete this form?")) {
+                                        deleteFunc(form.id);
                                     }
                                 }}
                                 title="Delete"
@@ -177,8 +185,8 @@ const EvaluationManager = () => {
                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300">
                         <FileBarChart className="w-8 h-8" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">No Evaluation Forms yet</h3>
-                    <p className="text-gray-500 mb-4 max-w-md mx-auto">Create a dynamic schema to collect monthly evaluations from your mentors.</p>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">No forms yet</h3>
+                    <p className="text-gray-500 mb-4 max-w-md mx-auto">Create a dynamic schema to collect responses.</p>
                     <Button variant="primary" onClick={handleCreateNew} className="gap-2">
                         <Plus className="w-4 h-4" />
                         Create Form

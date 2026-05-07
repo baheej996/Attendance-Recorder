@@ -17,8 +17,8 @@ const COLORS = ['#10B981', '#EF4444']; // Green, Red
 const BAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e'];
 
 const StudentStatsModal = ({ student, records, onClose }) => {
-    const total = records.length;
-    const present = records.filter(r => r.status === 'Present').length;
+    // records might be paginated, so use the true stats if available
+    const { total, present } = student; // We'll pass the stats here
     const absent = total - present;
 
     // Monthly Calc
@@ -282,7 +282,10 @@ const StudentResultModal = ({ student, exam, rank, subjects, results, onClose })
 }
 
 const MentorStats = () => {
-    const { classes, students, attendance, currentUser, results, exams, subjects, institutionSettings } = useData();
+    const { 
+        classes, students, attendance, currentUser, results, exams, subjects, 
+        institutionSettings, requireFeature, getCount, attendanceLimit, loadMoreAttendance 
+    } = useData();
     const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'results'
     const [selectedClassId, setSelectedClassId] = useState('');
     const [selectedExamId, setSelectedExamId] = useState('');
@@ -290,6 +293,38 @@ const MentorStats = () => {
     const toppersPrintRef = React.useRef(null);
     const [selectedStudent, setSelectedStudent] = useState(null); // For Attendance Modal
     const [resultModalData, setResultModalData] = useState(null); // { student, exam }
+    const [trueStats, setTrueStats] = useState({}); // { studentId: { total, present } }
+    const [isCounting, setIsCounting] = useState(false);
+
+    React.useEffect(() => {
+        return requireFeature(activeTab); // 'attendance' or 'results'
+    }, [activeTab, requireFeature]);
+
+    // --- TRUE STATS FETCHING (Firestore Counting) ---
+    React.useEffect(() => {
+        const fetchTrueStats = async () => {
+            if (!selectedClassId || activeTab !== 'attendance') return;
+            
+            setIsCounting(true);
+            const activeStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active');
+            const statsMap = {};
+            
+            try {
+                // Parallel fetch for class efficiency
+                await Promise.all(activeStudents.map(async (student) => {
+                    const total = await getCount('attendance', where('studentId', '==', student.id));
+                    const present = await getCount('attendance', where('studentId', '==', student.id), where('status', '==', 'Present'));
+                    statsMap[student.id] = { total, present };
+                }));
+                setTrueStats(statsMap);
+            } catch (err) {
+                console.error("Failed to fetch class attendance counts:", err);
+            } finally {
+                setIsCounting(false);
+            }
+        };
+        fetchTrueStats();
+    }, [selectedClassId, activeTab, getCount, students]);
 
     const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
         ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
@@ -301,9 +336,10 @@ const MentorStats = () => {
 
     // --- ATTENDANCE STATS ---
     const getAttendanceStats = (studentId) => {
+        const trueS = trueStats[studentId] || { total: 0, present: 0 };
         const studentRecords = attendance.filter(r => r.studentId === studentId);
-        const total = studentRecords.length;
-        const present = studentRecords.filter(r => r.status === 'Present').length;
+        const total = trueS.total;
+        const present = trueS.present;
         const percentage = total > 0 ? (present / total) * 100 : 0;
         return { total, present, percentage, records: studentRecords };
     };
@@ -595,12 +631,18 @@ const MentorStats = () => {
                                 <div>
                                     <div className="flex justify-between items-center mb-6">
                                         <h3 className="text-xl font-bold text-gray-800">Student Attendance List</h3>
+                                        {isCounting && (
+                                            <div className="flex items-center gap-2 text-xs text-indigo-600 font-bold bg-indigo-50 px-3 py-1.5 rounded-lg animate-pulse">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                Recalculating Totals...
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {classStudents.map(student => {
                                             const { total, present, percentage, records } = getAttendanceStats(student.id);
                                             return (
-                                                <div key={student.id} onClick={() => setSelectedStudent({ ...student, records })} className="p-5 rounded-2xl border border-gray-100 bg-white hover:border-indigo-300 hover:shadow-lg cursor-pointer transition-all group">
+                                                <div key={student.id} onClick={() => setSelectedStudent({ ...student, records, total, present })} className="p-5 rounded-2xl border border-gray-100 bg-white hover:border-indigo-300 hover:shadow-lg cursor-pointer transition-all group">
                                                     <div className="flex justify-between items-start mb-4">
                                                         <div>
                                                             <h4 className="font-bold text-gray-900 text-lg">{student.name}</h4>
@@ -620,6 +662,21 @@ const MentorStats = () => {
                                                 </div>
                                             );
                                         })}
+                                    </div>
+
+                                    {/* Pagination */}
+                                    <div className="mt-8 flex flex-col items-center gap-3">
+                                        <Button
+                                            onClick={loadMoreAttendance}
+                                            variant="secondary"
+                                            className="bg-white border-2 border-indigo-100 text-indigo-600 font-black px-8 py-3 rounded-2xl hover:bg-indigo-50 transition-all flex items-center gap-2"
+                                        >
+                                            <Loader2 className={clsx("w-4 h-4", !attendance.length && "animate-spin")} />
+                                            Load Older History
+                                        </Button>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                            Currently viewing last {attendanceLimit} records
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -703,6 +760,22 @@ const MentorStats = () => {
                                                     </div>
                                                 </div>
                                             ))}
+                                        </div>
+
+                                        {/* Pagination for Results */}
+                                        <div className="mt-8 flex flex-col items-center gap-3">
+                                            <Button
+                                                onClick={loadMoreResults}
+                                                variant="secondary"
+                                                className="bg-white border-2 border-purple-100 text-purple-600 font-black px-8 py-3 rounded-2xl hover:bg-purple-50 transition-all flex items-center gap-2"
+                                            >
+                                                <Loader2 className={clsx("w-4 h-4", !results.length && "animate-spin")} />
+                                                Load More Exam Records
+                                            </Button>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
+                                                Currently viewing last {resultsLimit} result entries.<br/>
+                                                (Note: Higher limits may be needed for large classes with many subjects)
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

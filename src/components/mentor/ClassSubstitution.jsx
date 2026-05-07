@@ -5,7 +5,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { 
     Replace, AlertCircle, CheckCircle, Clock, FileText, Check, X, 
-    ArrowRight, UserCircle2, IndianRupee, HandCoins, Edit, Trash2, BookOpen, ImageIcon 
+    ArrowRight, UserCircle2, IndianRupee, HandCoins, Edit, Trash2, BookOpen, ImageIcon, Video
 } from 'lucide-react';
 import { addDoc, collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -70,6 +70,13 @@ const ClassSubstitution = () => {
         return (substitutionRequests || []).filter(r => r.substituteId === currentUser.id && r.status === 'Pending Substitute Approval')
             .sort((a, b) => {
                 return new Date(a.date) - new Date(b.date);
+            });
+    }, [substitutionRequests, currentUser]);
+
+    const historyRequests = useMemo(() => {
+        return (substitutionRequests || []).filter(r => r.substituteId === currentUser.id && ['Accepted', 'Rejected', 'Completed', 'Settled'].includes(r.status))
+            .sort((a, b) => {
+                return new Date(b.date) - new Date(a.date);
             });
     }, [substitutionRequests, currentUser]);
 
@@ -282,7 +289,7 @@ const ClassSubstitution = () => {
                     <p className="text-gray-500 mt-1">Request cover for your classes or manage requests from other mentors.</p>
                 </div>
                 <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl">
-                    {['incoming', 'sent', 'create', 'ledger'].map(tab => (
+                    {['incoming', 'history', 'sent', 'create', 'ledger'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => {
@@ -294,7 +301,7 @@ const ClassSubstitution = () => {
                                 activeTab === tab ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-900"
                             )}
                         >
-                            {tab === 'create' ? (editingRequestId ? 'Edit Request' : 'Create Request') : tab === 'incoming' ? 'Incoming Requests' : tab === 'sent' ? 'My Sent Requests' : 'Financial Ledger'}
+                            {tab === 'create' ? (editingRequestId ? 'Edit Request' : 'Create Request') : tab === 'incoming' ? 'Incoming Requests' : tab === 'history' ? 'Request Histories' : tab === 'sent' ? 'My Sent Requests' : 'Financial Ledger'}
                             {tab === 'incoming' && incomingRequests.filter(r => r.status === 'Pending Substitute Approval').length > 0 && (
                                 <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
                                     {incomingRequests.filter(r => r.status === 'Pending Substitute Approval').length}
@@ -518,19 +525,8 @@ const ClassSubstitution = () => {
                                         )}
                                     </div>
 
-                                    {/* Right Column: Actions (Sign In + Accept/Reject/Complete) */}
+                                    {/* Right Column: Actions (Accept/Reject) */}
                                     <div className="flex flex-col justify-between items-start md:items-end min-w-full md:min-w-[180px] shrink-0 md:border-l border-gray-50 md:pl-6 mt-4 md:mt-0 pt-4 md:pt-0 border-t border-gray-100 md:border-t-0">
-                                        <div className="mb-4">
-                                            <button 
-                                                onClick={() => handleDirectSignIn(req.requesterId)}
-                                                className="group flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-lg text-[11px] font-bold transition-all shadow-sm border border-indigo-100"
-                                                title={`Sign in as ${helperGetMentorName(req.requesterId)}`}
-                                            >
-                                                <UserCircle2 className="w-3.5 h-3.5 group-hover:animate-pulse" />
-                                                Sign In to {helperGetMentorName(req.requesterId).split(' ')[0]}
-                                            </button>
-                                        </div>
-
                                         <div className="flex flex-col gap-2 w-full mt-auto">
                                             {req.status === 'Pending Substitute Approval' && (
                                                 <>
@@ -542,6 +538,106 @@ const ClassSubstitution = () => {
                                                     </Button>
                                                 </>
                                             )}
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {/* 2.5 Request Histories Tab */}
+                {activeTab === 'history' && (
+                    <div className="space-y-4">
+                        {historyRequests.length === 0 ? (
+                            <div className="p-12 text-center bg-white rounded-2xl border border-gray-100">
+                                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-bold text-gray-900">No History</h3>
+                                <p className="text-gray-500">You don't have any past substitution requests.</p>
+                            </div>
+                        ) : (
+                            historyRequests.map(req => (
+                                <Card key={req.id} className="p-5 flex flex-col md:flex-row justify-between gap-4 md:gap-6 relative min-h-[140px] md:items-stretch">
+                                    {/* Left Column: Avatar + Content */}
+                                    <div className="flex-1 flex flex-col justify-between">
+                                        {/* Top Row: Avatar & Name */}
+                                        <div className="flex flex-wrap items-center gap-3 mb-4">
+                                            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                                                <span className="text-lg font-black text-indigo-700">{helperGetMentorName(req.requesterId).charAt(0)}</span>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="text-lg font-bold text-gray-900 leading-none">{helperGetMentorName(req.requesterId)}</h3>
+                                                {getStatusBadge(req.status)}
+                                            </div>
+                                        </div>
+
+                                        {/* Middle Row: Details Boxes */}
+                                        <div className="flex flex-wrap items-center gap-3 mb-3">
+                                            <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100 min-w-[100px] flex-1 sm:flex-none">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Class</p>
+                                                <p className="font-semibold text-gray-900 text-sm">{helperGetClassName(req.classId)}</p>
+                                            </div>
+                                            <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100 min-w-[120px] flex-1 sm:flex-none">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Date</p>
+                                                <p className="font-semibold text-gray-900 text-sm">{req.date}</p>
+                                            </div>
+                                            <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100 min-w-[140px] max-w-full sm:max-w-[200px] w-full sm:w-auto">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Portion</p>
+                                                <p className="font-semibold text-gray-800 text-sm truncate" title={req.portion}>{req.portion}</p>
+                                            </div>
+                                            
+                                            {/* Attached Material Buton */}
+                                            {req.attachedSubjectId && req.attachedChapterIndex && (
+                                                <button 
+                                                    onClick={() => handleOpenAttachment(req)}
+                                                    className="flex w-full sm:w-auto items-stretch bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-100/50 overflow-hidden"
+                                                >
+                                                    <div className="bg-indigo-100 p-2.5 flex items-center justify-center shrink-0">
+                                                        <BookOpen className="w-5 h-5 text-indigo-600" />
+                                                    </div>
+                                                    <div className="p-2.5 px-3 flex items-center justify-center font-bold text-sm text-indigo-700 w-full sm:w-auto">
+                                                        Read Attached Material : CH {req.attachedChapterIndex}
+                                                    </div>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Bottom Row: Notes */}
+                                        {req.notes && (
+                                            <div className="bg-[#FFFDF0] p-3 rounded-lg border border-yellow-100/50 w-full mt-auto">
+                                                <p className="text-sm text-gray-500 italic">"{req.notes}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Right Column: Actions (Sign In + Complete) */}
+                                    <div className="flex flex-col justify-between items-start md:items-end min-w-full md:min-w-[180px] shrink-0 md:border-l border-gray-50 md:pl-6 mt-4 md:mt-0 pt-4 md:pt-0 border-t border-gray-100 md:border-t-0">
+                                        <div className="mb-4 w-full flex flex-col gap-2">
+                                            {req.substituteLiveLink && (
+                                                <a 
+                                                    href={req.substituteLiveLink} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="w-full group flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-blue-100"
+                                                    title="Join Class"
+                                                >
+                                                    <Video className="w-4 h-4 group-hover:animate-pulse" />
+                                                    Join Provided Meet
+                                                </a>
+                                            )}
+                                            {['Accepted', 'Completed', 'Settled'].includes(req.status) && (
+                                                <button 
+                                                    onClick={() => handleDirectSignIn(req.requesterId)}
+                                                    className="w-full group flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-indigo-100"
+                                                    title={`Sign in as ${helperGetMentorName(req.requesterId)}`}
+                                                >
+                                                    <UserCircle2 className="w-4 h-4 group-hover:animate-pulse" />
+                                                    Sign In to {helperGetMentorName(req.requesterId).split(' ')[0]}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-col gap-2 w-full mt-auto">
                                             {req.status === 'Accepted' && (
                                                 <>
                                                     <Button onClick={() => updateRequestStatus(req.id, 'Completed')} className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 text-sm font-bold shadow-sm py-2">

@@ -23,7 +23,8 @@ const DataContext = createContext();
 export const useData = () => useContext(DataContext);
 
 export const DataProvider = ({ children }) => {
-    // --- State Definitions ---
+
+    // --- Lifecycle Subscriptions ---
     const [allStudents, setAllStudents] = useState([]);
     const [students, setStudents] = useState([]);
     const [mentors, setMentors] = useState([]);
@@ -72,6 +73,14 @@ export const DataProvider = ({ children }) => {
     const [adminRequests, setAdminRequests] = useState([]);
     const [chatSettings, setChatSettings] = useState([]);
     const [mentorSettings, setMentorSettings] = useState({ sidebarOrder: [] });
+    
+    // Student Assessment & Parent Feedback
+    const [studentEvaluations, setStudentEvaluations] = useState([]);
+    const [parentFeedbacks, setParentFeedbacks] = useState([]);
+    const [feedbackSettings, setFeedbackSettings] = useState([]);
+
+    const [studentEvaluationTemplates, setStudentEvaluationTemplates] = useState([]);
+    const [parentFeedbackTemplates, setParentFeedbackTemplates] = useState([]);
 
     // Mentor Performance Leaderboard
     const [leaderboardRules, setLeaderboardRules] = useState([]);
@@ -85,12 +94,19 @@ export const DataProvider = ({ children }) => {
     const [allMentorsLimit, setAllMentorsLimit] = useState(10);
     const [allClassesLimit, setAllClassesLimit] = useState(10);
 
+    const [attendanceLimit, setAttendanceLimit] = useState(500);
+    const [resultsLimit, setResultsLimit] = useState(500);
+    const [activitiesLimit, setActivitiesLimit] = useState(500);
+
     const [totalCounts, setTotalCounts] = useState({ students: 0, mentors: 0, classes: 0 });
 
     const loadMoreLogs = () => setLogLimit(prev => prev + 10);
     const loadMoreAllStudents = () => setAllStudentsLimit(prev => prev + 10);
     const loadMoreAllMentors = () => setAllMentorsLimit(prev => prev + 10);
     const loadMoreAllClasses = () => setAllClassesLimit(prev => prev + 10);
+    const loadMoreAttendance = () => setAttendanceLimit(prev => prev + 500);
+    const loadMoreResults = () => setResultsLimit(prev => prev + 500);
+    const loadMoreActivities = () => setActivitiesLimit(prev => prev + 500);
 
     // System Versioning
     const [appVersion] = useState(1777391306000); // Internal Build Timestamp
@@ -117,6 +133,7 @@ export const DataProvider = ({ children }) => {
         leaderboard: true,
         star: true,
         "quran-recitation": true,
+        feedback: true,
         help: true
     });
     const [mentorFeatureFlags, setMentorFeatureFlags] = useState({
@@ -130,7 +147,54 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : null;
     });
 
+    // --- Current User Sync ---
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        
+        const collectionName = currentUser.role === 'mentor' ? 'mentors' : (currentUser.role === 'student' ? 'students' : 'admins');
+        if (collectionName === 'admins') return; // Admin sync is simple
+
+        return onSnapshot(doc(db, collectionName, currentUser.id), (docSnap) => {
+            if (docSnap.exists()) {
+                const fresh = { ...docSnap.data(), id: docSnap.id };
+                // Compare critical fields to avoid unnecessary updates
+                const hasChanged = fresh.name !== currentUser.name || 
+                                 fresh.signature !== currentUser.signature || 
+                                 fresh.classId !== currentUser.classId ||
+                                 JSON.stringify(fresh.assignedClassIds) !== JSON.stringify(currentUser.assignedClassIds);
+                
+                if (hasChanged) {
+                    setCurrentUser(prev => ({ ...prev, ...fresh }));
+                }
+            }
+        });
+    }, [currentUser?.id]); // Only run when identity changes
+
     const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+    // Dynamic Feature Registry for On-Demand Loading
+    const [activeFeatures, setActiveFeatures] = useState(new Set());
+    
+    // Components call this in useEffect to request heavy data. 
+    // DataContext will only subscribe to Firestore if at least one component requests it.
+    // IMPORTANT: Must be wrapped in useCallback so it has a stable reference.
+    // Without this, any useEffect that lists [requireFeature] as a dependency will re-run
+    // on every render, causing an infinite loop (React error #185).
+    const requireFeature = React.useCallback((feature) => {
+        setActiveFeatures(prev => {
+            const next = new Set(prev);
+            next.add(feature);
+            return next;
+        });
+        
+        return () => {
+            setActiveFeatures(prev => {
+                const next = new Set(prev);
+                next.delete(feature);
+                return next;
+            });
+        };
+    }, []); // stable - setActiveFeatures from useState is always stable
 
     // --- Firestore Listeners ---
     
@@ -138,6 +202,17 @@ export const DataProvider = ({ children }) => {
     // IMPORTANT: The error handler is critical — without it, one failing query
     // (e.g. a missing Firestore composite index) silently crashes the entire
     // useEffect and breaks ALL subscriptions for the user, not just the one that failed.
+    const getCount = async (collectionName, ...constraints) => {
+        try {
+            const q = query(collection(db, collectionName), ...constraints);
+            const snap = await getCountFromServer(q);
+            return snap.data().count;
+        } catch (error) {
+            console.error(`[DataContext] Error getting count for ${collectionName}:`, error);
+            return 0;
+        }
+    };
+
     const subscribe = (collectionName, setState, ...constraints) => {
         const q = query(collection(db, collectionName), ...constraints);
         return onSnapshot(q, 
@@ -156,8 +231,7 @@ export const DataProvider = ({ children }) => {
         const unsubs = [
             subscribe('classes', setClasses),
             subscribe('subjects', setSubjects),
-            subscribe('mentors', setMentors),
-            subscribe('starConfigs', setStarConfigs),
+            subscribe('mentors', (data) => { setMentors(data); setAllMentors(data); }),
             subscribe('classFeatureFlags', setClassFeatureFlags),
             subscribe('mentorSettings', setAllMentorSettings),
             subscribe('liveClasses', setLiveClasses),
@@ -169,6 +243,8 @@ export const DataProvider = ({ children }) => {
             subscribe('substitutionRequests', setSubstitutionRequests),
             subscribe('questions', setQuestions),
             subscribe('examSettings', setExamSettings),
+            subscribe('studentEvaluationTemplates', setStudentEvaluationTemplates),
+            subscribe('parentFeedbackTemplates', setParentFeedbackTemplates),
         ];
 
         const settingsUnsub = onSnapshot(collection(db, 'settings'), (snapshot) => {
@@ -201,14 +277,24 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        // We use lightweight snapshots for counts since getCountFromServer may have compatibility issues in this specific environment
-        // These listeners will provide the true institutional totals even when browsing with limits
-        const countUnsubs = [
-            onSnapshot(collection(db, 'students'), snap => setTotalCounts(prev => ({ ...prev, students: snap.size }))),
-            onSnapshot(collection(db, 'mentors'), snap => setTotalCounts(prev => ({ ...prev, mentors: snap.size }))),
-            onSnapshot(collection(db, 'classes'), snap => setTotalCounts(prev => ({ ...prev, classes: snap.size })))
-        ];
-        return () => countUnsubs.forEach(u => u());
+        // High-efficiency one-time count fetch (Costs 1 read per 1,000 docs)
+        const fetchCounts = async () => {
+            try {
+                const studentsSnap = await getCountFromServer(collection(db, 'students'));
+                const mentorsSnap = await getCountFromServer(collection(db, 'mentors'));
+                const classesSnap = await getCountFromServer(collection(db, 'classes'));
+                
+                setTotalCounts({
+                    students: studentsSnap.data().count,
+                    mentors: mentorsSnap.data().count,
+                    classes: classesSnap.data().count
+                });
+            } catch (error) {
+                console.error("[DataContext] Error fetching total counts:", error);
+            }
+        };
+
+        fetchCounts();
     }, []);
 
     // 2. User-Specific / Heavy Subscriptions (Filtered for Performance)
@@ -233,30 +319,33 @@ export const DataProvider = ({ children }) => {
             const cid = currentUser.classId;
 
             unsubs.push(
-                // Only their own data
-                subscribe('attendance', setAttendance, where('studentId', '==', uid)),
-                subscribe('results', setResults, where('studentId', '==', uid)),
-                subscribe('prayerRecords', setPrayerRecords, where('studentId', '==', uid)),
-                subscribe('quranRecitations', setQuranRecitations, where('studentId', '==', uid)),
-                subscribe('quranProgress', setQuranProgress, where('studentId', '==', uid)),
-                subscribe('studentResponses', setStudentResponses, where('studentId', '==', uid)),
-                subscribe('leaveRequests', setLeaveRequests, where('studentId', '==', uid)),
-                subscribe('ramadanLogs', setRamadanLogs, where('studentId', '==', uid)),
-                
-                // Only data relevant to their class
                 subscribe('exams', setExams, where('classId', '==', cid)),
                 subscribe('activities', setActivities, where('classId', '==', cid)),
-                subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : [''])),
-                // Chat: fetch group messages by classId (no orderBy to avoid composite index error)
                 subscribe('chatMessages', setChatMessages, where('classId', '==', cid), limit(150)),
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', uid), where('isRead', '==', false)),
-                // Broadcast notifications: all, students-wide, and specific-class
                 subscribe('notifications', setNotifications, where('audience', 'in', ['students', 'all', 'specific_class'])),
                 subscribe('starDeclarations', setStarDeclarations, where('classId', '==', cid)),
-                
-                // Limited classmate info for leaderboards
-                subscribe('students', setStudents, where('classId', '==', cid))
+                subscribe('students', setStudents, where('classId', '==', cid)),
+                subscribe('studentEvaluations', setStudentEvaluations, where('studentId', '==', uid), where('status', '==', 'Published')),
+                subscribe('feedbackSettings', setFeedbackSettings, where('classId', '==', cid))
             );
+
+            // On-Demand Heavy Data
+            if (activeFeatures.has('attendance')) {
+                unsubs.push(subscribe('attendance', setAttendance, where('studentId', '==', uid), orderBy('date', 'desc'), limit(attendanceLimit)));
+            }
+            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('studentId', '==', uid), limit(resultsLimit)));
+            if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('studentId', '==', uid)));
+            if (activeFeatures.has('quran')) unsubs.push(
+                subscribe('quranRecitations', setQuranRecitations, where('studentId', '==', uid)),
+                subscribe('quranProgress', setQuranProgress, where('studentId', '==', uid))
+            );
+            if (activeFeatures.has('activities')) unsubs.push(
+                subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : ['']), limit(activitiesLimit)),
+                subscribe('studentResponses', setStudentResponses, where('studentId', '==', uid), limit(resultsLimit))
+            );
+            if (activeFeatures.has('leave')) unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('studentId', '==', uid)));
+            if (activeFeatures.has('ramadan')) unsubs.push(subscribe('ramadanLogs', setRamadanLogs, where('studentId', '==', uid)));
 
             // Separate listener: direct messages TO this student (mentor→student DMs stored without classId)
             // These must be MERGED into chatMessages, not replace them
@@ -305,27 +394,39 @@ export const DataProvider = ({ children }) => {
 
             unsubs.push(
                 subscribe('students', setAllStudents, orderBy('name'), limit(allStudentsLimit)),
-                subscribe('mentors', setAllMentors, orderBy('name'), limit(allMentorsLimit)),
                 subscribe('classes', setAllClasses, orderBy('name'), limit(allClassesLimit))
             );
 
             if (assignedClassIds.length > 0) {
                 unsubs.push(
                     subscribe('students', setStudents, where('classId', 'in', assignedClassIds)),
-                    subscribe('attendance', setAttendance, where('classId', 'in', assignedClassIds), limit(2000)), 
                     subscribe('exams', setExams, where('classId', 'in', assignedClassIds)),
-                    subscribe('results', setResults, where('classId', 'in', assignedClassIds), limit(2000)),
                     subscribe('chatMessages', setChatMessages, where('classId', 'in', assignedClassIds), limit(400)),
                     subscribe('activities', setActivities, where('classId', 'in', assignedClassIds)),
+                    subscribe('starDeclarations', setStarDeclarations, where('classId', 'in', assignedClassIds))
+                );
+
+                // On-Demand Heavy Data
+                if (activeFeatures.has('attendance')) {
+                    unsubs.push(subscribe('attendance', setAttendance, where('classId', 'in', assignedClassIds), orderBy('date', 'desc'), limit(attendanceLimit)));
+                }
+                if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('classId', 'in', assignedClassIds), limit(resultsLimit)));
+                if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('classId', 'in', assignedClassIds)));
+                if (activeFeatures.has('quran')) unsubs.push(
                     subscribe('quranRecitations', setQuranRecitations, where('classId', 'in', assignedClassIds)),
-                    subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds)),
-                    subscribe('activitySubmissions', setActivitySubmissions, limit(2000)),
-                    // Previously missing — caused empty data on Prayer, Star, Ramadan, Substitution pages
-                    subscribe('prayerRecords', setPrayerRecords, where('classId', 'in', assignedClassIds)),
-                    subscribe('ramadanLogs', setRamadanLogs, where('classId', 'in', assignedClassIds)),
-                    subscribe('quranProgress', setQuranProgress, where('classId', 'in', assignedClassIds)),
-                    subscribe('starDeclarations', setStarDeclarations, where('classId', 'in', assignedClassIds)),
-                    subscribe('studentResponses', setStudentResponses, where('classId', 'in', assignedClassIds), limit(2000))
+                    subscribe('quranProgress', setQuranProgress, where('classId', 'in', assignedClassIds))
+                );
+                if (activeFeatures.has('activities')) unsubs.push(
+                    subscribe('activitySubmissions', setActivitySubmissions, limit(activitiesLimit)),
+                    subscribe('studentResponses', setStudentResponses, where('classId', 'in', assignedClassIds), limit(resultsLimit))
+                );
+                if (activeFeatures.has('leave')) unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds)));
+                if (activeFeatures.has('ramadan')) unsubs.push(subscribe('ramadanLogs', setRamadanLogs, where('classId', 'in', assignedClassIds)));
+                
+                unsubs.push(
+                    subscribe('studentEvaluations', setStudentEvaluations, where('classId', 'in', assignedClassIds)),
+                    subscribe('parentFeedbacks', setParentFeedbacks, where('classId', 'in', assignedClassIds)),
+                    subscribe('feedbackSettings', setFeedbackSettings, where('classId', 'in', assignedClassIds))
                 );
             }
 
@@ -344,30 +445,35 @@ export const DataProvider = ({ children }) => {
         } else if (currentUser.role === 'admin') {
             unsubs.push(
                 subscribe('students', (data) => { setStudents(data); setAllStudents(data); }),
-                subscribe('mentors', (data) => { setMentors(data); setAllMentors(data); }),
                 subscribe('classes', (data) => { setClasses(data); setAllClasses(data); }),
                 subscribe('exams', setExams),
                 subscribe('activities', setActivities),
-                subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(1000)),
-                subscribe('quranRecitations', setQuranRecitations, limit(500)),
                 subscribe('chatMessages', setChatMessages, orderBy('timestamp', 'desc'), limit(500)),
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', 'admin'), where('isRead', '==', false)),
                 subscribe('notifications', setNotifications, orderBy('createdAt', 'desc')),
                 subscribe('admissionRequests', setAdmissionRequests),
                 subscribe('evaluationForms', setEvaluationForms),
                 subscribe('evaluationSubmissions', setEvaluationSubmissions),
-                subscribe('activitySubmissions', setActivitySubmissions),
                 subscribe('adminRequests', setAdminRequests),
                 subscribe('leaderboardRules', setLeaderboardRules),
-                subscribe('leaderboardCompletions', setLeaderboardCompletions)
+                subscribe('leaderboardCompletions', setLeaderboardCompletions),
+                subscribe('studentEvaluations', setStudentEvaluations),
+                subscribe('parentFeedbacks', setParentFeedbacks),
+                subscribe('feedbackSettings', setFeedbackSettings)
             );
+            
+            // On-Demand Heavy Data
+            if (activeFeatures.has('attendance')) unsubs.push(subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(attendanceLimit)));
+            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, limit(resultsLimit)));
+            if (activeFeatures.has('activities')) unsubs.push(subscribe('activitySubmissions', setActivitySubmissions, limit(activitiesLimit)));
+            if (activeFeatures.has('quran')) unsubs.push(subscribe('quranRecitations', setQuranRecitations, limit(500)));
             
             // Note: Admins may still need full attendance/results for reports, 
             // but those should ideally be fetched on-demand in the reports page.
         }
 
         return () => unsubs.forEach(u => u());
-    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit]);
+    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit, activeFeatures, attendanceLimit, resultsLimit, activitiesLimit]);
 
     // Separate Effect for Log Pagination (to avoid re-subscribing to everything else)
     // NOTE: where('classId') + orderBy('timestamp') requires a Firestore composite index.
@@ -425,7 +531,7 @@ export const DataProvider = ({ children }) => {
         }
     }, [currentUser, allMentorSettings]);
 
-    // Keep currentUser in sync with institutional data (mentors/students)
+    /*
     useEffect(() => {
         if (!currentUser) return;
         const source = currentUser.role === 'mentor' ? mentors : (currentUser.role === 'student' ? students : []);
@@ -442,6 +548,7 @@ export const DataProvider = ({ children }) => {
             }
         }
     }, [mentors, students, currentUser?.id]);
+    */
 
     // --- Helper Logic for Notifications (defined early for scope) ---
     const addNotification = async (notif) => {
@@ -1284,14 +1391,17 @@ export const DataProvider = ({ children }) => {
 
     // Log Entries
     const addLogEntry = async (entry) => {
-        const docRef = await addDoc(collection(db, 'logEntries'), { ...entry, timestamp: new Date().toISOString() });
+        const docRef = await addDoc(collection(db, 'logEntries'), { 
+            ...entry, 
+            completionStatus: entry.completionStatus || 'fully', // Default to fully for backward compatibility/simplicity
+            timestamp: new Date().toISOString() 
+        });
         
-        // Update Syllabus Status
-        if (entry.classId && entry.subjectId && entry.chapter) {
+        // Update Syllabus Status only if fully completed
+        if (entry.classId && entry.subjectId && entry.chapter && (entry.completionStatus === 'fully' || !entry.completionStatus)) {
             const statusId = `${entry.classId}_${entry.subjectId}`;
             const chapter = entry.chapter.trim();
             
-            // Get existing or create new
             const existing = syllabusStatuses.find(s => s.id === statusId);
             const completedChapters = existing ? [...(existing.completedChapters || [])] : [];
             
@@ -1308,26 +1418,60 @@ export const DataProvider = ({ children }) => {
     };
 
     const updateLogEntry = async (id, updates) => {
+        const log = logEntries.find(l => l.id === id);
         await updateDoc(doc(db, 'logEntries', id), updates);
-        // Note: For heavy editing, run syncSyllabusStatus from Admin.
+
+        // If completion status changed to fully, or chapter changed
+        if (updates.completionStatus || updates.chapter) {
+            const finalLog = { ...log, ...updates };
+            const statusId = `${finalLog.classId}_${finalLog.subjectId}`;
+            const chapter = finalLog.chapter.trim();
+            const existing = syllabusStatuses.find(s => s.id === statusId);
+            let completedChapters = existing ? [...(existing.completedChapters || [])] : [];
+
+            if (finalLog.completionStatus === 'fully') {
+                if (!completedChapters.includes(chapter)) {
+                    completedChapters.push(chapter);
+                    await setDoc(doc(db, 'syllabusStatus', statusId), {
+                        classId: finalLog.classId,
+                        subjectId: finalLog.subjectId,
+                        completedChapters
+                    }, { merge: true });
+                }
+            } else if (finalLog.completionStatus === 'partially') {
+                // If it was fully before and now it's partially, check if ANY OTHER log for this chapter is 'fully'
+                const otherFullLogs = logEntries.filter(l => 
+                    l.id !== id && 
+                    l.classId === finalLog.classId && 
+                    l.subjectId === finalLog.subjectId && 
+                    l.chapter.trim() === chapter && 
+                    l.completionStatus === 'fully'
+                );
+                if (otherFullLogs.length === 0) {
+                    completedChapters = completedChapters.filter(ch => ch !== chapter);
+                    await updateDoc(doc(db, 'syllabusStatus', statusId), { completedChapters });
+                }
+            }
+        }
     };
 
     const deleteLogEntry = async (id) => {
         const log = logEntries.find(l => l.id === id);
         await deleteDoc(doc(db, 'logEntries', id));
 
-        if (log && log.classId && log.subjectId && log.chapter) {
+        if (log && log.classId && log.subjectId && log.chapter && log.completionStatus === 'fully') {
             const chapter = log.chapter.trim();
-            // Check if any OTHER logs exist for this same chapter
+            // Check if any OTHER 'fully' logs exist for this same chapter
             const q = query(collection(db, 'logEntries'), 
                 where('classId', '==', log.classId), 
                 where('subjectId', '==', log.subjectId),
                 where('chapter', '==', log.chapter),
+                where('completionStatus', '==', 'fully'),
                 limit(1)
             );
             const snapshot = await getDocs(q);
             if (snapshot.empty) {
-                // No more logs for this chapter, remove it from syllabus status
+                // No more 'fully' logs for this chapter, remove it from syllabus status
                 const statusId = `${log.classId}_${log.subjectId}`;
                 const existing = syllabusStatuses.find(s => s.id === statusId);
                 if (existing) {
@@ -1565,6 +1709,69 @@ export const DataProvider = ({ children }) => {
         return { ...snapshot.docs[0].data(), id: snapshot.docs[0].id };
     };
 
+    const getHistoricalAttendanceStats = async (classId, year, month) => {
+        const firstDayOfCurrentMonth = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        
+        try {
+            // Attempt 1: Optimized query by classId (fastest, requires index)
+            const q = query(
+                collection(db, 'attendance'),
+                where('classId', '==', classId),
+                where('date', '<', firstDayOfCurrentMonth)
+            );
+            
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                return processHistoricalRecords(snapshot.docs.map(doc => doc.data()));
+            }
+            
+            // If empty, it might be because old records don't have classId. 
+            // Continue to fallback...
+        } catch (err) {
+            console.warn("Optimized history query failed (likely index):", err.message);
+        }
+
+        // Fallback: Query by student IDs (handles old records without classId and missing indexes)
+        const classStudentIds = students
+            .filter(s => s.classId === classId)
+            .map(s => s.id);
+
+        if (classStudentIds.length === 0) return { studentTotals: {}, totalWorkingDays: 0 };
+
+        // Process in batches of 30 (Firestore 'in' limit)
+        const allRecords = [];
+        for (let i = 0; i < classStudentIds.length; i += 30) {
+            const batchIds = classStudentIds.slice(i, i + 30);
+            const qBatch = query(
+                collection(db, 'attendance'),
+                where('studentId', 'in', batchIds)
+            );
+            const snap = await getDocs(qBatch);
+            allRecords.push(...snap.docs.map(d => d.data()));
+        }
+
+        // Filter by date in memory (bypasses index requirement)
+        const filteredRecords = allRecords.filter(r => r.date && r.date < firstDayOfCurrentMonth);
+        return processHistoricalRecords(filteredRecords);
+    };
+
+    const processHistoricalRecords = (records) => {
+        const studentTotals = {};
+        const uniqueDates = new Set();
+        
+        records.forEach(r => {
+            if (r.status === 'Present') {
+                studentTotals[r.studentId] = (studentTotals[r.studentId] || 0) + 1;
+            }
+            if (r.date) uniqueDates.add(r.date);
+        });
+        
+        return {
+            studentTotals,
+            totalWorkingDays: uniqueDates.size
+        };
+    };
+
     const value = {
         classes, addClass, updateClass, deleteClass, deleteClasses, transferStudentsAndBulkDeleteClass,
         students, addStudent, updateStudent, deleteStudent, deleteStudents, deleteAllStudents,
@@ -1591,6 +1798,10 @@ export const DataProvider = ({ children }) => {
         allStudentsLimit, setAllStudentsLimit, loadMoreAllStudents,
         allMentorsLimit, setAllMentorsLimit, loadMoreAllMentors,
         allClassesLimit, setAllClassesLimit, loadMoreAllClasses,
+        attendanceLimit, loadMoreAttendance,
+        resultsLimit, loadMoreResults,
+        activitiesLimit, loadMoreActivities,
+        getCount,
         totalCounts,
         allMentors,
         allClasses,
@@ -1601,6 +1812,25 @@ export const DataProvider = ({ children }) => {
         logEntries, addLogEntry, updateLogEntry, deleteLogEntry,
         logLimit, setLogLimit, loadMoreLogs,
         syllabusStatuses, syncSyllabusStatus,
+        getPrayerRecordsForMonth: async (studentId, monthStr) => {
+            try {
+                // Fetch all for student to avoid composite index requirement
+                const q = query(
+                    collection(db, 'prayerRecords'),
+                    where('studentId', '==', studentId)
+                );
+                const snap = await getDocs(q);
+                const all = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+                
+                // Filter by month in JS
+                const start = `${monthStr}-01`;
+                const end = `${monthStr}-31`;
+                return all.filter(r => r.date >= start && r.date <= end);
+            } catch (error) {
+                console.error("[DataContext] Error fetching monthly prayer records:", error);
+                return [];
+            }
+        },
         prayerRecords, addPrayerRecord, getPrayerRecordsByStudent, deletePrayerRecordsForStudents,
         leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests,
 
@@ -1671,6 +1901,8 @@ export const DataProvider = ({ children }) => {
 
         resetData,
         isDataLoaded,
+        requireFeature,
+        getHistoricalAttendanceStats,
 
         // Special Prayers
         specialPrayers,
@@ -1720,6 +1952,18 @@ export const DataProvider = ({ children }) => {
         evaluationSubmissions,
         submitEvaluationResponse: async (response) => await addDoc(collection(db, 'evaluationSubmissions'), { ...response, submittedAt: new Date().toISOString() }),
 
+        // Student Evaluation Templates
+        studentEvaluationTemplates,
+        createStudentEvaluationTemplate: async (template) => await addDoc(collection(db, 'studentEvaluationTemplates'), { ...template, createdAt: new Date().toISOString() }),
+        updateStudentEvaluationTemplate: async (id, data) => await updateDoc(doc(db, 'studentEvaluationTemplates', id), data),
+        deleteStudentEvaluationTemplate: async (id) => await deleteDoc(doc(db, 'studentEvaluationTemplates', id)),
+
+        // Parent Feedback Templates
+        parentFeedbackTemplates,
+        createParentFeedbackTemplate: async (template) => await addDoc(collection(db, 'parentFeedbackTemplates'), { ...template, createdAt: new Date().toISOString() }),
+        updateParentFeedbackTemplate: async (id, data) => await updateDoc(doc(db, 'parentFeedbackTemplates', id), data),
+        deleteParentFeedbackTemplate: async (id) => await deleteDoc(doc(db, 'parentFeedbackTemplates', id)),
+
         // Mentor Performance Leaderboard
         leaderboardRules,
         leaderboardCompletions,
@@ -1758,6 +2002,21 @@ export const DataProvider = ({ children }) => {
         updateLeaderboardSettings: async (settings) => {
             await setDoc(doc(db, 'settings', 'leaderboard'), settings, { merge: true });
             setLeaderboardSettings(prev => ({ ...prev, ...settings }));
+        },
+
+        // Student Assessments & Parent Feedback
+        studentEvaluations,
+        addStudentEvaluation: async (evaluation) => await addDoc(collection(db, 'studentEvaluations'), { ...evaluation, createdAt: new Date().toISOString() }),
+        updateStudentEvaluation: async (id, data) => await updateDoc(doc(db, 'studentEvaluations', id), data),
+        deleteStudentEvaluation: async (id) => await deleteDoc(doc(db, 'studentEvaluations', id)),
+        
+        parentFeedbacks,
+        addParentFeedback: async (feedback) => await addDoc(collection(db, 'parentFeedbacks'), { ...feedback, submittedAt: new Date().toISOString() }),
+        deleteParentFeedback: async (id) => await deleteDoc(doc(db, 'parentFeedbacks', id)),
+
+        feedbackSettings,
+        updateFeedbackSettings: async (classId, settings) => {
+            await setDoc(doc(db, 'feedbackSettings', classId), { classId, ...settings }, { merge: true });
         },
     };
 

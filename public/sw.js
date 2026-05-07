@@ -1,5 +1,5 @@
-// Samastha E-Learning Service Worker (EMERGENCY REFRESH v79)
-const CACHE_NAME = 'samastha-v79';
+// Samastha E-Learning Service Worker (EMERGENCY REFRESH v83)
+const CACHE_NAME = 'samastha-v83';
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();

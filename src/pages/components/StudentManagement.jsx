@@ -4,13 +4,16 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
-import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown } from 'lucide-react';
+import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown, Eye } from 'lucide-react';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { clsx } from 'clsx';
 import { Modal } from '../../components/ui/Modal';
+import StudentPersonalDetailsModal from './StudentPersonalDetailsModal';
+import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { FileSpreadsheet, FileText } from 'lucide-react';
 
 const StudentManagement = () => {
     const { students, addStudent, deleteStudent, deleteStudents, classes, mentors, updateStudent, deleteAllStudents, institutionSettings, studentStatuses, updateStudentStatuses } = useData();
@@ -31,6 +34,7 @@ const StudentManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedStudentForDetails, setSelectedStudentForDetails] = useState(null);
     const [error, setError] = useState('');
     const [deleteConfig, setDeleteConfig] = useState({ isOpen: false, id: null, type: 'single' });
     const [warningConfig, setWarningConfig] = useState({ isOpen: false, message: '' }); // New state for warnings
@@ -402,8 +406,57 @@ const StudentManagement = () => {
         }
     };
 
+    const getExportData = () => {
+        return students.map(s => {
+            const studentClass = classes.find(c => c.id === s.classId);
+            return {
+                Name: s.name || '',
+                'Register No': s.registerNo || '',
+                UID: s.uid || '',
+                Gender: s.gender || '',
+                Class: studentClass ? `${studentClass.name} - ${studentClass.division}` : 'Unassigned',
+                Mentor: getMentorNameForStudent(s),
+                Status: s.status || '',
+                Email: s.email || '',
+                Phone: s.phone || '',
+                DOB: s.dob || '',
+                'Blood Group': s.bloodGroup || '',
+                Address: s.address || '',
+                'House Name': s.houseName || '',
+                'Post Office': s.postOffice || '',
+                'PIN Code': s.pinCode || '',
+                'Father Name': s.fatherName || '',
+                'Father Occupation': s.fatherOccupation || '',
+                'Mother Name': s.motherName || '',
+                'Parent Phone': s.parentPhone || '',
+                'Identification Mark': s.identificationMark || '',
+                'Device Used': s.deviceUsed || '',
+                'Internet': s.internetAvailability || ''
+            };
+        });
+    };
+
+    const handleExportExcel = () => {
+        exportToExcel(getExportData(), 'Students_Export');
+    };
+
+    const handleExportPDF = () => {
+        const data = getExportData();
+        const headers = ['Name', 'Reg No', 'Class', 'Gender', 'Phone', 'DOB', 'Father Name', 'House', 'Device'];
+        const body = data.map(d => [d.Name, d['Register No'], d.Class, d.Gender, d.Phone, d.DOB, d['Father Name'], d['House Name'], d['Device Used']]);
+        exportToPDF(body, headers, 'Students_Export', 'Students Directory');
+    };
+
     return (
         <div className="space-y-6 w-full animate-in fade-in duration-300">
+            <StudentPersonalDetailsModal
+                isOpen={!!selectedStudentForDetails}
+                onClose={() => setSelectedStudentForDetails(null)}
+                student={selectedStudentForDetails}
+                classes={classes}
+                mentors={mentors}
+            />
+
             <ConfirmationModal
                 isOpen={deleteConfig.isOpen}
                 onClose={() => setDeleteConfig({ isOpen: false, id: null, type: 'single' })}
@@ -571,6 +624,14 @@ const StudentManagement = () => {
                     >
                         <Settings className="w-4 h-4" />
                         <span className="hidden sm:inline">Statuses</span>
+                    </Button>
+                    <Button onClick={handleExportExcel} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-2" title="Export to Excel">
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span className="hidden sm:inline">Excel</span>
+                    </Button>
+                    <Button onClick={handleExportPDF} className="bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 flex items-center gap-2" title="Export to PDF">
+                        <FileText className="w-4 h-4" />
+                        <span className="hidden sm:inline">PDF</span>
                     </Button>
                     <Button
                         onClick={handleOpenModal}
@@ -834,6 +895,13 @@ const StudentManagement = () => {
 
                                                 <div className="flex items-center gap-2">
                                                     <button
+                                                        onClick={() => setSelectedStudentForDetails(student)}
+                                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                        title="View Personal Details"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleEdit(student)}
                                                         className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                                                         title="Edit Student"
@@ -911,6 +979,12 @@ const StudentManagement = () => {
                                                     onChange={(val) => handleTransfer(student.id, val)}
                                                 />
                                             </div>
+                                            <button
+                                                onClick={() => setSelectedStudentForDetails(student)}
+                                                className="text-gray-400 hover:text-indigo-600 p-1"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={() => handleEdit(student)}
                                                 className="text-indigo-600 p-1"

@@ -4,12 +4,12 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { ArrowLeft, Download, FileText, FileBarChart, CalendarDays, Clipboard, Users } from 'lucide-react';
 
-const EvaluationResponses = ({ form, onClose }) => {
-    const { evaluationSubmissions, mentors } = useData();
+const EvaluationResponses = ({ form, submissions: externalSubmissions, onClose }) => {
+    const { mentors } = useData();
     const [selectedSubmission, setSelectedSubmission] = useState(null);
     const [isBulkView, setIsBulkView] = useState(false);
 
-    const submissions = (evaluationSubmissions || []).filter(s => s.formId === form.id);
+    const submissions = externalSubmissions || [];
 
     const handleCopyText = (sub) => {
         const mentor = mentors.find(m => m.id === sub.mentorId);
@@ -62,13 +62,15 @@ const EvaluationResponses = ({ form, onClose }) => {
 
     const ResponseDetail = ({ sub, isBulk = false }) => {
         const mentor = mentors.find(m => m.id === sub.mentorId);
+        const submitterName = type === 'parent' ? (sub.parentName || 'Parent') : (type === 'student' ? sub.studentName : (mentor?.name || 'Unknown Mentor'));
+        
         return (
             <Card className={`p-6 bg-white ${isBulk ? 'mb-6 border border-gray-200 shadow-sm' : 'print:p-0 print:shadow-none print:border-none'}`}>
                 <div className="flex justify-between items-start mb-4 pb-3 border-b border-gray-200">
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 tracking-tight">{form.title}</h1>
-                        <p className="text-gray-500 text-xs font-medium">{form.month} {form.year} • {mentor?.name || 'Unknown Mentor'}</p>
-                        <p className="text-[10px] text-gray-400">Submitted: {new Date(sub.submittedAt).toLocaleString()}</p>
+                        <p className="text-gray-500 text-xs font-medium">{form.month} {form.year} • {submitterName}</p>
+                        <p className="text-[10px] text-gray-400">Submitted: {new Date(sub.submittedAt || sub.date).toLocaleString()}</p>
                     </div>
                     {!isBulk && (
                         <div className="flex items-center gap-2 print:hidden">
@@ -179,17 +181,20 @@ const EvaluationResponses = ({ form, onClose }) => {
                         submissions.map(sub => {
                             const mentor = mentors.find(m => m.id === sub.mentorId);
                             const isSelected = selectedSubmission?.id === sub.id;
+                            const displayName = type === 'parent' ? (sub.parentName || 'Parent') : (type === 'student' ? sub.studentName : (mentor?.name || 'Unknown Mentor'));
+                            
                             return (
                                 <div 
                                     key={sub.id} 
                                     onClick={() => { setSelectedSubmission(sub); setIsBulkView(false); }}
                                     className={`p-3 rounded-xl cursor-pointer transition-all border ${isSelected ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-gray-100 hover:border-indigo-100 hover:bg-gray-50'}`}
                                 >
-                                    <div className="font-bold text-gray-900 text-sm">{mentor?.name || 'Unknown Mentor'}</div>
+                                    <div className="font-bold text-gray-900 text-sm">{displayName}</div>
                                     <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                         <CalendarDays className="w-3 h-3" />
-                                        {new Date(sub.submittedAt).toLocaleDateString()}
+                                        {new Date(sub.submittedAt || sub.date).toLocaleDateString()}
                                     </div>
+                                    {type === 'parent' && <div className="text-[10px] text-indigo-500 font-bold uppercase mt-0.5">For: {sub.studentName}</div>}
                                 </div>
                             );
                         })

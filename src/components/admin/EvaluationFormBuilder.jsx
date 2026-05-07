@@ -14,13 +14,18 @@ const QUESTION_TYPES = [
     { value: 'file', label: 'File Attachment / Evidence' },
 ];
 
-const EvaluationFormBuilder = ({ initialData, onClose }) => {
-    const { createEvaluationForm, updateEvaluationForm } = useData();
-    const [title, setTitle] = useState(initialData?.title || 'New Evaluation Form');
+const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }) => {
+    const { 
+        createEvaluationForm, updateEvaluationForm,
+        createStudentEvaluationTemplate, updateStudentEvaluationTemplate,
+        createParentFeedbackTemplate, updateParentFeedbackTemplate
+    } = useData();
+
+    const [title, setTitle] = useState(initialData?.title || (templateType === 'student' ? 'New Student Evaluation' : templateType === 'parent' ? 'New Parent Feedback' : 'New Evaluation Form'));
     const [month, setMonth] = useState(initialData?.month || new Date().toLocaleString('default', { month: 'long' }));
     const [year, setYear] = useState(initialData?.year || new Date().getFullYear().toString());
     const [sections, setSections] = useState(initialData?.sections || [
-        { id: `sec_${Date.now()}`, title: 'Section 1', questions: [] }
+        { id: `sec_${Date.now()}`, title: 'General', questions: [] }
     ]);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -28,11 +33,18 @@ const EvaluationFormBuilder = ({ initialData, onClose }) => {
         setIsSaving(true);
         try {
             const formData = { title, month, year, sections, status: initialData?.status || 'Draft' };
-            if (initialData?.id) {
-                await updateEvaluationForm(initialData.id, formData);
+            
+            if (templateType === 'student') {
+                if (initialData?.id) await updateStudentEvaluationTemplate(initialData.id, formData);
+                else await createStudentEvaluationTemplate(formData);
+            } else if (templateType === 'parent') {
+                if (initialData?.id) await updateParentFeedbackTemplate(initialData.id, formData);
+                else await createParentFeedbackTemplate(formData);
             } else {
-                await createEvaluationForm(formData);
+                if (initialData?.id) await updateEvaluationForm(initialData.id, formData);
+                else await createEvaluationForm(formData);
             }
+            
             onClose();
         } finally {
             setIsSaving(false);
@@ -59,7 +71,8 @@ const EvaluationFormBuilder = ({ initialData, onClose }) => {
             type: 'radio',
             label: 'New Question',
             options: ['Option 1'],
-            required: true
+            required: true,
+            logic: null // { showIf: { questionId: '', value: '' } }
         };
         setSections(sections.map(s => {
             if (s.id === secId) return { ...s, questions: [...s.questions, newQuestion] };
@@ -91,6 +104,13 @@ const EvaluationFormBuilder = ({ initialData, onClose }) => {
             if (s.id === secId) return { ...s, questions: newOrder };
             return s;
         }));
+    };
+
+    // Get all previous questions for conditional logic
+    const getAllQuestions = () => {
+        const all = [];
+        sections.forEach(s => s.questions.forEach(q => all.push(q)));
+        return all;
     };
 
     return (
@@ -178,7 +198,7 @@ const EvaluationFormBuilder = ({ initialData, onClose }) => {
                                         </div>
 
                                         {/* Dynamic Question Config UI */}
-                                        <div className="pl-8 pr-4">
+                                        <div className="pl-8 pr-4 space-y-4">
                                             {(q.type === 'radio' || q.type === 'checkbox') && (
                                                 <div className="space-y-2">
                                                     {(q.options || []).map((opt, optIdx) => (
@@ -233,6 +253,41 @@ const EvaluationFormBuilder = ({ initialData, onClose }) => {
                                                     User input field will render here.
                                                 </div>
                                             )}
+
+                                            {/* Conditional Logic (Show If) */}
+                                            <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-100">
+                                                <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                                    <Settings2 className="w-3 h-3" /> Visibility Logic
+                                                </h5>
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="text-xs font-bold text-gray-500">Show this question if</span>
+                                                    <select 
+                                                        className="text-xs p-1 border rounded bg-white font-medium min-w-[150px]"
+                                                        value={q.logic?.showIf?.questionId || ''}
+                                                        onChange={e => updateQuestion(sec.id, q.id, { 
+                                                            logic: e.target.value ? { showIf: { questionId: e.target.value, value: q.logic?.showIf?.value || '' } } : null 
+                                                        })}
+                                                    >
+                                                        <option value="">(Always Show)</option>
+                                                        {getAllQuestions().filter(prevQ => prevQ.id !== q.id).map(prevQ => (
+                                                            <option key={prevQ.id} value={prevQ.id}>{prevQ.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    {q.logic?.showIf?.questionId && (
+                                                        <>
+                                                            <span className="text-xs font-bold text-gray-500">is</span>
+                                                            <input 
+                                                                placeholder="Value (e.g. Yes)"
+                                                                className="text-xs p-1 border rounded bg-white font-medium w-32"
+                                                                value={q.logic?.showIf?.value || ''}
+                                                                onChange={e => updateQuestion(sec.id, q.id, { 
+                                                                    logic: { showIf: { ...q.logic.showIf, value: e.target.value } } 
+                                                                })}
+                                                            />
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="mt-6 flex justify-end items-center gap-4 border-t border-gray-100 pt-4">
@@ -274,7 +329,7 @@ const EvaluationFormBuilder = ({ initialData, onClose }) => {
 
                 <div className="flex justify-center pb-20">
                     <Button variant="secondary" onClick={addSection} className="gap-2 shadow-sm border border-gray-300 bg-white">
-                        <Layers className="w-4 h-4" /> {/* Fallback icon, replacing Layers with Plus since Layers wasn't imported */}
+                        <Layers className="w-4 h-4" />
                         Add New Section
                     </Button>
                 </div>

@@ -29,6 +29,7 @@ import MentorTasks from '../components/mentor/MentorTasks';
 import MentorAdmissionRequest from '../components/mentor/MentorAdmissionRequest';
 import MentorNotifications from '../components/mentor/MentorNotifications';
 import MentorEvaluations from '../components/mentor/MentorEvaluations';
+import StudentAssessment from '../components/mentor/StudentAssessment';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { MENTOR_NAV_ITEMS } from '../config/mentorNavItems';
 import { useData } from '../contexts/DataContext';
@@ -250,7 +251,7 @@ const DashboardHome = () => {
 
 const MentorDashboard = () => {
     const location = useLocation();
-    const { logout, currentUser, leaveRequests, unreadChats, stopImpersonating, classes, notifications, mentorSettings, mentorTasks, substitutionRequests, evaluationForms, evaluationSubmissions, mentorFeatureFlags } = useData();
+    const { logout, currentUser, leaveRequests, unreadChats, stopImpersonating, classes, notifications, mentorSettings, mentorTasks, substitutionRequests, evaluationForms, evaluationSubmissions, mentorFeatureFlags, requireFeature } = useData();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [showLogoutModal, setShowLogoutModal] = React.useState(false);
 
@@ -263,6 +264,10 @@ const MentorDashboard = () => {
             window.location.href = '/mentor';
         }
     };
+
+    React.useEffect(() => {
+        return requireFeature('leave');
+    }, [requireFeature]);
 
     const pendingLeaves = (leaveRequests || []).filter(r =>
         r.status === 'Pending' && currentUser?.assignedClassIds?.includes(r.classId)
@@ -527,6 +532,7 @@ const MentorDashboard = () => {
                         <Route path="/" element={<DashboardHome />} />
                         <Route path="/record" element={<AttendanceRecorder />} />
                         <Route path="/tasks" element={<MentorTasks />} />
+                        <Route path="/assessment" element={<StudentAssessment />} />
                         <Route path="/evaluations" element={<MentorEvaluations />} />
                         <Route path="/leaves" element={<MentorLeaveRequests />} />
                         <Route path="/chat" element={<MentorChat />} />

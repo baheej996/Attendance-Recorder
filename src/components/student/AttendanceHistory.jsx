@@ -1,12 +1,40 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Calendar, CheckCircle, XCircle, Clock, ChevronRight, TrendingUp, AlertCircle } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
+import { where } from 'firebase/firestore';
 
 const AttendanceHistory = () => {
-    const { currentUser, attendance, notifications, markNotificationAsRead } = useData();
+    const { 
+        currentUser, attendance, notifications, markNotificationAsRead, 
+        requireFeature, getCount, attendanceLimit, loadMoreAttendance 
+    } = useData();
     
+    const [trueStats, setTrueStats] = useState({ total: 0, present: 0, loading: true });
+    const [displayLimit, setDisplayLimit] = useState(10);
+
+    // Request heavy dataset
+    useEffect(() => {
+        return requireFeature('attendance');
+    }, [requireFeature]);
+
+    // Fetch True Totals for Summary Cards
+    useEffect(() => {
+        const fetchTrueStats = async () => {
+            if (!currentUser?.id) return;
+            try {
+                const total = await getCount('attendance', where('studentId', '==', currentUser.id));
+                const present = await getCount('attendance', where('studentId', '==', currentUser.id), where('status', '==', 'Present'));
+                setTrueStats({ total, present, loading: false });
+            } catch (err) {
+                console.error("Failed to fetch true stats:", err);
+                setTrueStats(prev => ({ ...prev, loading: false }));
+            }
+        };
+        fetchTrueStats();
+    }, [currentUser, getCount]);
+
     // Auto-mark notifications as read when viewing this page
     useEffect(() => {
         if (!currentUser?.id || !notifications) return;
@@ -19,7 +47,6 @@ const AttendanceHistory = () => {
         unreadAttendanceNotifs.forEach(n => markNotificationAsRead(n.id, currentUser.id));
     }, [notifications, currentUser, markNotificationAsRead]);
 
-    // 1. Filter student-specific attendance
     const studentAttendance = useMemo(() => {
         if (!currentUser?.id) return [];
         return (attendance || [])
@@ -27,20 +54,39 @@ const AttendanceHistory = () => {
             .sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [attendance, currentUser]);
 
-    // 2. Summary stats
+    // Apply the display limit
+    const visibleAttendance = useMemo(() => {
+        return studentAttendance.slice(0, displayLimit);
+    }, [studentAttendance, displayLimit]);
+
+    // 2. Summary stats (Using true totals from Firestore with robust fallback)
     const stats = useMemo(() => {
-        const total = studentAttendance.length;
-        const present = studentAttendance.filter(r => r.status === 'Present').length;
+        let total = trueStats.total;
+        let present = trueStats.present;
+
+        // Fallback: If Firestore getCount failed (e.g. missing composite index) but we have local data
+        if (total === 0 && studentAttendance.length > 0) {
+            total = studentAttendance.length;
+            present = studentAttendance.filter(r => r.status === 'Present').length;
+        } else if (present === 0 && studentAttendance.some(r => r.status === 'Present')) {
+            // If only the composite query failed (present count is 0 but we locally see presents)
+            // We use local data. If there's unloaded data, it's an estimation until the index is created.
+            present = studentAttendance.filter(r => r.status === 'Present').length;
+            // Adjust total to local if we are forced to use local present to keep percentages sane
+            if (total > studentAttendance.length) {
+                total = studentAttendance.length;
+            }
+        }
+
         const absent = total - present;
         const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
         
         return { total, present, absent, percentage };
-    }, [studentAttendance]);
+    }, [trueStats, studentAttendance]);
 
-    // 3. Group by Month
     const groupedAttendance = useMemo(() => {
         const groups = {};
-        studentAttendance.forEach(record => {
+        visibleAttendance.forEach(record => {
             const date = new Date(record.date);
             const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
             if (!groups[monthYear]) {
@@ -49,7 +95,15 @@ const AttendanceHistory = () => {
             groups[monthYear].push(record);
         });
         return Object.entries(groups);
-    }, [studentAttendance]);
+    }, [visibleAttendance]);
+
+    const handleLoadMore = () => {
+        setDisplayLimit(prev => prev + 10);
+        // Also call DataContext's loadMore if we are near the end of the fetched data
+        if (displayLimit + 10 >= attendance.length) {
+            loadMoreAttendance();
+        }
+    };
 
     if (!currentUser) return null;
 
@@ -190,6 +244,22 @@ const AttendanceHistory = () => {
                     ))
                 )}
             </div>
+
+            {/* Pagination Button */}
+            {stats.total > visibleAttendance.length && (
+                <div className="flex justify-center pt-4">
+                    <button
+                        onClick={handleLoadMore}
+                        className="px-8 py-3 bg-white border-2 border-indigo-100 text-indigo-600 font-black rounded-2xl hover:bg-indigo-50 hover:border-indigo-200 transition-all active:scale-95 shadow-sm flex items-center gap-2"
+                    >
+                        <Clock className="w-5 h-5" />
+                        Load More History
+                        <span className="text-[10px] bg-indigo-100 px-2 py-0.5 rounded-full ml-1">
+                            {visibleAttendance.length} of {stats.total}
+                        </span>
+                    </button>
+                </div>
+            )}
 
             {/* Tips / Info */}
             {stats.total > 0 && (
