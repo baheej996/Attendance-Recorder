@@ -61,6 +61,7 @@ const StudentLeave = () => {
             } else {
                 await addLeaveRequest({
                     studentId: currentUser.id,
+                    studentName: currentUser.name,
                     classId: currentUser.classId,
                     startDate: formData.startDate,
                     endDate: formData.endDate,

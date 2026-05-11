@@ -114,8 +114,10 @@ const ClassSubstitution = () => {
         try {
             const requestPayload = {
                 requesterId: currentUser.id,
+                requesterName: currentUser.name,
                 substituteId: targetMentorId,
                 classId: selectedClassId,
+                className: helperGetClassName(selectedClassId),
                 date,
                 portion,
                 notes,

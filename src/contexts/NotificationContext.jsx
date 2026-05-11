@@ -114,17 +114,17 @@ export const NotificationProvider = ({ children }) => {
 
             // Monitor Incoming Substitution Requests
             const newSubs = (substitutionRequests || []).filter(s => 
-                s.substituteMentorId === currentUser.id &&
+                s.substituteId === currentUser.id &&
                 s.status === 'Pending Substitute Approval' &&
                 new Date(s.createdAt) > mountTime.current &&
                 !notifiedIds.current.has(s.id)
             );
 
             newSubs.forEach(sub => {
-                const requester = mentors?.find(m => m.id === sub.requesterId);
-                const cls = classes?.find(c => c.id === sub.classId);
+                const requesterName = sub.requesterName || mentors?.find(m => m.id === sub.requesterId)?.name || 'Mentor';
+                const className = sub.className || classes?.find(c => c.id === sub.classId)?.name || 'Class';
                 showNotification("Substitution Request", {
-                    body: `New request from ${requester?.name || 'Mentor'} for ${cls ? (cls.name + '-' + cls.division) : 'Class'}`,
+                    body: `New request from ${requesterName} for ${className}`,
                     url: '/mentor/substitution'
                 });
                 notifiedIds.current.add(sub.id);
@@ -138,9 +138,9 @@ export const NotificationProvider = ({ children }) => {
             );
 
             newLeaves.forEach(leave => {
-                const student = students?.find(s => s.id === leave.studentId);
+                const studentName = leave.studentName || students?.find(s => s.id === leave.studentId)?.name || 'A student';
                 showNotification("New Leave Request", {
-                    body: `${student?.name || 'A student'} applied for leave`,
+                    body: `${studentName || 'A student'} applied for leave`,
                     url: '/mentor/leaves'
                 });
                 notifiedIds.current.add(leave.id);
@@ -156,9 +156,9 @@ export const NotificationProvider = ({ children }) => {
             );
 
             pendingSubs.forEach(sub => {
-                const cls = classes?.find(c => c.id === sub.classId);
+                const className = sub.className || classes?.find(c => c.id === sub.classId)?.name || 'a class';
                 showNotification("Admin Action: Substitution", {
-                    body: `A substitution for ${cls ? (cls.name + '-' + cls.division) : 'a class'} needs approval.`,
+                    body: `A substitution for ${className} needs approval.`,
                     url: '/admin/substitutions'
                 });
                 notifiedIds.current.add(sub.id);
