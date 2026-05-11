@@ -421,6 +421,7 @@ const StarOfTheMonth = () => {
                                             <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.quran)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Quran</div>
                                         </div>
+                                    )}
                                     {config.dailyQuran !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
                                             <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.dailyQuran)}%</div>
