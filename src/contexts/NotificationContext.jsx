@@ -10,7 +10,10 @@ export const NotificationProvider = ({ children }) => {
         unreadChats, 
         mentorTasks, 
         substitutionRequests, 
-        leaveRequests 
+        leaveRequests,
+        classes,
+        mentors,
+        students
     } = useData();
     const { showAlert } = useUI();
     const [permission, setPermission] = useState(() => {
@@ -48,6 +51,8 @@ export const NotificationProvider = ({ children }) => {
                 const n = new window.Notification(title, {
                     icon: '/favicon.png',
                     badge: '/favicon.png',
+                    tag: 'samastha-notif',
+                    renotify: true,
                     ...options
                 });
                 
@@ -116,8 +121,10 @@ export const NotificationProvider = ({ children }) => {
             );
 
             newSubs.forEach(sub => {
+                const requester = mentors?.find(m => m.id === sub.requesterId);
+                const cls = classes?.find(c => c.id === sub.classId);
                 showNotification("Substitution Request", {
-                    body: `New request from ${sub.requesterName} for ${sub.className}`,
+                    body: `New request from ${requester?.name || 'Mentor'} for ${cls ? (cls.name + '-' + cls.division) : 'Class'}`,
                     url: '/mentor/substitution'
                 });
                 notifiedIds.current.add(sub.id);
@@ -131,8 +138,9 @@ export const NotificationProvider = ({ children }) => {
             );
 
             newLeaves.forEach(leave => {
+                const student = students?.find(s => s.id === leave.studentId);
                 showNotification("New Leave Request", {
-                    body: `${leave.studentName} applied for leave`,
+                    body: `${student?.name || 'A student'} applied for leave`,
                     url: '/mentor/leaves'
                 });
                 notifiedIds.current.add(leave.id);
@@ -148,15 +156,16 @@ export const NotificationProvider = ({ children }) => {
             );
 
             pendingSubs.forEach(sub => {
+                const cls = classes?.find(c => c.id === sub.classId);
                 showNotification("Admin Action: Substitution", {
-                    body: `A substitution for ${sub.className} needs approval.`,
+                    body: `A substitution for ${cls ? (cls.name + '-' + cls.division) : 'a class'} needs approval.`,
                     url: '/admin/substitutions'
                 });
                 notifiedIds.current.add(sub.id);
             });
         }
 
-    }, [unreadChats, mentorTasks, substitutionRequests, leaveRequests, currentUser, permission]);
+    }, [unreadChats, mentorTasks, substitutionRequests, leaveRequests, currentUser, permission, classes, mentors, students]);
 
     return (
         <NotificationContext.Provider value={{ permission, requestPermission, showNotification }}>

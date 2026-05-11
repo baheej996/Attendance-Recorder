@@ -59,7 +59,7 @@ exports.sendPushNotification = onDocumentCreated("notifications/{notificationId}
         const payload = {
             notification: {
                 title: title || "New Notification",
-                body: message || "You have a new update in Attendance Recorder.",
+                body: message || "You have a new update in Samastha E-Learning.",
             },
             data: {
                 click_action: "FLUTTER_NOTIFICATION_CLICK", // for mobile if needed

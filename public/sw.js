@@ -30,13 +30,15 @@ self.addEventListener('fetch', (event) => {
 // Logic for showing notifications in the background
 self.addEventListener('push', (event) => {
     const data = event.data?.json() || {};
-    const title = data.title || "Samastha Notification";
+    const title = data.title || "Samastha E-Learning";
     const options = {
-        body: data.body || "New update available.",
+        body: data.body || "You have a new update from Samastha.",
         icon: "/favicon.png",
         badge: "/favicon.png",
         data: data.url || "/",
-        vibrate: [100, 50, 100]
+        vibrate: [100, 50, 100],
+        tag: 'samastha-push',
+        renotify: true
     };
     event.waitUntil(self.registration.showNotification(title, options));
 });

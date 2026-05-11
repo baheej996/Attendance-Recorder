@@ -15,10 +15,13 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
-    const notificationTitle = payload.notification.title;
+    const notificationTitle = payload.notification?.title || "Samastha E-Learning";
     const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/logo192.png'
+        body: payload.notification?.body || "New update available.",
+        icon: '/favicon.png',
+        badge: '/favicon.png',
+        tag: 'samastha-fcm',
+        renotify: true
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);
