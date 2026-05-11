@@ -337,7 +337,7 @@ export const DataProvider = ({ children }) => {
             if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('studentId', '==', uid), limit(resultsLimit)));
             if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('studentId', '==', uid)));
             if (activeFeatures.has('quran')) unsubs.push(
-                subscribe('quranRecitations', setQuranRecitations, where('studentId', '==', uid)),
+                subscribe('quranRecitations', setQuranRecitations, where('classId', '==', cid)),
                 subscribe('quranProgress', setQuranProgress, where('studentId', '==', uid))
             );
             if (activeFeatures.has('activities')) unsubs.push(

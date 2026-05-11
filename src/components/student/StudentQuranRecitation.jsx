@@ -5,9 +5,14 @@ import { BookOpen, Calendar, Trophy, CheckCircle, Clock, Award } from 'lucide-re
 import { clsx } from 'clsx';
 
 const StudentQuranRecitation = () => {
-    const { currentUser, quranRecitations = [], students = [] } = useData();
+    const { currentUser, quranRecitations = [], students = [], requireFeature } = useData();
     const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'leaderboard'
     const [rankingTimeframe, setRankingTimeframe] = useState('current-month'); // 'current-month' | 'all-time'
+
+    React.useEffect(() => {
+        if (requireFeature) return requireFeature('quran');
+    }, [requireFeature]);
+
 
     // Status logic for Today
     const todayStr = new Date().toISOString().split('T')[0];
