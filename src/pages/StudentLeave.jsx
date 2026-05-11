@@ -23,10 +23,15 @@ const StudentLeave = () => {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Pagination State
+    const [visibleCount, setVisibleCount] = useState(3);
+
     // Filter requests for current student
     const myRequests = leaveRequests
         .filter(r => r.studentId === currentUser.id)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    const displayedRequests = myRequests.slice(0, visibleCount);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -225,65 +230,81 @@ const StudentLeave = () => {
                         <p className="text-gray-400 text-xs font-medium mt-1">You haven't requested any leave yet.</p>
                     </div>
                 ) : (
-                    myRequests.map(req => (
-                        <Card key={req.id} className="p-5 overflow-hidden rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 bg-white">
-                            <div className="space-y-4">
-                                <div className="flex items-start justify-between">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="font-black text-gray-900 leading-tight">{req.type}</h4>
-                                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                                                {differenceInDays(new Date(req.endDate), new Date(req.startDate)) + 1} Days
-                                            </span>
+                    <>
+                        <div className="space-y-4">
+                            {displayedRequests.map(req => (
+                                <Card key={req.id} className="p-5 overflow-hidden rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 bg-white">
+                                    <div className="space-y-4">
+                                        <div className="flex items-start justify-between">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-black text-gray-900 leading-tight">{req.type}</h4>
+                                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                                                        {differenceInDays(new Date(req.endDate), new Date(req.startDate)) + 1} Days
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs font-medium text-gray-500 line-clamp-2 leading-relaxed">{req.reason}</p>
+                                            </div>
+                                            <div className="shrink-0">
+                                                {getStatusBadge(req.status)}
+                                            </div>
                                         </div>
-                                        <p className="text-xs font-medium text-gray-500 line-clamp-2 leading-relaxed">{req.reason}</p>
-                                    </div>
-                                    <div className="shrink-0">
-                                        {getStatusBadge(req.status)}
-                                    </div>
-                                </div>
 
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 border-y border-gray-50">
-                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                        <Calendar className="w-3.5 h-3.5" />
-                                        {format(new Date(req.startDate), 'MMM d')} - {format(new Date(req.endDate), 'MMM d')}
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                        <Clock className="w-3.5 h-3.5" />
-                                        Applied {format(new Date(req.createdAt), 'MMM d')}
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between gap-4">
-                                    {req.status === 'Pending' ? (
-                                        <div className="flex gap-2 w-full md:w-auto">
-                                            <button
-                                                onClick={() => handleEdit(req)}
-                                                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-50 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 active:scale-95 transition-all border border-gray-100"
-                                            >
-                                                <Edit2 className="w-3 h-3" /> Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(req.id)}
-                                                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 active:scale-95 transition-all border border-red-100"
-                                            >
-                                                <Trash2 className="w-3 h-3" /> Delete
-                                            </button>
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 border-y border-gray-50">
+                                            <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                {format(new Date(req.startDate), 'MMM d')} - {format(new Date(req.endDate), 'MMM d')}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                <Clock className="w-3.5 h-3.5" />
+                                                Applied {format(new Date(req.createdAt), 'MMM d')}
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="flex-1">
-                                            {req.comment && (
-                                                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-1">Mentor Remark</p>
-                                                    <p className="text-xs font-medium text-gray-600 leading-relaxed italic">"{req.comment}"</p>
+
+                                        <div className="flex items-center justify-between gap-4">
+                                            {req.status === 'Pending' ? (
+                                                <div className="flex gap-2 w-full md:w-auto">
+                                                    <button
+                                                        onClick={() => handleEdit(req)}
+                                                        className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-50 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 active:scale-95 transition-all border border-gray-100"
+                                                    >
+                                                        <Edit2 className="w-3 h-3" /> Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(req.id)}
+                                                        className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 active:scale-95 transition-all border border-red-100"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" /> Delete
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex-1">
+                                                    {req.comment && (
+                                                        <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                                                            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-1">Mentor Remark</p>
+                                                            <p className="text-xs font-medium text-gray-600 leading-relaxed italic">"{req.comment}"</p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+
+                        {visibleCount < myRequests.length && (
+                            <div className="pt-4 flex justify-center">
+                                <Button 
+                                    variant="secondary" 
+                                    onClick={() => setVisibleCount(prev => prev + 5)}
+                                    className="rounded-2xl font-black text-[10px] uppercase tracking-widest px-8 py-3 border-gray-100 hover:bg-gray-50 text-gray-500"
+                                >
+                                    Load More History
+                                </Button>
                             </div>
-                        </Card>
-                    ))
+                        )}
+                    </>
                 )}
             </div>
             {/* Delete Confirmation Modal */}
