@@ -25,19 +25,25 @@ export const StarCard = ({ data }) => {
                 <h2 className="text-lg font-bold truncate w-full">{studentName}</h2>
                 <p className="text-indigo-100 text-xs mb-3">{className} • {month} {year}</p>
 
-                <div className="grid grid-cols-3 gap-1 w-full">
-                    <div className="bg-white/10 rounded-lg p-1.5 backdrop-blur-sm">
-                        <div className="text-sm font-bold">{Math.round(scores.attendance)}%</div>
-                        <div className="text-[8px] uppercase tracking-wider opacity-75">Attd.</div>
-                    </div>
-                    <div className="bg-white/10 rounded-lg p-1.5 backdrop-blur-sm">
-                        <div className="text-sm font-bold">{Math.round(scores.activities)}%</div>
-                        <div className="text-[8px] uppercase tracking-wider opacity-75">Act.</div>
-                    </div>
-                    <div className="bg-white/10 rounded-lg p-1.5 backdrop-blur-sm">
-                        <div className="text-sm font-bold">{Math.round(scores.prayer)}%</div>
-                        <div className="text-[8px] uppercase tracking-wider opacity-75">Pray</div>
-                    </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 w-full">
+                    {Object.entries(scores).map(([key, value]) => {
+                        if (value === undefined || value === null) return null;
+                        const labels = {
+                            attendance: 'Attd.',
+                            activities: 'Act.',
+                            prayer: 'Pray',
+                            specialPrayer: 'S.Pray',
+                            fasting: 'Fast',
+                            quran: 'Quran',
+                            dailyQuran: 'D.Quran'
+                        };
+                        return (
+                            <div key={key} className="bg-white/10 rounded-lg p-1.5 backdrop-blur-sm">
+                                <div className="text-sm font-bold">{Math.round(value)}%</div>
+                                <div className="text-[8px] uppercase tracking-wider opacity-75">{labels[key] || key}</div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>

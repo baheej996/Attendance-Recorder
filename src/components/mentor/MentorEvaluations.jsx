@@ -13,17 +13,25 @@ const MentorEvaluations = () => {
     const userSubmissions = (evaluationSubmissions || []).filter(sub => sub.mentorId === currentUser?.id);
     const submittedFormIds = userSubmissions.map(sub => sub.formId);
 
+    const isFormVisible = (form) => {
+        if (!form.sharingType || form.sharingType === 'all') return true;
+        if (form.sharingType === 'individual') {
+            return (form.sharedMentorIds || []).includes(currentUser?.id);
+        }
+        return false;
+    };
+
     const pendingForms = useMemo(() => {
         return (evaluationForms || [])
-            .filter(f => f.status === 'Published' && !submittedFormIds.includes(f.id))
+            .filter(f => f.status === 'Published' && isFormVisible(f) && !submittedFormIds.includes(f.id))
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    }, [evaluationForms, submittedFormIds]);
+    }, [evaluationForms, submittedFormIds, currentUser?.id]);
 
     const completedForms = useMemo(() => {
         return (evaluationForms || [])
-            .filter(f => submittedFormIds.includes(f.id))
+            .filter(f => isFormVisible(f) && submittedFormIds.includes(f.id))
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    }, [evaluationForms, submittedFormIds]);
+    }, [evaluationForms, submittedFormIds, currentUser?.id]);
 
     if (selectedForm) {
         return (

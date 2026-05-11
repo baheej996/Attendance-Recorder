@@ -8,7 +8,7 @@ import { toPng } from 'html-to-image';
 import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StudentStarView = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, starDeclarations, starConfigs, mentors, requireFeature } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classes, institutionSettings, starDeclarations, starConfigs, mentors, requireFeature } = useData();
 
     // Request heavy datasets On-Demand
     React.useEffect(() => {
@@ -61,7 +61,7 @@ const StudentStarView = () => {
         // Determine if this class has a custom overriding config
         return calculateStudentStarScores({
             students, attendance, activities, activitySubmissions,
-            prayerRecords, specialPrayers, ramadanLogs, quranProgress,
+            prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations,
             classes, selectedClassId: currentUser.classId, mentorClassIds: [],
             selectedMonth, selectedYear, config: appliedConfig,
             isMentorView: false
@@ -69,7 +69,7 @@ const StudentStarView = () => {
 
     }, [
         students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers,
-        ramadanLogs, quranProgress, currentUser, selectedMonth, selectedYear, appliedConfig, classes
+        ramadanLogs, quranProgress, quranRecitations, currentUser, selectedMonth, selectedYear, appliedConfig, classes
     ]);
 
     const maxScore = results.length > 0 ? results[0].finalScore : 0;
@@ -179,6 +179,7 @@ const StudentStarView = () => {
                                     if (appliedConfig.specialPrayer) stats.push({ label: 'S. Pray', score: winnerScores?.specialPrayer || 0 });
                                     if (appliedConfig.fasting) stats.push({ label: 'Fast', score: winnerScores?.fasting || 0 });
                                     if (appliedConfig.quran) stats.push({ label: 'Quran', score: winnerScores?.quran || 0 });
+                                    if (appliedConfig.dailyQuran) stats.push({ label: 'D. Quran', score: winnerScores?.dailyQuran || 0 });
 
                                     // Dynamic safely mapped tailwind classes avoiding raw string interpolation for prod builds
                                     const gridClassMap = {

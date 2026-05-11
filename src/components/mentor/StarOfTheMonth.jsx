@@ -8,7 +8,7 @@ import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYe
 import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StarOfTheMonth = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig, requireFeature } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig, requireFeature } = useData();
     const navigate = useNavigate();
 
     // Request heavy datasets On-Demand
@@ -32,7 +32,7 @@ const StarOfTheMonth = () => {
     // Config State - Dynamic based on class selection
     const globalConfig = institutionSettings?.starConfig || {
         attendance: true, activities: true, prayer: true,
-        specialPrayer: true, fasting: true, quran: true,
+        specialPrayer: true, fasting: true, quran: true, dailyQuran: true,
     };
 
     const config = useMemo(() => {
@@ -68,7 +68,7 @@ const StarOfTheMonth = () => {
         // Check if there's a custom config for this specific class
         return calculateStudentStarScores({
             students, attendance, activities, activitySubmissions,
-            prayerRecords, specialPrayers, ramadanLogs, quranProgress,
+            prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations,
             classes, selectedClassId, mentorClassIds,
             selectedMonth, selectedYear, config,
             isMentorView: true
@@ -76,7 +76,7 @@ const StarOfTheMonth = () => {
 
     }, [
         students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers,
-        ramadanLogs, quranProgress, selectedClassId,
+        ramadanLogs, quranProgress, quranRecitations, selectedClassId,
         mentorClassIds, selectedMonth, selectedYear, config, classes
     ]);
 
@@ -158,7 +158,8 @@ const StarOfTheMonth = () => {
                 prayer: student.scores.prayer,
                 specialPrayer: student.scores.specialPrayer,
                 fasting: student.scores.fasting,
-                quran: student.scores.quran
+                quran: student.scores.quran,
+                dailyQuran: student.scores.dailyQuran
             },
             month: months[selectedMonth],
             year: selectedYear
@@ -302,6 +303,15 @@ const StarOfTheMonth = () => {
                                 className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
                             />
                         </label>
+                        <label className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                            <span className="font-medium text-gray-700">Daily Quran</span>
+                            <input
+                                type="checkbox"
+                                checked={config.dailyQuran !== false}
+                                onChange={(e) => setConfig(prev => ({ ...prev, dailyQuran: e.target.checked }))}
+                                className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                            />
+                        </label>
                     </div>
                 </div>
             )}
@@ -411,6 +421,11 @@ const StarOfTheMonth = () => {
                                             <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.quran)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Quran</div>
                                         </div>
+                                    {config.dailyQuran !== false && (
+                                        <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
+                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.dailyQuran)}%</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Daily Quran</div>
+                                        </div>
                                     )}
                                 </div>
 
@@ -452,6 +467,7 @@ const StarOfTheMonth = () => {
                                 {config.specialPrayer !== false && <th className="px-6 py-3 text-center">Spec. Pray</th>}
                                 {config.fasting !== false && <th className="px-6 py-3 text-center">Fasting</th>}
                                 {config.quran !== false && <th className="px-6 py-3 text-center">Quran</th>}
+                                {config.dailyQuran !== false && <th className="px-6 py-3 text-center">Daily Quran</th>}
                                 <th className="px-6 py-3 text-center">Overall Score</th>
                                 <th className="px-6 py-3 text-right">Action</th>
                             </tr>
@@ -506,6 +522,12 @@ const StarOfTheMonth = () => {
                                         <td className="px-6 py-4 text-center">
                                             <div className="font-medium">{Math.round(student.scores.quran)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.quranPages} Pages</div>
+                                        </td>
+                                    )}
+                                    {config.dailyQuran !== false && (
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="font-medium">{Math.round(student.scores.dailyQuran)}%</div>
+                                            <div className="text-xs text-gray-400">{student.scores.dailyQuranDays} Days</div>
                                         </td>
                                     )}
                                     <td className="px-6 py-4 text-center">

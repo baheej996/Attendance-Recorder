@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Save, X, Plus, Trash2, GripVertical, Settings2, FileText, CalendarDays, Layers, Copy } from 'lucide-react';
+import { Save, X, Plus, Trash2, GripVertical, Settings2, FileText, CalendarDays, Layers, Copy, Users, Globe } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 
 const QUESTION_TYPES = [
@@ -18,7 +18,8 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
     const { 
         createEvaluationForm, updateEvaluationForm,
         createStudentEvaluationTemplate, updateStudentEvaluationTemplate,
-        createParentFeedbackTemplate, updateParentFeedbackTemplate
+        createParentFeedbackTemplate, updateParentFeedbackTemplate,
+        mentors, currentUser
     } = useData();
 
     const [title, setTitle] = useState(initialData?.title || (templateType === 'student' ? 'New Student Evaluation' : templateType === 'parent' ? 'New Parent Feedback' : 'New Evaluation Form'));
@@ -27,12 +28,22 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
     const [sections, setSections] = useState(initialData?.sections || [
         { id: `sec_${Date.now()}`, title: 'General', questions: [] }
     ]);
+    const [sharingType, setSharingType] = useState(initialData?.sharingType || 'all'); // 'all' | 'individual'
+    const [sharedMentorIds, setSharedMentorIds] = useState(initialData?.sharedMentorIds || []);
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSave = async () => {
+        if (sharingType === 'individual' && sharedMentorIds.length === 0) {
+            alert("Please select at least one mentor for individual sharing.");
+            return;
+        }
         setIsSaving(true);
         try {
-            const formData = { title, month, year, sections, status: initialData?.status || 'Draft' };
+            const formData = { 
+                title, month, year, sections, 
+                sharingType, sharedMentorIds,
+                status: initialData?.status || 'Draft' 
+            };
             
             if (templateType === 'student') {
                 if (initialData?.id) await updateStudentEvaluationTemplate(initialData.id, formData);
@@ -166,6 +177,68 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
                         Save Form
                     </Button>
                 </div>
+            </div>
+
+            {/* Sharing Settings Panel */}
+            <div className="max-w-4xl mx-auto">
+                <Card className="p-4 bg-white border-indigo-100 shadow-sm">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-900">Sharing & Visibility</h3>
+                                <p className="text-xs text-gray-500">Who should see and fill this form?</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setSharingType('all')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sharingType === 'all' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}
+                            >
+                                <Globe className="w-4 h-4" />
+                                All Mentors
+                            </button>
+                            <button
+                                onClick={() => setSharingType('individual')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sharingType === 'individual' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}
+                            >
+                                <Users className="w-4 h-4" />
+                                Specific Mentors
+                            </button>
+                        </div>
+                    </div>
+
+                    {sharingType === 'individual' && (
+                        <div className="mt-4 pt-4 border-t border-gray-50">
+                            <div className="flex flex-wrap gap-2">
+                                {mentors.filter(m => m.id !== currentUser?.id).map(m => (
+                                    <button
+                                        key={m.id}
+                                        onClick={() => {
+                                            if (sharedMentorIds.includes(m.id)) {
+                                                setSharedMentorIds(sharedMentorIds.filter(id => id !== m.id));
+                                            } else {
+                                                setSharedMentorIds([...sharedMentorIds, m.id]);
+                                            }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 border ${sharedMentorIds.includes(m.id) ? 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-2 ring-indigo-500/20' : 'bg-gray-50 text-gray-400 border-gray-100 hover:border-gray-300'}`}
+                                    >
+                                        <div className={`w-1.5 h-1.5 rounded-full ${sharedMentorIds.includes(m.id) ? 'bg-indigo-600' : 'bg-gray-300'}`} />
+                                        {m.name}
+                                    </button>
+                                ))}
+                            </div>
+                            {sharedMentorIds.length === 0 && (
+                                <p className="text-[10px] text-amber-600 font-bold mt-2 flex items-center gap-1">
+                                    <Settings2 className="w-3 h-3" /> Please select at least one mentor.
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </Card>
             </div>
 
             {/* Sections Container */}

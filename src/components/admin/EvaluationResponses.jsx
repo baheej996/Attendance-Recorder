@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { ArrowLeft, Download, FileText, FileBarChart, CalendarDays, Clipboard, Users } from 'lucide-react';
 
-const EvaluationResponses = ({ form, submissions: externalSubmissions, onClose }) => {
+const EvaluationResponses = ({ type, form, submissions: externalSubmissions, onClose }) => {
     const { mentors } = useData();
     const [selectedSubmission, setSelectedSubmission] = useState(null);
     const [isBulkView, setIsBulkView] = useState(false);
@@ -45,7 +45,7 @@ const EvaluationResponses = ({ form, submissions: externalSubmissions, onClose }
             form.sections.forEach(sec => {
                 text += `\nSection: ${sec.title}\n`;
                 sec.questions.forEach(q => {
-                    const answer = sub.answers[q.id];
+                    const answer = sub.answers?.[q.id];
                     text += `Q: ${q.label}\nA: ${Array.isArray(answer) ? answer.join(', ') : (answer?.name || answer || 'No answer')}\n`;
                 });
             });
@@ -93,7 +93,7 @@ const EvaluationResponses = ({ form, submissions: externalSubmissions, onClose }
                             </h3>
                             <div className="space-y-3">
                                 {sec.questions.map(q => {
-                                    const answer = sub.answers[q.id];
+                                    const answer = sub.answers?.[q.id];
                                     return (
                                         <div key={q.id} className="text-sm leading-tight border-b border-gray-50 pb-2 last:border-0">
                                             <div className="font-bold text-gray-600 mb-1">{q.label}</div>

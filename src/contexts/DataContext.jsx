@@ -433,7 +433,16 @@ export const DataProvider = ({ children }) => {
             unsubs.push(
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', currentUser.id), where('isRead', '==', false)),
                 subscribe('mentorTasks', setMentorTasks, where('mentorId', '==', currentUser.id)),
-                subscribe('evaluationForms', setEvaluationForms),
+                // Filter evaluation forms: Show if (global visibility) OR (specifically shared) OR (created by current user)
+                subscribe('evaluationForms', (data) => {
+                    const filtered = data.filter(form => {
+                        if (form.sharingType === 'all') return true;
+                        if (form.creatorId === currentUser.id) return true;
+                        if (form.sharedMentorIds?.includes(currentUser.id)) return true;
+                        return false;
+                    });
+                    setEvaluationForms(filtered);
+                }),
                 subscribe('evaluationSubmissions', setEvaluationSubmissions, where('mentorId', '==', currentUser.id)),
                 subscribe('questionSuggestions', setQuestionSuggestions, where('receiverId', '==', currentUser.id)),
                 subscribe('notifications', setNotifications, orderBy('createdAt', 'desc'), limit(100)),
@@ -1945,7 +1954,11 @@ export const DataProvider = ({ children }) => {
 
         // Evaluations
         evaluationForms,
-        createEvaluationForm: async (form) => await addDoc(collection(db, 'evaluationForms'), { ...form, createdAt: new Date().toISOString() }),
+        createEvaluationForm: async (form) => await addDoc(collection(db, 'evaluationForms'), { 
+            ...form, 
+            creatorId: currentUser?.id || 'admin',
+            createdAt: new Date().toISOString() 
+        }),
         updateEvaluationForm: async (id, data) => await updateDoc(doc(db, 'evaluationForms', id), data),
         deleteEvaluationForm: async (id) => await deleteDoc(doc(db, 'evaluationForms', id)),
         

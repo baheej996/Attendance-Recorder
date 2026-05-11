@@ -9,6 +9,7 @@ export const calculateStudentStarScores = ({
     specialPrayers,
     ramadanLogs,
     quranProgress,
+    quranRecitations,
     classes,
     selectedClassId,
     mentorClassIds,
@@ -158,7 +159,7 @@ export const calculateStudentStarScores = ({
             fastingScore = Math.min((fastsCompleted / 30) * 100, 100);
         }
 
-        // --- Quran Score ---
+        // --- Quran Score (Khatm Progress) ---
         let quranScore = 0;
         let quranPages = 0;
         if (config.quran) {
@@ -173,6 +174,22 @@ export const calculateStudentStarScores = ({
             }
         }
 
+        // --- Daily Quran Score ---
+        let dailyQuranScore = 0;
+        let dailyQuranDays = 0;
+        if (config.dailyQuran) {
+            const studentDailyQuran = quranRecitations.filter(qr => 
+                qr.studentId === student.id &&
+                qr.status === 'Completed' &&
+                isSameMonth(new Date(qr.date), startDate) &&
+                isSameYear(new Date(qr.date), startDate)
+            );
+            // Unique days count
+            const uniqueDays = new Set(studentDailyQuran.map(qr => qr.date));
+            dailyQuranDays = uniqueDays.size;
+            dailyQuranScore = (dailyQuranDays / daysInMonth) * 100;
+        }
+
         // --- Overall Score ---
         let totalScore = 0;
         let divider = 0;
@@ -183,6 +200,7 @@ export const calculateStudentStarScores = ({
         if (config.specialPrayer) { totalScore += specialPrayerScore; divider++; }
         if (config.fasting) { totalScore += fastingScore; divider++; }
         if (config.quran) { totalScore += quranScore; divider++; }
+        if (config.dailyQuran) { totalScore += dailyQuranScore; divider++; }
 
         const finalScore = divider > 0 ? (totalScore / divider) : 0;
 
@@ -195,12 +213,14 @@ export const calculateStudentStarScores = ({
                 specialPrayer: specialPrayerScore,
                 fasting: fastingScore,
                 quran: quranScore,
+                dailyQuran: dailyQuranScore,
                 present: presentCount,
                 activitiesCompleted: completedCount,
                 prayersPerformed: prayersPerformed,
                 specialPrayersPerformed: specialPrayersPerformed,
                 fastsCompleted: fastsCompleted,
-                quranPages: quranPages
+                quranPages: quranPages,
+                dailyQuranDays: dailyQuranDays
             },
             finalScore,
             className: classes.find(c => c.id === classId)?.name || 'Unknown'

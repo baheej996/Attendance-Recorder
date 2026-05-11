@@ -16,7 +16,8 @@ import {
     HelpCircle,
     Send,
     Layout,
-    Info
+    Info,
+    CheckSquare
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -408,14 +409,70 @@ const FeedbackPortal = () => {
                                             <div className="space-y-4">
                                                 {section.questions.map(q => {
                                                     const answer = evaluation.responses[q.id];
-                                                    if (answer === undefined || answer === null || answer === '') return null;
+                                                    const hasAnswer = answer !== undefined && answer !== null && answer !== '';
                                                     
                                                     return (
                                                         <div key={q.id} className="bg-gray-50 rounded-2xl p-4 group hover:bg-indigo-50 transition-colors">
                                                             <p className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-1">{q.label}</p>
-                                                            <p className="text-sm font-black text-gray-900">
-                                                                {Array.isArray(answer) ? answer.join(', ') : answer}
-                                                            </p>
+                                                            
+                                                            {q.type === 'radio' || q.type === 'checkbox' ? (
+                                                                <div className="flex flex-wrap gap-3 mt-3">
+                                                                    {(q.options || []).map(opt => {
+                                                                        const isSelected = Array.isArray(answer) ? answer.includes(opt) : answer === opt;
+                                                                        return (
+                                                                            <div 
+                                                                                key={opt}
+                                                                                className={clsx(
+                                                                                    "px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 border-2",
+                                                                                    isSelected 
+                                                                                        ? "bg-indigo-600 text-white border-indigo-600 shadow-lg scale-105" 
+                                                                                        : "bg-white text-gray-400 border-gray-100 opacity-60"
+                                                                                )}
+                                                                            >
+                                                                                {isSelected && (q.type === 'checkbox' ? <CheckSquare className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />)}
+                                                                                {opt}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                    {!hasAnswer && <span className="text-xs text-gray-300 italic">No selection</span>}
+                                                                </div>
+                                                            ) : q.type === 'rating' ? (
+                                                                <div className="mt-4 space-y-3">
+                                                                    <div className="flex justify-between items-center px-1">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assessment Score</span>
+                                                                            <span className="text-lg font-black text-indigo-600">{answer || 0} <span className="text-xs text-gray-400">/ {q.max || 10}</span></span>
+                                                                        </div>
+                                                                        <div className="flex gap-1.5">
+                                                                            {[...Array(Number(q.max || 10))].map((_, i) => (
+                                                                                <div 
+                                                                                    key={i} 
+                                                                                    className={clsx(
+                                                                                        "w-2.5 h-6 rounded-md transition-all duration-500",
+                                                                                        (i + 1) <= Number(answer) ? "bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.3)]" : "bg-gray-200"
+                                                                                    )}
+                                                                                />
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-50">
+                                                                        <div 
+                                                                            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-1000 ease-out" 
+                                                                            style={{ width: `${(Number(answer) / Number(q.max || 10)) * 100}%` }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="mt-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                                                                    <p className="text-sm font-bold text-gray-900 leading-relaxed">
+                                                                        {!hasAnswer ? (
+                                                                            <span className="text-gray-300 italic font-medium">Not answered</span>
+                                                                        ) : (
+                                                                            Array.isArray(answer) ? answer.join(', ') : answer
+                                                                        )}
+                                                                    </p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     );
                                                 })}

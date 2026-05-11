@@ -47,7 +47,7 @@ const CountryStatsChart = ({ students }) => {
         
         students.forEach(student => {
             const country = student.livingCountry || student.country || 'Unknown';
-            if (country !== 'Unknown') {
+            if (country !== 'Unknown' && country !== 'test country' && country !== 'Test Country') {
                 countryCounts[country] = (countryCounts[country] || 0) + 1;
             }
         });
