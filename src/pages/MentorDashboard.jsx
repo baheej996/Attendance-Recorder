@@ -42,7 +42,9 @@ const DashboardHome = () => {
         currentUser?.assignedClassIds?.includes(c.id)
     );
 
-    const totalStudentsUnderMentor = (students || []).filter(s => 
+    const activeStudents = React.useMemo(() => (students || []).filter(s => s.status === 'Active'), [students]);
+
+    const totalStudentsUnderMentor = activeStudents.filter(s => 
         currentUser?.assignedClassIds?.includes(s.classId)
     ).length;
 
@@ -165,11 +167,11 @@ const DashboardHome = () => {
                                 {/* Student List Hover/Touch Tooltip */}
                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-40 sm:w-48 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-indigo-50 p-3 opacity-0 group-hover:opacity-100 group-active:opacity-100 pointer-events-none transition-all duration-300 z-50 origin-bottom group-hover:animate-[tooltip-up_0.3s_ease-out_forwards] group-active:animate-[tooltip-up_0.3s_ease-out_forwards]">
                                     <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2 border-b border-indigo-50 pb-1">
-                                        Students ({students.filter(s => s.classId === cls.id).length})
+                                        Students ({activeStudents.filter(s => s.classId === cls.id).length})
                                     </h5>
                                     <div className="max-h-32 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                                        {students.filter(s => s.classId === cls.id).length > 0 ? (
-                                            students.filter(s => s.classId === cls.id).map((student, sIdx) => (
+                                        {activeStudents.filter(s => s.classId === cls.id).length > 0 ? (
+                                            activeStudents.filter(s => s.classId === cls.id).map((student, sIdx) => (
                                                 <div 
                                                     key={student.id} 
                                                     className="text-[10px] font-bold text-gray-700 flex items-center gap-1.5 animate-[list-wiggle_0.4s_ease-in-out_infinite] px-1 hover:bg-indigo-50 rounded"

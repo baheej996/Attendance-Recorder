@@ -18,8 +18,7 @@ export const calculateStudentStarScores = ({
     config,
     isMentorView
 }) => {
-    // If mentor view, filter by assigned classes. Otherwise, student view already filters implicitly by passing just their class data if needed, but we'll re-filter to be safe.
-    let classStudents = students;
+    let classStudents = students.filter(s => s.status === 'Active');
 
     if (isMentorView && mentorClassIds) {
         classStudents = classStudents.filter(s => mentorClassIds.includes(s.classId));

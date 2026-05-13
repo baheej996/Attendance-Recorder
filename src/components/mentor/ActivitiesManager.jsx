@@ -213,7 +213,7 @@ const ActivitiesManager = () => {
         const assignedClass = classes.find(c => c.id === activity.classId);
         if (!assignedClass) return;
 
-        const classStudents = students.filter(s => s.classId === activity.classId);
+        const classStudents = students.filter(s => s.classId === activity.classId && s.status === 'Active');
 
         // Sort boys first, then girls, then alphabetically
         const sortedStudents = [...classStudents].sort((a, b) => {
@@ -317,7 +317,7 @@ const ActivitiesManager = () => {
             if (periodActivities.length === 0) continue; // Skip classes with no activities in this timeframe
 
             // 2. Fetch students and prepare stats
-            const classStudents = students.filter(s => s.classId === targetClass.id);
+            const classStudents = students.filter(s => s.classId === targetClass.id && s.status === 'Active');
             const sortedStudents = [...classStudents].sort((a, b) => {
                 if (a.gender === 'Boy' && b.gender !== 'Boy') return -1;
                 if (a.gender !== 'Boy' && b.gender === 'Boy') return 1;
@@ -607,7 +607,7 @@ const ActivitiesManager = () => {
     }, [subjects, classes, newActivity.classId]);
 
     const getClassStudentStats = (activity) => {
-        const classStudents = students.filter(s => s.classId === activity.classId);
+        const classStudents = students.filter(s => s.classId === activity.classId && s.status === 'Active');
         const submittedCount = classStudents.filter(s =>
             activitySubmissions.some(sub => sub.activityId === activity.id && sub.studentId === s.id && sub.status === 'Completed')
         ).length;

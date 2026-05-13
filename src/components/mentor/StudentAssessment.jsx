@@ -110,7 +110,7 @@ const StudentAssessment = () => {
     }, [studentEvaluationTemplates, selectedMonth, selectedYear, activeTab]);
 
     const filteredStudents = useMemo(() => {
-        let result = students.filter(s => s.classId === selectedClassId);
+        let result = students.filter(s => s.classId === selectedClassId && s.status === 'Active');
         if (searchQuery) {
             result = result.filter(s => s.name?.toLowerCase().includes(searchQuery.toLowerCase()));
         }

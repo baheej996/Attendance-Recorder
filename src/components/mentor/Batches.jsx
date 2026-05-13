@@ -36,6 +36,7 @@ const Batches = () => {
     const studentsByClass = useMemo(() => {
         const grouped = {};
         students.forEach(student => {
+            if (student.status !== 'Active') return;
             if (!grouped[student.classId]) {
                 grouped[student.classId] = [];
             }

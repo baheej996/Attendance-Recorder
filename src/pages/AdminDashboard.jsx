@@ -35,9 +35,11 @@ const DashboardHome = ({ onTabChange }) => {
     const { showAlert } = useUI();
     const [expandedBatches, setExpandedBatches] = useState({});
 
+    const activeStudents = React.useMemo(() => students.filter(s => s.status === 'Active'), [students]);
+
     const classStats = React.useMemo(() => {
         return classes.map(cls => {
-            const classStudents = students.filter(s => s.classId === cls.id);
+            const classStudents = activeStudents.filter(s => s.classId === cls.id);
             const boys = classStudents.filter(s => s.gender === 'Male').length;
             const girls = classStudents.filter(s => s.gender === 'Female').length;
             return {
@@ -51,7 +53,7 @@ const DashboardHome = ({ onTabChange }) => {
             if (nameCompare !== 0) return nameCompare;
             return a.division.localeCompare(b.division);
         });
-    }, [classes, students]);
+    }, [classes, activeStudents]);
 
     const groupedStats = React.useMemo(() => {
         const groups = {};
@@ -80,8 +82,8 @@ const DashboardHome = ({ onTabChange }) => {
         }));
     };
 
-    const totalBoys = students.filter(s => s.gender?.toLowerCase() === 'male').length;
-    const totalGirls = students.filter(s => s.gender?.toLowerCase() === 'female').length;
+    const totalBoys = activeStudents.filter(s => s.gender?.toLowerCase() === 'male').length;
+    const totalGirls = activeStudents.filter(s => s.gender?.toLowerCase() === 'female').length;
 
     return (
         <div className="w-full space-y-8 animate-in fade-in duration-300">
@@ -124,7 +126,7 @@ const DashboardHome = ({ onTabChange }) => {
                     </div>
                     <div>
                         <p className="text-sm text-gray-500 font-medium">Total Students</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{students.length}</h3>
+                        <h3 className="text-2xl font-bold text-gray-900">{activeStudents.length}</h3>
                     </div>
                 </Card>
                 <Card 
@@ -226,7 +228,7 @@ const DashboardHome = ({ onTabChange }) => {
             </div>
 
             <div className="w-full">
-                <CountryStatsChart students={students} />
+                <CountryStatsChart students={activeStudents} />
             </div>
         </div >
     );

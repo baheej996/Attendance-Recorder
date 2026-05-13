@@ -47,9 +47,10 @@ const MentorChat = () => {
     // Filter students belonging to mentor's classes
     const assignedClassIds = currentUser?.assignedClassIds || [];
     const myStudents = students.filter(s => {
+        const isActive = s.status === 'Active';
         const inAssignedClass = assignedClassIds.includes(s.classId);
         const matchesFilter = selectedFilter === 'All' || s.classId === selectedFilter;
-        return inAssignedClass && matchesFilter;
+        return isActive && inAssignedClass && matchesFilter;
     });
 
     // Helper IDs
