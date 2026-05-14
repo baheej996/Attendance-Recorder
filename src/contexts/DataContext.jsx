@@ -417,7 +417,12 @@ export const DataProvider = ({ children }) => {
                     subscribe('quranProgress', setQuranProgress, where('classId', 'in', assignedClassIds))
                 );
                 if (activeFeatures.has('activities')) unsubs.push(
-                    subscribe('activitySubmissions', setActivitySubmissions, limit(activitiesLimit)),
+                    // Scope to the mentor's assigned classes so the 500-doc cap can't hide a freshly
+                    // written submission (especially for older activities whose deterministic doc ID
+                    // would otherwise land outside the unscoped window).
+                    // Include '' to catch legacy submissions whose classId was written as empty
+                    // (mirrors the same pattern the student listener uses at line 344).
+                    subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', [...assignedClassIds, '']), limit(activitiesLimit)),
                     subscribe('studentResponses', setStudentResponses, where('classId', 'in', assignedClassIds), limit(resultsLimit))
                 );
                 if (activeFeatures.has('leave')) unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds)));

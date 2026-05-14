@@ -11,6 +11,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import StudentLoginPage from './pages/StudentLoginPage'; // Import StudentLoginPage
 
 import ErrorBoundary from './components/ErrorBoundary';
+import DebugPanel from './components/ui/DebugPanel';
 
 import { UIProvider } from './contexts/UIContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -21,6 +22,7 @@ import NotificationPrompt from './components/pwa/NotificationPrompt';
 function App() {
   return (
     <ErrorBoundary>
+      <DebugPanel />
       <DataProvider>
         <UIProvider>
           <NotificationProvider>
