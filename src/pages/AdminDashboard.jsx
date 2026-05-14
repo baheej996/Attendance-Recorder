@@ -262,7 +262,7 @@ const AdminDashboard = () => {
 
     const attentionClassesCount = React.useMemo(() => {
         return (classes || []).filter(cls => {
-            const studentCount = students.filter(s => s.classId === cls.id).length;
+            const studentCount = students.filter(s => s.classId === cls.id && s.status === 'Active').length;
             const mentorCount = mentors.filter(m => (m.assignedClassIds || []).includes(cls.id)).length;
             return studentCount === 0 || mentorCount === 0;
         }).length;

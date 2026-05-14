@@ -78,7 +78,7 @@ const AdminLiveClasses = () => {
             const mentorName = assignedMentors.length > 0 ? assignedMentors.map(m => m.name).join(', ') : 'Unassigned';
 
             // Get Student Count
-            const studentCount = students.filter(s => s.classId === cls.id).length;
+            const studentCount = students.filter(s => s.classId === cls.id && s.status === 'Active').length;
 
             return {
                 ...cls,

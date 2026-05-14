@@ -15,6 +15,20 @@
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
   <script>
+    // EMERGENCY CACHE BUSTER
+    if (!localStorage.getItem('cache_busted_v86')) {
+      localStorage.setItem('cache_busted_v86', 'true');
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+            names.forEach(name => {
+                caches.delete(name);
+            });
+        });
+      }
+      window.location.reload(true);
+    }
+  </script>
+  <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')

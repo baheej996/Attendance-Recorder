@@ -85,23 +85,25 @@ const InstitutionDirectory = () => {
 
     // 1. Students List
     const studentsList = useMemo(() => {
-        return allStudents.map(s => {
-            const cls = classMap[s.classId];
-            const mentor = getMentorForClass(s.classId);
-            return {
-                ...s,
-                className: cls ? `${cls.name} ${cls.division}` : 'Unassigned',
-                mentorName: mentor ? mentor.name : 'No Mentor',
-                mentorId: mentor?.id
-            };
-        });
+        return allStudents
+            .filter(s => s.status === 'Active')
+            .map(s => {
+                const cls = classMap[s.classId];
+                const mentor = getMentorForClass(s.classId);
+                return {
+                    ...s,
+                    className: cls ? `${cls.name} ${cls.division}` : 'Unassigned',
+                    mentorName: mentor ? mentor.name : 'No Mentor',
+                    mentorId: mentor?.id
+                };
+            });
     }, [allStudents, classMap, mentors]);
 
     // 2. Mentors List
     const mentorsList = useMemo(() => {
         return allMentors.map(m => {
             const assignedClasses = classes.filter(c => m.assignedClassIds?.includes(c.id));
-            const mentorStudents = allStudents.filter(s => m.assignedClassIds?.includes(s.classId));
+            const mentorStudents = allStudents.filter(s => m.assignedClassIds?.includes(s.classId) && s.status === 'Active');
             return {
                 ...m,
                 totalClasses: assignedClasses.length,
@@ -114,7 +116,7 @@ const InstitutionDirectory = () => {
     // 3. Classes List
     const classesList = useMemo(() => {
         return allClasses.map(c => {
-            const classStudents = allStudents.filter(s => s.classId === c.id);
+            const classStudents = allStudents.filter(s => s.classId === c.id && s.status === 'Active');
             const mentor = getMentorForClass(c.id);
             return {
                 ...c,
@@ -176,7 +178,7 @@ const InstitutionDirectory = () => {
     // --- Sub-View: Students for a specific class ---
     const selectedClassStudents = useMemo(() => {
         if (!selectedClassId) return [];
-        return allStudents.filter(s => s.classId === selectedClassId);
+        return allStudents.filter(s => s.classId === selectedClassId && s.status === 'Active');
     }, [selectedClassId, allStudents]);
 
     return (

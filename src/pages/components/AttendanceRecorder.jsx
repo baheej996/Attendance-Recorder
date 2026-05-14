@@ -109,7 +109,7 @@ const AttendanceRecorder = () => {
     const executeDelete = () => {
         if (confirmConfig.type === 'single') {
             const classStudentIds = students
-                .filter(s => s.classId === selectedClassId)
+                .filter(s => s.classId === selectedClassId && s.status === 'Active')
                 .map(s => s.id);
 
             deleteAttendanceBatch(date, classStudentIds);
@@ -135,7 +135,7 @@ const AttendanceRecorder = () => {
 
             // Execute Step 2
             const classStudentIds = students
-                .filter(s => s.classId === selectedClassId)
+                .filter(s => s.classId === selectedClassId && s.status === 'Active')
                 .map(s => s.id);
 
             deleteAllAttendanceForStudentIds(classStudentIds);

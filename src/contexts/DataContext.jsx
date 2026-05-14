@@ -280,7 +280,7 @@ export const DataProvider = ({ children }) => {
         // High-efficiency one-time count fetch (Costs 1 read per 1,000 docs)
         const fetchCounts = async () => {
             try {
-                const studentsSnap = await getCountFromServer(collection(db, 'students'));
+                const studentsSnap = await getCountFromServer(query(collection(db, 'students'), where('status', '==', 'Active')));
                 const mentorsSnap = await getCountFromServer(collection(db, 'mentors'));
                 const classesSnap = await getCountFromServer(collection(db, 'classes'));
                 
@@ -1340,45 +1340,60 @@ export const DataProvider = ({ children }) => {
     };
 
     const markActivityAsDone = async (activityId, studentId, points = 0, classId = null) => {
-        // Find existing submission (handle potential duplicates by taking the first one)
-        const existing = activitySubmissions.find(s => s.activityId === activityId && s.studentId === studentId);
-        
-        // Resolve Class ID: Priority: 1. Passed classId, 2. Activity's classId, 3. Student's classId, 4. Fallback
-        let targetClassId = classId;
-        if (!targetClassId) {
-            const act = activities.find(a => a.id === activityId);
-            targetClassId = act?.classId;
-        }
-        if (!targetClassId) {
-            const student = (students.length > 0 ? students : allStudents).find(s => s.id === studentId);
-            targetClassId = student?.classId || '';
-        }
+        try {
+            // Resolve Class ID: Priority: 1. Passed classId, 2. Activity's classId, 3. Student's classId, 4. Fallback
+            let targetClassId = classId;
+            if (!targetClassId) {
+                const act = activities.find(a => a.id === activityId);
+                targetClassId = act?.classId;
+            }
+            if (!targetClassId) {
+                const student = (students.length > 0 ? students : allStudents).find(s => s.id === studentId);
+                targetClassId = student?.classId || '';
+            }
 
-        const submissionData = { 
-            activityId, 
-            studentId, 
-            classId: targetClassId, 
-            status: 'Completed', 
-            points, 
-            timestamp: new Date().toISOString() 
-        };
+            const submissionData = { 
+                activityId, 
+                studentId, 
+                classId: targetClassId || '', 
+                status: 'Completed', 
+                points: points ?? 0, 
+                timestamp: new Date().toISOString() 
+            };
 
-        if (existing) {
-            await updateDoc(doc(db, 'activitySubmissions', existing.id), submissionData);
-        } else {
-            await addDoc(collection(db, 'activitySubmissions'), submissionData);
+            // Use deterministic ID to natively prevent any duplicate rapid-clicks
+            const docId = `${activityId}_${studentId}`;
+            await setDoc(doc(db, 'activitySubmissions', docId), submissionData, { merge: true });
+        } catch (error) {
+            console.error("Error in markActivityAsDone:", error);
+            alert("Failed to mark activity: " + error.message);
         }
     };
 
     const markActivityAsPending = async (activityId, studentId) => {
-        const duplicates = activitySubmissions.filter(s => s.activityId === activityId && s.studentId === studentId);
-        if (duplicates.length === 0) return;
+        try {
+            const batch = writeBatch(db);
+            const deterministicId = `${activityId}_${studentId}`;
+            const deletedIds = new Set();
 
-        const batch = writeBatch(db);
-        duplicates.forEach(docSnap => {
-            batch.delete(doc(db, 'activitySubmissions', docSnap.id));
-        });
-        await batch.commit();
+            // Delete the deterministic ID if it exists
+            batch.delete(doc(db, 'activitySubmissions', deterministicId));
+            deletedIds.add(deterministicId);
+
+            // Also delete any legacy duplicates that might exist in the database
+            const duplicates = activitySubmissions.filter(s => s.activityId === activityId && s.studentId === studentId);
+            duplicates.forEach(docSnap => {
+                if (!deletedIds.has(docSnap.id)) {
+                    batch.delete(doc(db, 'activitySubmissions', docSnap.id));
+                    deletedIds.add(docSnap.id);
+                }
+            });
+
+            await batch.commit();
+        } catch (error) {
+            console.error("Error in markActivityAsPending:", error);
+            alert("Failed to unmark activity: " + error.message);
+        }
     };
 
     const getStudentActivityPoints = (studentId, classId) => {
@@ -1387,12 +1402,17 @@ export const DataProvider = ({ children }) => {
             a => a.status === 'Active' && (!classId || a.classId === classId)
         );
         const activeActivityMap = new Map(activeActivities.map(a => [a.id, a]));
+        const processedActivityIds = new Set();
+
         return activitySubmissions
-            .filter(s =>
-                s.studentId === studentId &&
-                s.status === 'Completed' &&
-                activeActivityMap.has(s.activityId)
-            )
+            .filter(s => {
+                if (s.studentId === studentId && s.status === 'Completed' && activeActivityMap.has(s.activityId)) {
+                    if (processedActivityIds.has(s.activityId)) return false; // Deduplicate existing legacy submissions
+                    processedActivityIds.add(s.activityId);
+                    return true;
+                }
+                return false;
+            })
             // Always read current maxPoints from activity, not stale stored s.points
             .reduce((sum, s) => sum + (Number(activeActivityMap.get(s.activityId)?.maxPoints) || 0), 0);
     };

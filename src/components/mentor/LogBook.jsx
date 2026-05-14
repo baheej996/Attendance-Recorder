@@ -191,6 +191,7 @@ const LogBook = () => {
         const basePayload = {
             chapter: formData.chapter,
             heading: formData.heading,
+            remarks: formData.remarks,
             completionStatus: formData.completionStatus,
             mentorId: currentUser?.id,
             date
@@ -224,7 +225,7 @@ const LogBook = () => {
                 let sharedCount = 0;
                 for (const targetClassId of formData.sharedClassIds) {
                     const targetClass = classes.find(c => c.id === targetClassId);
-                    const matchingSubject = subjects.find(s => s.classId === targetClassId && s.name === selectedSubject.name);
+                    const matchingSubject = subjects.find(s => s.classId === targetClassId && s.name === selectedSubject?.name);
                     
                     if (targetClass && matchingSubject) {
                         await addLogEntry({
@@ -260,6 +261,7 @@ const LogBook = () => {
         setFormData({
             chapter: log.chapter,
             heading: log.heading || '',
+            remarks: log.remarks || '',
             completionStatus: log.completionStatus || 'fully',
             sharedClassIds: []
         });
@@ -583,6 +585,11 @@ const LogBook = () => {
                                                         {new Date(log.timestamp).toLocaleDateString()}
                                                     </span>
                                                 </div>
+                                                {log.remarks && (
+                                                    <div className="text-xs text-gray-500 italic mt-1 bg-gray-50 p-2 rounded border border-gray-100">
+                                                        "{log.remarks}"
+                                                    </div>
+                                                )}
                                                 <div className="absolute top-3 right-3 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-white pl-2">
                                                     <button
                                                         onClick={() => handleEdit(log)}

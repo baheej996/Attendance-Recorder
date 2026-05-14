@@ -158,7 +158,7 @@ const MarksEntry = () => {
 
     // Step 4: Students & Marks Loading
     const classStudents = useMemo(() =>
-        students.filter(s => s.classId === selectedClassId),
+        students.filter(s => s.classId === selectedClassId && s.status === 'Active'),
         [students, selectedClassId]);
 
     useEffect(() => {
@@ -263,7 +263,7 @@ const MarksEntry = () => {
         // Get all students in all available classes
         const availableClassIds = availableClasses.map(c => c.id);
         const allAvailableStudentIds = students
-            .filter(s => availableClassIds.includes(s.classId))
+            .filter(s => availableClassIds.includes(s.classId) && s.status === 'Active')
             .map(s => s.id);
 
         if (allAvailableStudentIds.length === 0) {
@@ -291,7 +291,7 @@ const MarksEntry = () => {
         if (!currentClass) return;
 
         // 1. Gather students in THIS class and sort them: Boys first, then by name
-        let targetStudents = students.filter(s => s.classId === selectedClassId);
+        let targetStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active');
         targetStudents.sort((a, b) => {
             const aIsBoy = (a.gender || '').toLowerCase() === 'male' || (a.gender || '').toLowerCase() === 'boy';
             const bIsBoy = (b.gender || '').toLowerCase() === 'male' || (b.gender || '').toLowerCase() === 'boy';

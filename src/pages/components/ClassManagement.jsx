@@ -184,7 +184,7 @@ const addOneHour = (timeStr) => {
 
 const ClassCard = ({ cls, isAttention, selectedIds, toggleSelection, openStudentsModal, handleEdit, confirmDelete, openAllotment, students, mentors }) => {
     const assignedMentors = mentors.filter(m => (m.assignedClassIds || []).includes(cls.id));
-    const studentCount = students.filter(s => s.classId === cls.id).length;
+    const studentCount = students.filter(s => s.classId === cls.id && s.status === 'Active').length;
     const isSelected = selectedIds.includes(cls.id);
 
     return (
@@ -335,7 +335,7 @@ const ClassManagement = () => {
         const standard = [];
 
         baseFiltered.forEach(cls => {
-            const studentCount = students.filter(s => s.classId === cls.id).length;
+            const studentCount = students.filter(s => s.classId === cls.id && s.status === 'Active').length;
             const mentorCount = mentors.filter(m => (m.assignedClassIds || []).includes(cls.id)).length;
             
             if (studentCount === 0 || mentorCount === 0) {
@@ -435,7 +435,7 @@ const ClassManagement = () => {
     };
 
     const confirmDelete = (id) => {
-        const studentCount = students.filter(s => s.classId === id).length;
+        const studentCount = students.filter(s => s.classId === id && s.status === 'Active').length;
         if (studentCount > 0) {
             setSafeguardConfig({ isOpen: true, id, studentCount });
         } else {
@@ -514,7 +514,7 @@ const ClassManagement = () => {
     const getExportData = () => {
         return classes.map(c => {
             const assignedMentors = mentors.filter(m => (m.assignedClassIds || []).includes(c.id)).map(m => m.name).join(', ');
-            const studentCount = students.filter(s => s.classId === c.id).length;
+            const studentCount = students.filter(s => s.classId === c.id && s.status === 'Active').length;
             return {
                 'Class Name': c.name || '',
                 Division: c.division || '',

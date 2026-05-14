@@ -83,6 +83,21 @@ const ActivitiesManager = () => {
         // If batch share, we use the logic for batch
         if (editingActivityId) {
             updateActivity(editingActivityId, newActivity);
+            if (isBatchShare) {
+                const selectedClass = classes.find(c => c.id === primaryClassId);
+                if (selectedClass) {
+                    const batchClasses = classes.filter(c => c.name === selectedClass.name && c.id !== primaryClassId);
+                    batchClasses.forEach(batchClass => {
+                        addActivity({ ...newActivity, classId: batchClass.id });
+                    });
+                }
+            } else if (isAllottedShare) {
+                selectedShareClassIds.forEach(cid => {
+                    if (cid !== primaryClassId) {
+                        addActivity({ ...newActivity, classId: cid });
+                    }
+                });
+            }
         } else {
             if (isBatchShare) {
                 const selectedClass = classes.find(c => c.id === primaryClassId);
@@ -899,7 +914,7 @@ const ActivitiesManager = () => {
                                         </h4>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {students
-                                                .filter(s => s.classId === activity.classId)
+                                                .filter(s => s.classId === activity.classId && s.status === 'Active')
                                                 .map(student => {
                                                     const submission = activitySubmissions.find(sub => sub.activityId === activity.id && sub.studentId === student.id);
                                                     const isDone = submission?.status === 'Completed';
@@ -987,8 +1002,7 @@ const ActivitiesManager = () => {
                                     </select>
                                 </div>
 
-                                {!editingActivityId && (
-                                    <div className="space-y-3">
+                                <div className="space-y-3">
                                         <div className={`p-3 rounded-lg border transition-all ${newActivity.classId ? 'bg-indigo-50 border-indigo-100' : 'bg-gray-50 border-gray-200 opacity-75'}`}>
                                             <div className="flex items-start gap-2">
                                                 <input
@@ -1063,7 +1077,6 @@ const ActivitiesManager = () => {
                                             )}
                                         </div>
                                     </div>
-                                )}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Subject (Optional)</label>
                                     <select

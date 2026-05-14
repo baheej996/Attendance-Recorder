@@ -50,7 +50,7 @@ const PrayerStats = () => {
 
     // Filter students by class
     const classStudents = useMemo(() =>
-        students.filter(s => s.classId === selectedClassId),
+        students.filter(s => s.classId === selectedClassId && s.status === 'Active'),
         [students, selectedClassId]
     );
 
@@ -94,10 +94,10 @@ const PrayerStats = () => {
             if (deleteClassSelection === 'all') {
                 // Get all students across all available classes for this mentor
                 const allAvailableClassIds = availableClasses.map(c => c.id);
-                studentIds = students.filter(s => allAvailableClassIds.includes(s.classId)).map(s => s.id);
+                studentIds = students.filter(s => allAvailableClassIds.includes(s.classId) && s.status === 'Active').map(s => s.id);
             } else {
                 // Get students for specific selected class
-                studentIds = students.filter(s => s.classId === deleteClassSelection).map(s => s.id);
+                studentIds = students.filter(s => s.classId === deleteClassSelection && s.status === 'Active').map(s => s.id);
             }
 
             if (studentIds.length > 0) {

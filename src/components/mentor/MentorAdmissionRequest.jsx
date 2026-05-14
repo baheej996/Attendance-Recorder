@@ -254,7 +254,7 @@ const MentorAdmissionRequest = () => {
                                             className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50/50 appearance-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                                         >
                                             <option value="">{formData.classId ? 'Select student' : 'Choose class first'}</option>
-                                            {students.filter(s => s.classId === formData.classId).sort((a, b) => a.name.localeCompare(b.name)).map(s => (
+                                            {students.filter(s => s.classId === formData.classId && s.status === 'Active').sort((a, b) => a.name.localeCompare(b.name)).map(s => (
                                                 <option key={s.id} value={s.id}>{s.name}</option>
                                             ))}
                                         </select>

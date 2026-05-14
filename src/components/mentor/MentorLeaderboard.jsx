@@ -258,10 +258,10 @@ const MentorLeaderboard = () => {
     const leaderboardData = useMemo(() => {
         if (!selectedExamId) return [];
         let fs = [];
-        if (viewMode === 'class') { if (!selectedClassId) return []; fs = students.filter(s => s.classId === selectedClassId); }
-        else if (viewMode === 'batch') { if (!selectedClassId) return []; const sel = classes.find(c => c.id === selectedClassId); const ids = classes.filter(c => c.name === sel?.name).map(c => c.id); fs = students.filter(s => ids.includes(s.classId)); }
-        else if (viewMode === 'assigned') { fs = students.filter(s => (currentUser?.assignedClassIds || []).includes(s.classId)); }
-        else { fs = students; }
+        if (viewMode === 'class') { if (!selectedClassId) return []; fs = students.filter(s => s.classId === selectedClassId && s.status === 'Active'); }
+        else if (viewMode === 'batch') { if (!selectedClassId) return []; const sel = classes.find(c => c.id === selectedClassId); const ids = classes.filter(c => c.name === sel?.name).map(c => c.id); fs = students.filter(s => ids.includes(s.classId) && s.status === 'Active'); }
+        else if (viewMode === 'assigned') { fs = students.filter(s => (currentUser?.assignedClassIds || []).includes(s.classId) && s.status === 'Active'); }
+        else { fs = students.filter(s => s.status === 'Active'); }
         return getAggregatedScores(fs);
     }, [selectedExamId, selectedClassId, viewMode, students, results, currentUser, classes]);
 
