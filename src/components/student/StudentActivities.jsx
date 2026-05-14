@@ -48,23 +48,43 @@ const StudentActivities = () => {
         // We only want to count points for activities that currently exist and are Active
         const activeActivityIds = new Set(myActivities.map(a => a.id));
 
+        // Ceiling = max points a student can legitimately earn from active activities in this class.
+        // Student-side display is capped to this so an inflated/wrong override never leaks here.
+        const ceilingPoints = myActivities.reduce((sum, a) => sum + (Number(a.maxPoints) || 0), 0);
+
         const studentScores = classStudents.map(student => {
-            // Deduplicate: only one submission per activityId counts
+            // Manual override takes precedence (set by mentor from the Activity Tracker)
+            const manual = student.manualActivityPoints;
+            if (manual !== undefined && manual !== null && manual !== '') {
+                const n = Number(manual);
+                if (!Number.isNaN(n)) {
+                    return { ...student, points: Math.min(n, ceilingPoints) };
+                }
+            }
+
+            // Deduplicate legacy auto-id duplicates: only one submission per activityId counts.
+            // NOTE: dedupe state must be mutated INSIDE the filter (not reduce), because filter
+            // evaluates every item before reduce runs — mutating in reduce makes the check useless.
             const seenActivityIds = new Set();
             const points = activitySubmissions
-                .filter(s =>
-                    s.studentId === student.id &&
-                    s.status === 'Completed' &&
-                    activeActivityIds.has(s.activityId) &&
-                    !seenActivityIds.has(s.activityId) // skip duplicates
-                )
+                .filter(s => {
+                    if (
+                        s.studentId === student.id &&
+                        s.status === 'Completed' &&
+                        activeActivityIds.has(s.activityId) &&
+                        !seenActivityIds.has(s.activityId)
+                    ) {
+                        seenActivityIds.add(s.activityId);
+                        return true;
+                    }
+                    return false;
+                })
                 .reduce((sum, s) => {
-                    seenActivityIds.add(s.activityId); // mark as seen
                     // Always use the CURRENT activity maxPoints, not the stale stored value
                     const act = myActivities.find(a => a.id === s.activityId);
                     return sum + (Number(act?.maxPoints) || 0);
                 }, 0);
-            return { ...student, points };
+            return { ...student, points: Math.min(points, ceilingPoints) };
         });
 
         // Sort by points desc

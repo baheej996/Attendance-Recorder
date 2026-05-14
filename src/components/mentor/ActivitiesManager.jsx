@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings, Copy, Download, FileText, Calendar } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings, Copy, Download, FileText, Calendar, Edit3, RotateCcw, Save } from 'lucide-react';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -13,8 +13,67 @@ const ActivitiesManager = () => {
     const {
         activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
         classes, students, subjects, currentUser,
-        activitySubmissions, markActivityAsDone, markActivityAsPending, requireFeature
+        activitySubmissions, markActivityAsDone, markActivityAsPending, requireFeature,
+        getStudentActivityPoints, updateStudent
     } = useData();
+
+    // Inline editor state for manual points override: keyed by studentId
+    const [editingPointsFor, setEditingPointsFor] = useState(null);
+    const [pointsDraft, setPointsDraft] = useState('');
+    const [savingPointsFor, setSavingPointsFor] = useState(null);
+
+    const handleToggleMark = (activity, student, isDone) => {
+        // Fire-and-forget: writes are idempotent thanks to the deterministic doc ID
+        // in markActivityAsDone. Firestore's onSnapshot subscription will flip the UI.
+        if (isDone) {
+            markActivityAsPending(activity.id, student.id);
+        } else {
+            markActivityAsDone(activity.id, student.id, activity.maxPoints, activity.classId);
+        }
+    };
+
+    const beginEditPoints = (student) => {
+        const current = getStudentActivityPoints(student.id, student.classId);
+        setEditingPointsFor(student.id);
+        setPointsDraft(String(current ?? 0));
+    };
+
+    const cancelEditPoints = () => {
+        setEditingPointsFor(null);
+        setPointsDraft('');
+    };
+
+    const saveEditPoints = async (student) => {
+        const raw = pointsDraft.trim();
+        const n = raw === '' ? null : Number(raw);
+        if (raw !== '' && Number.isNaN(n)) {
+            alert('Please enter a valid number.');
+            return;
+        }
+        setSavingPointsFor(student.id);
+        try {
+            await updateStudent(student.id, { manualActivityPoints: raw === '' ? null : n });
+            setEditingPointsFor(null);
+            setPointsDraft('');
+        } catch (e) {
+            alert('Failed to save points: ' + (e?.message || e));
+        } finally {
+            setSavingPointsFor(null);
+        }
+    };
+
+    const resetEditPoints = async (student) => {
+        setSavingPointsFor(student.id);
+        try {
+            await updateStudent(student.id, { manualActivityPoints: null });
+            setEditingPointsFor(null);
+            setPointsDraft('');
+        } catch (e) {
+            alert('Failed to reset points: ' + (e?.message || e));
+        } finally {
+            setSavingPointsFor(null);
+        }
+    };
 
     // UI States
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -912,35 +971,145 @@ const ActivitiesManager = () => {
                                                 )}
                                             </div>
                                         </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {students
-                                                .filter(s => s.classId === activity.classId && s.status === 'Active')
-                                                .map(student => {
-                                                    const submission = activitySubmissions.find(sub => sub.activityId === activity.id && sub.studentId === student.id);
-                                                    const isDone = submission?.status === 'Completed';
+                                        {(() => {
+                                            // Ceiling = sum of maxPoints across all Active activities in this class.
+                                            // A student's points should never exceed this; if they do, the card is flagged.
+                                            const classActiveActivities = activities.filter(
+                                                a => a.classId === activity.classId && a.status === 'Active'
+                                            );
+                                            const ceilingPoints = classActiveActivities.reduce(
+                                                (sum, a) => sum + (Number(a.maxPoints) || 0),
+                                                0
+                                            );
 
-                                                    return (
-                                                        <div key={student.id} className={`p-4 rounded-lg border ${isDone ? 'bg-white border-green-200 shadow-sm' : 'bg-white border-gray-200'} flex items-center justify-between`}>
-                                                            <div>
-                                                                <p className="font-medium text-gray-900">{student.name}</p>
-                                                                <p className="text-xs text-gray-500">{student.registerNo}</p>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (isDone) markActivityAsPending(activity.id, student.id);
-                                                                    else markActivityAsDone(activity.id, student.id, activity.maxPoints, activity.classId);
-                                                                }}
-                                                                className={`p-2 rounded-full transition-colors ${isDone
-                                                                    ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                                                                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                                                                    }`}
-                                                            >
-                                                                {isDone ? <CheckCircle className="w-5 h-5" /> : <div className="w-5 h-5 border-2 border-current rounded-full" />}
-                                                            </button>
-                                                        </div>
-                                                    );
-                                                })}
-                                        </div>
+                                            return (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {students
+                                                        .filter(s => s.classId === activity.classId && s.status === 'Active')
+                                                        .map(student => {
+                                                            const submission = activitySubmissions.find(sub => sub.activityId === activity.id && sub.studentId === student.id);
+                                                            const isDone = submission?.status === 'Completed';
+                                                            const totalPoints = getStudentActivityPoints(student.id, student.classId);
+                                                            const isOverAllocated = totalPoints > ceilingPoints;
+                                                            const hasManualOverride =
+                                                                student.manualActivityPoints !== undefined &&
+                                                                student.manualActivityPoints !== null &&
+                                                                student.manualActivityPoints !== '';
+                                                            const isEditing = editingPointsFor === student.id;
+                                                            const isSaving = savingPointsFor === student.id;
+                                                            const canEdit = isOverAllocated || isEditing;
+
+                                                            const cardBorderClass = isOverAllocated
+                                                                ? 'bg-red-50 border-red-300 shadow-sm ring-1 ring-red-200'
+                                                                : isDone
+                                                                    ? 'bg-white border-green-200 shadow-sm'
+                                                                    : 'bg-white border-gray-200';
+
+                                                            return (
+                                                                <div key={student.id} className={`p-4 rounded-lg border flex flex-col gap-3 ${cardBorderClass}`}>
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <div className="min-w-0">
+                                                                            <p className={`font-medium truncate ${isOverAllocated ? 'text-red-900' : 'text-gray-900'}`}>{student.name}</p>
+                                                                            <p className={`text-xs ${isOverAllocated ? 'text-red-600' : 'text-gray-500'}`}>{student.registerNo}</p>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => handleToggleMark(activity, student, isDone)}
+                                                                            className={`p-2 rounded-full transition-colors shrink-0 ${isDone
+                                                                                ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                                                                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                                                                }`}
+                                                                            title={isDone ? 'Unmark' : 'Mark as done'}
+                                                                        >
+                                                                            {isDone ? (
+                                                                                <CheckCircle className="w-5 h-5" />
+                                                                            ) : (
+                                                                                <div className="w-5 h-5 border-2 border-current rounded-full" />
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
+
+                                                                    <div className={`flex items-center justify-between gap-2 pt-2 border-t ${isOverAllocated ? 'border-red-200' : 'border-gray-100'}`}>
+                                                                        {isEditing ? (
+                                                                            <>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    value={pointsDraft}
+                                                                                    onChange={e => setPointsDraft(e.target.value)}
+                                                                                    disabled={isSaving}
+                                                                                    placeholder={`Max ${ceilingPoints}`}
+                                                                                    className="flex-1 min-w-0 px-2 py-1 text-sm border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                                                                    autoFocus
+                                                                                />
+                                                                                <button
+                                                                                    onClick={() => saveEditPoints(student)}
+                                                                                    disabled={isSaving}
+                                                                                    className="p-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                                                                                    title="Save"
+                                                                                >
+                                                                                    <Save className="w-3.5 h-3.5" />
+                                                                                </button>
+                                                                                {hasManualOverride && (
+                                                                                    <button
+                                                                                        onClick={() => resetEditPoints(student)}
+                                                                                        disabled={isSaving}
+                                                                                        className="p-1.5 bg-amber-100 text-amber-700 rounded-md hover:bg-amber-200 disabled:opacity-50"
+                                                                                        title="Reset to auto-calculated"
+                                                                                    >
+                                                                                        <RotateCcw className="w-3.5 h-3.5" />
+                                                                                    </button>
+                                                                                )}
+                                                                                <button
+                                                                                    onClick={cancelEditPoints}
+                                                                                    disabled={isSaving}
+                                                                                    className="p-1.5 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                                                                                    title="Cancel"
+                                                                                >
+                                                                                    <XCircle className="w-3.5 h-3.5" />
+                                                                                </button>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                                                                    <Trophy className={`w-3.5 h-3.5 shrink-0 ${isOverAllocated ? 'text-red-500' : hasManualOverride ? 'text-amber-500' : 'text-yellow-500'}`} />
+                                                                                    <span className={`text-xs ${isOverAllocated ? 'text-red-600' : 'text-gray-500'}`}>Total:</span>
+                                                                                    <span className={`text-sm font-bold ${isOverAllocated ? 'text-red-700' : 'text-gray-900'}`}>
+                                                                                        {totalPoints} pts
+                                                                                    </span>
+                                                                                    <span className={`text-[10px] ${isOverAllocated ? 'text-red-500' : 'text-gray-400'}`}>
+                                                                                        / max {ceilingPoints}
+                                                                                    </span>
+                                                                                    {isOverAllocated && (
+                                                                                        <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-red-500 px-1.5 py-0.5 rounded">
+                                                                                            Over limit
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {!isOverAllocated && hasManualOverride && (
+                                                                                        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                                                                            Manual
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                                {canEdit && (
+                                                                                    <button
+                                                                                        onClick={() => beginEditPoints(student)}
+                                                                                        className={`p-1.5 rounded-md shrink-0 ${isOverAllocated
+                                                                                            ? 'text-red-600 hover:bg-red-100 bg-red-100/50'
+                                                                                            : 'text-indigo-600 hover:bg-indigo-50'
+                                                                                            }`}
+                                                                                        title={isOverAllocated ? 'Fix over-allocated points' : 'Edit total points'}
+                                                                                    >
+                                                                                        <Edit3 className="w-3.5 h-3.5" />
+                                                                                    </button>
+                                                                                )}
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 )}
                             </Card>

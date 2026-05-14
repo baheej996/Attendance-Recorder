@@ -1352,18 +1352,35 @@ export const DataProvider = ({ children }) => {
                 targetClassId = student?.classId || '';
             }
 
-            const submissionData = { 
-                activityId, 
-                studentId, 
-                classId: targetClassId || '', 
-                status: 'Completed', 
-                points: points ?? 0, 
-                timestamp: new Date().toISOString() 
+            const submissionData = {
+                activityId,
+                studentId,
+                classId: targetClassId || '',
+                status: 'Completed',
+                points: points ?? 0,
+                timestamp: new Date().toISOString()
             };
 
             // Use deterministic ID to natively prevent any duplicate rapid-clicks
             const docId = `${activityId}_${studentId}`;
+
+            // Always write the canonical doc first — that's the user-visible action.
             await setDoc(doc(db, 'activitySubmissions', docId), submissionData, { merge: true });
+
+            // Then opportunistically clean up any legacy auto-id duplicates from before
+            // deterministic IDs were introduced. Best-effort: a failure here must NOT block the mark.
+            const legacyDuplicates = activitySubmissions.filter(
+                s => s.activityId === activityId && s.studentId === studentId && s.id && s.id !== docId
+            );
+            if (legacyDuplicates.length > 0) {
+                try {
+                    const batch = writeBatch(db);
+                    legacyDuplicates.forEach(dup => batch.delete(doc(db, 'activitySubmissions', dup.id)));
+                    await batch.commit();
+                } catch (cleanupErr) {
+                    console.warn('[markActivityAsDone] legacy duplicate cleanup failed:', cleanupErr);
+                }
+            }
         } catch (error) {
             console.error("Error in markActivityAsDone:", error);
             alert("Failed to mark activity: " + error.message);
@@ -1397,6 +1414,14 @@ export const DataProvider = ({ children }) => {
     };
 
     const getStudentActivityPoints = (studentId, classId) => {
+        // Manual override (set by mentor/admin from the activity tracker) takes precedence
+        const studentRecord = (students.length > 0 ? students : allStudents).find(s => s.id === studentId);
+        const manual = studentRecord?.manualActivityPoints;
+        if (manual !== undefined && manual !== null && manual !== '') {
+            const n = Number(manual);
+            if (!Number.isNaN(n)) return n;
+        }
+
         // Only count points from submissions whose activity is still Active
         const activeActivities = activities.filter(
             a => a.status === 'Active' && (!classId || a.classId === classId)
