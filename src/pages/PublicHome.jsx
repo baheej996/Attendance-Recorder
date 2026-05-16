@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Users, ArrowRight, CheckCircle, Globe, Video, Phone, Mail, MapPin, ChevronDown, MessageCircle } from 'lucide-react';
+import { useData } from '../contexts/DataContext';
 
 const PublicHome = () => {
     const [isMediaOpen, setIsMediaOpen] = useState(false);
+    const navigate = useNavigate();
+    const { currentUser } = useData();
+
+    // Auto-redirect logged-in users straight to their dashboard — they should never see
+    // the marketing homepage unless they explicitly logged out.
+    useEffect(() => {
+        if (currentUser?.role) {
+            navigate(`/${currentUser.role}`, { replace: true });
+        }
+    }, [currentUser, navigate]);
 
     return (
         <div className="min-h-screen bg-white font-sans text-gray-800">

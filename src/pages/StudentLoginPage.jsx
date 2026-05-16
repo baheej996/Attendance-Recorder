@@ -9,11 +9,20 @@ import { GraduationCap, History, X } from 'lucide-react';
 
 const StudentLoginPage = () => {
     const navigate = useNavigate();
-    const { students, login, fetchStudentByRegisterNo } = useData();
+    const { students, login, fetchStudentByRegisterNo, currentUser } = useData();
 
     const [registerNo, setRegisterNo] = useState('');
     const [error, setError] = useState('');
     const [recentLogins, setRecentLogins] = useState([]);
+
+    // Auto-redirect already-logged-in students straight to their dashboard.
+    // Persistence is handled by DataContext (currentUser is restored from localStorage on mount),
+    // so a returning student never sees this login form unless they explicitly logged out.
+    useEffect(() => {
+        if (currentUser?.role === 'student') {
+            navigate('/student', { replace: true });
+        }
+    }, [currentUser, navigate]);
 
     // Dynamically switch PWA manifest for student install
     useEffect(() => {

@@ -1,8 +1,20 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Users, UserCog, GraduationCap, LayoutGrid } from 'lucide-react';
+import { useData } from '../contexts/DataContext';
 
 const Landing = () => {
+    const navigate = useNavigate();
+    const { currentUser } = useData();
+
+    // Auto-redirect logged-in users to their dashboard so they never see the role picker
+    // unless they explicitly logged out.
+    useEffect(() => {
+        if (currentUser?.role) {
+            navigate(`/${currentUser.role}`, { replace: true });
+        }
+    }, [currentUser, navigate]);
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4">
             <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 max-w-4xl w-full">

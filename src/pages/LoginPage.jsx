@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
@@ -10,7 +10,14 @@ import { clsx } from 'clsx';
 const LoginPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { mentors, students, login, validateAdmin, fetchStudentByRegisterNo } = useData();
+    const { mentors, students, login, validateAdmin, fetchStudentByRegisterNo, currentUser } = useData();
+
+    // Auto-redirect already-logged-in users straight to their dashboard.
+    useEffect(() => {
+        if (currentUser?.role) {
+            navigate(`/${currentUser.role}`, { replace: true });
+        }
+    }, [currentUser, navigate]);
 
     // Check for ?role=... query param
     const query = new URLSearchParams(location.search);
