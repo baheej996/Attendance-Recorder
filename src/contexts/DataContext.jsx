@@ -215,7 +215,7 @@ export const DataProvider = ({ children }) => {
 
     const subscribe = (collectionName, setState, ...constraints) => {
         const q = query(collection(db, collectionName), ...constraints);
-        return onSnapshot(q, 
+        return onSnapshot(q,
             (snapshot) => {
                 const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                 setState(data);
@@ -224,6 +224,21 @@ export const DataProvider = ({ children }) => {
                 console.error(`[DataContext] Subscription failed for '${collectionName}':`, error.message);
             }
         );
+    };
+
+    // One-time fetch: use for admin-managed reference data (settings, templates) that
+    // rarely changes. Avoids paying re-read costs whenever any user writes to the collection.
+    // Mutations to these collections must keep local state in sync (optimistic update).
+    const loadOnce = async (collectionName, setState, ...constraints) => {
+        try {
+            const q = constraints.length > 0
+                ? query(collection(db, collectionName), ...constraints)
+                : collection(db, collectionName);
+            const snap = await getDocs(q);
+            setState(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+        } catch (error) {
+            console.error(`[DataContext] One-time load failed for '${collectionName}':`, error.message);
+        }
     };
 
     // 1. Global / Lightweight Subscriptions (Always needed)
@@ -237,15 +252,17 @@ export const DataProvider = ({ children }) => {
             subscribe('liveClasses', setLiveClasses),
             subscribe('syllabi', setSyllabi),
             subscribe('syllabusStatus', setSyllabusStatuses),
-            subscribe('chatSettings', setChatSettings),
-            // Global: needed by both students and mentors for prayer/substitution features
-            subscribe('specialPrayers', setSpecialPrayers),
             subscribe('substitutionRequests', setSubstitutionRequests),
             subscribe('questions', setQuestions),
-            subscribe('examSettings', setExamSettings),
-            subscribe('studentEvaluationTemplates', setStudentEvaluationTemplates),
-            subscribe('parentFeedbackTemplates', setParentFeedbackTemplates),
         ];
+
+        // Reference data — rarely changes, real-time sync is wasteful for 2k users.
+        // Mutations on these collections refresh local state via their action functions below.
+        loadOnce('chatSettings', setChatSettings);
+        loadOnce('specialPrayers', setSpecialPrayers);
+        loadOnce('examSettings', setExamSettings);
+        loadOnce('studentEvaluationTemplates', setStudentEvaluationTemplates);
+        loadOnce('parentFeedbackTemplates', setParentFeedbackTemplates);
 
         const settingsUnsub = onSnapshot(collection(db, 'settings'), (snapshot) => {
             snapshot.docs.forEach(doc => {
@@ -323,7 +340,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('activities', setActivities, where('classId', '==', cid)),
                 subscribe('chatMessages', setChatMessages, where('classId', '==', cid), limit(150)),
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', uid), where('isRead', '==', false)),
-                subscribe('notifications', setNotifications, where('audience', 'in', ['students', 'all', 'specific_class'])),
+                subscribe('notifications', setNotifications, where('audience', 'in', ['students', 'all', 'specific_class']), limit(100)),
                 subscribe('starDeclarations', setStarDeclarations, where('classId', '==', cid)),
                 subscribe('students', setStudents, where('classId', '==', cid)),
                 subscribe('studentEvaluations', setStudentEvaluations, where('studentId', '==', uid), where('status', '==', 'Published')),
@@ -378,7 +395,8 @@ export const DataProvider = ({ children }) => {
             const specificNotifQ = query(
                 collection(db, 'notifications'),
                 where('audience', '==', 'specific_student'),
-                where('targetId', '==', uid)
+                where('targetId', '==', uid),
+                limit(50)
             );
             const specificNotifUnsub = onSnapshot(specificNotifQ, (snap) => {
                 const specificNotifs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
@@ -401,7 +419,7 @@ export const DataProvider = ({ children }) => {
                 unsubs.push(
                     subscribe('students', setStudents, where('classId', 'in', assignedClassIds)),
                     subscribe('exams', setExams, where('classId', 'in', assignedClassIds)),
-                    subscribe('chatMessages', setChatMessages, where('classId', 'in', assignedClassIds), limit(400)),
+                    subscribe('chatMessages', setChatMessages, where('classId', 'in', assignedClassIds), limit(200)),
                     subscribe('activities', setActivities, where('classId', 'in', assignedClassIds)),
                     subscribe('starDeclarations', setStarDeclarations, where('classId', 'in', assignedClassIds))
                 );
@@ -462,9 +480,9 @@ export const DataProvider = ({ children }) => {
                 subscribe('classes', (data) => { setClasses(data); setAllClasses(data); }),
                 subscribe('exams', setExams),
                 subscribe('activities', setActivities),
-                subscribe('chatMessages', setChatMessages, orderBy('timestamp', 'desc'), limit(500)),
+                subscribe('chatMessages', setChatMessages, orderBy('timestamp', 'desc'), limit(200)),
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', 'admin'), where('isRead', '==', false)),
-                subscribe('notifications', setNotifications, orderBy('createdAt', 'desc')),
+                subscribe('notifications', setNotifications, orderBy('createdAt', 'desc'), limit(200)),
                 subscribe('admissionRequests', setAdmissionRequests),
                 subscribe('evaluationForms', setEvaluationForms),
                 subscribe('evaluationSubmissions', setEvaluationSubmissions),
@@ -1668,24 +1686,26 @@ export const DataProvider = ({ children }) => {
     const toggleChatForClass = async (classId) => {
         const existing = chatSettings.find(s => s.classId === classId);
         if (existing) {
-            await updateDoc(doc(db, 'chatSettings', existing.id), { isEnabled: !existing.isEnabled });
+            const next = !existing.isEnabled;
+            await updateDoc(doc(db, 'chatSettings', existing.id), { isEnabled: next });
+            setChatSettings(prev => prev.map(s => s.id === existing.id ? { ...s, isEnabled: next } : s));
         } else {
             // Default to true if creating for the first time
-            await addDoc(collection(db, 'chatSettings'), { classId, isEnabled: true, allowStudentGroupChat: true });
+            const docRef = await addDoc(collection(db, 'chatSettings'), { classId, isEnabled: true, allowStudentGroupChat: true });
+            setChatSettings(prev => [...prev, { id: docRef.id, classId, isEnabled: true, allowStudentGroupChat: true }]);
         }
     };
 
     const toggleGroupChatForClass = async (classId) => {
         const existing = chatSettings.find(s => s.classId === classId);
         if (existing) {
-            // If the field doesn't exist yet, it defaults to undefined which becomes true when toggled initially? 
-            // Better to explicitly check. It should default to true.
             const currentVal = existing.allowStudentGroupChat !== undefined ? existing.allowStudentGroupChat : true;
-            await updateDoc(doc(db, 'chatSettings', existing.id), { allowStudentGroupChat: !currentVal });
+            const next = !currentVal;
+            await updateDoc(doc(db, 'chatSettings', existing.id), { allowStudentGroupChat: next });
+            setChatSettings(prev => prev.map(s => s.id === existing.id ? { ...s, allowStudentGroupChat: next } : s));
         } else {
-            // If setting doesn't exist at all, create it with DM off (since toggleChat wasn't called) but group toggled appropriately.
-            // Actually, if it doesn't exist, toggling group chat off means it should be false.
-            await addDoc(collection(db, 'chatSettings'), { classId, isEnabled: false, allowStudentGroupChat: false });
+            const docRef = await addDoc(collection(db, 'chatSettings'), { classId, isEnabled: false, allowStudentGroupChat: false });
+            setChatSettings(prev => [...prev, { id: docRef.id, classId, isEnabled: false, allowStudentGroupChat: false }]);
         }
     };
 
@@ -1742,6 +1762,11 @@ export const DataProvider = ({ children }) => {
     const updateExamSetting = async (examId, classId, subjectId, updates) => {
         const docId = `${examId}_${classId}_${subjectId}`;
         await setDoc(doc(db, 'examSettings', docId), { examId, classId, subjectId, ...updates }, { merge: true });
+        setExamSettings(prev => {
+            const idx = prev.findIndex(s => s.id === docId);
+            const merged = { id: docId, examId, classId, subjectId, ...(idx >= 0 ? prev[idx] : {}), ...updates };
+            return idx >= 0 ? prev.map((s, i) => i === idx ? merged : s) : [...prev, merged];
+        });
     };
 
     // --- Login Helpers (Direct DB Queries to avoid massive full-list reads) ---
@@ -1965,9 +1990,20 @@ export const DataProvider = ({ children }) => {
 
         // Special Prayers
         specialPrayers,
-        addSpecialPrayer: async (p) => await addDoc(collection(db, 'specialPrayers'), { ...p, createdAt: new Date().toISOString() }),
-        updateSpecialPrayer: async (id, u) => await updateDoc(doc(db, 'specialPrayers', id), u),
-        deleteSpecialPrayer: async (id) => await deleteDoc(doc(db, 'specialPrayers', id)),
+        addSpecialPrayer: async (p) => {
+            const created = { ...p, createdAt: new Date().toISOString() };
+            const docRef = await addDoc(collection(db, 'specialPrayers'), created);
+            setSpecialPrayers(prev => [...prev, { ...created, id: docRef.id }]);
+            return docRef;
+        },
+        updateSpecialPrayer: async (id, u) => {
+            await updateDoc(doc(db, 'specialPrayers', id), u);
+            setSpecialPrayers(prev => prev.map(p => p.id === id ? { ...p, ...u } : p));
+        },
+        deleteSpecialPrayer: async (id) => {
+            await deleteDoc(doc(db, 'specialPrayers', id));
+            setSpecialPrayers(prev => prev.filter(p => p.id !== id));
+        },
 
         // Ramadan & Quran Tracking
         ramadanLogs,
@@ -2017,15 +2053,37 @@ export const DataProvider = ({ children }) => {
 
         // Student Evaluation Templates
         studentEvaluationTemplates,
-        createStudentEvaluationTemplate: async (template) => await addDoc(collection(db, 'studentEvaluationTemplates'), { ...template, createdAt: new Date().toISOString() }),
-        updateStudentEvaluationTemplate: async (id, data) => await updateDoc(doc(db, 'studentEvaluationTemplates', id), data),
-        deleteStudentEvaluationTemplate: async (id) => await deleteDoc(doc(db, 'studentEvaluationTemplates', id)),
+        createStudentEvaluationTemplate: async (template) => {
+            const created = { ...template, createdAt: new Date().toISOString() };
+            const docRef = await addDoc(collection(db, 'studentEvaluationTemplates'), created);
+            setStudentEvaluationTemplates(prev => [...prev, { ...created, id: docRef.id }]);
+            return docRef;
+        },
+        updateStudentEvaluationTemplate: async (id, data) => {
+            await updateDoc(doc(db, 'studentEvaluationTemplates', id), data);
+            setStudentEvaluationTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
+        },
+        deleteStudentEvaluationTemplate: async (id) => {
+            await deleteDoc(doc(db, 'studentEvaluationTemplates', id));
+            setStudentEvaluationTemplates(prev => prev.filter(t => t.id !== id));
+        },
 
         // Parent Feedback Templates
         parentFeedbackTemplates,
-        createParentFeedbackTemplate: async (template) => await addDoc(collection(db, 'parentFeedbackTemplates'), { ...template, createdAt: new Date().toISOString() }),
-        updateParentFeedbackTemplate: async (id, data) => await updateDoc(doc(db, 'parentFeedbackTemplates', id), data),
-        deleteParentFeedbackTemplate: async (id) => await deleteDoc(doc(db, 'parentFeedbackTemplates', id)),
+        createParentFeedbackTemplate: async (template) => {
+            const created = { ...template, createdAt: new Date().toISOString() };
+            const docRef = await addDoc(collection(db, 'parentFeedbackTemplates'), created);
+            setParentFeedbackTemplates(prev => [...prev, { ...created, id: docRef.id }]);
+            return docRef;
+        },
+        updateParentFeedbackTemplate: async (id, data) => {
+            await updateDoc(doc(db, 'parentFeedbackTemplates', id), data);
+            setParentFeedbackTemplates(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
+        },
+        deleteParentFeedbackTemplate: async (id) => {
+            await deleteDoc(doc(db, 'parentFeedbackTemplates', id));
+            setParentFeedbackTemplates(prev => prev.filter(t => t.id !== id));
+        },
 
         // Mentor Performance Leaderboard
         leaderboardRules,
