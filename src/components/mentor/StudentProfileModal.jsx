@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock, Loader2, Download } from 'lucide-react';
+import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock, Loader2, Download, FileText, MapPin, Phone, MonitorSmartphone } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { clsx } from 'clsx';
 import { Card } from '../ui/Card';
@@ -204,6 +204,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: User },
+        { id: 'profile', label: 'Profile Info', icon: FileText },
         { id: 'exams', label: 'Exams', icon: BookOpen },
         { id: 'activities', label: 'Activities', icon: Activity },
         { id: 'prayer', label: 'Prayer Chart', icon: CalendarIcon },
@@ -310,6 +311,116 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                                     ) : (
                                         <p className="text-gray-500">No recent exams.</p>
                                     )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Profile Info Tab */}
+                        {activeTab === 'profile' && (
+                            <div className="space-y-8 animate-in fade-in duration-300">
+                                {/* Personal Details */}
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <User className="w-5 h-5 text-indigo-600" />
+                                        Personal Details
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date of Birth</p>
+                                            <p className="text-gray-900 font-medium">{student.dob || 'Not provided'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Aadhaar Number</p>
+                                            <p className="text-gray-900 font-medium">{student.aadhaarNumber || 'Not provided'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Father's Name</p>
+                                            <p className="text-gray-900 font-medium">{student.fatherName || 'Not provided'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Father's Occupation</p>
+                                            <p className="text-gray-900 font-medium">{student.fatherOccupation || 'Not provided'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Mother's Name</p>
+                                            <p className="text-gray-900 font-medium">{student.motherName || 'Not provided'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Identification Mark</p>
+                                            <p className="text-gray-900 font-medium">{student.identificationMark || 'Not provided'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Location Details */}
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <MapPin className="w-5 h-5 text-indigo-600" />
+                                        Location Details
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Address</p>
+                                            <p className="text-gray-900 font-medium">
+                                                {student.houseName ? `${student.houseName}, ` : ''}
+                                                {student.postOffice ? `${student.postOffice}, ` : ''}
+                                                {student.pinCode || 'Not provided'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Living Location</p>
+                                            <p className="text-gray-900 font-medium">
+                                                {student.livingState || student.livingCountry 
+                                                    ? `${student.livingState || 'N/A'}, ${student.livingCountry || 'N/A'}`
+                                                    : 'Not provided'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Native Location</p>
+                                            <p className="text-gray-900 font-medium">
+                                                {student.nativeState || student.nativeCountry 
+                                                    ? `${student.nativeState || 'N/A'}, ${student.nativeCountry || 'N/A'}`
+                                                    : 'Not provided'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Contact & Technical */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                            <Phone className="w-5 h-5 text-indigo-600" />
+                                            Contact
+                                        </h3>
+                                        <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Contact No</p>
+                                                <p className="text-gray-900 font-medium">{student.contactNo || 'Not provided'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">WhatsApp No</p>
+                                                <p className="text-gray-900 font-medium">{student.whatsappNo || 'Not provided'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                            <MonitorSmartphone className="w-5 h-5 text-indigo-600" />
+                                            Technical
+                                        </h3>
+                                        <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Device Used</p>
+                                                <p className="text-gray-900 font-medium">{student.deviceUsed || 'Not provided'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Internet Access</p>
+                                                <p className="text-gray-900 font-medium">{student.internetAvailability || 'Not provided'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}

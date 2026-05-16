@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { 
     Users, BookOpen, GraduationCap, ChevronDown, ChevronUp, 
-    Eye, Settings, Video, Download, FileSpreadsheet, FileText 
+    Eye, Settings, Video, Download, FileSpreadsheet, FileText, AlertCircle 
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -320,7 +320,9 @@ const Batches = () => {
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-50">
-                                                            {classStudents.map((student, index) => (
+                                                            {classStudents.map((student, index) => {
+                                                                const isProfileComplete = student.dob && student.contactNo && student.fatherName && student.houseName;
+                                                                return (
                                                                 <tr
                                                                     key={student.id}
                                                                     className={clsx(
@@ -329,7 +331,16 @@ const Batches = () => {
                                                                     )}
                                                                 >
                                                                     <td className="px-6 py-4 font-mono text-gray-500">{student.registerNo}</td>
-                                                                    <td className="px-6 py-4 font-medium text-gray-900">{student.name}</td>
+                                                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                                                        <div className="flex items-center gap-2">
+                                                                            {student.name}
+                                                                            {!isProfileComplete && (
+                                                                                <span title="Profile Incomplete" className="text-amber-500">
+                                                                                    <AlertCircle className="w-4 h-4" />
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
                                                                     <td className="px-6 py-4 text-gray-600">{student.gender}</td>
                                                                     <td className="px-6 py-4">
                                                                         <span className={clsx(
@@ -355,17 +366,27 @@ const Batches = () => {
                                                                         </button>
                                                                     </td>
                                                                 </tr>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </tbody>
                                                     </table>
                                                 </div>
 
                                                 {/* Mobile View */}
                                                 <div className="md:hidden divide-y divide-gray-100">
-                                                    {classStudents.map((student) => (
+                                                    {classStudents.map((student) => {
+                                                        const isProfileComplete = student.dob && student.contactNo && student.fatherName && student.houseName;
+                                                        return (
                                                         <div key={student.id} className="p-4 bg-white flex items-center justify-between">
                                                             <div className="flex flex-col">
-                                                                <span className="font-bold text-gray-900">{student.name}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-gray-900">{student.name}</span>
+                                                                    {!isProfileComplete && (
+                                                                        <span title="Profile Incomplete" className="text-amber-500">
+                                                                            <AlertCircle className="w-4 h-4" />
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                                 <span className="text-xs text-gray-500 font-mono">#{student.registerNo}</span>
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     <span className={clsx(
@@ -390,7 +411,8 @@ const Batches = () => {
                                                                 <Eye className="w-5 h-5" />
                                                             </button>
                                                         </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </>
                                         )}
