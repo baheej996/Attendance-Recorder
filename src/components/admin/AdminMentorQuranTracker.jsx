@@ -6,7 +6,10 @@ import { clsx } from 'clsx';
 
 const AdminMentorQuranTracker = () => {
     const { mentors = [], students = [], quranRecitations = [], requireFeature } = useData();
-    const [timeframe, setTimeframe] = useState('current-month');
+    const [timeframe, setTimeframe] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -16,9 +19,6 @@ const AdminMentorQuranTracker = () => {
     }, [requireFeature]);
 
     const rankings = useMemo(() => {
-        let currentMonthNum = new Date().getMonth() + 1;
-        let currentYear = new Date().getFullYear();
-
         const data = mentors.map(mentor => {
             // Find all active students in mentor's assigned classes
             const assignedClassIds = mentor.assignedClassIds || [];
@@ -34,9 +34,10 @@ const AdminMentorQuranTracker = () => {
 
             quranRecitations.forEach(qr => {
                 if (qr.status === 'Completed' && mentorStudentIds.has(qr.studentId)) {
-                    if (timeframe === 'current-month') {
+                    if (timeframe !== 'all-time') {
                         const [y, m] = qr.date.split('-');
-                        if (parseInt(y) === currentYear && parseInt(m) === currentMonthNum) {
+                        const recMonth = `${y}-${String(m).padStart(2, '0')}`;
+                        if (recMonth === timeframe) {
                             totalRecitations++;
                             participatingStudentIds.add(qr.studentId);
                         }
@@ -97,13 +98,19 @@ const AdminMentorQuranTracker = () => {
             {/* Controls */}
             <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
-                    <button
-                        onClick={() => setTimeframe('current-month')}
-                        className={clsx('flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all',
-                            timeframe === 'current-month' ? 'bg-white shadow-sm text-indigo-700' : 'text-gray-500 hover:text-gray-700')}
-                    >
-                        Current Month
-                    </button>
+                    <input
+                        type="month"
+                        value={timeframe !== 'all-time' ? timeframe : ''}
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                setTimeframe(e.target.value);
+                            }
+                        }}
+                        className={clsx(
+                            'px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer outline-none border-none focus:ring-0',
+                            timeframe !== 'all-time' ? 'bg-white shadow-sm text-indigo-700' : 'text-gray-500 hover:text-gray-700 bg-transparent'
+                        )}
+                    />
                     <button
                         onClick={() => setTimeframe('all-time')}
                         className={clsx('flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all',
