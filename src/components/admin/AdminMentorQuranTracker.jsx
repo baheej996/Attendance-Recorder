@@ -29,6 +29,7 @@ const AdminMentorQuranTracker = () => {
             const mentorStudentIds = new Set(mentorStudents.map(s => s.id));
             const totalStudents = mentorStudents.length;
 
+            const participatingStudentIds = new Set();
             let totalRecitations = 0;
 
             quranRecitations.forEach(qr => {
@@ -37,19 +38,23 @@ const AdminMentorQuranTracker = () => {
                         const [y, m] = qr.date.split('-');
                         if (parseInt(y) === currentYear && parseInt(m) === currentMonthNum) {
                             totalRecitations++;
+                            participatingStudentIds.add(qr.studentId);
                         }
                     } else {
                         // all-time
                         totalRecitations++;
+                        participatingStudentIds.add(qr.studentId);
                     }
                 }
             });
 
+            const participatingStudentsCount = participatingStudentIds.size;
             const averageScore = totalStudents > 0 ? (totalRecitations / totalStudents) : 0;
 
             return {
                 ...mentor,
                 totalStudents,
+                participatingStudentsCount,
                 totalRecitations,
                 averageScore
             };
@@ -131,7 +136,8 @@ const AdminMentorQuranTracker = () => {
                                 <th className="px-6 py-4 w-16 text-center whitespace-nowrap">Rank</th>
                                 <th className="px-6 py-4 whitespace-nowrap">Mentor</th>
                                 <th className="px-6 py-4 text-center whitespace-nowrap">Assigned Students</th>
-                                <th className="px-6 py-4 text-center whitespace-nowrap">Total Recitations</th>
+                                <th className="px-6 py-4 text-center whitespace-nowrap">Participating Students</th>
+                                <th className="px-6 py-4 text-center whitespace-nowrap">Total Recitation Days</th>
                                 <th className="px-6 py-4 text-center whitespace-nowrap bg-indigo-50/50">Avg / Student</th>
                             </tr>
                         </thead>
@@ -172,6 +178,11 @@ const AdminMentorQuranTracker = () => {
                                             </td>
                                             <td className="px-6 py-4 text-center whitespace-nowrap">
                                                 <span className="font-bold text-gray-700">
+                                                    {mentor.participatingStudentsCount}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                <span className="font-bold text-indigo-600">
                                                     {mentor.totalRecitations}
                                                 </span>
                                             </td>
