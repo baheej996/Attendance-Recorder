@@ -1,13 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { BookOpen, Search, Trophy, Users, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const AdminMentorQuranTracker = () => {
-    const { mentors = [], students = [], quranRecitations = [] } = useData();
+    const { mentors = [], students = [], quranRecitations = [], requireFeature } = useData();
     const [timeframe, setTimeframe] = useState('current-month');
     const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        if (requireFeature) {
+            return requireFeature('quran');
+        }
+    }, [requireFeature]);
 
     const rankings = useMemo(() => {
         let currentMonthNum = new Date().getMonth() + 1;
