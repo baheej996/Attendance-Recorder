@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2, Trophy } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2, Trophy, FileQuestion } from 'lucide-react';
 import { clsx } from 'clsx';
 import ClassManagement from './components/ClassManagement';
 import AdminLiveClasses from './components/AdminLiveClasses';
@@ -11,6 +11,7 @@ import ExamManager from '../components/admin/ExamManager';
 import BulkTransfer from '../components/admin/BulkTransfer';
 import SyllabusManager from '../components/admin/SyllabusManager'; // New
 import SyllabusTracker from '../components/admin/SyllabusTracker'; // New
+import ExamQuestionTracker from '../components/common/ExamQuestionTracker';
 import AdminAdmissionRequests from '../components/admin/AdminAdmissionRequests';
 import AdminRequests from './components/AdminRequests';
 import EvaluationManager from '../components/admin/EvaluationManager';
@@ -21,6 +22,7 @@ import TaskManager from './components/TaskManager';
 import AdminChat from './components/AdminChat';
 import AdminNotifications from '../components/admin/AdminNotifications';
 import AdminMentorLeaderboard from '../components/admin/AdminMentorLeaderboard';
+import AdminMentorQuranTracker from '../components/admin/AdminMentorQuranTracker';
 import MentorEvaluation from './components/MentorEvaluation';
 import Help from './Help';
 import { useData } from '../contexts/DataContext';
@@ -279,6 +281,7 @@ const AdminDashboard = () => {
             case 'syllabus': return <SyllabusManager />; // New
             case 'syllabus-tracker': return <SyllabusTracker />; // New
             case 'exams': return <ExamManager />;
+            case 'question-tracker': return <ExamQuestionTracker />;
 
             case 'bulk-transfer': return <BulkTransfer />;
             case 'admissions': return <AdminAdmissionRequests />;
@@ -290,6 +293,7 @@ const AdminDashboard = () => {
             case 'notifications': return <AdminNotifications />;
             case 'evaluations': return <EvaluationManager />;
             case 'mentor-evaluation': return <MentorEvaluation />;
+            case 'mentor-quran-tracking': return <AdminMentorQuranTracker />;
             case 'leaderboard': return <AdminMentorLeaderboard />;
             case 'settings': return <SettingsManager />;
             case 'help': return <Help />;
@@ -376,6 +380,7 @@ const AdminDashboard = () => {
                                     <SidebarItem icon={Megaphone} label="Notifications" active={activeTab === 'notifications'} onClick={() => handleTabChange('notifications')} badge={unreadNotificationsCount} isMobile />
                                     <SidebarItem icon={Replace} label="Substitutions" active={activeTab === 'substitutions'} onClick={() => handleTabChange('substitutions')} badge={pendingSubsCount} isMobile />
                                     <SidebarItem icon={ClipboardList} label="Tasks" active={activeTab === 'tasks'} onClick={() => handleTabChange('tasks')} badge={pendingTasksCount} isMobile />
+                                    <SidebarItem icon={BookOpen} label="Mentor Quran Stats" active={activeTab === 'mentor-quran-tracking'} onClick={() => handleTabChange('mentor-quran-tracking')} isMobile />
                                     <SidebarItem icon={FileBarChart} label="Mentor Evaluation" active={activeTab === 'mentor-evaluation'} onClick={() => handleTabChange('mentor-evaluation')} isMobile />
                                     <SidebarItem icon={FileBarChart} label="Evaluations" active={activeTab === 'evaluations'} onClick={() => handleTabChange('evaluations')} isMobile />
                                     <SidebarItem icon={Trophy} label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => handleTabChange('leaderboard')} isMobile />
@@ -391,6 +396,7 @@ const AdminDashboard = () => {
                                     <SidebarItem icon={FileText} label="Syllabus" active={activeTab === 'syllabus'} onClick={() => handleTabChange('syllabus')} isMobile />
                                     <SidebarItem icon={ClipboardList} label="Syllabus Tracker" active={activeTab === 'syllabus-tracker'} onClick={() => handleTabChange('syllabus-tracker')} isMobile />
                                     <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => handleTabChange('exams')} isMobile />
+                                    <SidebarItem icon={FileQuestion} label="Question Tracking" active={activeTab === 'question-tracker'} onClick={() => handleTabChange('question-tracker')} isMobile />
                                 </nav>
                             </div>
 
@@ -407,7 +413,7 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* Desktop Sidebar (hidden on mobile) */}
-                    <div className="hidden lg:block lg:col-span-1 space-y-4 sticky top-20 h-fit">
+                    <div className="hidden lg:block lg:col-span-1 space-y-4 sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pb-4 pr-1">
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                             <div className="p-4 bg-gray-50 border-b border-gray-100">
                                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</h2>
@@ -425,6 +431,7 @@ const AdminDashboard = () => {
                                 <SidebarItem icon={Megaphone} label="Notifications" active={activeTab === 'notifications'} onClick={() => setActiveTab('notifications')} badge={unreadNotificationsCount} />
                                 <SidebarItem icon={Replace} label="Substitutions" active={activeTab === 'substitutions'} onClick={() => setActiveTab('substitutions')} badge={pendingSubsCount} />
                                 <SidebarItem icon={ClipboardList} label="Tasks" active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} badge={pendingTasksCount} />
+                                <SidebarItem icon={BookOpen} label="Mentor Quran Stats" active={activeTab === 'mentor-quran-tracking'} onClick={() => setActiveTab('mentor-quran-tracking')} />
                                 <SidebarItem icon={BarChart2} label="Mentor Evaluation" active={activeTab === 'mentor-evaluation'} onClick={() => setActiveTab('mentor-evaluation')} />
                                 <SidebarItem icon={FileBarChart} label="Evaluations" active={activeTab === 'evaluations'} onClick={() => setActiveTab('evaluations')} />
                                 <SidebarItem icon={Trophy} label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => setActiveTab('leaderboard')} />
@@ -440,6 +447,7 @@ const AdminDashboard = () => {
                                 <SidebarItem icon={FileText} label="Syllabus" active={activeTab === 'syllabus'} onClick={() => setActiveTab('syllabus')} />
                                 <SidebarItem icon={ClipboardList} label="Syllabus Tracker" active={activeTab === 'syllabus-tracker'} onClick={() => setActiveTab('syllabus-tracker')} />
                                 <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => setActiveTab('exams')} />
+                                <SidebarItem icon={FileQuestion} label="Question Tracking" active={activeTab === 'question-tracker'} onClick={() => setActiveTab('question-tracker')} />
                             </nav>
                         </div>
 
