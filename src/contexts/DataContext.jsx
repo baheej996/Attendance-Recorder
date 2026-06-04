@@ -1115,21 +1115,36 @@ export const DataProvider = ({ children }) => {
         const batch = writeBatch(db);
 
         data.records.forEach(r => {
-            // Check for existing result to update or add new
-            // This is hard to do in a batch without reading first.
-            // Simple approach: Add new documents.
-            // Cleanup: The UI filters duplicates or we should properly manage IDs.
-            // Better: use setDoc with a composite ID if possible? 
-            // Composite ID: `${examId}_${subjectId}_${studentId}`
-            const docId = `${data.examId}_${data.subjectId}_${r.studentId}`;
-            const ref = doc(db, 'results', docId);
-            batch.set(ref, {
+            const matchingResults = results.filter(res => 
+                res.examId === data.examId && 
+                res.subjectId === data.subjectId && 
+                res.studentId === r.studentId
+            );
+            
+            const resultData = {
                 examId: data.examId,
                 subjectId: data.subjectId,
                 studentId: r.studentId,
+                classId: r.classId || matchingResults[0]?.classId, // ensure classId is preserved
                 marks: r.marks,
                 timestamp
-            });
+            };
+
+            if (matchingResults.length > 0) {
+                // Update the first match
+                const ref = doc(db, 'results', matchingResults[0].id);
+                batch.update(ref, resultData);
+                
+                // Cleanup any duplicates that might have been created previously
+                for (let i = 1; i < matchingResults.length; i++) {
+                    const duplicateRef = doc(db, 'results', matchingResults[i].id);
+                    batch.delete(duplicateRef);
+                }
+            } else {
+                const docId = `${data.examId}_${data.subjectId}_${r.studentId}`;
+                const ref = doc(db, 'results', docId);
+                batch.set(ref, resultData);
+            }
         });
         await batch.commit();
     };
