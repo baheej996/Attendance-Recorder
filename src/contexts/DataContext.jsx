@@ -49,6 +49,7 @@ export const DataProvider = ({ children }) => {
     const [ramadanLogs, setRamadanLogs] = useState([]);
     const [quranProgress, setQuranProgress] = useState([]);
     const [quranRecitations, setQuranRecitations] = useState([]);
+    const [gameProgress, setGameProgress] = useState([]);
     const [liveClasses, setLiveClasses] = useState([]);
     const [syllabi, setSyllabi] = useState([]);
     const [syllabusStatuses, setSyllabusStatuses] = useState([]);
@@ -157,15 +158,18 @@ export const DataProvider = ({ children }) => {
         return onSnapshot(doc(db, collectionName, currentUser.id), (docSnap) => {
             if (docSnap.exists()) {
                 const fresh = { ...docSnap.data(), id: docSnap.id };
-                // Compare critical fields to avoid unnecessary updates
-                const hasChanged = fresh.name !== currentUser.name || 
-                                 fresh.signature !== currentUser.signature || 
-                                 fresh.classId !== currentUser.classId ||
-                                 JSON.stringify(fresh.assignedClassIds) !== JSON.stringify(currentUser.assignedClassIds);
                 
-                if (hasChanged) {
-                    setCurrentUser(prev => ({ ...prev, ...fresh }));
-                }
+                setCurrentUser(prev => {
+                    if (!prev) return fresh;
+                    // Compare all fields from database with prev state to ensure updates sync instantly
+                    const hasChanged = Object.keys(fresh).some(key => {
+                        if (Array.isArray(fresh[key])) {
+                            return JSON.stringify(fresh[key]) !== JSON.stringify(prev[key]);
+                        }
+                        return fresh[key] !== prev[key];
+                    });
+                    return hasChanged ? { ...prev, ...fresh } : prev;
+                });
             }
         });
     }, [currentUser?.id]); // Only run when identity changes
@@ -326,6 +330,7 @@ export const DataProvider = ({ children }) => {
             setQuranRecitations([]);
             setChatMessages([]);
             setUnreadChats([]);
+            setGameProgress([]);
             return;
         }
 
@@ -336,7 +341,7 @@ export const DataProvider = ({ children }) => {
             const cid = currentUser.classId;
 
             unsubs.push(
-                subscribe('exams', setExams, where('classId', '==', cid)),
+                subscribe('exams', setExams),
                 subscribe('activities', setActivities, where('classId', '==', cid)),
                 subscribe('chatMessages', setChatMessages, where('classId', '==', cid), limit(150)),
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', uid), where('isRead', '==', false)),
@@ -344,25 +349,26 @@ export const DataProvider = ({ children }) => {
                 subscribe('starDeclarations', setStarDeclarations, where('classId', '==', cid)),
                 subscribe('students', setStudents, where('classId', '==', cid)),
                 subscribe('studentEvaluations', setStudentEvaluations, where('studentId', '==', uid), where('status', '==', 'Published')),
-                subscribe('feedbackSettings', setFeedbackSettings, where('classId', '==', cid))
+                subscribe('feedbackSettings', setFeedbackSettings, where('classId', '==', cid)),
+                subscribe('gameProgress', setGameProgress, where('classId', '==', cid))
             );
 
             // On-Demand Heavy Data
             if (activeFeatures.has('attendance')) {
-                unsubs.push(subscribe('attendance', setAttendance, where('studentId', '==', uid), orderBy('date', 'desc'), limit(attendanceLimit)));
+                unsubs.push(subscribe('attendance', setAttendance, where('classId', '==', cid), orderBy('date', 'desc'), limit(attendanceLimit)));
             }
             if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('studentId', '==', uid), limit(resultsLimit)));
-            if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('studentId', '==', uid)));
+            if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('classId', '==', cid)));
             if (activeFeatures.has('quran')) unsubs.push(
                 subscribe('quranRecitations', setQuranRecitations, where('classId', '==', cid)),
-                subscribe('quranProgress', setQuranProgress, where('studentId', '==', uid))
+                subscribe('quranProgress', setQuranProgress, where('classId', '==', cid))
             );
             if (activeFeatures.has('activities')) unsubs.push(
                 subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : ['']), limit(activitiesLimit)),
                 subscribe('studentResponses', setStudentResponses, where('studentId', '==', uid), limit(resultsLimit))
             );
             if (activeFeatures.has('leave')) unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('studentId', '==', uid)));
-            if (activeFeatures.has('ramadan')) unsubs.push(subscribe('ramadanLogs', setRamadanLogs, where('studentId', '==', uid)));
+            if (activeFeatures.has('ramadan')) unsubs.push(subscribe('ramadanLogs', setRamadanLogs, where('classId', '==', cid)));
 
             // Separate listener: direct messages TO this student (mentor→student DMs stored without classId)
             // These must be MERGED into chatMessages, not replace them
@@ -418,10 +424,11 @@ export const DataProvider = ({ children }) => {
             if (assignedClassIds.length > 0) {
                 unsubs.push(
                     subscribe('students', setStudents, where('classId', 'in', assignedClassIds)),
-                    subscribe('exams', setExams, where('classId', 'in', assignedClassIds)),
+                    subscribe('exams', setExams),
                     subscribe('chatMessages', setChatMessages, where('classId', 'in', assignedClassIds), limit(200)),
                     subscribe('activities', setActivities, where('classId', 'in', assignedClassIds)),
-                    subscribe('starDeclarations', setStarDeclarations, where('classId', 'in', assignedClassIds))
+                    subscribe('starDeclarations', setStarDeclarations, where('classId', 'in', assignedClassIds)),
+                    subscribe('gameProgress', setGameProgress, where('classId', 'in', assignedClassIds))
                 );
 
                 // On-Demand Heavy Data
@@ -491,7 +498,8 @@ export const DataProvider = ({ children }) => {
                 subscribe('leaderboardCompletions', setLeaderboardCompletions),
                 subscribe('studentEvaluations', setStudentEvaluations),
                 subscribe('parentFeedbacks', setParentFeedbacks),
-                subscribe('feedbackSettings', setFeedbackSettings)
+                subscribe('feedbackSettings', setFeedbackSettings),
+                subscribe('gameProgress', setGameProgress)
             );
             
             // On-Demand Heavy Data
@@ -930,6 +938,14 @@ export const DataProvider = ({ children }) => {
     const updateStudent = async (id, data) => {
         const normalized = { ...data };
         if (normalized.registerNo) normalized.registerNo = normalized.registerNo.trim().toUpperCase();
+        
+        // Remove undefined fields to prevent Firestore errors
+        Object.keys(normalized).forEach(key => {
+            if (normalized[key] === undefined) {
+                delete normalized[key];
+            }
+        });
+
         await updateDoc(doc(db, 'students', id), normalized);
         if (currentUser?.id === id) setCurrentUser(prev => ({ ...prev, ...normalized }));
     };
@@ -1047,7 +1063,7 @@ export const DataProvider = ({ children }) => {
 
         let score = 0;
         const relevantQuestions = questions.filter(q =>
-            q.subjectId === (submission.subjectName || submission.subjectId) &&
+            (q.subjectId === submission.subjectName || q.subjectId === submission.subjectId) &&
             q.examId === submission.examId
         );
 
@@ -1086,6 +1102,7 @@ export const DataProvider = ({ children }) => {
             examId: submission.examId,
             subjectId: submission.subjectId,
             studentId: submission.studentId,
+            classId: submission.classId,
             marks: score,
             timestamp
         };
@@ -1596,7 +1613,7 @@ export const DataProvider = ({ children }) => {
         const docId = `${record.date}_${record.studentId}`;
         // classId is required so the mentor's subscription (filtered by classId) can find these records
         const student = students.find(s => s.id === record.studentId) || allStudents.find(s => s.id === record.studentId);
-        const classId = record.classId || student?.classId || null;
+        const classId = record.classId || student?.classId || (currentUser?.id === record.studentId ? currentUser.classId : null);
         await setDoc(doc(db, 'prayerRecords', docId), { ...record, classId, timestamp: new Date().toISOString() });
     };
     const getPrayerRecordsByStudent = (studentId) => prayerRecords.filter(r => r.studentId === studentId); // Local filter is fine as we sync all
@@ -1868,8 +1885,38 @@ export const DataProvider = ({ children }) => {
         results, recordResult, deleteResultBatch, deleteExamResultsForClass,
         questions, addQuestion, updateQuestion, deleteQuestion,
         studentResponses, submitExam, deleteStudentResponse: async (e, s, stuk) => {
-            const r = studentResponses.find(x => x.examId == e && x.subjectId == s && x.studentId == stuk);
-            if (r) await deleteDoc(doc(db, 'studentResponses', r.id));
+            // First try local state (fast path)
+            let r = studentResponses.find(x => x.examId == e && x.subjectId == s && x.studentId == stuk);
+            if (r) {
+                await deleteDoc(doc(db, 'studentResponses', r.id));
+                return;
+            }
+            // Fallback: query Firestore directly (handles missing classId on old docs)
+            try {
+                const q1 = query(collection(db, 'studentResponses'),
+                    where('examId', '==', e),
+                    where('subjectId', '==', s),
+                    where('studentId', '==', stuk)
+                );
+                const snap1 = await getDocs(q1);
+                if (!snap1.empty) {
+                    for (const d of snap1.docs) await deleteDoc(d.ref);
+                    return;
+                }
+                // Also try matching by subjectName (legacy submissions store name instead of GUID)
+                const sub = subjects.find(x => x.id === s);
+                if (sub?.name) {
+                    const q2 = query(collection(db, 'studentResponses'),
+                        where('examId', '==', e),
+                        where('subjectName', '==', sub.name),
+                        where('studentId', '==', stuk)
+                    );
+                    const snap2 = await getDocs(q2);
+                    for (const d of snap2.docs) await deleteDoc(d.ref);
+                }
+            } catch (err) {
+                console.error('[deleteStudentResponse] Firestore fallback error:', err);
+            }
         },
 
         currentUser, login, logout, impersonate, stopImpersonating,
@@ -1955,6 +2002,19 @@ export const DataProvider = ({ children }) => {
             const batch = writeBatch(db);
             classIds.forEach(id => batch.set(doc(db, 'classFeatureFlags', id), { classId: id, ...flags }, { merge: true }));
             await batch.commit();
+        },
+
+        gameProgress,
+        updateGameProgress: async (studentId, updateFields) => {
+            const studentDoc = (students || []).find(s => s.id === studentId) || (allStudents || []).find(s => s.id === studentId);
+            const classId = studentDoc?.classId || currentUser?.classId || '';
+            const progressRef = doc(db, 'gameProgress', studentId);
+            await setDoc(progressRef, {
+                ...updateFields,
+                studentId,
+                classId,
+                lastUpdated: new Date().toISOString()
+            }, { merge: true });
         },
 
         liveClasses,

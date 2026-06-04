@@ -6,7 +6,7 @@ import { X, Check, XCircle, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, studentName }) => {
-    const { questions, studentResponses, classes, recordResult } = useData();
+    const { questions, studentResponses, classes, subjects, recordResult } = useData();
     const { showAlert } = useUI();
     const [manualMarks, setManualMarks] = useState({});
 
@@ -37,12 +37,14 @@ const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, stude
         );
     }
 
-    // Now get questions. Questions are linked to Class Name. 
-    // The response doesn't store Class Name, but we can assume the questions valid for this exam/subject 
-    // are the ones we care about.
-    // Actually, we can just look at `response.answers` keys (Question IDs).
-    const questionIds = Object.keys(response.answers);
-    const relevantQuestions = questions.filter(q => questionIds.includes(q.id));
+    // Determine the subject name if needed for matching questions
+    const subject = classes.flatMap(c => subjects?.filter(s => s.classId === c.id) || []).find(s => s.id === subjectId) || { name: subjectId };
+    
+    const relevantQuestions = questions.filter(q => {
+        if (q.examId !== examId) return false;
+        // The subjectId in questions could be either the GUID or the Subject Name
+        return q.subjectId === subjectId || q.subjectId === subject.name;
+    });
 
     // Initialize state with auto-scores or existing manual marks
     // We don't store manual marks in response separate from 'autoScore' currently.
