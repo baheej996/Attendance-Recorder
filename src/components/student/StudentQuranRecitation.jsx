@@ -69,6 +69,8 @@ const StudentQuranRecitation = () => {
             if (b.totalRecitations !== a.totalRecitations) {
                 return b.totalRecitations - a.totalRecitations;
             }
+            if (a.id === currentUser?.id) return -1;
+            if (b.id === currentUser?.id) return 1;
             return a.name.localeCompare(b.name);
         });
     }, [classStudents, quranRecitations, rankingTimeframe]);

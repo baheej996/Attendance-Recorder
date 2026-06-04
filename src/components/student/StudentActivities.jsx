@@ -88,7 +88,12 @@ const StudentActivities = () => {
         });
 
         // Sort by points desc
-        studentScores.sort((a, b) => b.points - a.points);
+        studentScores.sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (a.id === currentUser?.id) return -1;
+            if (b.id === currentUser?.id) return 1;
+            return a.name.localeCompare(b.name);
+        });
 
         // Compute dense ranks (handles ties: 1, 2, 2, 3...)
         let currentRank = 1;

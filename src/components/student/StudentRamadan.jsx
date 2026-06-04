@@ -55,7 +55,12 @@ const StudentRamadan = () => {
         const fastingList = myClassStudents.map(student => {
             const fLogs = ramadanLogs.filter(log => log.studentId === student.id && log.status === 'Fasting');
             return { id: student.id, name: student.name, totalFasts: fLogs.length };
-        }).sort((a, b) => b.totalFasts - a.totalFasts);
+        }).sort((a, b) => {
+            if (b.totalFasts !== a.totalFasts) return b.totalFasts - a.totalFasts;
+            if (a.id === currentUser?.id) return -1;
+            if (b.id === currentUser?.id) return 1;
+            return a.name.localeCompare(b.name);
+        });
 
         // Assign rank to fastingList (handling ties)
         let currentFastingRank = 1;
@@ -82,7 +87,10 @@ const StudentRamadan = () => {
         }).sort((a, b) => {
             if (b.completedKhatms !== a.completedKhatms) return b.completedKhatms - a.completedKhatms;
             if (b.juz !== a.juz) return b.juz - a.juz;
-            return b.lastPage - a.lastPage;
+            if (b.lastPage !== a.lastPage) return b.lastPage - a.lastPage;
+            if (a.id === currentUser?.id) return -1;
+            if (b.id === currentUser?.id) return 1;
+            return a.name.localeCompare(b.name);
         });
 
         // Assign rank to quranList (handling ties)

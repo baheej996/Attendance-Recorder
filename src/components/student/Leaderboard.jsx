@@ -66,7 +66,7 @@ const ConfettiExplosion = () => {
 };
 
 const Leaderboard = () => {
-    const { currentUser, exams, subjects, results, students, classes, requireFeature } = useData();
+    const { currentUser, exams, subjects, results, students, classes, examSettings, requireFeature } = useData();
     const [selectedExamId, setSelectedExamId] = useState('');
     const [viewMode, setViewMode] = useState('class'); // class, batch, global
     const [showConfetti, setShowConfetti] = useState(true);
@@ -100,7 +100,18 @@ const Leaderboard = () => {
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
             const totalMaxMarks = studentResults.reduce((sum, r) => {
                 const subject = subjects.find(s => s.id === r.subjectId);
-                return sum + (subject ? Number(subject.maxMarks) : 0);
+                const studentClass = classes.find(c => c.id === student.classId);
+                const classLookupId = studentClass?.name || student.classId;
+                const subjectLookupId = subject?.name || r.subjectId;
+                
+                const customSetting = examSettings?.find(es => 
+                    es.examId === selectedExamId && 
+                    (es.classId === student.classId || es.classId === classLookupId) && 
+                    (es.subjectId === r.subjectId || es.subjectId === subjectLookupId)
+                );
+                
+                const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : (subject ? Number(subject.maxMarks) : 0);
+                return sum + max;
             }, 0);
             const marksMissed = totalMaxMarks - totalMarks;
 
@@ -114,7 +125,10 @@ const Leaderboard = () => {
         }).filter(s => s.resultCount > 0)
             .sort((a, b) => {
                 if (a.marksMissed !== b.marksMissed) return a.marksMissed - b.marksMissed;
-                return b.totalMarks - a.totalMarks;
+                if (b.totalMarks !== a.totalMarks) return b.totalMarks - a.totalMarks;
+                if (a.id === currentUser?.id) return -1;
+                if (b.id === currentUser?.id) return 1;
+                return 0;
             });
 
         // Compute dense ranks (handles ties: 1, 2, 2, 3...)
