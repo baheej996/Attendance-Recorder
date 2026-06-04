@@ -6,7 +6,7 @@ import { X, Check, XCircle, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, studentName }) => {
-    const { questions, studentResponses, classes, subjects, recordResult } = useData();
+    const { questions, studentResponses, classes, subjects, students, recordResult } = useData();
     const { showAlert } = useUI();
     const [manualMarks, setManualMarks] = useState({});
 
@@ -40,10 +40,27 @@ const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, stude
     // Determine the subject name if needed for matching questions
     const subject = classes.flatMap(c => subjects?.filter(s => s.classId === c.id) || []).find(s => s.id === subjectId) || { name: subjectId };
     
+    // Get student's class info for accurate filtering
+    const student = students?.find(s => s.id === studentId);
+    const studentClassId = response.classId || student?.classId;
+    const studentClassObj = classes?.find(c => c.id === studentClassId);
+    const studentClassName = studentClassObj?.name;
+    
     const relevantQuestions = questions.filter(q => {
         if (q.examId !== examId) return false;
         // The subjectId in questions could be either the GUID or the Subject Name
-        return q.subjectId === subjectId || q.subjectId === subject.name;
+        const subjectMatch = q.subjectId === subjectId || q.subjectId === subject.name;
+        if (!subjectMatch) return false;
+        
+        // Class Match Logic (from StudentExamView)
+        if (!q.shareMode) {
+            return q.classId === studentClassName || q.classId === studentClassId;
+        }
+        
+        if (q.shareMode === 'Batch') return q.classId === studentClassName;
+        if (q.shareMode === 'Specific') return q.targetDivisions?.includes(studentClassId);
+        
+        return false;
     });
 
     // Initialize state with auto-scores or existing manual marks
