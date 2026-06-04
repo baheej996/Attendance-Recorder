@@ -1888,6 +1888,19 @@ export const DataProvider = ({ children }) => {
         };
     };
 
+    const uniqueResults = React.useMemo(() => {
+        const unique = {};
+        results.forEach(r => {
+            const key = `${r.examId}_${r.subjectId}_${r.studentId}`;
+            const rTime = r.timestamp ? new Date(r.timestamp).getTime() : 0;
+            const uTime = unique[key]?.timestamp ? new Date(unique[key].timestamp).getTime() : -1;
+            if (!unique[key] || rTime > uTime) {
+                unique[key] = r;
+            }
+        });
+        return Object.values(unique);
+    }, [results]);
+
     const value = {
         classes, addClass, updateClass, deleteClass, deleteClasses, transferStudentsAndBulkDeleteClass,
         students, addStudent, updateStudent, deleteStudent, deleteStudents, deleteAllStudents,
@@ -1897,7 +1910,7 @@ export const DataProvider = ({ children }) => {
         attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds,
         subjects, addSubject, updateSubject, deleteSubject, deleteSubjects,
         exams, addExam, updateExam, deleteExam,
-        results, recordResult, deleteResultBatch, deleteExamResultsForClass,
+        results: uniqueResults, recordResult, deleteResultBatch, deleteExamResultsForClass,
         questions, addQuestion, updateQuestion, deleteQuestion,
         studentResponses, submitExam, deleteStudentResponse: async (e, s, stuk) => {
             // First try local state (fast path)
