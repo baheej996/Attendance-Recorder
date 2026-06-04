@@ -339,6 +339,8 @@ export const DataProvider = ({ children }) => {
         if (currentUser.role === 'student') {
             const uid = currentUser.id;
             const cid = currentUser.classId;
+            const myClassDoc = classes.find(c => c.id === cid);
+            const batchClassIds = myClassDoc ? classes.filter(c => c.name === myClassDoc.name).map(c => c.id).slice(0, 30) : [cid];
 
             unsubs.push(
                 subscribe('exams', setExams),
@@ -347,7 +349,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', uid), where('isRead', '==', false)),
                 subscribe('notifications', setNotifications, where('audience', 'in', ['students', 'all', 'specific_class']), limit(100)),
                 subscribe('starDeclarations', setStarDeclarations, where('classId', '==', cid)),
-                subscribe('students', setStudents, where('classId', '==', cid)),
+                subscribe('students', setStudents, where('classId', 'in', batchClassIds)),
                 subscribe('studentEvaluations', setStudentEvaluations, where('studentId', '==', uid), where('status', '==', 'Published')),
                 subscribe('feedbackSettings', setFeedbackSettings, where('classId', '==', cid)),
                 subscribe('gameProgress', setGameProgress, where('classId', '==', cid))
@@ -357,7 +359,7 @@ export const DataProvider = ({ children }) => {
             if (activeFeatures.has('attendance')) {
                 unsubs.push(subscribe('attendance', setAttendance, where('classId', '==', cid), orderBy('date', 'desc'), limit(attendanceLimit)));
             }
-            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('classId', '==', cid), limit(resultsLimit)));
+            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('classId', 'in', batchClassIds), limit(resultsLimit)));
             if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('classId', '==', cid)));
             if (activeFeatures.has('quran')) unsubs.push(
                 subscribe('quranRecitations', setQuranRecitations, where('classId', '==', cid)),
@@ -513,7 +515,7 @@ export const DataProvider = ({ children }) => {
         }
 
         return () => unsubs.forEach(u => u());
-    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit, activeFeatures, attendanceLimit, resultsLimit, activitiesLimit]);
+    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit, activeFeatures, attendanceLimit, resultsLimit, activitiesLimit, classes]);
 
     // Separate Effect for Log Pagination (to avoid re-subscribing to everything else)
     // NOTE: where('classId') + orderBy('timestamp') requires a Firestore composite index.
