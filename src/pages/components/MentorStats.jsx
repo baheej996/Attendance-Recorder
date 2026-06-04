@@ -284,7 +284,8 @@ const StudentResultModal = ({ student, exam, rank, subjects, results, onClose })
 const MentorStats = () => {
     const { 
         classes, students, attendance, currentUser, results, exams, subjects, 
-        institutionSettings, requireFeature, getCount, attendanceLimit, loadMoreAttendance 
+        institutionSettings, requireFeature, getCount, attendanceLimit, loadMoreAttendance,
+        loadMoreResults, resultsLimit
     } = useData();
     const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'results'
     const [selectedClassId, setSelectedClassId] = useState('');
