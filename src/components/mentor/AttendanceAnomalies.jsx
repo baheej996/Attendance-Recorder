@@ -65,7 +65,7 @@ const AttendanceAnomalies = () => {
                     const diffTime = Math.abs(d2 - d1);
                     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
                     
-                    if (diffDays === 1 && current.status === next.status) {
+                    if (diffDays === 1) {
                         foundAnomalies.push({
                             id: `${studentId}_${current.date}_${next.date}`,
                             studentId,
@@ -75,7 +75,9 @@ const AttendanceAnomalies = () => {
                             className: availableClasses.find(c => c.id === student?.classId)?.name || 'Unknown',
                             date1: current.date,
                             date2: next.date,
-                            type: current.status
+                            status1: current.status,
+                            status2: next.status,
+                            type: current.status === next.status ? current.status : 'Mixed'
                         });
                     }
                 }
@@ -195,8 +197,8 @@ const AttendanceAnomalies = () => {
                                     <div>
                                         <h3 className="font-bold text-gray-900">{anomaly.studentName} <span className="text-gray-500 font-normal text-sm">({anomaly.regNo})</span></h3>
                                         <p className="text-sm text-gray-600 mb-4">
-                                            Marked <strong>{anomaly.type}</strong> on both: <br />
-                                            <span className="font-medium text-gray-800">{new Date(anomaly.date1).toLocaleDateString()}</span> and <span className="font-medium text-gray-800">{new Date(anomaly.date2).toLocaleDateString()}</span>
+                                            Marked <strong>{anomaly.status1}</strong> on <span className="font-medium text-gray-800">{new Date(anomaly.date1).toLocaleDateString()}</span><br />
+                                            Marked <strong>{anomaly.status2}</strong> on <span className="font-medium text-gray-800">{new Date(anomaly.date2).toLocaleDateString()}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -212,8 +214,8 @@ const AttendanceAnomalies = () => {
                                             <h3 className="font-bold text-gray-800">{anomaly.studentName}</h3>
                                             <p className="text-xs text-gray-500">Reg: {anomaly.regNo} &bull; Class: {anomaly.className}</p>
                                         </div>
-                                        <span className={`px-2 py-1 text-xs font-bold rounded-lg ${anomaly.type === 'Absent' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                                            Consecutive {anomaly.type}
+                                        <span className={`px-2 py-1 text-xs font-bold rounded-lg ${anomaly.type === 'Absent' ? 'bg-red-100 text-red-700' : anomaly.type === 'Present' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            Consecutive {anomaly.type === 'Mixed' ? 'Days' : anomaly.type}
                                         </span>
                                     </div>
                                     <h4 className="text-sm font-bold text-gray-700 mb-3">Which record would you like to delete?</h4>

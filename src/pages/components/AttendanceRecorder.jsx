@@ -118,7 +118,7 @@ const AttendanceRecorder = () => {
 
                 const anomalies = [];
                 relevantRecords.forEach(record => {
-                    const conflict = neighborRecords.find(r => r.studentId === record.studentId && r.status === record.status);
+                    const conflict = neighborRecords.find(r => r.studentId === record.studentId && (r.status === 'Present' || r.status === 'Absent'));
                     if (conflict) {
                         const student = students.find(s => s.id === record.studentId);
                         anomalies.push(`${student?.name || record.studentId} (marked ${record.status} on ${conflict.date})`);
