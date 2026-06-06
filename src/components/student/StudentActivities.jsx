@@ -6,6 +6,7 @@ import { Layers, CheckCircle, Clock, Trophy, Target } from 'lucide-react';
 const StudentActivities = () => {
     const { currentUser, activities, activitySubmissions, students, subjects, markActivityAsDone } = useData();
     const [markingIds, setMarkingIds] = useState(new Set()); // track in-flight mark requests
+    const [activeTab, setActiveTab] = useState('pending');
 
     if (!currentUser) return null;
 
@@ -36,6 +37,10 @@ const StudentActivities = () => {
                 p.push(activity);
             }
         });
+        
+        // Sort pending so newly assigned (created) are on top
+        p.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        
         return { pending: p, completed: c };
     }, [myActivities, activitySubmissions, currentUser]);
 
@@ -166,10 +171,32 @@ const StudentActivities = () => {
                 </Card>
             </div>
 
+            {/* Mobile Tabs */}
+            <div className="flex bg-white rounded-xl shadow-sm border border-gray-100 p-1 lg:hidden">
+                <button 
+                    onClick={() => setActiveTab('pending')}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'pending' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                >
+                    Pending
+                </button>
+                <button 
+                    onClick={() => setActiveTab('completed')}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'completed' ? 'bg-green-50 text-green-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                >
+                    Completed
+                </button>
+                <button 
+                    onClick={() => setActiveTab('leaderboard')}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${activeTab === 'leaderboard' ? 'bg-yellow-50 text-yellow-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                >
+                    Leaderboard
+                </button>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Activities List */}
                 <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <div className="space-y-4">
+                    <div className={`space-y-4 ${activeTab === 'pending' ? 'block' : 'hidden lg:block'}`}>
                         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <Clock className="w-5 h-5 text-orange-500" /> Pending Activities
                         </h3>
@@ -229,7 +256,7 @@ const StudentActivities = () => {
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className={`space-y-4 ${activeTab === 'completed' ? 'block' : 'hidden lg:block'}`}>
                         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <CheckCircle className="w-5 h-5 text-green-500" /> Completed
                         </h3>
@@ -265,7 +292,7 @@ const StudentActivities = () => {
                 </div>
 
                 {/* Class Leaderboard Simplified */}
-                <div className="space-y-6">
+                <div className={`space-y-6 ${activeTab === 'leaderboard' ? 'block' : 'hidden lg:block'}`}>
                     <Card className="p-0 overflow-hidden">
                         <div className="bg-gray-50 p-4 border-b border-gray-100">
                             <h3 className="font-bold text-gray-800 flex items-center gap-2">
