@@ -311,7 +311,7 @@ const MentorDashboard = () => {
         const myStudents = new Set((students || []).filter(s => currentUser?.assignedClassIds?.includes(s.classId)).map(s => s.id));
         const recentRecordsByStudent = {};
         (attendance || []).forEach(r => {
-            if (myStudents.has(r.studentId) && r.status === 'Present') {
+            if (myStudents.has(r.studentId) && (r.status === 'Present' || r.status === 'Absent')) {
                 if (!recentRecordsByStudent[r.studentId]) recentRecordsByStudent[r.studentId] = [];
                 recentRecordsByStudent[r.studentId].push(r.date);
             }
@@ -321,7 +321,7 @@ const MentorDashboard = () => {
             for (let i=0; i<dates.length-1; i++) {
                 const d1 = new Date(dates[i]);
                 const d2 = new Date(dates[i+1]);
-                const diffDays = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
+                const diffDays = Math.round(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
                 if (diffDays === 1) {
                     count++;
                 }
