@@ -617,12 +617,12 @@ const MentorDashboard = () => {
                                 <ClassSubstitution />
                             )
                         } />
-                        <Route path="anomalies" element={
+                        <Route path="/anomalies" element={
                             <ErrorBoundary>
                                 <AttendanceAnomalies />
                             </ErrorBoundary>
                         } />
-                        <Route path="settings" element={<MentorSettings />} />
+                        <Route path="/settings" element={<MentorSettings />} />
                         <Route path="/help" element={<Help />} />
                         <Route path="*" element={
                             <div className="p-12 flex flex-col items-center justify-center h-full text-center">
