@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { Card, CardHeader, CardContent } from '../ui/Card';
+import { Card, CardHeader } from '../ui/Card';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { AlertCircle, CheckCircle2, XCircle, FileQuestion, BookOpen, Calculator, Percent } from 'lucide-react';
 import clsx from 'clsx';
