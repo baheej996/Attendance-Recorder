@@ -367,7 +367,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('quranProgress', setQuranProgress, where('classId', '==', cid))
             );
             if (activeFeatures.has('activities')) unsubs.push(
-                subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : ['']), limit(activitiesLimit)),
+                subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : [''])),
                 subscribe('studentResponses', setStudentResponses, where('studentId', '==', uid), limit(resultsLimit))
             );
             if (activeFeatures.has('leave')) unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('studentId', '==', uid)));
@@ -450,7 +450,7 @@ export const DataProvider = ({ children }) => {
                     // would otherwise land outside the unscoped window).
                     // Include '' to catch legacy submissions whose classId was written as empty
                     // (mirrors the same pattern the student listener uses at line 344).
-                    subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', [...assignedClassIds, '']), limit(activitiesLimit)),
+                    subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', [...assignedClassIds, ''])),
                     subscribe('studentResponses', setStudentResponses, where('classId', 'in', assignedClassIds), limit(resultsLimit))
                 );
                 if (activeFeatures.has('leave')) unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds)));
@@ -508,7 +508,7 @@ export const DataProvider = ({ children }) => {
             // On-Demand Heavy Data
             if (activeFeatures.has('attendance')) unsubs.push(subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(attendanceLimit)));
             if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, limit(resultsLimit)));
-            if (activeFeatures.has('activities')) unsubs.push(subscribe('activitySubmissions', setActivitySubmissions, limit(activitiesLimit)));
+            if (activeFeatures.has('activities')) unsubs.push(subscribe('activitySubmissions', setActivitySubmissions));
             if (activeFeatures.has('quran')) unsubs.push(subscribe('quranRecitations', setQuranRecitations, limit(5000)));
             
             // Note: Admins may still need full attendance/results for reports, 
