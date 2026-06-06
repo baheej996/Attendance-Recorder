@@ -1203,9 +1203,17 @@ export const DataProvider = ({ children }) => {
     };
 
     const deleteAttendanceBatch = async (date, studentIds) => {
+        const q = query(
+            collection(db, 'attendance'),
+            where('date', '==', date)
+        );
+        const snap = await getDocs(q);
         const batch = writeBatch(db);
-        const toDelete = attendance.filter(r => r.date === date && studentIds.includes(r.studentId));
-        toDelete.forEach(r => batch.delete(doc(db, 'attendance', r.id)));
+        snap.docs.forEach(d => {
+            if (studentIds.includes(d.data().studentId)) {
+                batch.delete(d.ref);
+            }
+        });
         await batch.commit();
     };
 
