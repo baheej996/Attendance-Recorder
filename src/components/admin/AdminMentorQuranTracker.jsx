@@ -21,7 +21,7 @@ const AdminMentorQuranTracker = () => {
     const rankings = useMemo(() => {
         const data = mentors.map(mentor => {
             // Find all active students in mentor's assigned classes
-            const assignedClassIds = mentor.assignedClassIds || [];
+            const assignedClassIds = mentor.assignedClassIds || (mentor.classId ? [mentor.classId] : []);
             const mentorStudents = students.filter(s => 
                 assignedClassIds.includes(s.classId) && s.status === 'Active'
             );

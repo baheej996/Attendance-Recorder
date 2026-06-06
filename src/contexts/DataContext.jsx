@@ -509,7 +509,7 @@ export const DataProvider = ({ children }) => {
             if (activeFeatures.has('attendance')) unsubs.push(subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(attendanceLimit)));
             if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, limit(resultsLimit)));
             if (activeFeatures.has('activities')) unsubs.push(subscribe('activitySubmissions', setActivitySubmissions, limit(activitiesLimit)));
-            if (activeFeatures.has('quran')) unsubs.push(subscribe('quranRecitations', setQuranRecitations, limit(500)));
+            if (activeFeatures.has('quran')) unsubs.push(subscribe('quranRecitations', setQuranRecitations, orderBy('date', 'desc'), limit(5000)));
             
             // Note: Admins may still need full attendance/results for reports, 
             // but those should ideally be fetched on-demand in the reports page.
