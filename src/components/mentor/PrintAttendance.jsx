@@ -89,7 +89,7 @@ const PrintAttendance = () => {
                 // Students Data
                 let totalThisMonth = 0;
                 classStudents.forEach((student, index) => {
-                    const studentRecords = attendance.filter(r => r.studentId === student.id);
+                    const studentRecords = (stats?.currentMonthRecords || []).filter(r => r.studentId === student.id);
                     const currentMonthAttendance = {};
                     let studentThisMonth = 0;
 
@@ -126,7 +126,10 @@ const PrintAttendance = () => {
                 // Calculate Working Days Summary
                 const workingDaysSummary = (() => {
                     const studentIds = new Set(classStudents.map(s => s.id));
-                    const classRecords = attendance.filter(r => studentIds.has(r.studentId));
+                    const classRecords = (stats?.currentMonthRecords || []).filter(r => 
+                        studentIds.has(r.studentId) && 
+                        (r.classId === classId || !r.classId) // STRICT BATCH FILTER FOR WORKING DAYS
+                    );
                     const uniqueDates = [...new Set(classRecords.map(r => r.date))];
                     let thisMonthCount = 0;
                     uniqueDates.forEach(dateStr => {
@@ -442,7 +445,7 @@ export const AttendanceRegister = ({
         });
 
     const processAttendance = (studentId) => {
-        const studentRecords = attendance.filter(r => r.studentId === studentId);
+        const studentRecords = (historicalData?.currentMonthRecords || []).filter(r => r.studentId === studentId);
         const currentMonthStats = { days: {}, total: 0 };
         
         // Use true historical totals from server instead of client-side buffer
@@ -480,7 +483,10 @@ export const AttendanceRegister = ({
     const workingDays = (() => {
         if (!classStudents.length) return { thisMonth: 0, previous: 0, total: 0 };
         const studentIds = new Set(classStudents.map(s => s.id));
-        const classRecords = attendance.filter(r => studentIds.has(r.studentId));
+        const classRecords = (historicalData?.currentMonthRecords || []).filter(r => 
+            studentIds.has(r.studentId) && 
+            (r.classId === classId || !r.classId) // STRICT BATCH FILTER FOR WORKING DAYS
+        );
         const uniqueDates = [...new Set(classRecords.map(r => r.date))];
         let thisMonth = 0;
 

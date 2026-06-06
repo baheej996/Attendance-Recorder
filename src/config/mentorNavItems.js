@@ -1,4 +1,5 @@
 import {
+    Home,
     ClipboardCheck,
     UserCheck,
     MessageSquare,
@@ -21,10 +22,14 @@ import {
     Bell,
     UserPlus,
     FileBarChart,
-    CheckCircle
+    CheckCircle,
+    Gamepad2,
+    FileQuestion,
+    AlertTriangle
 } from 'lucide-react';
 
 export const MENTOR_NAV_ITEMS = [
+    { id: 'welcome', icon: Home, label: 'Welcome Page', path: '/mentor' },
     { id: 'attendance', icon: ClipboardCheck, label: 'Record Attendance', path: '/mentor/record' },
     { id: 'tasks', icon: ClipboardList, label: 'Professional Tasks', path: '/mentor/tasks' },
     { id: 'assessment', icon: CheckCircle, label: 'Student Assessment', path: '/mentor/assessment' },
@@ -41,13 +46,16 @@ export const MENTOR_NAV_ITEMS = [
     { id: 'ramadan', icon: Moon, label: 'Ramadan', path: '/mentor/ramadan' },
     { id: 'print', icon: Printer, label: 'Print Attendance', path: '/mentor/print' },
     { id: 'questions', icon: FileEdit, label: 'Question Bank', path: '/mentor/questions' },
+    { id: 'exam-tracker', icon: FileQuestion, label: 'Question Tracking', path: '/mentor/exam-tracker' },
     { id: 'marks', icon: BarChart2, label: 'Enter Exam Marks', path: '/mentor/marks' },
     { id: 'star-student', icon: Star, label: 'Star of the Month', path: '/mentor/star-student' },
     { id: 'stats', icon: CalendarDays, label: 'Statistics & History', path: '/mentor/stats' },
     { id: 'leaderboard', icon: Trophy, label: 'Leaderboard', path: '/mentor/leaderboard' },
+    { id: 'gamification', icon: Gamepad2, label: 'Gamification Control', path: '/mentor/gamification' },
     { id: 'directory', icon: Users, label: 'Institution Directory', path: '/mentor/directory' },
     { id: 'batches', icon: Users, label: 'Batches', path: '/mentor/batches' },
     { id: 'substitution', icon: Repeat, label: 'Class Substitution', path: '/mentor/substitution' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/mentor/settings' },
+    { id: 'anomalies', icon: AlertTriangle, label: 'Attendance Anomalies', path: '/mentor/anomalies' },
     { id: 'help', icon: Info, label: 'Help', path: '/mentor/help' },
 ];

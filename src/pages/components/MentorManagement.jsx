@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { UserPlus, User, Check, Trash2, Edit, BookOpen, Users, X, Plus, Search, Phone, ExternalLink, ShieldCheck, Calendar, Clock } from 'lucide-react';
+import { UserPlus, User, Check, Trash2, Edit, BookOpen, Users, X, Plus, Search, Phone, ExternalLink, ShieldCheck, Calendar, Clock, Star } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,7 +19,7 @@ const MentorManagement = () => {
     const { mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors, classes, students, impersonate } = useData();
     const { showAlert } = useUI();
     const navigate = useNavigate();
-    const [formData, setFormData] = useState({ name: '', email: '', password: '', qualification: '', contactNumber: '', profilePhoto: '', assignedClassIds: [] });
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', qualification: '', contactNumber: '', profilePhoto: '', assignedClassIds: [], isExamCoordinator: false });
     const [editingId, setEditingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [error, setError] = useState('');
@@ -83,7 +83,7 @@ const MentorManagement = () => {
     };
 
     const handleOpenModal = () => {
-        setFormData({ name: '', email: '', password: '', qualification: '', contactNumber: '', profilePhoto: '', assignedClassIds: [] });
+        setFormData({ name: '', email: '', password: '', qualification: '', contactNumber: '', profilePhoto: '', assignedClassIds: [], isExamCoordinator: false });
         setEditingId(null);
         setError('');
         setIsModalOpen(true);
@@ -127,7 +127,8 @@ const MentorManagement = () => {
             qualification: mentor.qualification || '',
             contactNumber: mentor.contactNumber || '',
             profilePhoto: mentor.profilePhoto || '',
-            assignedClassIds: mentor.assignedClassIds || []
+            assignedClassIds: mentor.assignedClassIds || [],
+            isExamCoordinator: mentor.isExamCoordinator || false
         });
         setEditingId(mentor.id);
         setError('');
@@ -297,6 +298,20 @@ const MentorManagement = () => {
                             onChange={(e) => setFormData(p => ({ ...p, qualification: e.target.value }))}
                         />
 
+                        <div className="flex items-center gap-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50">
+                            <input 
+                                type="checkbox" 
+                                id="isExamCoordinator"
+                                checked={formData.isExamCoordinator}
+                                onChange={(e) => setFormData(p => ({ ...p, isExamCoordinator: e.target.checked }))}
+                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                            />
+                            <div>
+                                <label htmlFor="isExamCoordinator" className="font-bold text-gray-900 text-sm block">Exam Coordinator</label>
+                                <p className="text-xs text-gray-500">Grant this mentor access to track question paper progress across all classes.</p>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo</label>
                             <div className="flex items-center gap-4">
@@ -453,7 +468,14 @@ const MentorManagement = () => {
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-lg text-gray-900 truncate">{mentor.name}</h4>
+                                            <h4 className="font-bold text-lg text-gray-900 truncate flex items-center gap-2">
+                                                {mentor.name}
+                                                {mentor.isExamCoordinator && (
+                                                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] uppercase font-bold flex items-center gap-1">
+                                                        <Star className="w-3 h-3" /> Exam Coordinator
+                                                    </span>
+                                                )}
+                                            </h4>
                                             {mentor.qualification && (
                                                 <p className="text-xs text-indigo-600 font-medium mb-0.5">{mentor.qualification}</p>
                                             )}

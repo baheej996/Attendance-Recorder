@@ -20,7 +20,7 @@ const AdminAdmissionRequests = () => {
     
     // Status Modal State
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, request: null });
-    const [rejectReason, setRejectReason] = useState('');
+    const [adminComment, setAdminComment] = useState('');
 
     const checkDuplicate = (newStudent) => {
         return students.find(s => {
@@ -43,7 +43,7 @@ const AdminAdmissionRequests = () => {
             }
         }
         
-        if (type === 'reject') setRejectReason('');
+        setAdminComment('');
         setConfirmModal({ isOpen: true, type: type, request: request });
     };
 
@@ -51,7 +51,7 @@ const AdminAdmissionRequests = () => {
         const { type, request } = confirmModal;
         if (!type || !request) return;
 
-        if (type === 'reject' && !rejectReason.trim()) {
+        if (type === 'reject' && !adminComment.trim()) {
             showAlert('Reason Required', 'Please provide a reason for rejection.', 'error');
             return;
         }
@@ -78,7 +78,8 @@ const AdminAdmissionRequests = () => {
                 
                 await updateAdmissionRequest(request.id, { 
                     requestStatus: 'Approved', 
-                    resolvedAt: new Date().toISOString() 
+                    resolvedAt: new Date().toISOString(),
+                    adminComments: adminComment.trim()
                 });
                 showAlert('Success', `Request for ${request.studentName || request.name} approved!`, 'success');
                 
@@ -86,7 +87,7 @@ const AdminAdmissionRequests = () => {
                 await updateAdmissionRequest(request.id, { 
                     requestStatus: 'Rejected', 
                     resolvedAt: new Date().toISOString(),
-                    adminComments: rejectReason.trim()
+                    adminComments: adminComment.trim()
                 });
                 showAlert('Info', 'Request has been rejected.', 'info');
             } else if (type === 'delete') {
@@ -99,7 +100,7 @@ const AdminAdmissionRequests = () => {
         }
 
         setConfirmModal({ isOpen: false, type: null, request: null });
-        setRejectReason('');
+        setAdminComment('');
     };
 
     return (
@@ -108,7 +109,7 @@ const AdminAdmissionRequests = () => {
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
                 onConfirm={executeAction}
-                autoClose={confirmModal.type !== 'reject'}
+                autoClose={confirmModal.type !== 'reject' && confirmModal.type !== 'approve'}
                 title={
                     confirmModal.type === 'approve' ? "Approve Request" : 
                     confirmModal.type === 'delete' ? "Delete Record?" : 
@@ -124,14 +125,25 @@ const AdminAdmissionRequests = () => {
                 confirmText={confirmModal.type === 'approve' ? "Approve" : confirmModal.type === 'delete' ? "Delete" : "Reject"}
                 isDanger={confirmModal.type === 'reject' || confirmModal.type === 'delete'}
             >
+                {confirmModal.type === 'approve' && (
+                    <div className="mt-4">
+                        <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">Comment / Remarks (Optional)</label>
+                        <textarea 
+                            className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 min-h-[80px]"
+                            placeholder="Type a comment..."
+                            value={adminComment}
+                            onChange={(e) => setAdminComment(e.target.value)}
+                        />
+                    </div>
+                )}
                 {confirmModal.type === 'reject' && (
                     <div className="mt-4">
-                        <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">Reason for rejection</label>
+                        <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">Reason for rejection (Required)</label>
                         <textarea 
-                            className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-red-500 min-h-[100px]"
+                            className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-red-500 min-h-[80px]"
                             placeholder="Type a reason..."
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
+                            value={adminComment}
+                            onChange={(e) => setAdminComment(e.target.value)}
                         />
                     </div>
                 )}
@@ -240,16 +252,21 @@ const AdminAdmissionRequests = () => {
                         <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Resolution History</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {historyRequests.map(request => (
-                                <div key={request.id} className="bg-white border border-gray-100 p-3 rounded-xl flex items-center justify-between gap-3 group relative overflow-hidden">
+                                <div key={request.id} className="bg-white border border-gray-100 p-3 rounded-xl flex items-start justify-between gap-3 group relative overflow-hidden">
                                      <div className={`absolute top-0 left-0 w-1 h-full ${request.requestStatus === 'Approved' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                     <div className="min-w-0 flex-1">
-                                        <p className="font-bold text-gray-800 text-xs truncate">{request.name}</p>
-                                        <p className="text-[9px] text-gray-400 uppercase tracking-tighter">
-                                            {request.type === 'transfer' ? 'Transfer' : request.type === 'removal' ? 'Removal' : 'Admission'} • {request.requestStatus}
-                                        </p>
+                                     <div className="min-w-0 flex-1 pl-1">
+                                         <p className="font-bold text-gray-800 text-xs truncate">{request.name}</p>
+                                         <p className="text-[9px] text-gray-400 uppercase tracking-tighter">
+                                             {request.type === 'transfer' ? 'Transfer' : request.type === 'removal' ? 'Removal' : 'Admission'} • {request.requestStatus}
+                                         </p>
+                                         {(request.adminComments || request.adminComment) && (
+                                             <p className="text-[10px] text-gray-500 mt-1 italic break-words whitespace-pre-wrap">
+                                                 "{request.adminComments || request.adminComment}"
+                                             </p>
+                                         )}
                                      </div>
-                                     <button onClick={() => handleAction(request, 'delete')} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors">
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                     <button onClick={() => handleAction(request, 'delete')} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors shrink-0">
+                                         <Trash2 className="w-3.5 h-3.5" />
                                      </button>
                                 </div>
                             ))}
@@ -262,4 +279,3 @@ const AdminAdmissionRequests = () => {
 };
 
 export default AdminAdmissionRequests;
-;

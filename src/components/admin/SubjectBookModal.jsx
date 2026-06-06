@@ -6,7 +6,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { X, UploadCloud, Trash2, Image as ImageIcon, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
-    const { updateSubject } = useData();
+    const { subjects, updateSubject } = useData();
     const { showAlert, showConfirm } = useUI();
     const [uploadingChapter, setUploadingChapter] = useState(null);
     const [expandedChapter, setExpandedChapter] = useState(1);
@@ -46,19 +46,22 @@ const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
 
             const uploadedUrls = await Promise.all(uploadPromises);
             
-            // 2. Prepare Data
-            const currentChapterData = chapterData[chapterIndex] || { images: [], isRevealedToStudents: false };
-            const updatedChapterData = {
-                ...chapterData,
-                [chapterIndex]: {
-                    ...currentChapterData,
-                    images: [...(currentChapterData.images || []), ...uploadedUrls]
-                }
-            };
-
-            // 3. Batch Database Updates
+            // 2 & 3. Batch Database Updates (Preserving specific reveal statuses)
             const updateIds = subjectGroup.subjectIds;
-            await Promise.all(updateIds.map(id => updateSubject(id, { chapterData: updatedChapterData })));
+            await Promise.all(updateIds.map(id => {
+                const actualSubject = subjects.find(s => s.id === id);
+                const actualChapterData = actualSubject?.chapterData || {};
+                const currentChapterState = actualChapterData[chapterIndex] || { images: [], isRevealedToStudents: false };
+                
+                const updatedChapterData = {
+                    ...actualChapterData,
+                    [chapterIndex]: {
+                        ...currentChapterState,
+                        images: [...(currentChapterState.images || []), ...uploadedUrls]
+                    }
+                };
+                return updateSubject(id, { chapterData: updatedChapterData });
+            }));
 
             showAlert('Success', `${uploadedUrls.length} pages added to Chapter ${chapterIndex}`, 'success');
         } catch (error) {
@@ -79,19 +82,22 @@ const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
             'Are you sure you want to delete this page from the chapter?',
             async () => {
                 try {
-                    const currentChapterData = chapterData[chapterIndex] || { images: [] };
-                    const updatedImages = (currentChapterData.images || []).filter(url => url !== imageUrl);
-                    
-                    const updatedChapterData = {
-                        ...chapterData,
-                        [chapterIndex]: {
-                            ...currentChapterData,
-                            images: updatedImages
-                        }
-                    };
-
                     await Promise.all(
-                        subjectGroup.subjectIds.map(id => updateSubject(id, { chapterData: updatedChapterData }))
+                        subjectGroup.subjectIds.map(id => {
+                            const actualSubject = subjects.find(s => s.id === id);
+                            const actualChapterData = actualSubject?.chapterData || {};
+                            const currentChapterState = actualChapterData[chapterIndex] || { images: [], isRevealedToStudents: false };
+                            const updatedImages = (currentChapterState.images || []).filter(url => url !== imageUrl);
+                            
+                            const updatedChapterData = {
+                                ...actualChapterData,
+                                [chapterIndex]: {
+                                    ...currentChapterState,
+                                    images: updatedImages
+                                }
+                            };
+                            return updateSubject(id, { chapterData: updatedChapterData });
+                        })
                     );
                     showAlert('Success', 'Page removed successfully.', 'success');
                 } catch (error) {
@@ -108,17 +114,21 @@ const SubjectBookModal = ({ isOpen, onClose, subjectGroup }) => {
             `Are you sure you want to delete ALL pages from Chapter ${chapterIndex}?`,
             async () => {
                 try {
-                    const currentChapterData = chapterData[chapterIndex] || {};
-                    const updatedChapterData = {
-                        ...chapterData,
-                        [chapterIndex]: {
-                            ...currentChapterData,
-                            images: []
-                        }
-                    };
-
                     await Promise.all(
-                        subjectGroup.subjectIds.map(id => updateSubject(id, { chapterData: updatedChapterData }))
+                        subjectGroup.subjectIds.map(id => {
+                            const actualSubject = subjects.find(s => s.id === id);
+                            const actualChapterData = actualSubject?.chapterData || {};
+                            const currentChapterState = actualChapterData[chapterIndex] || { images: [], isRevealedToStudents: false };
+                            
+                            const updatedChapterData = {
+                                ...actualChapterData,
+                                [chapterIndex]: {
+                                    ...currentChapterState,
+                                    images: []
+                                }
+                            };
+                            return updateSubject(id, { chapterData: updatedChapterData });
+                        })
                     );
                     showAlert('Success', 'All pages removed from the chapter.', 'success');
                 } catch (error) {

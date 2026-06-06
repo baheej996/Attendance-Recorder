@@ -18,9 +18,11 @@ const StudentGames = () => {
 
     // Access Control Check
     const classFlag = classFeatureFlags?.find(f => f.classId === currentUser.classId);
-    const isGamificationEnabled = classFlag?.gamification === true;
+    const isGamificationEnabled = classFlag?.gamification === true || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const classStudents = students.filter(s => s.classId === currentUser.classId && s.status === 'Active');
-    const unlockedLevels = classFlag?.unlockedArabicLevels || [1];
+    const unlockedLevels = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+        ? ARABIC_ALPHABET_LEVELS.map(l => l.id) 
+        : (classFlag?.unlockedArabicLevels || [1]);
 
     const currentProgress = gameProgress.find(g => g.studentId === currentUser.id);
     const completedStagesData = currentProgress?.completedStages || {};

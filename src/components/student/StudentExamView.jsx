@@ -18,7 +18,12 @@ const StudentExamView = () => {
     const studentClass = classes.find(c => c.id === currentUser?.classId);
 
     React.useEffect(() => {
-        return requireFeature('results');
+        const unsubResults = requireFeature('results');
+        const unsubActivities = requireFeature('activities');
+        return () => {
+            unsubResults();
+            unsubActivities();
+        };
     }, [requireFeature]);
     
     // Unique Device Fingerprint (Stored in browser session)
@@ -383,6 +388,7 @@ const StudentExamView = () => {
             subjectId: realSubject?.id, // Send GUID to match MarksEntry
             subjectName: selectedSubjectId, // Send Name for fallback
             studentId: currentUser.id,
+            classId: currentUser.classId, // Required for mentor subscription filter
             answers: answers,
             examName: exams.find(e => e.id === activeExamId)?.name
         };
@@ -593,6 +599,18 @@ const StudentExamView = () => {
             r.studentId === currentUser.id
         );
 
+        const setting = examSettings.find(s => 
+            s.examId === activeExamId && 
+            s.classId === currentUser.classId && 
+            s.subjectId === realSubj?.id
+        ) || examSettings.find(s => 
+            s.examId === activeExamId && 
+            (s.classId === currentUser.classId || s.classId === studentClassName) && 
+            (s.subjectId === selectedSubjectId || s.subjectId === realSubj?.name)
+        ) || {};
+
+        const isRevealed = setting.answersRevealed === true;
+
         return (
             <div className="max-w-4xl mx-auto pb-12">
                 <div className="flex items-center justify-between mb-6">
@@ -621,7 +639,7 @@ const StudentExamView = () => {
                             return (
                                 <div key={q.id} className={cn(
                                     "p-6 rounded-xl border relative overflow-hidden",
-                                    isMCQ
+                                    isRevealed && isMCQ
                                         ? (isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")
                                         : "bg-gray-50 border-gray-200"
                                 )}>
@@ -637,10 +655,10 @@ const StudentExamView = () => {
                                         <div className="bg-white/50 p-3 rounded-lg">
                                             <p className="text-xs uppercase font-bold text-gray-500 mb-1">Your Answer:</p>
                                             <p className={cn("font-medium",
-                                                isMCQ && (isCorrect ? "text-green-700" : "text-red-700")
+                                                isRevealed && isMCQ && (isCorrect ? "text-green-700" : "text-red-700")
                                             )}>
                                                 {myAns || "(Skipped)"}
-                                                {isMCQ && (isCorrect ? <CheckCircle className="inline w-4 h-4 ml-2" /> : <XCircle className="inline w-4 h-4 ml-2" />)}
+                                                {isRevealed && isMCQ && (isCorrect ? <CheckCircle className="inline w-4 h-4 ml-2" /> : <XCircle className="inline w-4 h-4 ml-2" />)}
                                             </p>
 
                                             {/* Show Attachment if exists */}
@@ -660,7 +678,7 @@ const StudentExamView = () => {
                                         </div>
                                     </div>
 
-                                    {((isMCQ && !isCorrect) || (!isMCQ)) && (
+                                    {isRevealed && ((isMCQ && !isCorrect) || (!isMCQ)) && (
                                         <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
                                             {isMCQ ? (
                                                 <>

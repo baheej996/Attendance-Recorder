@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import { ReportCardPDFTemplate } from '../ui/ReportCardPDFTemplate';
 
 const StudentResultView = () => {
-    const { currentUser, exams, subjects, results, students, institutionSettings, requireFeature } = useData();
+    const { currentUser, exams, subjects, results, students, classes, examSettings, institutionSettings, requireFeature } = useData();
     const [selectedExamId, setSelectedExamId] = useState('');
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const pdfRef = useRef(null);
@@ -30,7 +30,17 @@ const StudentResultView = () => {
 
     const getMaxMarks = (id) => {
         const s = subjects.find(sub => sub.id === id);
-        return s ? s.maxMarks : 100;
+        const studentClass = classes?.find(c => c.id === currentUser?.classId);
+        const classLookupId = studentClass?.name || currentUser?.classId;
+        const subjectLookupId = s?.name || id;
+        
+        const customSetting = examSettings?.find(es => 
+            es.examId === selectedExamId && 
+            (es.classId === currentUser?.classId || es.classId === classLookupId) && 
+            (es.subjectId === id || es.subjectId === subjectLookupId)
+        );
+        
+        return customSetting?.maxMarks ? Number(customSetting.maxMarks) : (s ? s.maxMarks : 100);
     };
 
     const getPassMarks = (id) => {

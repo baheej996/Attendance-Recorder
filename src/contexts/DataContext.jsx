@@ -117,6 +117,7 @@ export const DataProvider = ({ children }) => {
         name: 'Samastha E-Learning',
         tagline: 'Realizing the real path',
         academicYear: '2026-2027',
+        academicYearStartMonth: 3,
         chiefMentor: 'OP Siraj Faizy',
         favicon: '/favicon.png' 
     });
@@ -1208,6 +1209,18 @@ export const DataProvider = ({ children }) => {
         await batch.commit();
     };
 
+    const deleteAttendanceRecord = async (date, studentId) => {
+        const q = query(
+            collection(db, 'attendance'), 
+            where('date', '==', date), 
+            where('studentId', '==', studentId)
+        );
+        const snap = await getDocs(q);
+        const batch = writeBatch(db);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    };
+
     const deleteAllAttendanceForStudentIds = async (studentIds) => {
         const batch = writeBatch(db);
         const toDelete = attendance.filter(r => studentIds.includes(r.studentId));
@@ -1829,25 +1842,21 @@ export const DataProvider = ({ children }) => {
 
     const getHistoricalAttendanceStats = async (classId, year, month) => {
         const firstDayOfCurrentMonth = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        const firstDayOfNextMonth = month === 11 
+            ? `${year + 1}-01-01` 
+            : `${year}-${String(month + 2).padStart(2, '0')}-01`;
         
-        try {
-            // Attempt 1: Optimized query by classId (fastest, requires index)
-            const q = query(
-                collection(db, 'attendance'),
-                where('classId', '==', classId),
-                where('date', '<', firstDayOfCurrentMonth)
-            );
-            
-            const snapshot = await getDocs(q);
-            if (!snapshot.empty) {
-                return processHistoricalRecords(snapshot.docs.map(doc => doc.data()));
-            }
-            
-            // If empty, it might be because old records don't have classId. 
-            // Continue to fallback...
-        } catch (err) {
-            console.warn("Optimized history query failed (likely index):", err.message);
-        }
+        // Dynamically calculate the start of the academic year based on the selected date.
+        // Uses the configured academicYearStartMonth (defaults to 3 for April).
+        // If the selected month is before the start month, it belongs to the previous year's academic session.
+        const startMonthIndex = institutionSettings?.academicYearStartMonth !== undefined ? parseInt(institutionSettings.academicYearStartMonth, 10) : 3;
+        const startYearNum = month >= startMonthIndex ? year : year - 1;
+        const academicYearStartDate = `${startYearNum}-${String(startMonthIndex + 1).padStart(2, '0')}-01`;
+        
+        // We intentionally query ALL attendance records for the students in this class.
+        // We do NOT optimize by classId, because we MUST fetch a student's attendance history
+        // across all classes they have been part of (e.g., if transferred from TTS to MWF batch)
+        // so their "Previous Total" carries over correctly.
 
         // Fallback: Query by student IDs (handles old records without classId and missing indexes)
         const classStudentIds = students
@@ -1868,25 +1877,37 @@ export const DataProvider = ({ children }) => {
             allRecords.push(...snap.docs.map(d => d.data()));
         }
 
-        // Filter by date in memory (bypasses index requirement)
-        const filteredRecords = allRecords.filter(r => r.date && r.date < firstDayOfCurrentMonth);
-        return processHistoricalRecords(filteredRecords);
+        // Filter by date in memory
+        const filteredRecords = allRecords.filter(r => r.date && r.date >= academicYearStartDate && r.date < firstDayOfNextMonth);
+        return processHistoricalRecords(filteredRecords, firstDayOfCurrentMonth, classId);
     };
 
-    const processHistoricalRecords = (records) => {
+    const processHistoricalRecords = (records, firstDayOfCurrentMonth, targetClassId) => {
         const studentTotals = {};
         const uniqueDates = new Set();
+        const currentMonthRecords = [];
         
         records.forEach(r => {
-            if (r.status === 'Present') {
-                studentTotals[r.studentId] = (studentTotals[r.studentId] || 0) + 1;
+            if (!r.date) return;
+            if (r.date < firstDayOfCurrentMonth) {
+                // Historical
+                if (r.status === 'Present') {
+                    studentTotals[r.studentId] = (studentTotals[r.studentId] || 0) + 1;
+                }
+                // ONLY count the working day if the class actually met
+                if (r.classId === targetClassId || !r.classId) {
+                    uniqueDates.add(r.date);
+                }
+            } else {
+                // Current Month
+                currentMonthRecords.push(r);
             }
-            if (r.date) uniqueDates.add(r.date);
         });
         
         return {
             studentTotals,
-            totalWorkingDays: uniqueDates.size
+            totalWorkingDays: uniqueDates.size,
+            currentMonthRecords
         };
     };
 
@@ -1909,7 +1930,7 @@ export const DataProvider = ({ children }) => {
         allStudents, 
         
         mentors, addMentor, updateMentor, deleteMentor, deleteMentors,
-        attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds,
+        attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds, deleteAttendanceRecord,
         subjects, addSubject, updateSubject, deleteSubject, deleteSubjects,
         exams, addExam, updateExam, deleteExam,
         results: uniqueResults, recordResult, deleteResultBatch, deleteExamResultsForClass,

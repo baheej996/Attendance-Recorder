@@ -26,7 +26,8 @@ import {
     Shield,
     Sparkles,
     ArrowRight,
-    MessageCircle
+    MessageCircle,
+    Gamepad2
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -163,6 +164,9 @@ const StudentWelcome = () => {
     const assignedMentors = mentors?.filter(m => (m.assignedClassIds || []).includes(currentUser.classId)) || [];
 
     const isFeatureEnabled = (key) => {
+        // Bypass feature flags on localhost for local testing
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return true;
+
         const isGloballyEnabled = globalFlags[key] !== false;
         let isMentorEnabled = true;
         for (const mentor of assignedMentors) {
@@ -209,6 +213,7 @@ const StudentWelcome = () => {
         { icon: CheckCircle, label: 'Attendance', path: '/student/attendance', key: 'attendanceHistory', color: 'bg-teal-500', badge: unreadAttendanceCount },
         { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard', key: 'leaderboard', color: 'bg-yellow-500' },
         { icon: Star, label: 'Star', path: '/student/star-student', key: 'star', color: 'bg-amber-400', badge: unreadStarCount },
+        { icon: Gamepad2, label: 'Learning Games', path: '/student/games', key: 'gamification', color: 'bg-indigo-600' },
         { icon: MessageCircle, label: 'Feedback', path: '/student/feedback', key: 'feedback', color: 'bg-rose-500' },
         { icon: Info, label: 'Help', path: '/student/help', key: 'help', color: 'bg-gray-500' },
     ].filter(item => isFeatureEnabled(item.key));

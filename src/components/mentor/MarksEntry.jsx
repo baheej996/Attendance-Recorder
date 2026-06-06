@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar, RotateCcw, Upload, Download } from 'lucide-react';
+import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar, RotateCcw, Upload, Download, Unlock, Lock } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
@@ -12,9 +12,19 @@ const MarksEntry = () => {
     const {
         subjects, exams, students, results,
         recordResult, deleteResultBatch, deleteExamResultsForClass, classes, currentUser,
-        examSettings, updateExamSetting, deleteStudentResponse
+        examSettings, updateExamSetting, deleteStudentResponse, questions, requireFeature
     } = useData();
     const { showAlert, showConfirm } = useUI();
+
+    // Activate live subscriptions for results and studentResponses
+    useEffect(() => {
+        const unsubResults = requireFeature('results');
+        const unsubActivities = requireFeature('activities');
+        return () => {
+            unsubResults();
+            unsubActivities();
+        };
+    }, [requireFeature]);
 
     // 1. Data Filtering & Stats
     const availableClasses = useMemo(() => classes.filter(c =>
@@ -101,6 +111,36 @@ const MarksEntry = () => {
         setHasChanges(false);
     };
 
+    const getDefaultOnlyTime = (classObj) => {
+        if (!classObj?.startTime) return '';
+        const parts = String(classObj.startTime).trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+        if (parts) {
+            let [_, h, mins, ampm] = parts;
+            h = parseInt(h);
+            if (ampm) {
+                ampm = ampm.toUpperCase();
+                if (ampm === 'PM' && h < 12) h += 12;
+                if (ampm === 'AM' && h === 12) h = 0;
+            }
+            return `${h.toString().padStart(2, '0')}:${mins}`;
+        }
+        return '';
+    };
+
+    const getDatePart = (val) => {
+        const d = parseFlexDate(val);
+        if (!d) return '';
+        const pad = (n) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+
+    const getTimePart = (val) => {
+        const d = parseFlexDate(val);
+        if (!d) return '';
+        const pad = (n) => n.toString().padStart(2, '0');
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
     // --- Computed Data for Current Step ---
 
     // Step 1: Exams Stats
@@ -172,6 +212,20 @@ const MarksEntry = () => {
     }, [selectedExamId, selectedClassId, selectedSubjectId, results]);
 
     // Handlers
+    const getCustomMaxMarks = (subjectId) => {
+        const sub = subjects.find(s => s.id === subjectId);
+        const classObj = classes.find(c => c.id === selectedClassId);
+        const classLookupId = classObj?.name || selectedClassId;
+        const subjectLookupId = sub?.name || subjectId;
+        
+        const customSetting = examSettings?.find(es => 
+            es.examId === selectedExamId && 
+            (es.classId === selectedClassId || es.classId === classLookupId) && 
+            (es.subjectId === subjectId || es.subjectId === subjectLookupId)
+        );
+        
+        return customSetting?.maxMarks ? Number(customSetting.maxMarks) : (sub ? Number(sub.maxMarks) : 100);
+    };
     const handleMarkChange = (studentId, value) => {
         setMarksData(prev => ({ ...prev, [studentId]: value }));
         setHasChanges(true);
@@ -179,8 +233,7 @@ const MarksEntry = () => {
 
     const handleSave = () => {
         // Validation: Check if any marks exceed the subject's maximum
-        const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
-        const maxMarks = selectedSubject ? Number(selectedSubject.maxMarks) : 100;
+        const maxMarks = getCustomMaxMarks(selectedSubjectId);
 
         let hasInvalidMarks = false;
         const records = Object.entries(marksData).map(([studentId, marks]) => {
@@ -391,8 +444,7 @@ const MarksEntry = () => {
                         const numericVal = Number(cellVal);
 
                         // Validation: Check against subject max marks
-                        const currentSubject = subjects.find(s => s.id === info.id);
-                        const maxMarksForSubject = currentSubject ? Number(currentSubject.maxMarks) : 100;
+                        const maxMarksForSubject = getCustomMaxMarks(info.id);
 
                         if (numericVal > maxMarksForSubject) {
                             if (!subjectUpdates.errors) subjectUpdates.errors = true;
@@ -487,6 +539,33 @@ const MarksEntry = () => {
 
     // 2. Class Selection
     if (!selectedClassId) {
+        const isGlobalRevealed = availableClasses.length > 0 && availableClasses.every(cls => {
+            const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false);
+            if (clsSubjects.length === 0) return true; // empty classes count as true to not block global status
+            return clsSubjects.every(sub => {
+                const setting = examSettings.find(s => s.examId === selectedExamId && s.classId === cls.id && s.subjectId === sub.id) || 
+                                examSettings.find(s => s.examId === selectedExamId && (s.classId === cls.id || s.classId === cls.name) && (s.subjectId === sub.id || s.subjectId === sub.name)) || {};
+                return setting.answersRevealed;
+            });
+        });
+
+        const handleToggleAnswersGlobal = () => {
+            const newState = !isGlobalRevealed;
+            showConfirm(
+                newState ? 'Reveal Answers' : 'Hide Answers',
+                `Are you sure you want to ${newState ? 'reveal' : 'hide'} answers for ALL classes in this exam?`,
+                () => {
+                    availableClasses.forEach(cls => {
+                        const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false);
+                        clsSubjects.forEach(sub => {
+                            updateExamSetting(selectedExamId, cls.id, sub.id, { answersRevealed: newState, subjectName: sub.name });
+                        });
+                    });
+                    showAlert(newState ? 'Revealed' : 'Hidden', `Answers have been ${newState ? 'revealed' : 'hidden'} globally.`, 'success');
+                }
+            );
+        };
+
         return (
             <div className="p-4 sm:p-8 max-w-5xl mx-auto space-y-6 sm:space-y-10 animate-fadeIn">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 sm:mb-10">
@@ -499,7 +578,18 @@ const MarksEntry = () => {
                             <p className="text-gray-500 text-sm sm:text-base mt-0.5 sm:mt-1 truncate">Exam: {exams.find(e => e.id === selectedExamId)?.name}</p>
                         </div>
                     </div>
-                    <div className="flex gap-2 sm:gap-3 shrink-0">
+                    <div className="flex flex-wrap gap-2 sm:gap-3 shrink-0">
+                        <Button
+                            variant="secondary"
+                            onClick={handleToggleAnswersGlobal}
+                            className={clsx(
+                                "flex items-center gap-1.5 sm:gap-2 border text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2",
+                                isGlobalRevealed ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100" : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                            )}
+                        >
+                            {isGlobalRevealed ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                            <span>{isGlobalRevealed ? 'Hide Answers (Global)' : 'Reveal Answers (Global)'}</span>
+                        </Button>
                         <Button
                             variant="danger"
                             onClick={handleDeleteAllExamMarks}
@@ -533,6 +623,26 @@ const MarksEntry = () => {
                         const isComplete = clsSubjects.length > 0 && clsSubjects.every(sub =>
                             results.some(r => r.examId === selectedExamId && r.subjectId === sub.id)
                         );
+                        const isClassRevealed = clsSubjects.length > 0 && clsSubjects.every(sub => {
+                            const setting = examSettings.find(s => s.examId === selectedExamId && s.classId === cls.id && s.subjectId === sub.id) || 
+                                            examSettings.find(s => s.examId === selectedExamId && (s.classId === cls.id || s.classId === cls.name) && (s.subjectId === sub.id || s.subjectId === sub.name)) || {};
+                            return setting.answersRevealed;
+                        });
+
+                        const handleToggleAnswersClass = (e) => {
+                            e.stopPropagation();
+                            const newState = !isClassRevealed;
+                            showConfirm(
+                                newState ? 'Reveal Answers' : 'Hide Answers',
+                                `Are you sure you want to ${newState ? 'reveal' : 'hide'} answers for this class?`,
+                                () => {
+                                    clsSubjects.forEach(sub => {
+                                        updateExamSetting(selectedExamId, cls.id, sub.id, { answersRevealed: newState, subjectName: sub.name });
+                                    });
+                                    showAlert(newState ? 'Revealed' : 'Hidden', `Answers have been ${newState ? 'revealed' : 'hidden'} for this class.`, 'success');
+                                }
+                            );
+                        };
 
                         return (
                             <Card
@@ -549,7 +659,17 @@ const MarksEntry = () => {
                                         <p className="text-gray-500 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">{clsSubjects.length} Subjects</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                                <div className="flex items-center gap-2 sm:gap-4 shrink-0 flex-wrap justify-end">
+                                    <button
+                                        onClick={handleToggleAnswersClass}
+                                        className={clsx(
+                                            "flex items-center gap-1.5 sm:gap-2 font-bold px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs uppercase tracking-widest border transition-colors",
+                                            isClassRevealed ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100" : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                        )}
+                                    >
+                                        {isClassRevealed ? <Lock className="w-3 h-3 sm:w-4 sm:h-4" /> : <Unlock className="w-3 h-3 sm:w-4 sm:h-4" />}
+                                        <span className="hidden sm:inline">{isClassRevealed ? 'Hide Answers' : 'Reveal Answers'}</span>
+                                    </button>
                                     {isComplete ? (
                                         <div className="flex items-center gap-1.5 sm:gap-2 text-green-600 font-bold px-2 sm:px-4 py-1.5 sm:py-2 bg-green-50 rounded-lg text-xs sm:text-sm">
                                             <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden sm:inline">Completed</span>
@@ -645,6 +765,12 @@ const MarksEntry = () => {
                     ) : (
                         <div className="grid gap-8">
                             {subjectStats.list.map((sub, index) => {
+                                const classObj = classes.find(c => c.id === selectedClassId);
+                                const qCount = questions.filter(q =>
+                                    q.examId === selectedExamId &&
+                                    (q.classId === selectedClassId || q.classId === classObj?.name) &&
+                                    (q.subjectId === sub.id || q.subjectId === sub.name)
+                                ).length;
                                 // Prioritize GUID-based setting, fallback to Name-based for legacy support
                                 const setting = examSettings.find(s => 
                                     s.examId === selectedExamId && 
@@ -663,12 +789,18 @@ const MarksEntry = () => {
 
                                 const handleToggleActive = (e) => {
                                     e.stopPropagation();
-                                    updateExamSetting(selectedExamId, selectedClassId, sub.id, { isActive: !setting.isActive, subjectName: sub.name });
+                                    const payload = { isActive: !setting.isActive, subjectName: sub.name };
+                                    updateExamSetting(selectedExamId, selectedClassId, sub.id, payload);
                                 };
 
                                 const handleTogglePublish = (e) => {
                                     e.stopPropagation();
                                     updateExamSetting(selectedExamId, selectedClassId, sub.id, { isPublished: !setting.isPublished, subjectName: sub.name });
+                                };
+
+                                const handleToggleAnswersSubject = (e) => {
+                                    e.stopPropagation();
+                                    updateExamSetting(selectedExamId, selectedClassId, sub.id, { answersRevealed: !setting.answersRevealed, subjectName: sub.name });
                                 };
 
                                 const handleSettingChange = (type, value) => {
@@ -696,12 +828,21 @@ const MarksEntry = () => {
                                                     </div>
                                                     <div>
                                                         <h3 className="font-black text-2xl text-gray-900 tracking-tight">{sub.name}</h3>
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            <span className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Max Marks: {sub.maxMarks}</span>
+                                                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                                            <span className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Max Marks: {getCustomMaxMarks(sub.id)}</span>
                                                             {sub.isEntered ? (
                                                                 <span className="px-2.5 py-1 bg-green-100 text-green-700 text-[9px] font-black uppercase tracking-widest rounded-md">Entered</span>
                                                             ) : (
                                                                 <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[9px] font-black uppercase tracking-widest rounded-md">Pending</span>
+                                                            )}
+                                                            {qCount > 0 ? (
+                                                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-widest rounded-md flex items-center gap-1">
+                                                                    ✓ {qCount} Question{qCount !== 1 ? 's' : ''}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="px-2.5 py-1 bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-widest rounded-md flex items-center gap-1">
+                                                                    ⚠ No Questions
+                                                                </span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -711,7 +852,6 @@ const MarksEntry = () => {
                                                         onClick={() => {
                                                             setSelectedSubjectId(sub.id);
                                                             setCurrentStudentForGrading(null);
-                                                            handleOpenModal(selectedExamId, sub.name, sub.maxMarks);
                                                         }}
                                                         className="flex-1 sm:flex-none px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all active:scale-95 text-center"
                                                     >
@@ -720,13 +860,12 @@ const MarksEntry = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Middle Row: Two Prominent Toggles */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                                                 {/* Status Toggle */}
                                                 <button
                                                     onClick={handleToggleActive}
                                                     className={clsx(
-                                                        "flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-widest",
+                                                        "flex items-center justify-center gap-2 p-3 sm:p-4 rounded-2xl border-2 transition-all font-black text-[10px] sm:text-xs uppercase tracking-widest",
                                                         isCurrentlyActive 
                                                             ? "bg-green-50 border-green-200 text-green-700 shadow-sm shadow-green-100" 
                                                             : isScheduled 
@@ -756,14 +895,28 @@ const MarksEntry = () => {
                                                 <button
                                                     onClick={handleTogglePublish}
                                                     className={clsx(
-                                                        "flex items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-widest",
+                                                        "flex items-center justify-center gap-2 p-3 sm:p-4 rounded-2xl border-2 transition-all font-black text-[10px] sm:text-xs uppercase tracking-widest",
                                                         setting.isPublished 
                                                             ? "bg-indigo-50 border-indigo-200 text-indigo-700" 
                                                             : "bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100"
                                                     )}
                                                 >
-                                                    {setting.isPublished ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                                    {setting.isPublished ? <Eye className="w-4 h-4 shrink-0" /> : <EyeOff className="w-4 h-4 shrink-0" />}
                                                     {setting.isPublished ? "Published" : "Hidden"}
+                                                </button>
+
+                                                {/* Answers Revealed Toggle */}
+                                                <button
+                                                    onClick={handleToggleAnswersSubject}
+                                                    className={clsx(
+                                                        "flex items-center justify-center gap-2 p-3 sm:p-4 rounded-2xl border-2 transition-all font-black text-[10px] sm:text-xs uppercase tracking-widest",
+                                                        setting.answersRevealed 
+                                                            ? "bg-amber-50 border-amber-200 text-amber-700" 
+                                                            : "bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100"
+                                                    )}
+                                                >
+                                                    {setting.answersRevealed ? <Unlock className="w-4 h-4 shrink-0" /> : <Lock className="w-4 h-4 shrink-0" />}
+                                                    {setting.answersRevealed ? "Answers Shown" : "Answers Hid"}
                                                 </button>
                                             </div>
 
@@ -771,12 +924,46 @@ const MarksEntry = () => {
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <div className="bg-white border-2 border-gray-100/50 rounded-2xl p-3 hover:border-gray-200 transition-colors focus-within:border-indigo-300 relative group/input">
                                                     <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">Start Time</span>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-1">
                                                         <input
-                                                            type="datetime-local"
+                                                            key={`start-date-${setting.startTime || 'empty'}`}
+                                                            type="date"
                                                             className="flex-1 bg-transparent text-sm font-bold text-gray-700 outline-none px-1"
-                                                            value={formatDateForInput(setting.startTime)}
-                                                            onChange={(e) => handleSettingChange('startTime', e.target.value)}
+                                                            defaultValue={getDatePart(setting.startTime)}
+                                                            onBlur={(e) => {
+                                                                const dateVal = e.target.value;
+                                                                const timeVal = e.target.nextElementSibling.value;
+                                                                if (dateVal && timeVal) {
+                                                                    handleSettingChange('startTime', `${dateVal}T${timeVal}`);
+                                                                } else if (!dateVal && !timeVal) {
+                                                                    handleSettingChange('startTime', '');
+                                                                }
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.target.blur();
+                                                                }
+                                                            }}
+                                                        />
+                                                        <input
+                                                            key={`start-time-${setting.startTime || 'empty'}`}
+                                                            type="time"
+                                                            className="w-[100px] bg-transparent text-sm font-bold text-gray-700 outline-none px-1"
+                                                            defaultValue={getTimePart(setting.startTime) || getDefaultOnlyTime(classObj)}
+                                                            onBlur={(e) => {
+                                                                const timeVal = e.target.value;
+                                                                const dateVal = e.target.previousElementSibling.value;
+                                                                if (dateVal && timeVal) {
+                                                                    handleSettingChange('startTime', `${dateVal}T${timeVal}`);
+                                                                } else if (!dateVal && !timeVal) {
+                                                                    handleSettingChange('startTime', '');
+                                                                }
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.target.blur();
+                                                                }
+                                                            }}
                                                         />
                                                         {setting.startTime && (
                                                             <button 
@@ -811,11 +998,21 @@ const MarksEntry = () => {
                                                     <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">Timer (Mins)</span>
                                                     <div className="flex items-center gap-2">
                                                         <input
+                                                            key={`duration-${setting.duration || 'empty'}`}
                                                             type="number"
                                                             placeholder="No Timer"
                                                             className="flex-1 bg-transparent text-sm font-bold text-indigo-700 outline-none px-1"
-                                                            value={setting.duration || ''}
-                                                            onChange={(e) => handleSettingChange('duration', e.target.value)}
+                                                            defaultValue={setting.duration || ''}
+                                                            onBlur={(e) => {
+                                                                if (e.target.value !== String(setting.duration || '')) {
+                                                                    handleSettingChange('duration', e.target.value);
+                                                                }
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.target.blur();
+                                                                }
+                                                            }}
                                                         />
                                                         {setting.duration > 0 && (
                                                             <button 
@@ -921,7 +1118,7 @@ const MarksEntry = () => {
                                             <input
                                                 type="number"
                                                 min="0"
-                                                max={subjects.find(s => s.id === selectedSubjectId)?.maxMarks || 100}
+                                                max={getCustomMaxMarks(selectedSubjectId)}
                                                 value={marksData[student.id] || ''}
                                                 onChange={e => handleMarkChange(student.id, e.target.value)}
                                                 className="w-16 sm:w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs sm:text-sm py-1.5 px-2 border transition-colors outline-none font-bold"

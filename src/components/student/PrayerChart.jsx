@@ -16,13 +16,18 @@ const PRAYERS = [
 ];
 
 const PrayerChart = () => {
-    const { currentUser, addPrayerRecord, prayerRecords, specialPrayers } = useData();
+    const { currentUser, addPrayerRecord, prayerRecords, specialPrayers, requireFeature, getPrayerRecordsForMonth } = useData();
     const [showHistory, setShowHistory] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [historyMonth, setHistoryMonth] = useState(new Date());
     const [stats, setStats] = useState({});
     const [toast, setToast] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    // Register 'prayer' feature on-demand
+    useEffect(() => {
+        return requireFeature('prayer');
+    }, [requireFeature]);
     const [historyRecords, setHistoryRecords] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
 

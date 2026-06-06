@@ -219,7 +219,7 @@ const PerformanceLeaderboard = () => {
 
 // ── Main MentorLeaderboard ──────────────────────────────────────────────────
 const MentorLeaderboard = () => {
-    const { currentUser, exams, subjects, results, students, classes, leaderboardSettings, requireFeature } = useData();
+    const { currentUser, exams, subjects, results, students, classes, examSettings, leaderboardSettings, requireFeature } = useData();
     const [activeTab, setActiveTab] = useState('exam');
     const [selectedExamId, setSelectedExamId] = useState('');
     const [selectedClassId, setSelectedClassId] = useState('');
@@ -244,7 +244,21 @@ const MentorLeaderboard = () => {
         const sorted = studentList.map(student => {
             const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId);
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
-            const totalMaxMarks = studentResults.reduce((sum, r) => { const sub = subjects.find(s => s.id === r.subjectId); return sum + (sub ? Number(sub.maxMarks) : 0); }, 0);
+            const totalMaxMarks = studentResults.reduce((sum, r) => { 
+                const sub = subjects.find(s => s.id === r.subjectId); 
+                const studentClass = classes.find(c => c.id === student.classId);
+                const classLookupId = studentClass?.name || student.classId;
+                const subjectLookupId = sub?.name || r.subjectId;
+                
+                const customSetting = examSettings?.find(es => 
+                    es.examId === selectedExamId && 
+                    (es.classId === student.classId || es.classId === classLookupId) && 
+                    (es.subjectId === r.subjectId || es.subjectId === subjectLookupId)
+                );
+                
+                const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : (sub ? Number(sub.maxMarks) : 0);
+                return sum + max; 
+            }, 0);
             return { ...student, totalMarks, totalMaxMarks, marksMissed: totalMaxMarks - totalMarks, resultCount: studentResults.length };
         }).filter(s => s.resultCount > 0).sort((a, b) => a.marksMissed !== b.marksMissed ? a.marksMissed - b.marksMissed : b.totalMarks - a.totalMarks);
         let rank = 1;

@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload, Settings, Clock, Share2, CornerDownRight, Check, Send, Inbox } from 'lucide-react';
+import { Plus, Trash2, HelpCircle, Edit2, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload, Settings, Clock, Share2, CornerDownRight, Check, CheckCircle, Send, Inbox } from 'lucide-react';
 
 const QuestionBank = () => {
     const { questions, addQuestion, deleteQuestion, updateQuestion, exams, classes, subjects, currentUser, examSettings, updateExamSetting, mentors, questionSuggestions, suggestQuestions, resolveQuestionSuggestion } = useData();
@@ -43,10 +43,10 @@ const QuestionBank = () => {
     // Question Form State
     const [qType, setQType] = useState('MCQ');
     const [qText, setQText] = useState('');
-    const [qMarks, setQMarks] = useState(1);
+    const [qMarks, setQMarks] = useState('');
     const [allowAttachments, setAllowAttachments] = useState(false);
     const [qImage, setQImage] = useState(null);
-    const [options, setOptions] = useState(['', '', '', '']);
+    const [options, setOptions] = useState(['', '', '']);
     const [correctAnswer, setCorrectAnswer] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]);
@@ -101,9 +101,9 @@ const QuestionBank = () => {
     const resetForm = () => {
         setQText('');
         setQImage(null);
-        setOptions(['', '', '', '']);
+        setOptions(['', '', '']);
         setCorrectAnswer('');
-        setQMarks(1);
+        setQMarks('');
         setAllowAttachments(false);
         setEditingId(null);
         setQType('MCQ');
@@ -131,13 +131,29 @@ const QuestionBank = () => {
             return;
         }
 
-        // Validation: Max Marks Check
-        // 1. Find the Max Marks for this Subject (context.subjectId is Name, context.classId is Class Name)
+        // Validation: Correct Answer Selected for Multiple Choice
+        if (qType === 'MCQ' && !correctAnswer) {
+            showAlert('Missing Answer', 'Please select a correct answer for the multiple choice choices.', 'error');
+            return;
+        }
+
+        // Validation: Unique Choices for Multiple Choice
+        if (qType === 'MCQ') {
+            const filledOptions = options.filter(opt => opt.trim() !== '');
+            const uniqueOptions = new Set(filledOptions.map(opt => opt.trim().toLowerCase()));
+            if (filledOptions.length !== uniqueOptions.size) {
+                showAlert('Duplicate Choices', 'All choices provided for the question must be unique.', 'error');
+                return;
+            }
+        }
+
+        // 1. Find the Max Marks for this Subject
         const relevantSubject = examSubjects.find(s =>
             s.name === context.subjectId &&
             classes.find(c => c.id === s.classId)?.name === context.classId
         );
-        const maxMarks = relevantSubject ? Number(relevantSubject.maxMarks) : 100;
+        const setting = getSetting(context.examId, context.classId, context.subjectId);
+        const maxMarks = setting.maxMarks ? Number(setting.maxMarks) : (relevantSubject ? Number(relevantSubject.maxMarks) : 100);
 
         // 2. Calculate Current Total
         // currentQuestions is already filtered by context
@@ -186,7 +202,7 @@ const QuestionBank = () => {
             setOptions([...q.options]);
             setCorrectAnswer(q.correctAnswer);
         } else {
-            setOptions(['', '', '', '']);
+            setOptions(['', '', '']);
             setCorrectAnswer('');
         }
     };
@@ -195,6 +211,20 @@ const QuestionBank = () => {
         const newOptions = [...options];
         newOptions[index] = value;
         setOptions(newOptions);
+    };
+
+    const addOption = () => {
+        setOptions([...options, '']);
+    };
+
+    const removeOption = (index) => {
+        if (options.length <= 2) return; // Prevent less than 2 options
+        const optionToRemove = options[index];
+        const newOptions = options.filter((_, i) => i !== index);
+        setOptions(newOptions);
+        if (correctAnswer === optionToRemove && optionToRemove !== '') {
+            setCorrectAnswer('');
+        }
     };
 
     const confirmDelete = (id) => {
@@ -258,6 +288,7 @@ const QuestionBank = () => {
             });
         });
         setIsShareModalOpen(false);
+        setIsEditorOpen(false);
         showAlert("Saved", "Question visibility settings updated.", "success");
     };
 
@@ -444,9 +475,9 @@ const QuestionBank = () => {
                                                                     {qCount} Questions
                                                                 </p>
 
-                                                                {setting.duration && (
+                                                                {setting.maxMarks && (
                                                                     <p className="text-xs text-blue-700 font-medium bg-blue-100 px-2 py-0.5 rounded-full inline-block">
-                                                                        {setting.duration} mins
+                                                                        Max: {setting.maxMarks} Marks
                                                                     </p>
                                                                 )}
                                                             </div>
@@ -501,44 +532,79 @@ const QuestionBank = () => {
                             </div>
                         </div>
 
-                        {/* Exam Duration Settings Banner */}
+                        {/* Exam Total Marks Settings Banner */}
                         <div className="mx-6 mt-6 p-5 bg-gray-50 border border-gray-100 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:border-indigo-200">
                             <div>
                                 <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-indigo-600" />
-                                    Exam Duration
+                                    <CheckCircle className="w-4 h-4 text-indigo-600" />
+                                    Exam Total Marks
                                 </h4>
                                 <p className="text-sm text-gray-500 mt-1">
-                                    Set a time limit for this specific subject.
+                                    Set the maximum total marks for this specific exam.
                                 </p>
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={getSetting(context.examId, context.classId, context.subjectId).duration || ''}
-                                        onChange={(e) => handleSettingChange(context.examId, context.classId, context.subjectId, { duration: e.target.value })}
-                                        placeholder="No Limit"
-                                        className="w-32 rounded-lg border-gray-300 shadow-sm pl-3 pr-10 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    />
-                                    <span className="absolute right-3 top-2 text-gray-400 text-xs">mins</span>
-                                </div>
-                                <div className="text-xs text-gray-400 max-w-[150px] leading-tight hidden sm:block">
-                                    (0/Empty = No Limit)<br />Changes auto-save.
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            key={`maxmarks-${context.examId}-${context.subjectId}-${getSetting(context.examId, context.classId, context.subjectId).maxMarks || 'default'}`}
+                                            type="number"
+                                            min="1"
+                                            defaultValue={getSetting(context.examId, context.classId, context.subjectId).maxMarks || ''}
+                                            onBlur={(e) => {
+                                                const val = e.target.value;
+                                                const newMax = Number(val);
+                                                if (val !== '' && newMax > 0) {
+                                                    const currentTotal = currentQuestions.reduce((sum, q) => sum + Number(q.marks), 0);
+                                                    if (newMax < currentTotal) {
+                                                        showAlert('Invalid Limit', `Cannot lower limit to ${newMax} marks.\nExisting questions already use ${currentTotal} marks.`, 'error');
+                                                        e.target.value = getSetting(context.examId, context.classId, context.subjectId).maxMarks || '';
+                                                        return;
+                                                    }
+                                                }
+                                                handleSettingChange(context.examId, context.classId, context.subjectId, { maxMarks: val });
+                                            }}
+                                            placeholder={(() => {
+                                                const classIdsForName = classes.filter(c => c.name === context.classId).map(c => c.id);
+                                                const sub = subjects.find(s => classIdsForName.includes(s.classId) && s.name === context.subjectId);
+                                                return sub?.maxMarks || "100";
+                                            })()}
+                                            className="w-24 rounded-lg border-gray-300 shadow-sm px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 font-bold text-indigo-700"
+                                        />
+                                        <span className="text-gray-500 text-sm font-medium">marks</span>
+                                    </div>
+                                    <div className="text-xs text-gray-400 max-w-[150px] leading-tight hidden sm:block">
+                                        (Leave empty for default)<br />Changes auto-save.
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                             {/* Left: Form */}
                             <div className="space-y-6">
-                                <h4 className="font-bold text-gray-700 flex items-center gap-2">
-                                    {editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                    {editingId ? 'Edit Question' : 'Add New Question'}
-                                </h4>
-
                                 <form onSubmit={handleSaveQuestion} className="space-y-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="font-bold text-gray-700 flex items-center gap-2">
+                                            {editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                            {editingId ? 'Edit Question' : 'Add New Question'}
+                                        </h4>
+                                        <div className="flex gap-2">
+                                            <Button 
+                                                type="submit" 
+                                                variant="primary" 
+                                                className="text-xs py-1.5 px-3 shadow-md shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                disabled={!qText || !qMarks || Number(qMarks) <= 0 || (qType === 'MCQ' && !correctAnswer)}
+                                            >
+                                                {editingId ? 'Update' : 'Add Question'}
+                                            </Button>
+                                            {editingId && (
+                                                <Button type="button" variant="secondary" onClick={resetForm} className="text-xs py-1.5 px-3">
+                                                    Cancel
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
@@ -624,7 +690,16 @@ const QuestionBank = () => {
 
                                     {qType === 'MCQ' && (
                                         <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                            <p className="text-sm font-medium text-gray-700">Choices</p>
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-sm font-medium text-gray-700">Choices</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={addOption}
+                                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition-colors"
+                                                >
+                                                    <Plus className="w-3 h-3" /> Add Choice
+                                                </button>
+                                            </div>
                                             {options.map((opt, idx) => (
                                                 <div key={idx} className="flex items-center gap-2">
                                                     <span className="text-gray-400 text-xs w-4">{String.fromCharCode(65 + idx)}</span>
@@ -643,30 +718,34 @@ const QuestionBank = () => {
                                                         onChange={() => setCorrectAnswer(opt)}
                                                         className="text-indigo-600 focus:ring-indigo-500"
                                                         disabled={!opt}
+                                                        title="Mark as correct answer"
                                                     />
+                                                    {options.length > 2 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeOption(idx)}
+                                                            className="text-red-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors ml-1"
+                                                            title="Remove choice"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
                                     )}
 
-                                    <div className="flex gap-2">
-                                        <Button type="submit" variant="primary" className="flex-1">
-                                            {editingId ? 'Update' : 'Add Question'}
-                                        </Button>
-                                        {editingId && (
-                                            <Button type="button" variant="secondary" onClick={resetForm}>
-                                                Cancel
-                                            </Button>
-                                        )}
-                                    </div>
                                 </form>
                             </div>
 
                             {/* Right: List */}
                             <div className="space-y-4 border-l border-gray-100 pl-8">
                                 <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                                    <h4 className="font-bold text-gray-700">
-                                        Existing Questions ({currentQuestions.length})
+                                    <h4 className="font-bold text-gray-700 flex items-center gap-2">
+                                        <span>Existing Questions ({currentQuestions.length})</span>
+                                        <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
+                                            Total Marks: {currentQuestions.reduce((sum, q) => sum + Number(q.marks || 0), 0)}
+                                        </span>
                                     </h4>
                                     {selectedIds.length > 0 && (
                                         <button

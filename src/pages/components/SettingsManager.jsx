@@ -20,6 +20,7 @@ const SettingsManager = () => {
         academicYear: '',
         chiefMentor: '',
         favicon: '',
+        academicYearStartMonth: 3,
         signatureImage: null
     });
     const [adminData, setAdminData] = useState({
@@ -191,6 +192,33 @@ const SettingsManager = () => {
                                     onChange={(e) => handleChange('academicYear', e.target.value)}
                                     className="pl-10"
                                 />
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="relative">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year Starts In</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                                    <select
+                                        value={formData.academicYearStartMonth !== undefined ? formData.academicYearStartMonth : 3}
+                                        onChange={(e) => handleChange('academicYearStartMonth', parseInt(e.target.value, 10))}
+                                        className="w-full h-11 pl-10 pr-4 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow appearance-none"
+                                    >
+                                        <option value={0}>January</option>
+                                        <option value={1}>February</option>
+                                        <option value={2}>March</option>
+                                        <option value={3}>April</option>
+                                        <option value={4}>May</option>
+                                        <option value={5}>June</option>
+                                        <option value={6}>July</option>
+                                        <option value={7}>August</option>
+                                        <option value={8}>September</option>
+                                        <option value={9}>October</option>
+                                        <option value={10}>November</option>
+                                        <option value={11}>December</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 

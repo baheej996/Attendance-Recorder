@@ -1,11 +1,22 @@
 @import "tailwindcss";
 
+@theme {
+  --font-arabic: "SKIMVB", sans-serif;
+}
+
 @layer base {
   body {
     @apply antialiased text-gray-900 bg-gray-50;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
   }
+}
+
+@font-face {
+  font-family: 'SKIMVB';
+  src: url('/SKIMVB%20Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
 }
 
 /* Driver.js Theme Overrides */

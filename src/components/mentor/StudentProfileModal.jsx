@@ -1,10 +1,13 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock, Loader2, Download, FileText, MapPin, Phone, MonitorSmartphone } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { clsx } from 'clsx';
 import { Card } from '../ui/Card';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { ReportCardPDFTemplate } from '../ui/ReportCardPDFTemplate';
 
 export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
@@ -14,17 +17,34 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
         results,
         exams,
         subjects,
+        examSettings,
         activitySubmissions,
         activities,
         prayerRecords,
         attendance,
-        institutionSettings
+        institutionSettings,
+        requireFeature
     } = useData();
 
     const [activeTab, setActiveTab] = useState('overview');
     const [generatingExams, setGeneratingExams] = useState({});
     const [activePdfExam, setActivePdfExam] = useState(null);
     const pdfRef = useRef(null);
+
+    // Request heavy datasets dynamically when the modal is open
+    useEffect(() => {
+        if (!isOpen) return;
+        const un1 = requireFeature('attendance');
+        const un2 = requireFeature('activities');
+        const un3 = requireFeature('prayer');
+        const un4 = requireFeature('results');
+        return () => {
+            un1();
+            un2();
+            un3();
+            un4();
+        };
+    }, [isOpen, requireFeature]);
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
     const studentClass = useMemo(() => classes.find(c => c.id === student?.classId), [classes, student]);
@@ -47,7 +67,16 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
             // Get subjects for this class to calculate total possible marks
             // Assuming all subjects in class are part of the exam if not specific
             const classSubjects = subjects.filter(s => s.classId === student.classId && s.isExamSubject);
-            const maxPossible = classSubjects.reduce((sum, s) => sum + Number(s.maxMarks || 100), 0);
+            const maxPossible = classSubjects.reduce((sum, s) => {
+                const classLookupId = studentClass?.name || student.classId;
+                const subjectLookupId = s?.name || s.id;
+                const customSetting = examSettings?.find(es => 
+                    es.examId === exam.id && 
+                    (es.classId === student.classId || es.classId === classLookupId) && 
+                    (es.subjectId === s.id || es.subjectId === subjectLookupId)
+                );
+                return sum + (customSetting?.maxMarks ? Number(customSetting.maxMarks) : Number(s.maxMarks || 100));
+            }, 0);
 
             // Calculate Rank
             let rank = '-';
@@ -71,7 +100,14 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
             let passedCount = 0;
             const subjectBreakdown = examResults.map(r => {
                 const subject = subjects.find(s => s.id === r.subjectId);
-                const max = Number(subject?.maxMarks || 100);
+                const classLookupId = studentClass?.name || student.classId;
+                const subjectLookupId = subject?.name || r.subjectId;
+                const customSetting = examSettings?.find(es => 
+                    es.examId === exam.id && 
+                    (es.classId === student.classId || es.classId === classLookupId) && 
+                    (es.subjectId === r.subjectId || es.subjectId === subjectLookupId)
+                );
+                const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : Number(subject?.maxMarks || 100);
                 const pass = Number(subject?.passMarks || 40);
                 const marks = Number(r.marks);
                 const isPassed = marks >= pass;
@@ -106,10 +142,18 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                 },
                 results: examResults.map(r => {
                     const subject = subjects.find(s => s.id === r.subjectId);
+                    const classLookupId = studentClass?.name || student.classId;
+                    const subjectLookupId = subject?.name || r.subjectId;
+                    const customSetting = examSettings?.find(es => 
+                        es.examId === exam.id && 
+                        (es.classId === student.classId || es.classId === classLookupId) && 
+                        (es.subjectId === r.subjectId || es.subjectId === subjectLookupId)
+                    );
+                    const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : Number(subject?.maxMarks || 100);
                     return {
                         subjectName: subject?.name || 'Unknown Subject',
                         marks: r.marks,
-                        maxMarks: subject?.maxMarks || 100,
+                        maxMarks: max,
                         passMarks: subject?.passMarks || 40
                     };
                 })
@@ -156,16 +200,67 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
     }, [prayerRecords, studentId]);
 
     // Attendance Data
+    const [studentAttendance, setStudentAttendance] = useState([]);
+
+    useEffect(() => {
+        if (!isOpen || !studentId) return;
+        
+        const q = query(collection(db, 'attendance'), where('studentId', '==', studentId));
+        const unsub = onSnapshot(q, (snap) => {
+            const data = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            setStudentAttendance(data);
+        });
+        
+        return () => unsub();
+    }, [isOpen, studentId]);
+
     const attendanceStats = useMemo(() => {
         if (!student) return { present: 0, absent: 0, total: 0, percentage: 0, records: [] };
-        const studentAttendance = attendance.filter(a => a.studentId === studentId);
         const present = studentAttendance.filter(a => a.status === 'Present').length;
         const absent = studentAttendance.filter(a => a.status === 'Absent').length;
         const total = studentAttendance.length;
         const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
 
         return { present, absent, total, percentage, records: studentAttendance };
-    }, [attendance, studentId]);
+    }, [studentAttendance, student]);
+
+    const downloadAttendancePDF = () => {
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text('Attendance History', 14, 22);
+        
+        doc.setFontSize(12);
+        doc.text(`Student: ${student.name} (${student.registerNo})`, 14, 32);
+        doc.text(`Class: ${studentClass?.name || 'N/A'}-${studentClass?.division || 'N/A'}`, 14, 40);
+        
+        doc.setFontSize(10);
+        doc.text(`Present: ${attendanceStats.present} | Absent: ${attendanceStats.absent} | Rate: ${attendanceStats.percentage}%`, 14, 48);
+
+        const tableColumn = ["Date", "Status"];
+        const tableRows = [];
+
+        [...attendanceStats.records]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .forEach(record => {
+                tableRows.push([
+                    format(new Date(record.date), 'MMMM d, yyyy'),
+                    record.status
+                ]);
+            });
+
+        autoTable(doc, {
+            startY: 55,
+            head: [tableColumn],
+            body: tableRows,
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229] },
+            styles: { fontSize: 10 },
+            alternateRowStyles: { fillColor: [249, 250, 251] }
+        });
+
+        doc.save(`${student.registerNo}_Attendance.pdf`);
+    };
 
     const downloadExamPDF = (exam) => {
         setGeneratingExams(prev => ({ ...prev, [exam.id]: true }));
@@ -566,7 +661,16 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                         {/* Attendance Tab */}
                         {activeTab === 'attendance' && (
                             <div className="space-y-6">
-                                <h3 className="text-xl font-bold text-gray-900">Attendance History</h3>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="text-xl font-bold text-gray-900">Attendance History</h3>
+                                    <button
+                                        onClick={downloadAttendancePDF}
+                                        disabled={attendanceStats.records.length === 0}
+                                        className="flex items-center gap-2 text-sm px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors font-medium disabled:opacity-50"
+                                    >
+                                        <Download className="w-4 h-4" /> Download PDF
+                                    </button>
+                                </div>
 
                                 <div className="grid grid-cols-3 gap-4 mb-6">
                                     <div className="p-4 bg-green-50 rounded-xl text-center border border-green-100">

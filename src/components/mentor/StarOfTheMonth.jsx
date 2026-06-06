@@ -8,7 +8,7 @@ import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYe
 import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StarOfTheMonth = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig, requireFeature } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig, requireFeature, addNotification } = useData();
     const navigate = useNavigate();
 
     // Request heavy datasets On-Demand
@@ -114,7 +114,6 @@ const StarOfTheMonth = () => {
             await saveStarDeclaration({ classId: selectedClassId, month: selectedMonth, year: selectedYear, status: 'Declared' });
             
             // Send notification to the class
-            const { addNotification } = useData(); // Correctly get addNotification if not in destructuring (it is)
             const className = classes.find(c => c.id === selectedClassId)?.name || 'your class';
             
             await addNotification({

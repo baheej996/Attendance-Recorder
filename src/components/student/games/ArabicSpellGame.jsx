@@ -12,6 +12,40 @@ const stripTashkeel = (text) => {
 
 const ENCOURAGEMENTS = ["MashaAllah!", "Excellent!", "Great Job!", "Keep it up!", "Superb!", "Fantastic!", "Well Done!"];
 
+// Advanced Phonetic & Synonym Mapping for 1st Graders
+// This maps letter IDs (1-28) to all acceptable English and Arabic pronunciations
+// that the Web Speech API might incorrectly (or correctly) return.
+const ARABIC_SYNONYMS = {
+    1: ['الف', 'ألف', 'ا', 'أ', 'إ', 'آ', 'alif', 'a', 'e', 'i', 'o', 'u', 'ee', 'oo'], // Alif
+    2: ['با', 'باء', 'ب', 'به', 'ba', 'baa', 'b', 'be', 'bi', 'bee', 'bu', 'boo', 'bo', 'بي', 'بو'], // Ba
+    3: ['تا', 'تاء', 'ت', 'ته', 'ta', 'taa', 't', 'te', 'ti', 'tee', 'tu', 'too', 'to', 'تي', 'تو'], // Ta
+    4: ['ثا', 'ثاء', 'ث', 'ثه', 'tha', 'thaa', 'th', 'thi', 'thee', 'thu', 'thoo', 'tho', 'ثي', 'ثو'], // Tha
+    5: ['جيم', 'ج', 'ja', 'jeem', 'j', 'geem', 'g', 'ji', 'jee', 'ju', 'joo', 'jo', 'جي', 'جو'], // Jeem
+    6: ['حا', 'حاء', 'ح', 'حه', 'ha', 'haa', 'h', 'hi', 'hee', 'hu', 'hoo', 'ho', 'حي', 'حو'], // Ha
+    7: ['خا', 'خاء', 'خ', 'خه', 'kha', 'khaa', 'kh', 'khi', 'khee', 'khu', 'khoo', 'kho', 'خي', 'خو'], // Kha
+    8: ['دال', 'د', 'da', 'daal', 'd', 'di', 'dee', 'du', 'doo', 'do', 'دي', 'دو'], // Dal
+    9: ['ذال', 'ذ', 'zhal', 'thaal', 'dh', 'z', 'th', 'dhi', 'dhee', 'dhu', 'dhoo', 'dho', 'ذي', 'ذو'], // Dhal
+    10: ['را', 'راء', 'ر', 'ره', 'ra', 'raa', 'r', 'ri', 'ree', 'ru', 'roo', 'ro', 'ري', 'رو'], // Ra
+    11: ['زا', 'زاء', 'ز', 'زين', 'زه', 'za', 'zaa', 'z', 'zi', 'zee', 'zu', 'zoo', 'zo', 'زي', 'زو'], // Zay
+    12: ['سين', 'س', 'sa', 'seen', 's', 'si', 'see', 'su', 'soo', 'so', 'سي', 'سو'], // Seen
+    13: ['شين', 'ش', 'sha', 'sheen', 'sh', 'shi', 'shee', 'shu', 'shoo', 'sho', 'شي', 'شو'], // Sheen
+    14: ['صاد', 'ص', 'saad', 'sad', 's', 'si', 'see', 'su', 'soo', 'so', 'صي', 'صو'], // Saad
+    15: ['ضاد', 'ض', 'dhaad', 'dhad', 'dh', 'd', 'dhi', 'dhee', 'dhu', 'dhoo', 'dho', 'ضي', 'ضو'], // Dhaad
+    16: ['طا', 'طاء', 'ط', 'طه', 'ta', 'taa', 't', 'ti', 'tee', 'tu', 'too', 'to', 'طي', 'طو'], // Ta
+    17: ['ظا', 'ظاء', 'ظ', 'ظه', 'zha', 'zhaa', 'zh', 'z', 'zhi', 'zhee', 'zhu', 'zhoo', 'zho', 'ظي', 'ظو'], // Zha
+    18: ['عين', 'ع', 'ayn', 'ain', 'a', 'e', 'i', 'ee', 'u', 'oo', 'o', 'عي', 'عو'], // Ayn
+    19: ['غين', 'غ', 'ghayn', 'ghain', 'gh', 'ghi', 'ghee', 'ghu', 'ghoo', 'gho', 'غي', 'غو'], // Ghayn
+    20: ['فا', 'فاء', 'ف', 'فه', 'fa', 'faa', 'f', 'fi', 'fee', 'fu', 'foo', 'fo', 'في', 'فو'], // Fa
+    21: ['قاف', 'ق', 'qaaf', 'qaf', 'q', 'qi', 'qee', 'qu', 'qoo', 'qo', 'قي', 'قو'], // Qaaf
+    22: ['كاف', 'ك', 'kaaf', 'kaf', 'k', 'ki', 'kee', 'ku', 'koo', 'ko', 'كي', 'كو'], // Kaaf
+    23: ['لام', 'ل', 'laam', 'lam', 'l', 'li', 'lee', 'lu', 'loo', 'lo', 'لي', 'لو'], // Laam
+    24: ['ميم', 'م', 'meem', 'mim', 'm', 'mi', 'mee', 'mu', 'moo', 'mo', 'مي', 'مو'], // Meem
+    25: ['نون', 'ن', 'noon', 'nun', 'n', 'ni', 'nee', 'nu', 'noo', 'no', 'ني', 'نو'], // Noon
+    26: ['ها', 'هاء', 'ه', 'هـ', 'ha', 'haa', 'h', 'hi', 'hee', 'hu', 'hoo', 'ho', 'هي', 'هو'], // Ha
+    27: ['واو', 'و', 'waaw', 'waw', 'w', 'o', 'u', 'v', 'wi', 'wee', 'wu', 'woo', 'وي', 'وو'], // Waw
+    28: ['يا', 'ياء', 'ي', 'ى', 'ya', 'yaa', 'y', 'i', 'e', 'yi', 'yee', 'yu', 'yoo', 'yo', 'يي', 'يو'] // Ya
+};
+
 const ArabicSpellGame = ({ levelId = 1, initialStageIndex = 0, onComplete }) => {
     const { currentUser, gameProgress, updateGameProgress } = useData();
     const [currentStageIndex, setCurrentStageIndex] = useState(initialStageIndex);
@@ -20,6 +54,19 @@ const ArabicSpellGame = ({ levelId = 1, initialStageIndex = 0, onComplete }) => 
     const [feedback, setFeedback] = useState(null); // 'success', 'error', null
     const [hasSpeechSupport, setHasSpeechSupport] = useState(true);
     const [encouragement, setEncouragement] = useState("");
+    const [failedAttempts, setFailedAttempts] = useState(0);
+    
+    // Play Audio (Text-to-Speech) for Listen & Repeat functionality
+    const playTargetAudio = (text) => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // Stop current playing
+            // Do NOT strip tashkeel here, otherwise the browser ignores the Harakath!
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ar-SA';
+            utterance.rate = 0.7; // Slower speed for 1st graders
+            window.speechSynthesis.speak(utterance);
+        }
+    };
     
     // Sequence Mode State
     const [sequenceWords, setSequenceWords] = useState([]);
@@ -75,20 +122,32 @@ const ArabicSpellGame = ({ levelId = 1, initialStageIndex = 0, onComplete }) => 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             recognitionRef.current = new SpeechRecognition();
-            recognitionRef.current.continuous = false;
-            recognitionRef.current.interimResults = false;
+            recognitionRef.current.continuous = true;
+            recognitionRef.current.interimResults = true;
             recognitionRef.current.lang = 'ar-SA'; // Arabic
 
             recognitionRef.current.onstart = () => {
                 setIsListening(true);
                 setFeedback(null);
+                setTranscript('');
             };
 
             recognitionRef.current.onresult = (event) => {
-                const current = event.resultIndex;
-                const result = event.results[current][0].transcript;
-                setTranscript(result);
-                validateSpeech(result);
+                let currentTranscript = '';
+                let isFinal = false;
+                
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    currentTranscript += event.results[i][0].transcript + ' ';
+                    if (event.results[i].isFinal) isFinal = true;
+                }
+                
+                const cleanTranscript = currentTranscript.trim();
+                setTranscript(cleanTranscript);
+                
+                const isSuccess = validateSpeech(cleanTranscript, isFinal);
+                if (isSuccess) {
+                    recognitionRef.current?.stop();
+                }
             };
 
             recognitionRef.current.onerror = (event) => {
@@ -115,44 +174,58 @@ const ArabicSpellGame = ({ levelId = 1, initialStageIndex = 0, onComplete }) => 
         };
     }, [currentStageIndex, levelId, isSequence, currentSeqIndex, sequenceWords]);
 
-    const validateSpeech = (spokenText) => {
-        let normalizedSpoken = stripTashkeel(spokenText);
+    const validateSpeech = (spokenText, isFinal = false) => {
+        let normalizedSpoken = stripTashkeel(spokenText).toLowerCase();
 
         if (isSequence) {
             const targetWord = sequenceWords[currentSeqIndex].word;
-            let normalizedTarget = stripTashkeel(targetWord);
+            let normalizedTarget = stripTashkeel(targetWord).toLowerCase();
             
             if (normalizedSpoken.includes(normalizedTarget) || normalizedTarget.includes(normalizedSpoken)) {
                 handleSequenceSuccess();
-            } else {
+                return true;
+            } else if (isFinal) {
+                setFailedAttempts(prev => prev + 1);
                 handleSequenceError();
             }
-            return;
+            return false;
         }
 
         const targetText = stage.text;
-        let normalizedTarget = stripTashkeel(targetText);
+        let normalizedTarget = stripTashkeel(targetText).toLowerCase();
 
         // Word check
         if (stage.type === 'word') {
             if (normalizedSpoken.includes(normalizedTarget) || normalizedTarget.includes(normalizedSpoken)) {
                 handleStageComplete();
-            } else {
+                return true;
+            } else if (isFinal) {
+                setFailedAttempts(prev => prev + 1);
                 setFeedback('error');
             }
-            return;
+            return false;
         }
 
-        // Haraka/Letter check - EXTREMELY lenient due to Web Speech API limitations
+        // Haraka/Letter check - Smart Fuzzy Match Engine using Synonyms
         if (stage.type === 'letter' || stage.type === 'haraka') {
-            if (normalizedSpoken.includes(normalizedTarget) || 
-               (levelId === 1 && (normalizedSpoken.includes('ا') || normalizedSpoken.includes('أ') || normalizedSpoken.includes('إ'))) ||
-               (normalizedTarget.includes(normalizedSpoken) && normalizedSpoken.length > 0)) {
+            const synonyms = ARABIC_SYNONYMS[levelId] || [];
+            
+            // Accept if: 
+            // 1. Spoken contains any accepted synonym
+            // 2. Spoken contains target exact letter
+            // 3. Target contains spoken
+            const isMatch = synonyms.some(syn => normalizedSpoken.includes(syn.toLowerCase())) || 
+                            normalizedSpoken.includes(normalizedTarget) || 
+                            (normalizedTarget.includes(normalizedSpoken) && normalizedSpoken.length > 0);
+
+            if (isMatch) {
                 handleStageComplete();
-                return;
-            } else {
+                return true;
+            } else if (isFinal) {
+                setFailedAttempts(prev => prev + 1);
                 setFeedback('error');
             }
+            return false;
         }
     };
 
@@ -268,6 +341,7 @@ const ArabicSpellGame = ({ levelId = 1, initialStageIndex = 0, onComplete }) => 
 
     const handleStageComplete = async () => {
         setFeedback('success');
+        setFailedAttempts(0); // Reset fails for next stage
         
         // Trigger Confetti Explosion!
         confetti({
@@ -323,12 +397,20 @@ const ArabicSpellGame = ({ levelId = 1, initialStageIndex = 0, onComplete }) => 
             >
                 <div className="flex justify-between items-center mb-8 border-b pb-4">
                     <h3 className="text-gray-500 font-bold uppercase tracking-widest text-sm">{stage.instruction}</h3>
-                    <button 
-                        onClick={skipStage}
-                        className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-700 font-medium bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                        Skip <SkipForward className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => playTargetAudio(isSequence ? sequenceWords[currentSeqIndex]?.word : stage.text)}
+                            className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                            <Volume2 className="w-4 h-4" /> Listen
+                        </button>
+                        <button 
+                            onClick={skipStage}
+                            className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-700 font-medium bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                            Skip <SkipForward className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
                 
                 {/* Regular Stage View */}
@@ -366,13 +448,28 @@ const ArabicSpellGame = ({ levelId = 1, initialStageIndex = 0, onComplete }) => 
                                     </div>
                                     
                                     {item.status === 'incorrect' && (
-                                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
+                                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex flex-col gap-1 w-max z-10">
                                             <button 
                                                 onClick={() => retrySequenceWord(idx)}
-                                                className="bg-red-500 hover:bg-red-600 text-white rounded-full px-3 py-1 flex items-center gap-1 shadow-md text-xs font-bold transition-colors"
+                                                className="bg-red-500 hover:bg-red-600 text-white rounded-full px-3 py-1 flex items-center justify-center gap-1 shadow-md text-xs font-bold transition-colors w-full"
                                             >
                                                 <RotateCcw className="w-3 h-3" /> Retry
                                             </button>
+                                            {failedAttempts >= 2 && (
+                                                <button 
+                                                    onClick={() => {
+                                                        const nextWords = [...sequenceWords];
+                                                        nextWords[idx].status = 'correct';
+                                                        setSequenceWords(nextWords);
+                                                        saveSequenceWordProgress(nextWords);
+                                                        setFailedAttempts(0);
+                                                        checkSequenceCompletion(nextWords);
+                                                    }}
+                                                    className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-3 py-1 flex items-center justify-center gap-1 shadow-md text-xs font-bold transition-colors w-full"
+                                                >
+                                                    <ArrowRight className="w-3 h-3" /> Magic Pass
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -418,17 +515,31 @@ const ArabicSpellGame = ({ levelId = 1, initialStageIndex = 0, onComplete }) => 
                 {/* Microphone / Retry Button */}
                 <div className="mt-8">
                     {feedback === 'error' && !isSequence ? (
-                        <button
-                            onClick={() => {
-                                setFeedback(null);
-                                setTranscript('');
-                                toggleListening();
-                            }}
-                            className="flex items-center gap-2 justify-center px-8 py-4 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-1 mx-auto"
-                        >
-                            <RotateCcw className="w-6 h-6" />
-                            Retry Stage
-                        </button>
+                        <div className="flex flex-col items-center gap-3">
+                            <button
+                                onClick={() => {
+                                    setFeedback(null);
+                                    setTranscript('');
+                                    toggleListening();
+                                }}
+                                className="flex items-center gap-2 justify-center px-8 py-4 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-1 w-full max-w-xs"
+                            >
+                                <RotateCcw className="w-6 h-6" />
+                                Try Again
+                            </button>
+                            
+                            {/* Auto-Pass Magic Button after 2 failed attempts */}
+                            {failedAttempts >= 2 && (
+                                <motion.button
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    onClick={handleStageComplete}
+                                    className="flex items-center gap-2 justify-center px-6 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-lg transition-all border border-emerald-200 w-full max-w-xs"
+                                >
+                                    <ArrowRight className="w-4 h-4" /> Let's Move On (Magic Pass)
+                                </motion.button>
+                            )}
+                        </div>
                     ) : (
                         <>
                             <button

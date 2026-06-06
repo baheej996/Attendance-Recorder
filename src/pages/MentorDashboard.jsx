@@ -18,6 +18,7 @@ import MentorChat from '../components/mentor/MentorChat';
 import Batches from '../components/mentor/Batches';
 import MentorSettings from '../components/mentor/MentorSettings';
 import StarOfTheMonth from '../components/mentor/StarOfTheMonth';
+import MentorGamesView from './mentor/MentorGamesView';
 import SpecialPrayerManager from '../components/mentor/SpecialPrayerManager';
 import MentorPrayerStats from '../components/mentor/MentorPrayerStats';
 import MentorRamadan from '../components/mentor/MentorRamadan';
@@ -30,6 +31,10 @@ import MentorAdmissionRequest from '../components/mentor/MentorAdmissionRequest'
 import MentorNotifications from '../components/mentor/MentorNotifications';
 import MentorEvaluations from '../components/mentor/MentorEvaluations';
 import StudentAssessment from '../components/mentor/StudentAssessment';
+import MentorProfile from '../components/mentor/MentorProfile';
+import ExamQuestionTracker from '../components/common/ExamQuestionTracker';
+import AttendanceAnomalies from '../components/mentor/AttendanceAnomalies';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { MENTOR_NAV_ITEMS } from '../config/mentorNavItems';
 import { useData } from '../contexts/DataContext';
@@ -231,15 +236,15 @@ const DashboardHome = () => {
                     </div>
                 </Card>
                 <Card 
-                    onClick={() => navigate('/mentor/leaderboard')}
+                    onClick={() => navigate('/mentor/activities')}
                     className="p-4 flex items-center gap-4 bg-white/60 backdrop-blur-sm border-amber-100 hover:border-amber-500 hover:bg-amber-50/50 cursor-pointer transition-all group"
                 >
                     <div className="p-3 bg-amber-100 text-amber-600 rounded-xl group-hover:rotate-12 transition-transform">
-                        <Trophy className="w-6 h-6" />
+                        <Layers className="w-6 h-6" />
                     </div>
                     <div className="text-left">
-                        <h4 className="font-bold text-gray-900">Leaderboard</h4>
-                        <p className="text-xs text-gray-500">View performance rankings</p>
+                        <h4 className="font-bold text-gray-900">Activity Manager</h4>
+                        <p className="text-xs text-gray-500">Manage student activities</p>
                     </div>
                 </Card>
             </div>
@@ -253,7 +258,7 @@ const DashboardHome = () => {
 
 const MentorDashboard = () => {
     const location = useLocation();
-    const { logout, currentUser, leaveRequests, unreadChats, stopImpersonating, classes, notifications, mentorSettings, mentorTasks, substitutionRequests, evaluationForms, evaluationSubmissions, mentorFeatureFlags, requireFeature } = useData();
+    const { logout, currentUser, attendance, leaveRequests, unreadChats, stopImpersonating, classes, students, notifications, mentorSettings, mentorTasks, substitutionRequests, evaluationForms, evaluationSubmissions, mentorFeatureFlags, requireFeature } = useData();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [showLogoutModal, setShowLogoutModal] = React.useState(false);
 
@@ -301,13 +306,47 @@ const MentorDashboard = () => {
         !(evaluationSubmissions || []).some(s => s.formId === f.id && s.mentorId === currentUser?.id)
     ).length;
 
+    const anomaliesBadgeCount = React.useMemo(() => {
+        let count = 0;
+        const myStudents = new Set((students || []).filter(s => currentUser?.assignedClassIds?.includes(s.classId)).map(s => s.id));
+        const recentRecordsByStudent = {};
+        (attendance || []).forEach(r => {
+            if (myStudents.has(r.studentId) && r.status === 'Present') {
+                if (!recentRecordsByStudent[r.studentId]) recentRecordsByStudent[r.studentId] = [];
+                recentRecordsByStudent[r.studentId].push(r.date);
+            }
+        });
+        Object.values(recentRecordsByStudent).forEach(dates => {
+            dates.sort();
+            for (let i=0; i<dates.length-1; i++) {
+                const d1 = new Date(dates[i]);
+                const d2 = new Date(dates[i+1]);
+                const diffDays = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
+                if (diffDays === 1) {
+                    count++;
+                }
+            }
+        });
+        return count;
+    }, [attendance, students, currentUser]);
+
     const [navItems, setNavItems] = React.useState(MENTOR_NAV_ITEMS);
 
     React.useEffect(() => {
         // Filter globally enabled features first
         let baseItems = MENTOR_NAV_ITEMS.filter(item => {
+            // Bypass feature flags on localhost for local testing
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return true;
             if (!mentorFeatureFlags) return true; // Default to true if flags aren't loaded 
             return mentorFeatureFlags[item.id] !== false; // Only hide if explicitly false
+        });
+
+        // Filter Exam Coordinator specific tab
+        baseItems = baseItems.filter(item => {
+            if (item.id === 'exam-tracker') {
+                return currentUser?.isExamCoordinator === true;
+            }
+            return true;
         });
 
         if (currentUser?.isImpersonating) {
@@ -345,6 +384,7 @@ const MentorDashboard = () => {
         if (item.id === 'substitution') badge = incomingSubReqsCount;
         if (item.id === 'notifications') badge = unreadNotificationsCount;
         if (item.id === 'evaluations') badge = pendingEvaluationsCount;
+        if (item.id === 'anomalies') badge = anomaliesBadgeCount;
         return { ...item, badge };
     });
 
@@ -358,9 +398,11 @@ const MentorDashboard = () => {
                         Mentor Panel
                     </h1>
                     {currentUser?.name && (
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 ml-8 truncate">
-                            {currentUser.name}
-                        </p>
+                        <Link to="/mentor/profile" className="block mt-1 ml-8 truncate hover:opacity-75 transition-opacity">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">
+                                {currentUser.name}
+                            </p>
+                        </Link>
                     )}
                 </div>
 
@@ -427,9 +469,11 @@ const MentorDashboard = () => {
                                     Mentor Panel
                                 </h1>
                                 {currentUser?.name && (
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 ml-8 truncate">
-                                        {currentUser.name}
-                                    </p>
+                                    <Link to="/mentor/profile" onClick={() => setIsMobileMenuOpen(false)} className="block mt-1 ml-8 truncate hover:opacity-75 transition-opacity">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">
+                                            {currentUser.name}
+                                        </p>
+                                    </Link>
                                 )}
                             </div>
                             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-gray-500 hover:bg-gray-100 rounded-full">
@@ -488,9 +532,11 @@ const MentorDashboard = () => {
                             <span className="font-bold text-gray-900">Mentor Panel</span>
                         </div>
                         {currentUser?.name && (
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-8 truncate max-w-[150px]">
-                                {currentUser.name}
-                            </p>
+                            <Link to="/mentor/profile" className="block ml-8 truncate max-w-[150px] hover:opacity-75 transition-opacity">
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest truncate">
+                                    {currentUser.name}
+                                </p>
+                            </Link>
                         )}
                     </div>
                     <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg">
@@ -532,6 +578,7 @@ const MentorDashboard = () => {
                     ) : (
                         <Routes>
                         <Route path="/" element={<DashboardHome />} />
+                        <Route path="/profile" element={<MentorProfile />} />
                         <Route path="/record" element={<AttendanceRecorder />} />
                         <Route path="/tasks" element={<MentorTasks />} />
                         <Route path="/assessment" element={<StudentAssessment />} />
@@ -546,13 +593,16 @@ const MentorDashboard = () => {
                         <Route path="/ramadan" element={<MentorRamadan />} />
                         <Route path="/notifications" element={<MentorNotifications />} />
                         <Route path="/admissions" element={<MentorAdmissionRequest />} />
+                        <Route path="/prayer-chart" element={<SpecialPrayerManager />} />
                         <Route path="/print" element={<PrintAttendance />} />
                         <Route path="/questions" element={<QuestionBank />} />
+                        <Route path="/exam-tracker" element={<ExamQuestionTracker />} />
                         <Route path="/marks" element={<MarksEntry />} />
                         <Route path="/stats" element={<MentorStats />} />
                         <Route path="/leaderboard" element={<MentorLeaderboard />} />
                         <Route path="/directory" element={<InstitutionDirectory />} />
                         <Route path="/star-student" element={<StarOfTheMonth />} />
+                        <Route path="/gamification" element={<MentorGamesView />} />
                         <Route path="/batches" element={<Batches />} />
                         <Route path="/substitution" element={
                             currentUser?.isImpersonating ? (
@@ -567,8 +617,20 @@ const MentorDashboard = () => {
                                 <ClassSubstitution />
                             )
                         } />
-                        <Route path="/settings" element={<MentorSettings />} />
+                        <Route path="anomalies" element={
+                            <ErrorBoundary>
+                                <AttendanceAnomalies />
+                            </ErrorBoundary>
+                        } />
+                        <Route path="settings" element={<MentorSettings />} />
                         <Route path="/help" element={<Help />} />
+                        <Route path="*" element={
+                            <div className="p-12 flex flex-col items-center justify-center h-full text-center">
+                                <h2 className="text-2xl font-bold text-red-500 mb-4">Route Not Found (404)</h2>
+                                <p className="text-gray-600">The page you are looking for does not exist in the Mentor Dashboard.</p>
+                                <p className="text-sm font-mono mt-4 bg-gray-100 p-2 rounded">Current Path: {window.location.pathname}</p>
+                            </div>
+                        } />
                     </Routes>
                     )}
                 </div>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { db } from '../../firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Input';
@@ -18,6 +20,7 @@ const AttendanceRecorder = () => {
     const [isDirty, setIsDirty] = useState(false); // Track unsaved edits
     const [showPopup, setShowPopup] = useState(false);
     const [msg, setMsg] = useState('');
+    const [anomalyWarning, setAnomalyWarning] = useState({ isOpen: false, anomalies: [], pendingData: null });
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
@@ -70,30 +73,68 @@ const AttendanceRecorder = () => {
         }));
     };
 
-    const handleSave = async () => {
+    const executeSave = async (attendanceData) => {
         try {
-            // Prepare data
-            const attendanceData = {
-                date,
-                classId: selectedClassId,
-                mentorId: currentUser?.id || 'admin',
-                records: Object.entries(records).map(([sid, status]) => ({
-                    studentId: sid,
-                    status
-                }))
-            };
-
             await recordAttendance(attendanceData);
-            setIsDirty(false); // Reset dirty flag ONLY after successful save
+            setIsDirty(false); 
             setMsg('Attendance Saved Successfully!');
             setShowPopup(true);
             setTimeout(() => setShowPopup(false), 3000);
+            setAnomalyWarning({ isOpen: false, anomalies: [], pendingData: null });
         } catch (error) {
             console.error("Save error:", error);
             setMsg('Failed to save attendance. Try again.');
             setShowPopup(true);
             setTimeout(() => setShowPopup(false), 3000);
         }
+    };
+
+    const handleSave = async () => {
+        // Prepare data
+        const attendanceData = {
+            date,
+            classId: selectedClassId,
+            mentorId: currentUser?.id || 'admin',
+            records: Object.entries(records).map(([sid, status]) => ({
+                studentId: sid,
+                status
+            }))
+        };
+
+        // Check for anomalies (consecutive days)
+        const presentStudentIds = attendanceData.records.filter(r => r.status === 'Present').map(r => r.studentId);
+        if (presentStudentIds.length > 0) {
+            const d = new Date(date);
+            const prev = new Date(d); prev.setDate(prev.getDate() - 1);
+            const next = new Date(d); next.setDate(next.getDate() + 1);
+            const d1 = prev.toISOString().split('T')[0];
+            const d2 = next.toISOString().split('T')[0];
+
+            try {
+                const q1 = query(collection(db, 'attendance'), where('date', '==', d1));
+                const q2 = query(collection(db, 'attendance'), where('date', '==', d2));
+                const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+                const neighborRecords = [...snap1.docs, ...snap2.docs].map(doc => doc.data());
+
+                const anomalies = [];
+                presentStudentIds.forEach(sid => {
+                    const conflict = neighborRecords.find(r => r.studentId === sid && r.status === 'Present');
+                    if (conflict) {
+                        const student = students.find(s => s.id === sid);
+                        anomalies.push(`${student?.name || sid} (on ${conflict.date})`);
+                    }
+                });
+
+                if (anomalies.length > 0) {
+                    setAnomalyWarning({ isOpen: true, anomalies, pendingData: attendanceData });
+                    return; // Pause save
+                }
+            } catch (err) {
+                console.warn("Failed to check anomalies", err);
+            }
+        }
+
+        await executeSave(attendanceData);
     };
 
     const handleRemove = () => {
@@ -228,6 +269,17 @@ const AttendanceRecorder = () => {
                 cancelText="Cancel"
                 isDanger
                 autoClose={!(confirmConfig.type === 'full' && confirmConfig.step === 1)}
+            />
+
+            <ConfirmationModal
+                isOpen={anomalyWarning.isOpen}
+                onClose={() => setAnomalyWarning({ isOpen: false, anomalies: [], pendingData: null })}
+                onConfirm={() => executeSave(anomalyWarning.pendingData)}
+                title="Consecutive Attendance Detected"
+                message={`Warning: Saving this will result in consecutive day attendance for the following students:\n\n${anomalyWarning.anomalies.join('\n')}\n\nThis usually happens due to overlapping batch transfers. Do you want to proceed anyway?`}
+                confirmText="Proceed & Save"
+                cancelText="Cancel"
+                isDanger={true}
             />
 
             {/* Popup */}

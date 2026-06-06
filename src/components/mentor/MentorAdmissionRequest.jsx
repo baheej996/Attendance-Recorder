@@ -378,6 +378,12 @@ const MentorAdmissionRequest = () => {
                                                 <span>{req.type === 'removal' ? 'Removal from' : 'Admission to'} {req.className} - {req.classDivision}</span>
                                             )}
                                         </div>
+                                        {(req.adminComments || req.adminComment) && (
+                                            <div className="mt-2 text-[10px] bg-slate-50 p-1.5 rounded border border-slate-100 text-gray-600 italic break-words whitespace-pre-wrap">
+                                                <span className="font-semibold text-slate-700 not-italic block mb-0.5">Admin Comment:</span>
+                                                "{req.adminComments || req.adminComment}"
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             )}

@@ -10,7 +10,7 @@ import SpecialPrayerManager from './SpecialPrayerManager';
 import MentorPrayerStats from './MentorPrayerStats';
 
 const PrayerStats = () => {
-    const { classes, students, prayerRecords, currentUser, updateClass, deletePrayerRecordsForStudents, classFeatureFlags, updateClassFeatureFlags, studentFeatureFlags } = useData();
+    const { classes, students, prayerRecords, currentUser, updateClass, deletePrayerRecordsForStudents, classFeatureFlags, updateClassFeatureFlags, studentFeatureFlags, requireFeature } = useData();
 
     // Filter classes if mentor
     const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
@@ -47,6 +47,11 @@ const PrayerStats = () => {
             }
         }
     }, [activeTab, enabledClasses, selectedClassId]);
+    
+    // Subscribe to prayer records on mount
+    useEffect(() => {
+        return requireFeature('prayer');
+    }, [requireFeature]);
 
     // Filter students by class
     const classStudents = useMemo(() =>
@@ -172,7 +177,7 @@ const PrayerStats = () => {
                     // Daily View
                     const record = relevantRecords.find(r => r.studentId === student.id);
                     const prayersDone = record && record.prayers ? record.prayers : {};
-                    const completedStandard = standardPrayers.filter(p => prayersDone[p.id]);
+                    const completedStandard = standardPrayers.filter(p => prayersDone[p.id] || prayersDone[p.id[0]]);
 
                     if (completedStandard.length === 5) statusText = '5/5 ✅';
                     else if (completedStandard.length === 0) statusText = 'Not Submitted ❌';
@@ -428,7 +433,7 @@ const PrayerStats = () => {
                                                                 </td>
                                                                 {standardPrayers.map((prayer) => (
                                                                     <td key={prayer.id} className="p-4 text-center">
-                                                                        {prayersDone[prayer.id] ? (
+                                                                        {prayersDone[prayer.id] || prayersDone[prayer.id[0]] ? (
                                                                             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold text-sm">✓</span>
                                                                         ) : (
                                                                             <span className="text-gray-300 font-medium">-</span>

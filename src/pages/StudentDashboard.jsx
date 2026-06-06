@@ -17,6 +17,7 @@ import ClassHistory from '../components/student/ClassHistory';
 import StudentLeave from './StudentLeave';
 import StudentChat from './StudentChat';
 import StudentStarView from '../components/student/StudentStarView';
+import StudentGames from './student/StudentGames';
 import StudentRamadan from '../components/student/StudentRamadan';
 import StudentQuranRecitation from '../components/student/StudentQuranRecitation';
 import StudentSubjects from '../components/student/StudentSubjects';
@@ -200,6 +201,9 @@ const StudentDashboard = () => {
     const assignedMentors = mentors?.filter(m => (m.assignedClassIds || []).includes(currentUser.classId)) || [];
 
     const isFeatureEnabled = (key) => {
+        // Bypass feature flags on localhost for local testing
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return true;
+
         // Admin level lock
         const isGloballyEnabled = globalFlags[key] !== false;
 
@@ -603,6 +607,7 @@ const StudentDashboard = () => {
                         <Route path="/results" element={<StudentResultView />} />
                         <Route path="/leaderboard" element={<Leaderboard />} />
                         <Route path="/star-student" element={<StudentStarView />} />
+                        <Route path="/games" element={<StudentGames />} />
                         <Route path="/notifications" element={<StudentNotifications />} />
                         <Route path="/feedback" element={<FeedbackPortal />} />
                         <Route path="/help" element={<Help />} />

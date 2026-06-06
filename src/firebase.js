@@ -18,9 +18,14 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
-// Use local emulators if running on localhost
-if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+// Use local emulators if running on localhost unless live database is requested
+const connectToLive = import.meta.env.VITE_CONNECT_TO_LIVE === 'true' || import.meta.env.VITE_USE_EMULATORS === 'false';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+if (isLocalhost && !connectToLive) {
     connectFirestoreEmulator(db, '127.0.0.1', 8080);
     connectStorageEmulator(storage, '127.0.0.1', 9199);
     console.warn("Connected to Firebase Firestore and Storage Local Emulators!");
+} else {
+    console.log("Connected to live Firebase Production Database!");
 }

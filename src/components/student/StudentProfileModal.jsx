@@ -95,7 +95,8 @@ const StudentProfileModal = ({ isOpen, onClose, currentUser }) => {
             showAlert('Success', 'Personal details updated successfully.', 'success');
             onClose();
         } catch (error) {
-            showAlert('Error', 'Failed to update details.', 'error');
+            console.error("Profile update error:", error);
+            showAlert('Error', `Failed to update details: ${error.message || 'Unknown error'}`, 'error');
         } finally {
             setIsSaving(false);
         }
