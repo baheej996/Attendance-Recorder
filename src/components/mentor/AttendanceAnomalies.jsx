@@ -35,9 +35,10 @@ const AttendanceAnomalies = () => {
             const allRecords = [];
             for (let i = 0; i < myStudentIds.length; i += 30) {
                 const batchIds = myStudentIds.slice(i, i + 30);
-                const qBatch = query(collection(db, 'attendance'), where('studentId', 'in', batchIds), where('status', '==', 'Present'));
+                const qBatch = query(collection(db, 'attendance'), where('studentId', 'in', batchIds));
                 const snap = await getDocs(qBatch);
-                allRecords.push(...snap.docs.map(d => d.data()));
+                const validRecords = snap.docs.map(d => d.data()).filter(r => r.status === 'Present' || r.status === 'Absent');
+                allRecords.push(...validRecords);
             }
 
             // Group by student
@@ -62,9 +63,9 @@ const AttendanceAnomalies = () => {
                     const d1 = new Date(current.date);
                     const d2 = new Date(next.date);
                     const diffTime = Math.abs(d2 - d1);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
                     
-                    if (diffDays === 1) {
+                    if (diffDays === 1 && current.status === next.status) {
                         foundAnomalies.push({
                             id: `${studentId}_${current.date}_${next.date}`,
                             studentId,
@@ -73,7 +74,8 @@ const AttendanceAnomalies = () => {
                             classId: student?.classId,
                             className: availableClasses.find(c => c.id === student?.classId)?.name || 'Unknown',
                             date1: current.date,
-                            date2: next.date
+                            date2: next.date,
+                            type: current.status
                         });
                     }
                 }
@@ -192,8 +194,9 @@ const AttendanceAnomalies = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-gray-900">{anomaly.studentName} <span className="text-gray-500 font-normal text-sm">({anomaly.regNo})</span></h3>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            Found consecutive attendances on <span className="font-semibold">{anomaly.date1}</span> and <span className="font-semibold">{anomaly.date2}</span>.
+                                        <p className="text-sm text-gray-600 mb-4">
+                                            Marked <strong>{anomaly.type}</strong> on both: <br />
+                                            <span className="font-medium text-gray-800">{new Date(anomaly.date1).toLocaleDateString()}</span> and <span className="font-medium text-gray-800">{new Date(anomaly.date2).toLocaleDateString()}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -204,6 +207,15 @@ const AttendanceAnomalies = () => {
 
                             {selectedAnomaly?.id === anomaly.id && (
                                 <div className="bg-gray-50 p-4 border-t border-gray-100">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 className="font-bold text-gray-800">{anomaly.studentName}</h3>
+                                            <p className="text-xs text-gray-500">Reg: {anomaly.regNo} &bull; Class: {anomaly.className}</p>
+                                        </div>
+                                        <span className={`px-2 py-1 text-xs font-bold rounded-lg ${anomaly.type === 'Absent' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            Consecutive {anomaly.type}
+                                        </span>
+                                    </div>
                                     <h4 className="text-sm font-bold text-gray-700 mb-3">Which record would you like to delete?</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {/* Date 1 Resolution */}

@@ -102,8 +102,8 @@ const AttendanceRecorder = () => {
         };
 
         // Check for anomalies (consecutive days)
-        const presentStudentIds = attendanceData.records.filter(r => r.status === 'Present').map(r => r.studentId);
-        if (presentStudentIds.length > 0) {
+        const relevantRecords = attendanceData.records.filter(r => r.status === 'Present' || r.status === 'Absent');
+        if (relevantRecords.length > 0) {
             const d = new Date(date);
             const prev = new Date(d); prev.setDate(prev.getDate() - 1);
             const next = new Date(d); next.setDate(next.getDate() + 1);
@@ -117,11 +117,11 @@ const AttendanceRecorder = () => {
                 const neighborRecords = [...snap1.docs, ...snap2.docs].map(doc => doc.data());
 
                 const anomalies = [];
-                presentStudentIds.forEach(sid => {
-                    const conflict = neighborRecords.find(r => r.studentId === sid && r.status === 'Present');
+                relevantRecords.forEach(record => {
+                    const conflict = neighborRecords.find(r => r.studentId === record.studentId && r.status === record.status);
                     if (conflict) {
-                        const student = students.find(s => s.id === sid);
-                        anomalies.push(`${student?.name || sid} (on ${conflict.date})`);
+                        const student = students.find(s => s.id === record.studentId);
+                        anomalies.push(`${student?.name || record.studentId} (marked ${record.status} on ${conflict.date})`);
                     }
                 });
 
@@ -276,7 +276,7 @@ const AttendanceRecorder = () => {
                 onClose={() => setAnomalyWarning({ isOpen: false, anomalies: [], pendingData: null })}
                 onConfirm={() => executeSave(anomalyWarning.pendingData)}
                 title="Consecutive Attendance Detected"
-                message={`Warning: Saving this will result in consecutive day attendance for the following students:\n\n${anomalyWarning.anomalies.join('\n')}\n\nThis usually happens due to overlapping batch transfers. Do you want to proceed anyway?`}
+                message={`Warning: Saving this will result in consecutive day attendance or absences for the following students:\n\n${anomalyWarning.anomalies.join('\n')}\n\nThis usually happens due to overlapping batch transfers or entry errors. Do you want to proceed anyway?`}
                 confirmText="Proceed & Save"
                 cancelText="Cancel"
                 isDanger={true}
