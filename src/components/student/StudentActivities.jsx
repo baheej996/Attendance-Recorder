@@ -49,9 +49,12 @@ const StudentActivities = () => {
         // Calculate points for all students in my class
         const classStudents = students.filter(s => s.classId === currentUser.classId);
 
-        // Create a Set of active activity IDs for fast lookup
-        // We only want to count points for activities that currently exist and are Active
+        // We want to count points for activities that currently exist and are Active
         const activeActivityIds = new Set(myActivities.map(a => a.id));
+
+        // But we ALSO want to count points from deactivated activities if the student completed them!
+        const allClassActivities = activities.filter(a => a.classId === currentUser.classId);
+        const allClassActivityIds = new Set(allClassActivities.map(a => a.id));
 
         // Ceiling = max points a student can legitimately earn from active activities in this class.
         // Student-side display is capped to this so an inflated/wrong override never leaks here.
@@ -63,7 +66,7 @@ const StudentActivities = () => {
             if (manual !== undefined && manual !== null && manual !== '') {
                 const n = Number(manual);
                 if (!Number.isNaN(n)) {
-                    return { ...student, points: Math.min(n, ceilingPoints) };
+                    return { ...student, points: n };
                 }
             }
 
@@ -76,7 +79,7 @@ const StudentActivities = () => {
                     if (
                         s.studentId === student.id &&
                         s.status === 'Completed' &&
-                        activeActivityIds.has(s.activityId) &&
+                        allClassActivityIds.has(s.activityId) &&
                         !seenActivityIds.has(s.activityId)
                     ) {
                         seenActivityIds.add(s.activityId);
@@ -85,11 +88,11 @@ const StudentActivities = () => {
                     return false;
                 })
                 .reduce((sum, s) => {
-                    // Always use the CURRENT activity maxPoints, not the stale stored value
-                    const act = myActivities.find(a => a.id === s.activityId);
+                    // Always use the CURRENT activity maxPoints (from allClassActivities to include inactive)
+                    const act = allClassActivities.find(a => a.id === s.activityId);
                     return sum + (Number(act?.maxPoints) || 0);
                 }, 0);
-            return { ...student, points: Math.min(points, ceilingPoints) };
+            return { ...student, points: points };
         });
 
         // Sort by points desc
@@ -126,7 +129,7 @@ const StudentActivities = () => {
             leaderboard: studentScores
         };
 
-    }, [students, activitySubmissions, currentUser, myActivities, completed.length]);
+    }, [students, activitySubmissions, currentUser, myActivities, activities, completed.length]);
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">

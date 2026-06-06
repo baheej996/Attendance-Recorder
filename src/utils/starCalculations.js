@@ -59,18 +59,27 @@ export const calculateStudentStarScores = ({
         const activeActivities = activeActivityList.length || 1;
         const activeActivityIds = activeActivityList.map(a => a.id);
 
+        const allMonthActivityList = activities.filter(a => {
+            if (a.classId !== classId) return false;
+            const refDateStr = a.dueDate || a.createdAt;
+            if (!refDateStr) return false;
+            const refDate = new Date(refDateStr);
+            return isSameMonth(refDate, startDate) && isSameYear(refDate, startDate);
+        });
+        const allMonthActivityIds = allMonthActivityList.map(a => a.id);
+
         const activeSpecialPrayersList = specialPrayers?.filter(p =>
             p.isEnabled && p.assignedClassIds?.includes(classId)
         ) || [];
         const activeSpecialPrayers = activeSpecialPrayersList.length || 1;
         const activeSpecialPrayerIds = activeSpecialPrayersList.map(p => p.id);
 
-        classStats[classId] = { workingDays, activeActivities, activeActivityIds, activeSpecialPrayers, activeSpecialPrayerIds };
+        classStats[classId] = { workingDays, activeActivities, activeActivityIds, allMonthActivityIds, activeSpecialPrayers, activeSpecialPrayerIds };
     });
 
     const processed = classStudents.map(student => {
         const classId = student.classId;
-        const stats = classStats[classId] || { workingDays: 1, activeActivities: 1, activeActivityIds: [], activeSpecialPrayers: 1, activeSpecialPrayerIds: [] };
+        const stats = classStats[classId] || { workingDays: 1, activeActivities: 1, activeActivityIds: [], allMonthActivityIds: [], activeSpecialPrayers: 1, activeSpecialPrayerIds: [] };
 
         // --- Attendance Score ---
         let attendanceScore = 0;
@@ -88,20 +97,20 @@ export const calculateStudentStarScores = ({
         // --- Activities Score ---
         let activityScore = 0;
         let completedCount = 0;
-        if (config.activities && stats.activeActivityIds.length > 0) {
-            const activeIds = new Set(stats.activeActivityIds);
+        if (config.activities && stats.activeActivities > 0) {
+            const allIds = new Set(stats.allMonthActivityIds);
             // Use a Set to deduplicate: multiple submissions for the same activity count as ONE completion
             const completedActivityIds = new Set(
                 activitySubmissions
                     .filter(s =>
                         s.studentId === student.id &&
                         s.status === 'Completed' &&
-                        activeIds.has(s.activityId)
+                        allIds.has(s.activityId)
                     )
                     .map(s => s.activityId)
             );
             completedCount = completedActivityIds.size;
-            activityScore = Math.min((completedCount / stats.activeActivityIds.length) * 100, 100);
+            activityScore = Math.min((completedCount / stats.activeActivities) * 100, 100);
         }
 
         // --- Prayer Score ---
