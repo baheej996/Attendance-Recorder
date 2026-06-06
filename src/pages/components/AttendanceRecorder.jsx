@@ -147,24 +147,29 @@ const AttendanceRecorder = () => {
         setConfirmConfig({ isOpen: true, type: 'full', step: 1 });
     };
 
-    const executeDelete = () => {
+    const executeDelete = async () => {
         if (confirmConfig.type === 'single') {
             const classStudentIds = students
                 .filter(s => s.classId === selectedClassId && s.status === 'Active')
                 .map(s => s.id);
 
-            deleteAttendanceBatch(date, classStudentIds);
+            try {
+                await deleteAttendanceBatch(date, classStudentIds);
 
-            // Reset
-            const resetRecords = {};
-            classStudentIds.forEach(id => {
-                resetRecords[id] = 'Present';
-            });
-            setRecords(resetRecords);
+                // Reset
+                const resetRecords = {};
+                classStudentIds.forEach(id => {
+                    resetRecords[id] = 'Present';
+                });
+                setRecords(resetRecords);
 
-            setMsg('Attendance Records Deleted.');
-            setShowPopup(true);
-            setTimeout(() => setShowPopup(false), 3000);
+                setMsg('Attendance Records Deleted.');
+                setShowPopup(true);
+                setTimeout(() => setShowPopup(false), 3000);
+            } catch (error) {
+                console.error("Failed to delete attendance", error);
+                alert("Failed to delete attendance: " + error.message);
+            }
             setConfirmConfig({ isOpen: false, type: null, step: 1 });
 
         } else if (confirmConfig.type === 'full') {
@@ -179,18 +184,23 @@ const AttendanceRecorder = () => {
                 .filter(s => s.classId === selectedClassId && s.status === 'Active')
                 .map(s => s.id);
 
-            deleteAllAttendanceForStudentIds(classStudentIds);
+            try {
+                await deleteAllAttendanceForStudentIds(classStudentIds);
 
-            // Reset
-            const resetRecords = {};
-            classStudentIds.forEach(id => {
-                resetRecords[id] = 'Present';
-            });
-            setRecords(resetRecords);
+                // Reset
+                const resetRecords = {};
+                classStudentIds.forEach(id => {
+                    resetRecords[id] = 'Present';
+                });
+                setRecords(resetRecords);
 
-            setMsg('All Class History Deleted.');
-            setShowPopup(true);
-            setTimeout(() => setShowPopup(false), 3000);
+                setMsg('All Class History Deleted.');
+                setShowPopup(true);
+                setTimeout(() => setShowPopup(false), 3000);
+            } catch (error) {
+                console.error("Failed to delete full history", error);
+                alert("Failed to delete history: " + error.message);
+            }
             setConfirmConfig({ isOpen: false, type: null, step: 1 });
         }
     };
