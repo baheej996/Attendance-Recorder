@@ -91,6 +91,9 @@ const AdminMentorQuranTracker = () => {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Mentor Quran Stats</h1>
                         <p className="text-sm text-gray-500">Rank mentors by their students' Quran recitation participation.</p>
+                        <div className="text-xs text-red-500 mt-1">
+                            Debug Info: {quranRecitations.length} recitations, {students.length} students, {mentors.length} mentors loaded. Timeframe: {timeframe}
+                        </div>
                     </div>
                 </div>
             </div>
