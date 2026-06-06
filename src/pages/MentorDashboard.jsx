@@ -1,7 +1,7 @@
 import React from 'react';
 import InstitutionDirectory from '../components/mentor/InstitutionDirectory';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare, Users, Video, ShieldCheck, ExternalLink, Trophy, Search } from 'lucide-react';
+import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare, Users, Video, ShieldCheck, ExternalLink, Trophy, Search, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Card } from '../components/ui/Card';
 import AttendanceRecorder from './components/AttendanceRecorder';
@@ -419,8 +419,16 @@ const MentorDashboard = () => {
                             placeholder="Search menu..."
                             value={sidebarSearchQuery}
                             onChange={(e) => setSidebarSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
+                        {sidebarSearchQuery && (
+                            <button
+                                onClick={() => setSidebarSearchQuery('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-1 rounded-full transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -506,8 +514,16 @@ const MentorDashboard = () => {
                                     placeholder="Search menu..."
                                     value={sidebarSearchQuery}
                                     onChange={(e) => setSidebarSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                    className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                 />
+                                {sidebarSearchQuery && (
+                                    <button
+                                        onClick={() => setSidebarSearchQuery('')}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-1 rounded-full transition-colors"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
                             </div>
                         </div>
                         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
