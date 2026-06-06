@@ -1,7 +1,7 @@
 import React from 'react';
 import InstitutionDirectory from '../components/mentor/InstitutionDirectory';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare, Users, Video, ShieldCheck, ExternalLink, Trophy } from 'lucide-react';
+import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare, Users, Video, ShieldCheck, ExternalLink, Trophy, Search } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Card } from '../components/ui/Card';
 import AttendanceRecorder from './components/AttendanceRecorder';
@@ -261,6 +261,7 @@ const MentorDashboard = () => {
     const { logout, currentUser, attendance, leaveRequests, unreadChats, stopImpersonating, classes, students, notifications, mentorSettings, mentorTasks, substitutionRequests, evaluationForms, evaluationSubmissions, mentorFeatureFlags, requireFeature } = useData();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [showLogoutModal, setShowLogoutModal] = React.useState(false);
+    const [sidebarSearchQuery, setSidebarSearchQuery] = React.useState('');
 
     const handleReturn = () => {
         const role = currentUser?.originalUser?.role;
@@ -375,8 +376,12 @@ const MentorDashboard = () => {
         }
     }, [mentorSettings, currentUser?.isImpersonating, mentorFeatureFlags]);
 
+    const filteredNavItems = navItems.filter(item => 
+        !sidebarSearchQuery || item.label.toLowerCase().includes(sidebarSearchQuery.toLowerCase())
+    );
+
     // Calculate badges
-    const itemsWithBadges = navItems.map(item => {
+    const itemsWithBadges = filteredNavItems.map(item => {
         let badge = 0;
         if (item.id === 'leaves') badge = pendingLeaves;
         if (item.id === 'chat') badge = unreadChatCount;
@@ -404,6 +409,19 @@ const MentorDashboard = () => {
                             </p>
                         </Link>
                     )}
+                </div>
+
+                <div className="px-4 pb-2">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Search menu..."
+                            value={sidebarSearchQuery}
+                            onChange={(e) => setSidebarSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        />
+                    </div>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -479,6 +497,18 @@ const MentorDashboard = () => {
                             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-gray-500 hover:bg-gray-100 rounded-full">
                                 <Users className="w-5 h-5" />
                             </button>
+                        </div>
+                        <div className="px-4 py-2 border-b border-gray-100">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <input
+                                    type="text"
+                                    placeholder="Search menu..."
+                                    value={sidebarSearchQuery}
+                                    onChange={(e) => setSidebarSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                />
+                            </div>
                         </div>
                         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                             {itemsWithBadges.map((item) => {
