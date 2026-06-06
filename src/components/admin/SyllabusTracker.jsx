@@ -61,8 +61,11 @@ const SyllabusTracker = () => {
 
                     const statusId = `${cls.id}_${sub.id}`;
                     const status = syllabusStatuses.find(s => s.id === statusId);
-                    const completedChapters = (status?.completedChapters || []).map(String);
-                    const completedRequired = requiredChapters.filter(ch => completedChapters.includes(ch));
+                    
+                    const normalizeChapter = ch => String(ch).toLowerCase().replace(/chapter\s*/g, '').replace(/ch\.*\s*/g, '').trim();
+                    const completedChapters = (status?.completedChapters || []).map(normalizeChapter);
+                    
+                    const completedRequired = requiredChapters.filter(ch => completedChapters.includes(normalizeChapter(ch)));
                     const progress = requiredChapters.length > 0 ? Math.round((completedRequired.length / requiredChapters.length) * 100) : 0;
 
                     // Find mentor for this class division
