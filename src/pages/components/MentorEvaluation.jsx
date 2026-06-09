@@ -38,11 +38,13 @@ const MentorEvaluation = () => {
         const un2 = requireFeature('activities');
         const un3 = requireFeature('quran');
         const un4 = requireFeature('logs');
+        const un5 = requireFeature('evaluation');
         return () => {
             un1();
             un2();
             un3();
             un4();
+            un5();
         };
     }, [requireFeature]);
 
@@ -54,7 +56,9 @@ const MentorEvaluation = () => {
             const mentorClasses = classes.filter(c => (mentor.assignedClassIds || []).includes(c.id));
             
             // 1. Attendance Stats
-            const mentorAttendance = attendance.filter(a => a.mentorId === mentor.id);
+            const mentorAttendance = attendance.filter(a => 
+                a.mentorId === mentor.id || (mentor.assignedClassIds || []).includes(a.classId)
+            );
             const sortedAttendance = [...mentorAttendance].sort((a, b) => new Date(b.date) - new Date(a.date));
             const lastAttendanceDate = sortedAttendance[0]?.date;
             

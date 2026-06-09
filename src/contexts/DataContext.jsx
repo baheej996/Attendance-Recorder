@@ -506,7 +506,8 @@ export const DataProvider = ({ children }) => {
             );
             
             // On-Demand Heavy Data
-            if (activeFeatures.has('attendance')) unsubs.push(subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(attendanceLimit)));
+            const currentAttendanceLimit = activeFeatures.has('evaluation') ? Math.max(2000, attendanceLimit) : attendanceLimit;
+            if (activeFeatures.has('attendance')) unsubs.push(subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(currentAttendanceLimit)));
             if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, limit(resultsLimit)));
             if (activeFeatures.has('activities')) unsubs.push(subscribe('activitySubmissions', setActivitySubmissions));
             if (activeFeatures.has('quran')) unsubs.push(subscribe('quranRecitations', setQuranRecitations, limit(5000)));
