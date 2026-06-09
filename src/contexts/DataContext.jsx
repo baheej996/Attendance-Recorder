@@ -528,20 +528,22 @@ export const DataProvider = ({ children }) => {
         }
 
         let q;
+        const currentLimit = activeFeatures.has('logs') ? Math.max(2000, logLimit) : logLimit;
+
         if (currentUser.role === 'student') {
             // No orderBy — sort client-side to avoid composite index requirement
-            q = query(collection(db, 'logEntries'), where('classId', '==', currentUser.classId), limit(logLimit));
+            q = query(collection(db, 'logEntries'), where('classId', '==', currentUser.classId), limit(currentLimit));
         } else if (currentUser.role === 'mentor') {
             const assignedClassIds = currentUser.assignedClassIds || (currentUser.classId ? [currentUser.classId] : []);
             if (assignedClassIds.length > 0) {
-                q = query(collection(db, 'logEntries'), where('classId', 'in', assignedClassIds), limit(logLimit));
+                q = query(collection(db, 'logEntries'), where('classId', 'in', assignedClassIds), limit(currentLimit));
             } else {
                 setLogEntries([]);
                 return;
             }
         } else if (currentUser.role === 'admin') {
             // Admin has no where clause, orderBy alone is fine (no composite index needed)
-            q = query(collection(db, 'logEntries'), orderBy('timestamp', 'desc'), limit(logLimit));
+            q = query(collection(db, 'logEntries'), orderBy('timestamp', 'desc'), limit(currentLimit));
         }
 
         if (!q) return;
@@ -560,7 +562,7 @@ export const DataProvider = ({ children }) => {
         );
 
         return () => unsub();
-    }, [currentUser, logLimit]);
+    }, [currentUser, logLimit, activeFeatures]);
 
     // Individual Mentor Settings computed based on current user
     useEffect(() => {

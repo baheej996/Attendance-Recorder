@@ -37,10 +37,12 @@ const MentorEvaluation = () => {
         const un1 = requireFeature('attendance');
         const un2 = requireFeature('activities');
         const un3 = requireFeature('quran');
+        const un4 = requireFeature('logs');
         return () => {
             un1();
             un2();
             un3();
+            un4();
         };
     }, [requireFeature]);
 
