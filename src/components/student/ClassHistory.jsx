@@ -20,10 +20,12 @@ const ClassHistory = () => {
     }, [logEntries, currentUser]);
 
     // 3. Filter by Subject (if selected)
-    const displayedLogs = useMemo(() => {
+    const filteredLogs = useMemo(() => {
         if (selectedSubject === 'all') return classLogs;
         return classLogs.filter(log => log.subjectId === selectedSubject);
     }, [classLogs, selectedSubject]);
+
+    const displayedLogs = filteredLogs.slice(0, logLimit);
 
     // 4. Get Unique Subjects present in the logs (for filter dropdown)
     const availableSubjects = useMemo(() => {
@@ -125,7 +127,7 @@ const ClassHistory = () => {
                     ))
                 )}
 
-                {logEntries.length >= logLimit && (
+                {filteredLogs.length > logLimit && (
                     <div className="pt-4 flex justify-center">
                         <button 
                             onClick={loadMoreLogs} 

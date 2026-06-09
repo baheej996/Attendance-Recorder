@@ -532,12 +532,14 @@ export const DataProvider = ({ children }) => {
         const currentLimit = activeFeatures.has('logs') ? Math.max(2000, logLimit) : logLimit;
 
         if (currentUser.role === 'student') {
-            // No orderBy — sort client-side to avoid composite index requirement
-            q = query(collection(db, 'logEntries'), where('classId', '==', currentUser.classId), limit(currentLimit));
+            // No orderBy — sort client-side to avoid composite index requirement. 
+            // We must fetch all logs for the class to ensure latest are included, as limit() without orderBy returns random docs.
+            q = query(collection(db, 'logEntries'), where('classId', '==', currentUser.classId));
         } else if (currentUser.role === 'mentor') {
             const assignedClassIds = currentUser.assignedClassIds || (currentUser.classId ? [currentUser.classId] : []);
             if (assignedClassIds.length > 0) {
-                q = query(collection(db, 'logEntries'), where('classId', 'in', assignedClassIds), limit(currentLimit));
+                // Fetch all logs for assigned classes to avoid composite index requirement
+                q = query(collection(db, 'logEntries'), where('classId', 'in', assignedClassIds));
             } else {
                 setLogEntries([]);
                 return;

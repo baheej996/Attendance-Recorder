@@ -286,7 +286,7 @@ const LogBook = () => {
         setFormData({ chapter: '', heading: '', remarks: '', completionStatus: 'fully', sharedClassIds: [] });
     };
 
-    const displayedLogs = useMemo(() => {
+    const filteredLogs = useMemo(() => {
         return logEntries.filter(log => {
             const isAssignedClass = assignedClasses.some(c => c.id === log.classId);
             if (!isAssignedClass) return false;
@@ -296,6 +296,8 @@ const LogBook = () => {
             return matchesClass && matchesSubject;
         }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }, [logEntries, filter, assignedClasses]);
+
+    const displayedLogs = filteredLogs.slice(0, logLimit);
 
     const COLORS = ['#4f46e5', '#e5e7eb']; // Indigo vs Gray
 
@@ -627,7 +629,7 @@ const LogBook = () => {
                                     ))
                                 )}
 
-                                {logEntries.length >= logLimit && (
+                                {filteredLogs.length > logLimit && (
                                     <div className="pt-4 flex justify-center">
                                         <Button 
                                             onClick={loadMoreLogs} 
