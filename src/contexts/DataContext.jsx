@@ -319,6 +319,20 @@ export const DataProvider = ({ children }) => {
         fetchCounts();
     }, []);
 
+    // Stable signature of the classes collection (id + name only). The heavy-subscription
+    // effect below needs `classes` ONLY to compute a student's batch class IDs (classes that
+    // share the same name). Depending on the raw `classes` array is dangerous: the realtime
+    // listener emits a NEW array reference on every snapshot, which would tear down and
+    // re-create ALL ~20 Firestore listeners (re-billing a full read of every collection) on
+    // each emission — and for admins it created an infinite re-subscribe loop (the effect
+    // itself calls setClasses), which is what blew Firestore reads up from ~3M to ~300M.
+    // Keying on a content signature makes the effect re-run only when class identity/name
+    // actually changes, not on every new array reference.
+    const classesKey = React.useMemo(
+        () => classes.map(c => `${c.id}:${c.name}`).sort().join('|'),
+        [classes]
+    );
+
     // 2. User-Specific / Heavy Subscriptions (Filtered for Performance)
     useEffect(() => {
         if (!currentUser) {
@@ -487,7 +501,11 @@ export const DataProvider = ({ children }) => {
         } else if (currentUser.role === 'admin') {
             unsubs.push(
                 subscribe('students', (data) => { setStudents(data); setAllStudents(data); }),
-                subscribe('classes', (data) => { setClasses(data); setAllClasses(data); }),
+                // NOTE: do NOT setClasses here. `classes` is already maintained by the global
+                // listener (section 1). Writing it from inside this effect would feed the
+                // effect's own `classesKey` dependency and re-trigger a full re-subscribe of
+                // every collection. We only need the admin-scoped `allClasses` buffer here.
+                subscribe('classes', setAllClasses),
                 subscribe('exams', setExams),
                 subscribe('activities', setActivities),
                 subscribe('chatMessages', setChatMessages, orderBy('timestamp', 'desc'), limit(200)),
@@ -516,7 +534,12 @@ export const DataProvider = ({ children }) => {
         }
 
         return () => unsubs.forEach(u => u());
-    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit, activeFeatures, attendanceLimit, resultsLimit, activitiesLimit, classes]);
+        // We intentionally depend on `classesKey` (a stable id+name signature) instead of the
+        // raw `classes` array. `classes` is read inside only to derive student batch class IDs;
+        // keying on the signature prevents a full re-subscribe (and read-cost explosion) on
+        // every realtime class snapshot. Do NOT add `classes` back to this array.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit, activeFeatures, attendanceLimit, resultsLimit, activitiesLimit, classesKey]);
 
     // Separate Effect for Log Pagination (to avoid re-subscribing to everything else)
     // NOTE: where('classId') + orderBy('timestamp') requires a Firestore composite index.
