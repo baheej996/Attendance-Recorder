@@ -90,7 +90,7 @@ const PublicHome = () => {
                         <div className="relative">
                             <div className="absolute inset-0 bg-teal-600 rounded-3xl rotate-3 opacity-10"></div>
                             <img
-                                src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"
+                                src="https://images.unsplash.com/photo-1509062522246-3755977927d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80"
                                 alt="E-Learning"
                                 className="relative rounded-3xl shadow-2xl w-full object-cover transform -rotate-2 hover:rotate-0 transition-transform duration-500"
                             />

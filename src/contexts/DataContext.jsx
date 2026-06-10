@@ -101,13 +101,14 @@ export const DataProvider = ({ children }) => {
 
     const [totalCounts, setTotalCounts] = useState({ students: 0, mentors: 0, classes: 0 });
 
-    const loadMoreLogs = () => setLogLimit(prev => prev + 10);
-    const loadMoreAllStudents = () => setAllStudentsLimit(prev => prev + 10);
-    const loadMoreAllMentors = () => setAllMentorsLimit(prev => prev + 10);
-    const loadMoreAllClasses = () => setAllClassesLimit(prev => prev + 10);
-    const loadMoreAttendance = () => setAttendanceLimit(prev => prev + 500);
-    const loadMoreResults = () => setResultsLimit(prev => prev + 500);
-    const loadMoreActivities = () => setActivitiesLimit(prev => prev + 500);
+    const loadMoreLogs = React.useCallback(() => setLogLimit(prev => prev + 10), []);
+    const loadMoreAllStudents = React.useCallback(() => setAllStudentsLimit(prev => prev + 10), []);
+    const loadMoreAllMentors = React.useCallback(() => setAllMentorsLimit(prev => prev + 10), []);
+    const loadMoreAllClasses = React.useCallback(() => setAllClassesLimit(prev => prev + 10), []);
+    const loadMoreAttendance = React.useCallback(() => setAttendanceLimit(prev => prev + 500), []);
+    const loadMoreResults = React.useCallback(() => setResultsLimit(prev => prev + 500), []);
+    const loadMoreActivities = React.useCallback(() => setActivitiesLimit(prev => prev + 500), []);
+    const loadMoreActivitySubmissions = React.useCallback(() => setResultsLimit(prev => prev + 500), []);
 
     // System Versioning
     const [appVersion] = useState(1777391306000); // Internal Build Timestamp
@@ -187,6 +188,7 @@ export const DataProvider = ({ children }) => {
     // on every render, causing an infinite loop (React error #185).
     const requireFeature = React.useCallback((feature) => {
         setActiveFeatures(prev => {
+            if (prev.has(feature)) return prev;
             const next = new Set(prev);
             next.add(feature);
             return next;
@@ -194,6 +196,7 @@ export const DataProvider = ({ children }) => {
         
         return () => {
             setActiveFeatures(prev => {
+                if (!prev.has(feature)) return prev;
                 const next = new Set(prev);
                 next.delete(feature);
                 return next;
@@ -207,7 +210,7 @@ export const DataProvider = ({ children }) => {
     // IMPORTANT: The error handler is critical — without it, one failing query
     // (e.g. a missing Firestore composite index) silently crashes the entire
     // useEffect and breaks ALL subscriptions for the user, not just the one that failed.
-    const getCount = async (collectionName, ...constraints) => {
+    const getCount = React.useCallback(async (collectionName, ...constraints) => {
         try {
             const q = query(collection(db, collectionName), ...constraints);
             const snap = await getCountFromServer(q);
@@ -216,7 +219,7 @@ export const DataProvider = ({ children }) => {
             console.error(`[DataContext] Error getting count for ${collectionName}:`, error);
             return 0;
         }
-    };
+    }, [db]);
 
     const subscribe = (collectionName, setState, ...constraints) => {
         const q = query(collection(db, collectionName), ...constraints);
@@ -517,7 +520,7 @@ export const DataProvider = ({ children }) => {
         }
 
         return () => unsubs.forEach(u => u());
-    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit, activeFeatures, attendanceLimit, resultsLimit, activitiesLimit, classes]);
+    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit, activeFeatures, attendanceLimit, resultsLimit, activitiesLimit]);
 
     // Separate Effect for Log Pagination (to avoid re-subscribing to everything else)
     // NOTE: where('classId') + orderBy('timestamp') requires a Firestore composite index.
@@ -1496,7 +1499,7 @@ export const DataProvider = ({ children }) => {
         }
     };
 
-    const getStudentActivityPoints = (studentId, classId) => {
+    const getStudentActivityPoints = React.useCallback((studentId, classId) => {
         // Manual override (set by mentor/admin from the activity tracker) takes precedence
         const studentRecord = (students.length > 0 ? students : allStudents).find(s => s.id === studentId);
         const manual = studentRecord?.manualActivityPoints;
@@ -1513,17 +1516,16 @@ export const DataProvider = ({ children }) => {
         const processedActivityIds = new Set();
 
         return activitySubmissions
-            .filter(s => {
-                if (s.studentId === studentId && s.status === 'Completed' && activeActivityMap.has(s.activityId)) {
-                    if (processedActivityIds.has(s.activityId)) return false; // Deduplicate existing legacy submissions
-                    processedActivityIds.add(s.activityId);
-                    return true;
+            .filter(sub => sub.studentId === studentId && sub.status === 'Completed')
+            .reduce((total, sub) => {
+                // Ensure we only process each active activity once per student (ignore duplicate/legacy submissions)
+                if (activeActivityMap.has(sub.activityId) && !processedActivityIds.has(sub.activityId)) {
+                    processedActivityIds.add(sub.activityId);
+                    return total + (Number(activeActivityMap.get(sub.activityId)?.maxPoints) || 0);
                 }
-                return false;
-            })
-            // Always read current maxPoints from activity, not stale stored s.points
-            .reduce((sum, s) => sum + (Number(activeActivityMap.get(s.activityId)?.maxPoints) || 0), 0);
-    };
+                return total;
+            }, 0);
+    }, [students, allStudents, activities, activitySubmissions]);
 
 
     // Log Entries
@@ -1853,7 +1855,7 @@ export const DataProvider = ({ children }) => {
         return { ...snapshot.docs[0].data(), id: snapshot.docs[0].id };
     };
 
-    const getHistoricalAttendanceStats = async (classId, year, month) => {
+    const getHistoricalAttendanceStats = React.useCallback(async (classId, year, month) => {
         const firstDayOfCurrentMonth = `${year}-${String(month + 1).padStart(2, '0')}-01`;
         const firstDayOfNextMonth = month === 11 
             ? `${year + 1}-01-01` 
@@ -1893,7 +1895,7 @@ export const DataProvider = ({ children }) => {
         // Filter by date in memory
         const filteredRecords = allRecords.filter(r => r.date && r.date >= academicYearStartDate && r.date < firstDayOfNextMonth);
         return processHistoricalRecords(filteredRecords, firstDayOfCurrentMonth, classId);
-    };
+    }, [institutionSettings, students, db]);
 
     const processHistoricalRecords = (records, firstDayOfCurrentMonth, targetClassId) => {
         const studentTotals = {};

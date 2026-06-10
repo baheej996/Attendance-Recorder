@@ -89,6 +89,8 @@ const ActivitiesManager = () => {
     const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false);
     const [expandedReportType, setExpandedReportType] = useState(null);
     const [pendingReportConfig, setPendingReportConfig] = useState(null);
+    const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
+    const [leaderboardClassId, setLeaderboardClassId] = useState('');
     const reportDropdownRef = useRef(null);
 
     // Close Report Dropdown on outside click
@@ -130,6 +132,17 @@ const ActivitiesManager = () => {
     const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
         ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
         : classes, [classes, currentUser]);
+
+    // Initialize leaderboard class
+    useEffect(() => {
+        if (isLeaderboardModalOpen) {
+            if (selectedClassId !== 'all') {
+                setLeaderboardClassId(selectedClassId);
+            } else if (availableClasses.length > 0 && !leaderboardClassId) {
+                setLeaderboardClassId(availableClasses[0].id);
+            }
+        }
+    }, [isLeaderboardModalOpen, selectedClassId, availableClasses, leaderboardClassId]);
 
     const handleCreateOrUpdate = (e) => {
         e.preventDefault();
@@ -636,6 +649,31 @@ const ActivitiesManager = () => {
         return result;
     }, [activities, selectedClassId, searchQuery, availableClasses, currentUser, sortOrder]);
 
+    const leaderboardData = useMemo(() => {
+        if (!isLeaderboardModalOpen || !leaderboardClassId) return [];
+        
+        const targetStudents = students.filter(s => s.classId === leaderboardClassId && s.status === 'Active');
+
+        const data = targetStudents.map(student => {
+            const points = getStudentActivityPoints(student.id, student.classId);
+            const completedCount = activitySubmissions.filter(sub => sub.studentId === student.id && sub.status === 'Completed').length;
+            
+            return {
+                ...student,
+                points,
+                completedCount
+            };
+        }).sort((a, b) => b.points - a.points || b.completedCount - a.completedCount);
+
+        let rank = 1;
+        return data.map((s, i) => {
+            if (i > 0 && (s.points < data[i-1].points || (s.points === data[i-1].points && s.completedCount < data[i-1].completedCount))) {
+                rank = i + 1;
+            }
+            return { ...s, rank };
+        });
+    }, [isLeaderboardModalOpen, leaderboardClassId, students, activitySubmissions, getStudentActivityPoints]);
+
 
     // Bulk Selection Handlers
     const toggleSelectAll = () => {
@@ -751,6 +789,10 @@ const ActivitiesManager = () => {
                             </div>
                         )}
                     </div>
+
+                    <Button onClick={() => setIsLeaderboardModalOpen(true)} variant="secondary" className="flex items-center gap-2 flex-1 md:flex-none justify-center border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800">
+                        <Trophy className="w-4 h-4 text-amber-500" /> Leaderboard
+                    </Button>
 
                     <Button onClick={openCreateModal} className="flex items-center gap-2 flex-1 md:flex-none justify-center">
                         <Plus className="w-4 h-4" /> New <span className="hidden md:inline">Activity</span>
@@ -1390,6 +1432,100 @@ const ActivitiesManager = () => {
                             </button>
                         </div>
                     </Card>
+                </div>
+            )}
+
+            {/* Leaderboard Modal */}
+            {isLeaderboardModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-orange-50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-100 rounded-lg">
+                                    <Trophy className="w-6 h-6 text-amber-600" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">Activity Leaderboard</h2>
+                                    <p className="text-sm text-gray-600">Top students based on activity completion points</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <select 
+                                    className="bg-white border border-gray-200 text-sm font-medium rounded-lg px-3 py-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                                    value={leaderboardClassId}
+                                    onChange={(e) => setLeaderboardClassId(e.target.value)}
+                                >
+                                    {availableClasses.map(c => <option key={c.id} value={c.id}>{c.name} - {c.division}</option>)}
+                                </select>
+                                <button onClick={() => setIsLeaderboardModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                    <XCircle className="w-6 h-6" />
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                            {leaderboardData.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                    <h3 className="text-lg font-bold text-gray-900">No Data Available</h3>
+                                    <p className="text-gray-500">No activity data found for the selected class.</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
+                                    <table className="w-full min-w-[600px] text-left border-collapse">
+                                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
+                                            <tr>
+                                                <th className="p-4 w-20 text-center">Rank</th>
+                                                <th className="p-4">Student</th>
+                                                <th className="p-4 text-center">Activities Done</th>
+                                                <th className="p-4 text-right">Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 text-sm">
+                                            {leaderboardData.map((student, index) => {
+                                                const studentClass = classes.find(c => c.id === student.classId);
+                                                const isTop3 = index < 3;
+                                                return (
+                                                    <tr key={student.id} className={`transition-colors hover:bg-amber-50/30 ${isTop3 ? 'bg-amber-50/10' : 'bg-white'}`}>
+                                                        <td className="p-4 text-center">
+                                                            {student.rank === 1 ? <Trophy className="w-5 h-5 text-yellow-500 mx-auto" /> :
+                                                             student.rank === 2 ? <Trophy className="w-5 h-5 text-gray-400 mx-auto" /> :
+                                                             student.rank === 3 ? <Trophy className="w-5 h-5 text-amber-600 mx-auto" /> :
+                                                             <span className="font-bold text-gray-500">{student.rank}</span>}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${isTop3 ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-indigo-50 text-indigo-700'}`}>
+                                                                    {student.name.charAt(0)}
+                                                                </div>
+                                                                <div>
+                                                                    <div className={`font-bold ${isTop3 ? 'text-amber-900' : 'text-gray-900'}`}>{student.name}</div>
+                                                                    <div className="text-xs text-gray-500 font-mono">{student.registerNo}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-center">
+                                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-700 font-bold text-xs">
+                                                                {student.completedCount}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 text-right">
+                                                            <div className="flex items-center justify-end gap-1.5">
+                                                                <span className={`text-lg font-extrabold ${student.points > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                                                                    {student.points}
+                                                                </span>
+                                                                <span className="text-xs font-bold text-gray-400">pts</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
