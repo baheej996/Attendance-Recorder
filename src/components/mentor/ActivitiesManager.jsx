@@ -733,7 +733,7 @@ const ActivitiesManager = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Activity Manager</h1>
                     <p className="text-gray-500">Assign and track class activities</p>
                 </div>
-                <div className="flex items-center gap-3 self-start md:self-auto w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-3 self-start md:self-auto w-full md:w-auto">
                     {selectedActivityIds.length > 0 && (
                         <Button
                             variant="danger"
