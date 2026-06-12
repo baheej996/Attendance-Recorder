@@ -43,6 +43,12 @@ const LogBook = () => {
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [classes, currentUser?.assignedClassIds?.join(',')]);
 
+    useEffect(() => {
+        if (filter.classId === 'all' && assignedClasses.length > 0) {
+            setFilter(prev => ({ ...prev, classId: assignedClasses[0].id }));
+        }
+    }, [assignedClasses, filter.classId]);
+
     // Filter subjects for the unique FILTER dropdown
     const filterSubjects = useMemo(() => {
         if (filter.classId === 'all') {
@@ -331,7 +337,6 @@ const LogBook = () => {
                             value={filter.classId}
                             onChange={e => setFilter({ ...filter, classId: e.target.value, subjectId: 'all' })}
                         >
-                            <option value="all">All Classes</option>
                             {assignedClasses.map(c => <option key={c.id} value={c.id}>{c.name}-{c.division}</option>)}
                         </select>
                     </div>
