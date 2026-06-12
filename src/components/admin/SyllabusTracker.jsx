@@ -145,7 +145,7 @@ const SyllabusTracker = () => {
     return (
         <div className="space-y-6 w-full animate-in fade-in duration-300">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-4 sticky top-[64px] z-20 border-b border-gray-200 bg-gray-50/95 backdrop-blur-sm">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-4 lg:sticky lg:top-[64px] z-20 border-b border-gray-200 bg-gray-50/95 backdrop-blur-sm">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Syllabus Tracker</h2>
                     <p className="text-sm text-gray-500">Track mentor-wise subject completion per class & month</p>

@@ -615,7 +615,7 @@ const StudentManagement = () => {
                 </div>
             </Modal>
 
-            <div className="sticky top-[64px] z-30 bg-gray-50/95 backdrop-blur-sm py-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
+            <div className="lg:sticky lg:top-[64px] z-30 bg-gray-50/95 backdrop-blur-sm py-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Student Management</h2>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <Button

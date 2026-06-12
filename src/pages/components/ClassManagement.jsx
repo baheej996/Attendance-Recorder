@@ -705,7 +705,7 @@ const ClassManagement = () => {
                 </div>
             </Modal>
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/95 backdrop-blur-sm py-4 sticky top-[64px] z-20 border-b border-gray-200 mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/95 backdrop-blur-sm py-4 lg:sticky lg:top-[64px] z-20 border-b border-gray-200 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900 leading-tight">Class Management</h2>
                     <p className="text-sm text-gray-500">Manage classes and divisions</p>

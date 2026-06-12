@@ -94,65 +94,65 @@ const DashboardHome = ({ onTabChange }) => {
                 <p className="text-gray-500 mt-2">Welcome back, Administrator</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
                 <Card 
                     onClick={() => onTabChange('classes')}
-                    className="flex items-center gap-4 border-l-4 border-l-indigo-500 cursor-pointer hover:bg-indigo-50/30 transition-colors group"
+                    className="flex items-center gap-3 sm:gap-4 border-l-4 border-l-indigo-500 cursor-pointer hover:bg-indigo-50/30 transition-colors group p-4 sm:p-6"
                 >
-                    <div className="p-3 bg-indigo-50 rounded-full text-indigo-600 group-hover:scale-110 transition-transform">
-                        <School className="w-8 h-8" />
+                    <div className="p-2 sm:p-3 bg-indigo-50 rounded-full text-indigo-600 group-hover:scale-110 transition-transform">
+                        <School className="w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Total Classes</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{classes.length}</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium">Total Classes</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{classes.length}</h3>
                     </div>
                 </Card>
                 <Card 
                     onClick={() => onTabChange('mentors')}
-                    className="flex items-center gap-4 border-l-4 border-l-purple-500 cursor-pointer hover:bg-purple-50/30 transition-colors group"
+                    className="flex items-center gap-3 sm:gap-4 border-l-4 border-l-purple-500 cursor-pointer hover:bg-purple-50/30 transition-colors group p-4 sm:p-6"
                 >
-                    <div className="p-3 bg-purple-50 rounded-full text-purple-600 group-hover:scale-110 transition-transform">
-                        <Users className="w-8 h-8" />
+                    <div className="p-2 sm:p-3 bg-purple-50 rounded-full text-purple-600 group-hover:scale-110 transition-transform">
+                        <Users className="w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Total Mentors</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{mentors.length}</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium">Total Mentors</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{mentors.length}</h3>
                     </div>
                 </Card>
                 <Card 
                     onClick={() => onTabChange('students')}
-                    className="flex items-center gap-4 border-l-4 border-l-pink-500 cursor-pointer hover:bg-pink-50/30 transition-colors group"
+                    className="flex items-center gap-3 sm:gap-4 border-l-4 border-l-pink-500 cursor-pointer hover:bg-pink-50/30 transition-colors group p-4 sm:p-6 col-span-2 md:col-span-1"
                 >
-                    <div className="p-3 bg-pink-50 rounded-full text-pink-600 group-hover:scale-110 transition-transform">
-                        <GraduationCap className="w-8 h-8" />
+                    <div className="p-2 sm:p-3 bg-pink-50 rounded-full text-pink-600 group-hover:scale-110 transition-transform">
+                        <GraduationCap className="w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Total Students</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{activeStudents.length}</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium">Total Students</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{activeStudents.length}</h3>
                     </div>
                 </Card>
                 <Card 
                     onClick={() => onTabChange('students')}
-                    className="flex items-center gap-4 border-l-4 border-l-blue-500 cursor-pointer hover:bg-blue-50/30 transition-colors group"
+                    className="flex items-center gap-3 sm:gap-4 border-l-4 border-l-blue-500 cursor-pointer hover:bg-blue-50/30 transition-colors group p-4 sm:p-6"
                 >
-                    <div className="p-3 bg-blue-50 rounded-full text-blue-600 group-hover:scale-110 transition-transform">
-                        <Users className="w-8 h-8" />
+                    <div className="p-2 sm:p-3 bg-blue-50 rounded-full text-blue-600 group-hover:scale-110 transition-transform">
+                        <Users className="w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Total Boys</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{totalBoys}</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium">Total Boys</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{totalBoys}</h3>
                     </div>
                 </Card>
                 <Card 
                     onClick={() => onTabChange('students')}
-                    className="flex items-center gap-4 border-l-4 border-l-rose-500 cursor-pointer hover:bg-rose-50/30 transition-colors group"
+                    className="flex items-center gap-3 sm:gap-4 border-l-4 border-l-rose-500 cursor-pointer hover:bg-rose-50/30 transition-colors group p-4 sm:p-6"
                 >
-                    <div className="p-3 bg-rose-50 rounded-full text-rose-600 group-hover:scale-110 transition-transform">
-                        <Users className="w-8 h-8" />
+                    <div className="p-2 sm:p-3 bg-rose-50 rounded-full text-rose-600 group-hover:scale-110 transition-transform">
+                        <Users className="w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Total Girls</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{totalGirls}</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium">Total Girls</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{totalGirls}</h3>
                     </div>
                 </Card>
             </div>
@@ -162,7 +162,7 @@ const DashboardHome = ({ onTabChange }) => {
                 <Card className="overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-gray-600">
-                            <thead className="bg-gray-50 text-gray-900 font-semibold sticky top-0 z-10">
+                            <thead className="bg-gray-50 text-gray-900 font-semibold md:sticky md:top-[64px] z-10">
                                 <tr>
                                     <th className="px-6 py-4 w-24 whitespace-nowrap">Sl No</th>
                                     <th className="px-6 py-4">Batch / Class Name</th>
