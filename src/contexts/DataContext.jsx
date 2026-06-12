@@ -832,6 +832,7 @@ export const DataProvider = ({ children }) => {
                     maxMarks: template.maxMarks || 100,
                     passMarks: template.passMarks || 40,
                     totalChapters: template.totalChapters || 0,
+                    chapterData: template.chapterData || {},
                     isExamSubject: template.isExamSubject !== undefined ? template.isExamSubject : true,
                     isClassSubject: template.isClassSubject !== undefined ? template.isClassSubject : true
                 });
@@ -871,8 +872,8 @@ export const DataProvider = ({ children }) => {
             if (!templates) return;
 
             templates.forEach(template => {
-                const hasIt = subjects.some(s => s.classId === cls.id && s.name.toLowerCase() === template.name.toLowerCase());
-                if (!hasIt) {
+                const existingSubject = subjects.find(s => s.classId === cls.id && s.name.toLowerCase() === template.name.toLowerCase());
+                if (!existingSubject) {
                     const newSubRef = doc(collection(db, 'subjects'));
                     batch.set(newSubRef, {
                         name: template.name,
@@ -880,10 +881,23 @@ export const DataProvider = ({ children }) => {
                         maxMarks: template.maxMarks || 100,
                         passMarks: template.passMarks || 40,
                         totalChapters: template.totalChapters || 0,
+                        chapterData: template.chapterData || {},
                         isExamSubject: template.isExamSubject !== undefined ? template.isExamSubject : true,
                         isClassSubject: template.isClassSubject !== undefined ? template.isClassSubject : true
                     });
                     globalAddedCount++;
+                } else {
+                    // Sync chapterData if template has it but existing subject does not or is empty
+                    const templateHasImages = Object.values(template.chapterData || {}).some(ch => ch.images && ch.images.length > 0);
+                    const existingHasImages = Object.values(existingSubject.chapterData || {}).some(ch => ch.images && ch.images.length > 0);
+                    
+                    if (templateHasImages && !existingHasImages) {
+                        const existingSubRef = doc(db, 'subjects', existingSubject.id);
+                        batch.update(existingSubRef, {
+                            chapterData: template.chapterData || {}
+                        });
+                        globalAddedCount++;
+                    }
                 }
             });
         });
