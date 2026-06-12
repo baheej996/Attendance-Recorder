@@ -5,7 +5,7 @@ import { BookOpen, Search, Trophy, Users, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const AdminMentorQuranTracker = () => {
-    const { mentors = [], students = [], quranRecitations = [], requireFeature } = useData();
+    const { mentors = [], students = [], quranRecitations = [], classes = [], requireFeature } = useData();
     const [timeframe, setTimeframe] = useState(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -19,11 +19,16 @@ const AdminMentorQuranTracker = () => {
     }, [requireFeature]);
 
     const rankings = useMemo(() => {
+        // Find IDs for Class 1 and Class 2 to exclude them from Quran stats
+        const excludedClassIds = classes.filter(c => c.name === '1' || c.name === '2').map(c => c.id);
+
         const data = mentors.map(mentor => {
             // Find all active students in mentor's assigned classes
             const assignedClassIds = mentor.assignedClassIds || (mentor.classId ? [mentor.classId] : []);
             const mentorStudents = students.filter(s => 
-                assignedClassIds.includes(s.classId) && s.status === 'Active'
+                assignedClassIds.includes(s.classId) && 
+                s.status === 'Active' && 
+                !excludedClassIds.includes(s.classId)
             );
             
             const mentorStudentIds = new Set(mentorStudents.map(s => s.id));
@@ -78,7 +83,7 @@ const AdminMentorQuranTracker = () => {
             return a.name.localeCompare(b.name);
         });
 
-    }, [mentors, students, quranRecitations, timeframe, searchTerm]);
+    }, [mentors, students, quranRecitations, classes, timeframe, searchTerm]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
