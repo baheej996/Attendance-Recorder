@@ -429,11 +429,31 @@ const LogBook = () => {
                             <div className="p-6">
 
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                {(filter.classId === 'all' || filter.subjectId === 'all') && (
-                                    <div className="bg-blue-50 text-blue-700 p-3 rounded-lg text-xs font-semibold mb-2">
-                                        Please select a Class and Subject from the filters above to add a log entry.
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                                        <select
+                                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white text-sm"
+                                            value={filter.classId}
+                                            onChange={e => setFilter({ ...filter, classId: e.target.value, subjectId: 'all' })}
+                                        >
+                                            <option value="all">Select Class</option>
+                                            {assignedClasses.map(c => <option key={c.id} value={c.id}>{c.name}-{c.division}</option>)}
+                                        </select>
                                     </div>
-                                )}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                        <select
+                                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white text-sm"
+                                            value={filter.subjectId}
+                                            onChange={e => setFilter({ ...filter, subjectId: e.target.value })}
+                                            disabled={filter.classId === 'all'}
+                                        >
+                                            <option value="all">Select Subject</option>
+                                            {filterSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Chapter</label>
