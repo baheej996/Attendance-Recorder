@@ -210,15 +210,15 @@ const StudentSubjects = () => {
             <AnimatePresence>
                 {viewingData && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex flex-col bg-black/98 backdrop-blur-2xl">
-                        <div className="fixed top-0 left-0 w-full p-6 flex justify-between items-center z-10 pr-20 md:pr-6">
-                            <div className="flex items-center gap-4 text-white">
+                        <div className="fixed top-0 left-0 w-full p-6 flex justify-between items-center z-[70] pr-20 md:pr-6 pointer-events-none">
+                            <div className="flex items-center gap-4 text-white pointer-events-auto">
                                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg"><BookOpen className="w-6 h-6" /></div>
                                 <div>
                                     <h3 className="font-black text-xl uppercase tracking-tighter leading-none mb-1">{viewingData.subjectName}</h3>
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Chapter {viewingData.chapterIndex} • Page {currentPageIndex + 1}/{viewingData.images.length}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 pointer-events-auto">
                                 <a 
                                     href={viewingData.images[currentPageIndex]} 
                                     download={`${viewingData.subjectName}_Ch${viewingData.chapterIndex}_Page${currentPageIndex + 1}.jpg`}
@@ -238,14 +238,14 @@ const StudentSubjects = () => {
                                 src={viewingData.images[currentPageIndex]} 
                                 alt={`Page ${currentPageIndex + 1}`}
                             />
-                            <div className="absolute inset-0 flex pointer-events-none">
-                                <div className="w-1/2 h-full cursor-w-resize pointer-events-auto" onClick={prevPage} />
-                                <div className="w-1/2 h-full cursor-e-resize pointer-events-auto" onClick={nextPage} />
+                            <div className="absolute inset-0 flex pointer-events-none justify-between">
+                                <div className="w-16 md:w-32 h-full cursor-w-resize pointer-events-auto" onClick={prevPage} />
+                                <div className="w-16 md:w-32 h-full cursor-e-resize pointer-events-auto" onClick={nextPage} />
                             </div>
                         </div>
-                        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-10 p-4 bg-white/10 backdrop-blur-xl rounded-[2.5rem] border border-white/10 shadow-2xl">
-                            <button onClick={prevPage} disabled={currentPageIndex === 0} className={cn("p-4 rounded-2xl transition-all", currentPageIndex === 0 ? "opacity-20 pointer-events-none" : "text-white bg-white/10 hover:bg-white/20")}><ChevronLeft className="w-6 h-6" /></button>
-                            <div className="flex items-center gap-2">
+                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 p-2.5 bg-white/10 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl z-[70]">
+                            <button onClick={prevPage} disabled={currentPageIndex === 0} className={cn("p-2.5 rounded-xl transition-all", currentPageIndex === 0 ? "opacity-20 pointer-events-none" : "text-white bg-white/10 hover:bg-white/20")}><ChevronLeft className="w-5 h-5" /></button>
+                            <div className="flex items-center gap-2 px-2">
                                 <input 
                                     type="number"
                                     value={currentPageIndex + 1}
@@ -255,11 +255,11 @@ const StudentSubjects = () => {
                                             setCurrentPageIndex(val - 1);
                                         }
                                     }}
-                                    className="w-16 bg-white/10 border border-white/10 text-white font-black text-2xl text-center rounded-xl py-1 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                    className="w-12 bg-white/10 border border-white/10 text-white font-bold text-lg text-center rounded-lg py-1 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 />
-                                <span className="text-gray-500 text-sm font-bold uppercase tracking-widest">of {viewingData.images.length}</span>
+                                <span className="text-gray-400 text-xs font-bold uppercase tracking-widest whitespace-nowrap">of {viewingData.images.length}</span>
                             </div>
-                            <button onClick={nextPage} disabled={currentPageIndex === viewingData.images.length - 1} className={cn("p-4 rounded-2xl transition-all", currentPageIndex === viewingData.images.length - 1 ? "opacity-20 pointer-events-none" : "text-white bg-white/10 hover:bg-white/20")}><ChevronRight className="w-6 h-6" /></button>
+                            <button onClick={nextPage} disabled={currentPageIndex === viewingData.images.length - 1} className={cn("p-2.5 rounded-xl transition-all", currentPageIndex === viewingData.images.length - 1 ? "opacity-20 pointer-events-none" : "text-white bg-white/10 hover:bg-white/20")}><ChevronRight className="w-5 h-5" /></button>
                         </div>
                     </motion.div>
                 )}

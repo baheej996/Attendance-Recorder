@@ -63,7 +63,7 @@ const ZoomableImage = ({ src, alt, className }) => {
     return (
         <div className="relative group w-full h-full flex flex-col items-center bg-transparent">
             {/* Toolbar */}
-            <div className="absolute top-4 right-4 flex items-center gap-2 z-[60] opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/20 shadow-2xl">
+            <div className="absolute top-24 right-4 flex items-center gap-2 z-[60] opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/20 shadow-2xl pointer-events-auto">
                 <button onClick={zoomIn} className="p-2.5 hover:bg-white/10 rounded-xl text-white transition-colors" title="Zoom In"><ZoomIn className="w-5 h-5" /></button>
                 <button onClick={zoomOut} className="p-2.5 hover:bg-white/10 rounded-xl text-white transition-colors" title="Zoom Out"><ZoomOut className="w-5 h-5" /></button>
                 <button onClick={resetZoom} className="p-2.5 hover:bg-white/10 rounded-xl text-white transition-colors" title="Reset Zoom"><RotateCcw className="w-5 h-5" /></button>
