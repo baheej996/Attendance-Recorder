@@ -204,7 +204,7 @@ const SyllabusTracker = () => {
                     <p className="text-sm text-gray-400 mt-1">Create syllabus plans in the Syllabus Manager first.</p>
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                     {mentorData.map(mentor => (
                         <div key={mentor.mentorId} className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                             {/* Mentor Header */}
