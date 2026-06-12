@@ -43,7 +43,7 @@ const LogBook = () => {
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [classes, currentUser?.assignedClassIds?.join(',')]);
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (filter.classId === 'all' && assignedClasses.length > 0) {
             setFilter(prev => ({ ...prev, classId: assignedClasses[0].id }));
         }
