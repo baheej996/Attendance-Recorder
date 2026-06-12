@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { BookOpen, Save, Trash2, History, Filter, Search, Edit, PieChart as PieChartIcon, CheckCircle, Trophy, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, Save, Trash2, History, Filter, Search, Edit, PieChart as PieChartIcon, CheckCircle, Trophy, User, ChevronLeft, ChevronRight, Plus, X, Calendar } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const LogBook = () => {
     console.log('[LogBook] Rendering...');
@@ -24,6 +23,7 @@ const LogBook = () => {
     const [monthOffset, setMonthOffset] = useState(0); // 0 = current month, -1 = last month, etc.
 
     const [editingId, setEditingId] = useState(null);
+    const [isFormOpen, setIsFormOpen] = useState(false);
 
     const [filter, setFilter] = useState({
         classId: 'all',
@@ -124,6 +124,25 @@ const LogBook = () => {
             return matchesClass && matchesSubject;
         });
     }, [coverageStats, filter]);
+
+    // --- Heatmap Logic ---
+    const heatmapDays = useMemo(() => {
+        const days = [];
+        const today = new Date();
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const count = logEntries.filter(l => {
+                const matchesClass = filter.classId === 'all' || l.classId === filter.classId;
+                const matchesSubject = filter.subjectId === 'all' || l.subjectId === filter.subjectId;
+                const matchesDate = l.date === dateStr || (l.timestamp && l.timestamp.startsWith(dateStr));
+                return matchesClass && matchesSubject && matchesDate;
+            }).length;
+            days.push({ date: d, dateStr, count });
+        }
+        return days;
+    }, [logEntries, filter]);
 
     // --- Syllabus Targets Logic ---
     const activeSyllabus = useMemo(() => {
@@ -250,6 +269,7 @@ const LogBook = () => {
             }
 
             setFormData({ chapter: '', heading: '', remarks: '', completionStatus: 'fully', sharedClassIds: [] });
+            setIsFormOpen(false);
         } catch (error) {
             console.error(error);
             showAlert('Error', 'An error occurred while saving the log.', 'error');
@@ -272,7 +292,7 @@ const LogBook = () => {
             sharedClassIds: []
         });
 
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setIsFormOpen(true);
     };
 
     const confirmDelete = (id) => {
@@ -289,6 +309,7 @@ const LogBook = () => {
 
     const handleCancelEdit = () => {
         setEditingId(null);
+        setIsFormOpen(false);
         setFormData({ chapter: '', heading: '', remarks: '', completionStatus: 'fully', sharedClassIds: [] });
     };
 
@@ -355,16 +376,49 @@ const LogBook = () => {
                 </div>
             </div>
 
-            {/* Main Layout Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column: Entry Form */}
-                <div className="lg:col-span-1">
-                    <Card className="sticky top-6">
-                        <div className="p-6 space-y-4">
-                            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 border-b pb-2">
-                                <Save className="w-5 h-5 text-indigo-500" />
-                                {editingId ? "Update Entry" : "New Log Entry"}
-                            </h2>
+            {/* Heatmap Section */}
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6 overflow-x-auto">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-indigo-600" />
+                        <h3 className="text-sm font-semibold text-gray-800">Activity Heatmap (Last 30 Days)</h3>
+                    </div>
+                    <Button onClick={() => { setEditingId(null); setIsFormOpen(true); }} className="hidden md:flex items-center gap-2 shadow-sm py-1.5 px-3">
+                        <Plus className="w-4 h-4" /> Add Log
+                    </Button>
+                </div>
+                <div className="flex gap-1 min-w-max">
+                    {heatmapDays.map((day, i) => (
+                        <div 
+                            key={i} 
+                            title={`${day.dateStr}: ${day.count} logs`}
+                            className={`w-4 h-4 rounded-sm flex-shrink-0 transition-all cursor-pointer hover:ring-2 hover:ring-indigo-300 ${
+                                day.count === 0 ? 'bg-gray-100' :
+                                day.count === 1 ? 'bg-indigo-200' :
+                                day.count === 2 ? 'bg-indigo-400' :
+                                'bg-indigo-600'
+                            }`}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* Main Layout */}
+            <div className="grid grid-cols-1 gap-6">
+                {/* Modal Form */}
+                {isFormOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto relative">
+                            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex justify-between items-center z-10">
+                                <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                    <Save className="w-5 h-5 text-indigo-500" />
+                                    {editingId ? "Update Entry" : "New Log Entry"}
+                                </h2>
+                                <button type="button" onClick={handleCancelEdit} className="p-1 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6">
 
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 {(filter.classId === 'all' || filter.subjectId === 'all') && (
@@ -497,50 +551,34 @@ const LogBook = () => {
                                     </Button>
                                 </div>
                             </form>
+                            </div>
                         </div>
-                    </Card>
-                </div>
+                    </div>
+                )}
 
-                {/* Right Column: Syllabus Stats + Log History */}
-                <div className="lg:col-span-2 space-y-6">
+                {/* Main Content: Syllabus Stats + Log History */}
+                <div className="space-y-6">
 
                     {/* 1. Syllabus Coverage Section */}
                     {displayedStats.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {displayedStats.map((stat, idx) => (
-                                <div key={`${stat.classId}-${stat.subjectId}`} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3 transition-all hover:shadow-md">
-                                    <div className="w-12 h-12 shrink-0 relative flex items-center justify-center">
-                                        <PieChart width={48} height={48}>
-                                            <Pie
-                                                data={[
-                                                    { name: 'Covered', value: stat.uniqueChapters },
-                                                    { name: 'Remaining', value: Math.max(0, stat.totalChapters - stat.uniqueChapters) }
-                                                ]}
-                                                cx={24}
-                                                cy={24}
-                                                innerRadius={15}
-                                                outerRadius={22}
-                                                fill="#8884d8"
-                                                paddingAngle={0}
-                                                dataKey="value"
-                                                startAngle={90}
-                                                endAngle={-270}
-                                            >
-                                                <Cell key="cell-0" fill="#4f46e5" />
-                                                <Cell key="cell-1" fill="#f3f4f6" />
-                                            </Pie>
-                                        </PieChart>
-                                        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700">
-                                            {stat.percentage}%
+                                <div key={`${stat.classId}-${stat.subjectId}`} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md flex flex-col justify-center">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <div>
+                                            <h4 className="font-semibold text-gray-800 text-sm">{stat.subjectName}</h4>
+                                            <p className="text-[10px] text-gray-500">{stat.className}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-sm font-bold text-indigo-600">{stat.percentage}%</span>
                                         </div>
                                     </div>
-                                    <div>
-                                        <h4 className="font-semibold text-gray-800 text-sm">{stat.subjectName}</h4>
-                                        <p className="text-xs text-gray-500 mb-1">{stat.className}</p>
-                                        <p className="text-xs font-medium text-indigo-600">
-                                            {stat.uniqueChapters} / {stat.totalChapters} Chapters
-                                        </p>
+                                    <div className="w-full bg-gray-100 rounded-full h-2 mb-1.5 overflow-hidden flex">
+                                        <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${stat.percentage}%` }}></div>
                                     </div>
+                                    <p className="text-[10px] font-medium text-gray-500 text-right">
+                                        {stat.uniqueChapters} / {stat.totalChapters} Chapters
+                                    </p>
                                 </div>
                             ))}
                         </div>
@@ -720,6 +758,15 @@ const LogBook = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Mobile FAB */}
+            <button
+                type="button"
+                onClick={() => { setEditingId(null); setIsFormOpen(true); }}
+                className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors z-40"
+            >
+                <Plus className="w-6 h-6" />
+            </button>
         </div>
     );
 };
