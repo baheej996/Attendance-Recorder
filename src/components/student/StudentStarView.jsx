@@ -198,7 +198,7 @@ const StudentStarView = () => {
                                         <div className={`grid ${gClass} gap-2 w-full mb-6`}>
                                             {stats.map((stat, idx) => (
                                                 <div key={idx} className="bg-white/10 rounded-lg p-2">
-                                                    <div className="text-xl font-bold">{Math.round(stat.score)}%</div>
+                                                    <div className="text-xl font-bold">{stat.score.toFixed(1)}%</div>
                                                     <div className="text-[10px] uppercase tracking-wider opacity-75">{stat.label}</div>
                                                 </div>
                                             ))}

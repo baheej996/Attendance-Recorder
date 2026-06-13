@@ -388,43 +388,43 @@ const StarOfTheMonth = () => {
                                 <div className="flex flex-wrap justify-center gap-2 w-full mb-6">
                                     {config.attendance !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
-                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.attendance)}%</div>
+                                            <div className="text-[16px] md:text-xl font-bold">{winner.scores.attendance.toFixed(1)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Attd.</div>
                                         </div>
                                     )}
                                     {config.activities !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
-                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.activities)}%</div>
+                                            <div className="text-[16px] md:text-xl font-bold">{winner.scores.activities.toFixed(1)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Act.</div>
                                         </div>
                                     )}
                                     {config.prayer !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
-                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.prayer)}%</div>
+                                            <div className="text-[16px] md:text-xl font-bold">{winner.scores.prayer.toFixed(1)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Daily Pray</div>
                                         </div>
                                     )}
                                     {config.specialPrayer !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
-                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.specialPrayer)}%</div>
+                                            <div className="text-[16px] md:text-xl font-bold">{winner.scores.specialPrayer.toFixed(1)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Spc. Pray</div>
                                         </div>
                                     )}
                                     {config.fasting !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
-                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.fasting)}%</div>
+                                            <div className="text-[16px] md:text-xl font-bold">{winner.scores.fasting.toFixed(1)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Fast</div>
                                         </div>
                                     )}
                                     {config.quran !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
-                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.quran)}%</div>
+                                            <div className="text-[16px] md:text-xl font-bold">{winner.scores.quran.toFixed(1)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Quran</div>
                                         </div>
                                     )}
                                     {config.dailyQuran !== false && (
                                         <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
-                                            <div className="text-[16px] md:text-xl font-bold">{Math.round(winner.scores.dailyQuran)}%</div>
+                                            <div className="text-[16px] md:text-xl font-bold">{winner.scores.dailyQuran.toFixed(1)}%</div>
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Daily Quran</div>
                                         </div>
                                     )}
@@ -491,43 +491,43 @@ const StarOfTheMonth = () => {
                                     </td>
                                     {config.attendance !== false && (
                                         <td className="px-6 py-4 text-center">
-                                            <div className="font-medium">{Math.round(student.scores.attendance)}%</div>
+                                            <div className="font-medium">{student.scores.attendance.toFixed(1)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.present} Days</div>
                                         </td>
                                     )}
                                     {config.activities !== false && (
                                         <td className="px-6 py-4 text-center">
-                                            <div className="font-medium">{Math.round(student.scores.activities)}%</div>
+                                            <div className="font-medium">{student.scores.activities.toFixed(1)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.activitiesCompleted} Done</div>
                                         </td>
                                     )}
                                     {config.prayer !== false && (
                                         <td className="px-6 py-4 text-center">
-                                            <div className="font-medium">{Math.round(student.scores.prayer)}%</div>
+                                            <div className="font-medium">{student.scores.prayer.toFixed(1)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.prayersPerformed} Prayers</div>
                                         </td>
                                     )}
                                     {config.specialPrayer !== false && (
                                         <td className="px-6 py-4 text-center">
-                                            <div className="font-medium">{Math.round(student.scores.specialPrayer)}%</div>
+                                            <div className="font-medium">{student.scores.specialPrayer.toFixed(1)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.specialPrayersPerformed} Spc. Prayers</div>
                                         </td>
                                     )}
                                     {config.fasting !== false && (
                                         <td className="px-6 py-4 text-center">
-                                            <div className="font-medium">{Math.round(student.scores.fasting)}%</div>
+                                            <div className="font-medium">{student.scores.fasting.toFixed(1)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.fastsCompleted} Days</div>
                                         </td>
                                     )}
                                     {config.quran !== false && (
                                         <td className="px-6 py-4 text-center">
-                                            <div className="font-medium">{Math.round(student.scores.quran)}%</div>
+                                            <div className="font-medium">{student.scores.quran.toFixed(1)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.quranPages} Pages</div>
                                         </td>
                                     )}
                                     {config.dailyQuran !== false && (
                                         <td className="px-6 py-4 text-center">
-                                            <div className="font-medium">{Math.round(student.scores.dailyQuran)}%</div>
+                                            <div className="font-medium">{student.scores.dailyQuran.toFixed(1)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.dailyQuranDays} Days</div>
                                         </td>
                                     )}
