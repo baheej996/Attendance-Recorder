@@ -368,6 +368,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', uid), where('isRead', '==', false)),
                 subscribe('notifications', setNotifications, where('audience', 'in', ['students', 'all', 'specific_class']), limit(100)),
                 subscribe('starDeclarations', setStarDeclarations, where('classId', '==', cid)),
+                subscribe('starConfigs', setStarConfigs, where('classId', '==', cid)),
                 subscribe('students', setStudents, where('classId', 'in', batchClassIds)),
                 subscribe('studentEvaluations', setStudentEvaluations, where('studentId', '==', uid), where('status', '==', 'Published')),
                 subscribe('feedbackSettings', setFeedbackSettings, where('classId', '==', cid)),

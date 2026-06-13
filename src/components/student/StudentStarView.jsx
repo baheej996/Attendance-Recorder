@@ -33,9 +33,8 @@ const StudentStarView = () => {
 
     // Config
     const globalConfig = institutionSettings?.starConfig || {
-        attendance: true,
-        activities: true,
-        prayer: true,
+        attendance: true, activities: true, prayer: true,
+        specialPrayer: true, fasting: true, quran: true, dailyQuran: true,
     };
 
     const appliedConfig = useMemo(() => {
@@ -312,7 +311,7 @@ const StudentStarView = () => {
                                     </p>
 
                                     <div className={clsx("px-5 py-2 rounded-2xl text-xs font-black uppercase tracking-wider", winner.id === currentUser.id ? 'bg-white/10 text-white' : 'bg-indigo-50 text-indigo-700 shadow-sm')}>
-                                        {winner.finalScore.toFixed(0)}% Score
+                                        {winner.finalScore.toFixed(1)}% Score
                                     </div>
                                 </div>
                             </div>
@@ -385,7 +384,7 @@ const StudentStarView = () => {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <span className="block font-black text-gray-900 leading-none">{student.finalScore.toFixed(0)}</span>
+                                            <span className="block font-black text-gray-900 leading-none">{student.finalScore.toFixed(1)}</span>
                                             <span className="text-[8px] font-black uppercase tracking-widest text-gray-300">Score</span>
                                         </div>
                                     </div>
