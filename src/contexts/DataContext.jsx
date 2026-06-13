@@ -375,8 +375,9 @@ export const DataProvider = ({ children }) => {
             );
 
             // On-Demand Heavy Data
+            const currentAttendanceLimit = activeFeatures.has('star') ? Math.max(5000, attendanceLimit) : attendanceLimit;
             if (activeFeatures.has('attendance')) {
-                unsubs.push(subscribe('attendance', setAttendance, where('classId', '==', cid), orderBy('date', 'desc'), limit(attendanceLimit)));
+                unsubs.push(subscribe('attendance', setAttendance, where('classId', '==', cid), orderBy('date', 'desc'), limit(currentAttendanceLimit)));
             }
             if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('classId', 'in', batchClassIds), limit(resultsLimit)));
             if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('classId', '==', cid)));

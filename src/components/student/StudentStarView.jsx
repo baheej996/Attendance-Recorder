@@ -17,9 +17,10 @@ const StudentStarView = () => {
         const un3 = requireFeature('prayer');
         const un4 = requireFeature('quran');
         const un5 = requireFeature('ramadan');
+        const un6 = requireFeature('star');
         
         return () => {
-            un1(); un2(); un3(); un4(); un5();
+            un1(); un2(); un3(); un4(); un5(); un6();
         };
     }, [requireFeature]);
 
@@ -317,6 +318,49 @@ const StudentStarView = () => {
                             </div>
                         ))}
                     </div>
+
+                    {/* My Individual Scores */}
+                    {(() => {
+                        const myStats = results.find(r => r.id === currentUser.id);
+                        if (!myStats) return null;
+                        
+                        const stats = [];
+                        if (appliedConfig.attendance) stats.push({ label: 'Attendance', score: myStats.scores.attendance || 0 });
+                        if (appliedConfig.activities) stats.push({ label: 'Activities', score: myStats.scores.activities || 0 });
+                        if (appliedConfig.prayer) stats.push({ label: 'Prayer', score: myStats.scores.prayer || 0 });
+                        if (appliedConfig.specialPrayer) stats.push({ label: 'Sp. Prayer', score: myStats.scores.specialPrayer || 0 });
+                        if (appliedConfig.fasting) stats.push({ label: 'Fasting', score: myStats.scores.fasting || 0 });
+                        if (appliedConfig.quran) stats.push({ label: 'Quran Progress', score: myStats.scores.quran || 0 });
+                        if (appliedConfig.dailyQuran) stats.push({ label: 'Daily Quran', score: myStats.scores.dailyQuran || 0 });
+
+                        return (
+                            <Card className="max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-sm border border-gray-100 mb-6 bg-gradient-to-br from-indigo-50 to-white">
+                                <div className="p-5 border-b border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-lg font-black text-indigo-900 flex items-center gap-2">
+                                            <Award className="w-5 h-5 text-indigo-500" />
+                                            Your Performance This Month
+                                        </h3>
+                                        <p className="text-xs text-indigo-400 font-medium mt-1">Detailed breakdown of your individual scores</p>
+                                    </div>
+                                    <div className="bg-white px-4 py-2 rounded-2xl shadow-sm border border-indigo-50 shrink-0 text-center">
+                                        <span className="text-2xl font-black text-indigo-600 block leading-none">{myStats.finalScore.toFixed(1)}%</span>
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1 block leading-none">Overall Score</span>
+                                    </div>
+                                </div>
+                                <div className="p-5">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                        {stats.map((stat, idx) => (
+                                            <div key={idx} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col items-center text-center hover:border-indigo-100 transition-colors">
+                                                <div className="text-xl font-black text-gray-800 mb-1">{stat.score.toFixed(1)}%</div>
+                                                <div className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">{stat.label}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </Card>
+                        );
+                    })()}
 
                     {/* Simple List for others */}
                     <Card className="max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-sm border border-gray-100">
