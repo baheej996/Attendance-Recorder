@@ -18,9 +18,10 @@ const StarOfTheMonth = () => {
         const un3 = requireFeature('prayer');
         const un4 = requireFeature('quran');
         const un5 = requireFeature('ramadan');
+        const un6 = requireFeature('star');
         
         return () => {
-            un1(); un2(); un3(); un4(); un5();
+            un1(); un2(); un3(); un4(); un5(); un6();
         };
     }, [requireFeature]);
 
