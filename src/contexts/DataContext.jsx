@@ -262,6 +262,7 @@ export const DataProvider = ({ children }) => {
             subscribe('syllabusStatus', setSyllabusStatuses),
             subscribe('substitutionRequests', setSubstitutionRequests),
             subscribe('questions', setQuestions),
+            subscribe('starConfigs', setStarConfigs),
         ];
 
         // Reference data — rarely changes, real-time sync is wasteful for 2k users.
