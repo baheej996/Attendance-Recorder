@@ -473,7 +473,7 @@ const StudentExamView = () => {
                                     
                                     const hasQuestions = qCount > 0;
                                     const canTake = hasQuestions && isCurrentlyActive;
-                                    const canViewResults = isDone && exam.status === 'Published' && setting.isPublished;
+                                    const canViewResults = isDone && ((exam.status === 'Published' && setting.isPublished) || setting.answersRevealed);
 
                                     const session = (students || []).find(s => s.id === currentUser.id)?.activeExamSession;
                                     const isLockedByOtherDevice = session && session.deviceId !== deviceId && session.examId === exam.id && (session.subjectId === subj.id || session.subjectName === subj.name);
