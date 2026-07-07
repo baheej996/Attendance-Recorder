@@ -29,10 +29,10 @@ export const ReportCardPDFTemplate = forwardRef(({ student, exam, rank, stats },
                 {/* 1. Header Title */}
                 <div className="text-center mt-6 mb-6">
                     <h1 className="text-4xl font-black text-gray-800 tracking-tight leading-none mb-2" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
-                        ANNUAL EXAMINATION
+                        {exam.name.toUpperCase()}
                     </h1>
                     <h2 className="text-4xl font-bold text-gray-600 tracking-tight leading-none">
-                        MARKLIST <span className="font-light text-gray-500">({academicYearString})</span>
+                        MARKLIST
                     </h2>
                 </div>
 
@@ -40,7 +40,7 @@ export const ReportCardPDFTemplate = forwardRef(({ student, exam, rank, stats },
                 <div className="bg-[#f8f9fc] rounded-xl p-6 mb-6 flex flex-row items-center justify-between border-0">
                     <div>
                         <h3 className="text-2xl font-bold text-[#1e293b] mb-1">{student.name}</h3>
-                        <p className="text-[#64748b] text-sm">SKIMVB Annual Examination {academicYearString} • Result Details</p>
+                        <p className="text-[#64748b] text-sm">SKIMVB {exam.name} {academicYearString} • Result Details</p>
                         {student.registerNo && <p className="text-[#64748b] text-sm mt-1 font-mono">Reg No: {student.registerNo}</p>}
                     </div>
                     {student.classDetails && (

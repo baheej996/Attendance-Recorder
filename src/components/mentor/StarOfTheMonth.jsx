@@ -8,7 +8,7 @@ import { format, getDaysInMonth, startOfMonth, endOfMonth, isSameMonth, isSameYe
 import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StarOfTheMonth = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig, requireFeature, addNotification } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classes, institutionSettings, updateInstitutionSettings, starDeclarations, saveStarDeclaration, deleteStarDeclaration, starConfigs, updateStarConfig, classPerformances, saveClassPerformance, requireFeature, addNotification } = useData();
     const navigate = useNavigate();
 
     // Request heavy datasets On-Demand
@@ -31,10 +31,10 @@ const StarOfTheMonth = () => {
     const [selectedClassId, setSelectedClassId] = useState('All'); // New: Class Filter
 
     // Config State - Dynamic based on class selection
-    const globalConfig = institutionSettings?.starConfig || {
+    const globalConfig = useMemo(() => institutionSettings?.starConfig || {
         attendance: true, activities: true, prayer: true,
-        specialPrayer: true, fasting: true, quran: true, dailyQuran: true,
-    };
+        specialPrayer: true, fasting: true, quran: true, dailyQuran: true, classPerformance: false
+    }, [institutionSettings?.starConfig]);
 
     const config = useMemo(() => {
         if (selectedClassId === 'All') return globalConfig;
@@ -69,7 +69,7 @@ const StarOfTheMonth = () => {
         // Check if there's a custom config for this specific class
         return calculateStudentStarScores({
             students, attendance, activities, activitySubmissions,
-            prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations,
+            prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classPerformances,
             classes, selectedClassId, mentorClassIds,
             selectedMonth, selectedYear, config,
             isMentorView: true
@@ -77,7 +77,7 @@ const StarOfTheMonth = () => {
 
     }, [
         students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers,
-        ramadanLogs, quranProgress, quranRecitations, selectedClassId,
+        ramadanLogs, quranProgress, quranRecitations, classPerformances, selectedClassId,
         mentorClassIds, selectedMonth, selectedYear, config, classes
     ]);
 
@@ -102,7 +102,7 @@ const StarOfTheMonth = () => {
         // But mentor needs to declare manually BEFORE finishing.
 
         const isManuallyDeclared = decl?.status === 'Declared';
-        const isVisible = isMonthCompleted || isManuallyDeclared;
+        const isVisible = isManuallyDeclared;
 
         return { isManuallyDeclared, isVisible, isMonthCompleted };
     };
@@ -312,6 +312,15 @@ const StarOfTheMonth = () => {
                                 className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
                             />
                         </label>
+                        <label className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                            <span className="font-medium text-gray-700">Class Performance</span>
+                            <input
+                                type="checkbox"
+                                checked={config.classPerformance === true}
+                                onChange={(e) => setConfig(prev => ({ ...prev, classPerformance: e.target.checked }))}
+                                className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                            />
+                        </label>
                     </div>
                 </div>
             )}
@@ -428,6 +437,12 @@ const StarOfTheMonth = () => {
                                             <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">Daily Quran</div>
                                         </div>
                                     )}
+                                    {config.classPerformance !== false && (
+                                        <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm flex-1 min-w-[50px]">
+                                            <div className="text-[16px] md:text-xl font-bold">{(winner.scores.classPerformance / 10).toFixed(1)}/10</div>
+                                            <div className="text-[9px] md:text-[10px] uppercase tracking-wider opacity-75">C. Perf</div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button
@@ -469,6 +484,7 @@ const StarOfTheMonth = () => {
                                 {config.fasting !== false && <th className="px-6 py-3 text-center">Fasting</th>}
                                 {config.quran !== false && <th className="px-6 py-3 text-center">Quran</th>}
                                 {config.dailyQuran !== false && <th className="px-6 py-3 text-center">Daily Quran</th>}
+                                {config.classPerformance === true && <th className="px-6 py-3 text-center">Class Perf.</th>}
                                 <th className="px-6 py-3 text-center">Overall Score</th>
                                 <th className="px-6 py-3 text-right">Action</th>
                             </tr>
@@ -529,6 +545,30 @@ const StarOfTheMonth = () => {
                                         <td className="px-6 py-4 text-center">
                                             <div className="font-medium">{student.scores.dailyQuran.toFixed(1)}%</div>
                                             <div className="text-xs text-gray-400">{student.scores.dailyQuranDays} Days</div>
+                                        </td>
+                                    )}
+                                    {config.classPerformance === true && (
+                                        <td className="px-6 py-4 text-center min-w-[120px]">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <input
+                                                    key={`perf_${selectedMonth}_${selectedYear}_${student.id}`}
+                                                    type="range"
+                                                    min="0"
+                                                    max="10"
+                                                    step="1"
+                                                    defaultValue={(student.scores.classPerformance || 0) / 10}
+                                                    onChange={(e) => {
+                                                        const rawVal = e.target.value;
+                                                        e.target.nextElementSibling.textContent = rawVal + '/10';
+                                                        const val = Number(rawVal) * 10;
+                                                        saveClassPerformance(student.id, student.classId, selectedMonth, selectedYear, val);
+                                                    }}
+                                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                />
+                                                <span className="text-xs font-bold text-gray-700">
+                                                    {(student.scores.classPerformance || 0) / 10}/10
+                                                </span>
+                                            </div>
                                         </td>
                                     )}
                                     <td className="px-6 py-4 text-center">

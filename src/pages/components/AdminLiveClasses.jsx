@@ -109,6 +109,19 @@ const AdminLiveClasses = () => {
         return filtered;
     }, [classes, liveClasses, mentors, students, selectedDate, selectedTime, targetDayOfWeek]);
 
+    // Derived available mentors based on active classes
+    const availableMentors = useMemo(() => {
+        if (!mentors || !activeClasses) return [];
+        
+        const busyMentorIds = new Set();
+        activeClasses.forEach(cls => {
+            const assignedMentors = mentors.filter(m => (m.assignedClassIds || []).includes(cls.id));
+            assignedMentors.forEach(m => busyMentorIds.add(m.id));
+        });
+
+        return mentors.filter(m => !busyMentorIds.has(m.id)).sort((a, b) => a.name.localeCompare(b.name));
+    }, [mentors, activeClasses]);
+
     return (
         <div className="w-full space-y-8 animate-in fade-in duration-300">
             {/* Header Area */}
@@ -278,6 +291,44 @@ const AdminLiveClasses = () => {
                                 </Card>
                             );
                         })}
+                    </div>
+                )}
+            </div>
+
+            {/* Available Mentors Section */}
+            <div className="mt-8 border-t border-gray-100 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        Available Mentors (No classes at this time)
+                    </h3>
+                    <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200">
+                        {availableMentors.length} Mentor{availableMentors.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
+
+                {availableMentors.length === 0 ? (
+                    <div className="w-full bg-white border border-dashed border-gray-300 rounded-2xl p-12 flex flex-col items-center justify-center text-center shadow-sm">
+                        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                            <Users className="w-10 h-10 text-gray-300" />
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-700 mb-1">No Available Mentors</h4>
+                        <p className="text-gray-500 max-w-sm">
+                            All mentors are currently assigned to running classes during the selected time.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {availableMentors.map((mentor) => (
+                            <Card key={mentor.id} className="p-4 border border-gray-100 shadow-sm hover:border-indigo-100 transition-all flex items-center gap-4 bg-white hover:bg-indigo-50/30">
+                                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0 border border-indigo-100">
+                                    <Users className="w-5 h-5 text-indigo-500" />
+                                </div>
+                                <div className="overflow-hidden">
+                                    <h4 className="text-sm font-bold text-gray-900 truncate">{mentor.name}</h4>
+                                    <p className="text-[11px] text-gray-500 font-semibold truncate">{mentor.email || 'Mentor'}</p>
+                                </div>
+                            </Card>
+                        ))}
                     </div>
                 )}
             </div>

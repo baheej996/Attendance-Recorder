@@ -74,7 +74,12 @@ const DashboardHome = ({ onTabChange }) => {
             groups[cls.name].total += cls.total;
             groups[cls.name].classes.push(cls);
         });
-        return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        return Object.values(groups).sort((a, b) => {
+            const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+            const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+            if (numA !== numB) return numA - numB;
+            return a.name.localeCompare(b.name);
+        });
     }, [classStats]);
 
     const toggleBatch = (batchName) => {
@@ -162,7 +167,7 @@ const DashboardHome = ({ onTabChange }) => {
                 <Card className="overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-gray-600">
-                            <thead className="bg-gray-50 text-gray-900 font-semibold md:sticky md:top-[64px] z-10">
+                            <thead className="bg-gray-50 text-gray-900 font-semibold z-10">
                                 <tr>
                                     <th className="px-6 py-4 w-24 whitespace-nowrap">Sl No</th>
                                     <th className="px-6 py-4">Batch / Class Name</th>

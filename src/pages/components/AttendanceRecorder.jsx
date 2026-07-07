@@ -232,7 +232,7 @@ const AttendanceRecorder = () => {
 
     const last7Days = getLast7Days(date);
 
-    const AttendanceSummaryDots = ({ studentId }) => {
+    const renderAttendanceSummaryDots = (studentId) => {
         return (
             <div className="flex gap-1">
                 {last7Days.map(d => {
@@ -432,7 +432,7 @@ const AttendanceRecorder = () => {
                                              <td className="px-6 py-4 text-gray-500 font-mono text-sm">{student.registerNo}</td>
                                              <td className="px-6 py-4 font-medium text-gray-900">{student.name}</td>
                                              <td className="px-6 py-4">
-                                                 <AttendanceSummaryDots studentId={student.id} />
+                                                 {renderAttendanceSummaryDots(student.id)}
                                              </td>
                                              <td className="px-6 py-4 text-center">
                                                  <button
@@ -488,7 +488,7 @@ const AttendanceRecorder = () => {
                                                      <h3 className="font-bold text-gray-900 truncate text-sm">{student.name}</h3>
                                                      <div className="flex items-center gap-3 mt-1">
                                                         <p className="text-[10px] text-gray-500 font-mono italic">{student.registerNo}</p>
-                                                        <AttendanceSummaryDots studentId={student.id} />
+                                                        {renderAttendanceSummaryDots(student.id)}
                                                      </div>
                                                  </div>
                                              </div>

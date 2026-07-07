@@ -10,6 +10,7 @@ export const calculateStudentStarScores = ({
     ramadanLogs,
     quranProgress,
     quranRecitations,
+    classPerformances,
     classes,
     selectedClassId,
     mentorClassIds,
@@ -198,6 +199,17 @@ export const calculateStudentStarScores = ({
             dailyQuranScore = (dailyQuranDays / daysInMonth) * 100;
         }
 
+        // --- Class Performance Score ---
+        let classPerformanceScore = 0;
+        if (config.classPerformance && classPerformances) {
+            const cp = classPerformances.find(p => 
+                p.studentId === student.id && 
+                p.month === selectedMonth && 
+                p.year === selectedYear
+            );
+            classPerformanceScore = Number(cp?.marks) || 0;
+        }
+
         // --- Overall Score ---
         let totalScore = 0;
         let divider = 0;
@@ -209,6 +221,7 @@ export const calculateStudentStarScores = ({
         if (config.fasting) { totalScore += fastingScore; divider++; }
         if (config.quran) { totalScore += quranScore; divider++; }
         if (config.dailyQuran) { totalScore += dailyQuranScore; divider++; }
+        if (config.classPerformance) { totalScore += classPerformanceScore; divider++; }
 
         const finalScore = divider > 0 ? (totalScore / divider) : 0;
 
@@ -222,6 +235,7 @@ export const calculateStudentStarScores = ({
                 fasting: fastingScore,
                 quran: quranScore,
                 dailyQuran: dailyQuranScore,
+                classPerformance: classPerformanceScore,
                 present: presentCount,
                 activitiesCompleted: completedCount,
                 prayersPerformed: prayersPerformed,

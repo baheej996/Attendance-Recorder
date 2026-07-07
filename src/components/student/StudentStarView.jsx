@@ -8,7 +8,7 @@ import { toPng } from 'html-to-image';
 import { calculateStudentStarScores } from '../../utils/starCalculations';
 
 const StudentStarView = () => {
-    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classes, institutionSettings, starDeclarations, starConfigs, mentors, requireFeature } = useData();
+    const { currentUser, students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classes, institutionSettings, starDeclarations, starConfigs, mentors, classPerformances, requireFeature } = useData();
 
     // Request heavy datasets On-Demand
     React.useEffect(() => {
@@ -32,10 +32,10 @@ const StudentStarView = () => {
     const posterRef = useRef(null);
 
     // Config
-    const globalConfig = institutionSettings?.starConfig || {
+    const globalConfig = useMemo(() => institutionSettings?.starConfig || {
         attendance: true, activities: true, prayer: true,
-        specialPrayer: true, fasting: true, quran: true, dailyQuran: true,
-    };
+        specialPrayer: true, fasting: true, quran: true, dailyQuran: true, classPerformance: false
+    }, [institutionSettings?.starConfig]);
 
     const appliedConfig = useMemo(() => {
         let currentConfig = globalConfig;
@@ -61,7 +61,7 @@ const StudentStarView = () => {
         // Determine if this class has a custom overriding config
         return calculateStudentStarScores({
             students, attendance, activities, activitySubmissions,
-            prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations,
+            prayerRecords, specialPrayers, ramadanLogs, quranProgress, quranRecitations, classPerformances,
             classes, selectedClassId: currentUser.classId, mentorClassIds: [],
             selectedMonth, selectedYear, config: appliedConfig,
             isMentorView: false
@@ -69,7 +69,7 @@ const StudentStarView = () => {
 
     }, [
         students, attendance, activities, activitySubmissions, prayerRecords, specialPrayers,
-        ramadanLogs, quranProgress, quranRecitations, currentUser, selectedMonth, selectedYear, appliedConfig, classes
+        ramadanLogs, quranProgress, quranRecitations, classPerformances, currentUser, selectedMonth, selectedYear, appliedConfig, classes
     ]);
 
     const maxScore = results.length > 0 ? results[0].finalScore : 0;
@@ -80,9 +80,7 @@ const StudentStarView = () => {
     const isVisible = useMemo(() => {
         if (!currentUser?.classId) return false;
 
-        // 1. Check if month is completed (Auto-show)
-        const isMonthCompleted = isAfter(new Date(), endOfMonth(new Date(selectedYear, selectedMonth)));
-        if (isMonthCompleted) return true;
+        // 1. Check if manually declared
 
         // 2. Check if manually declared
         const declaration = starDeclarations?.find(d =>
@@ -180,6 +178,7 @@ const StudentStarView = () => {
                                     if (appliedConfig.fasting) stats.push({ label: 'Fast', score: winnerScores?.fasting || 0 });
                                     if (appliedConfig.quran) stats.push({ label: 'Quran', score: winnerScores?.quran || 0 });
                                     if (appliedConfig.dailyQuran) stats.push({ label: 'D. Quran', score: winnerScores?.dailyQuran || 0 });
+                                    if (appliedConfig.classPerformance) stats.push({ label: 'C. Perf', score: winnerScores?.classPerformance || 0, isRating: true });
 
                                     // Dynamic safely mapped tailwind classes avoiding raw string interpolation for prod builds
                                     const gridClassMap = {
@@ -197,7 +196,9 @@ const StudentStarView = () => {
                                         <div className={`grid ${gClass} gap-2 w-full mb-6`}>
                                             {stats.map((stat, idx) => (
                                                 <div key={idx} className="bg-white/10 rounded-lg p-2">
-                                                    <div className="text-xl font-bold">{stat.score.toFixed(1)}%</div>
+                                                    <div className="text-xl font-bold">
+                                                        {stat.isRating ? `${(stat.score / 10).toFixed(1)}/10` : `${stat.score.toFixed(1)}%`}
+                                                    </div>
                                                     <div className="text-[10px] uppercase tracking-wider opacity-75">{stat.label}</div>
                                                 </div>
                                             ))}
@@ -331,6 +332,7 @@ const StudentStarView = () => {
                         if (appliedConfig.fasting) stats.push({ label: 'Fasting', score: myStats.scores.fasting || 0 });
                         if (appliedConfig.quran) stats.push({ label: 'Quran Progress', score: myStats.scores.quran || 0 });
                         if (appliedConfig.dailyQuran) stats.push({ label: 'Daily Quran', score: myStats.scores.dailyQuran || 0 });
+                        if (appliedConfig.classPerformance) stats.push({ label: 'Class Perf.', score: myStats.scores.classPerformance || 0, isRating: true });
 
                         return (
                             <Card className="max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-sm border border-gray-100 mb-6 bg-gradient-to-br from-indigo-50 to-white">
@@ -351,7 +353,9 @@ const StudentStarView = () => {
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                                         {stats.map((stat, idx) => (
                                             <div key={idx} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col items-center text-center hover:border-indigo-100 transition-colors">
-                                                <div className="text-xl font-black text-gray-800 mb-1">{stat.score.toFixed(1)}%</div>
+                                                <div className="text-xl font-black text-gray-800 mb-1">
+                                                    {stat.isRating ? `${(stat.score / 10).toFixed(1)}/10` : `${stat.score.toFixed(1)}%`}
+                                                </div>
                                                 <div className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">{stat.label}</div>
                                             </div>
                                         ))}

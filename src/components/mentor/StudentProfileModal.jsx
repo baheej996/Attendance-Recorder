@@ -31,6 +31,11 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
     const [activePdfExam, setActivePdfExam] = useState(null);
     const pdfRef = useRef(null);
 
+    // Moved these state variables to the top to prevent ReferenceError during minified production builds
+    const [studentAttendance, setStudentAttendance] = useState([]);
+    const [studentResults, setStudentResults] = useState([]);
+    const [studentPrayerRecords, setStudentPrayerRecords] = useState([]);
+
     // Request heavy datasets dynamically when the modal is open
     useEffect(() => {
         if (!isOpen) return;
@@ -54,9 +59,8 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
     // Exam Data
     const examData = useMemo(() => {
         if (!student) return [];
-        // Filter results for this student
-        const studentResults = results.filter(r => r.studentId === studentId);
-
+        // Use directly fetched historical results
+        
         // Group by Exam
         return exams.map(exam => {
             const examResults = studentResults.filter(r => r.examId === exam.id);
@@ -159,7 +163,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                 })
             };
         }).filter(Boolean);
-    }, [exams, results, subjects, studentId, student, students]);
+    }, [exams, studentResults, subjects, studentId, student, students]);
 
     // Activity Data
     const activityData = useMemo(() => {
@@ -186,32 +190,39 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
         const end = endOfWeek(today, { weekStartsOn: 1 });
         const days = eachDayOfInterval({ start, end });
 
-        const studentRecords = prayerRecords.filter(r => r.studentId === studentId);
-
         return days.map(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
-            const record = studentRecords.find(r => r.date === dateStr);
+            const record = studentPrayerRecords.find(r => r.date === dateStr);
             let count = 0;
             if (record && record.prayers) {
                 count = Object.values(record.prayers).filter(Boolean).length;
             }
             return { date: day, count };
         });
-    }, [prayerRecords, studentId]);
+    }, [studentPrayerRecords]);
 
-    // Attendance Data
-    const [studentAttendance, setStudentAttendance] = useState([]);
+    // Attendance Data (State variables moved to top)
 
     useEffect(() => {
         if (!isOpen || !studentId) return;
         
-        const q = query(collection(db, 'attendance'), where('studentId', '==', studentId));
-        const unsub = onSnapshot(q, (snap) => {
-            const data = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setStudentAttendance(data);
+        const unsubAttendance = onSnapshot(query(collection(db, 'attendance'), where('studentId', '==', studentId)), (snap) => {
+            setStudentAttendance(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+        });
+
+        const unsubResults = onSnapshot(query(collection(db, 'results'), where('studentId', '==', studentId)), (snap) => {
+            setStudentResults(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+        });
+
+        const unsubPrayer = onSnapshot(query(collection(db, 'prayerRecords'), where('studentId', '==', studentId)), (snap) => {
+            setStudentPrayerRecords(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
         });
         
-        return () => unsub();
+        return () => {
+            unsubAttendance();
+            unsubResults();
+            unsubPrayer();
+        };
     }, [isOpen, studentId]);
 
     const attendanceStats = useMemo(() => {

@@ -12,7 +12,7 @@ const MarksEntry = () => {
     const {
         subjects, exams, students, results,
         recordResult, deleteResultBatch, deleteExamResultsForClass, classes, currentUser,
-        examSettings, updateExamSetting, deleteStudentResponse, questions, requireFeature
+        examSettings, updateExamSetting, deleteStudentResponse, questions, requireFeature, updateStudent
     } = useData();
     const { showAlert, showConfirm } = useUI();
 
@@ -38,6 +38,10 @@ const MarksEntry = () => {
     // Marks State
     const [marksData, setMarksData] = useState({});
     const [hasChanges, setHasChanges] = useState(false);
+    
+    // Fix: Ref to track hasChanges inside useEffect without adding it to dependencies
+    const hasChangesRef = React.useRef(hasChanges);
+    useEffect(() => { hasChangesRef.current = hasChanges; }, [hasChanges]);
 
     // Grading Modal State
     const [gradingModalOpen, setGradingModalOpen] = useState(false);
@@ -206,6 +210,12 @@ const MarksEntry = () => {
             const existing = results.filter(r => r.examId === selectedExamId && r.subjectId === selectedSubjectId);
             const initialData = {};
             existing.forEach(r => initialData[r.studentId] = r.marks);
+            
+            // Fix: Prevent background result updates from wiping out unsaved teacher edits
+            if (hasChangesRef.current) {
+                return;
+            }
+            
             setMarksData(initialData);
             setHasChanges(false);
         }
@@ -272,18 +282,29 @@ const MarksEntry = () => {
         showConfirm(
             'Allow Retake',
             'Are you sure? This will delete the student\'s submission and marks. They will be able to take the exam again.',
-            () => {
-                // 1. Delete Answer Sheet
-                deleteStudentResponse(selectedExamId, selectedSubjectId, studentId);
-                // 2. Delete Marks/Result
-                deleteResultBatch(selectedExamId, selectedSubjectId, [studentId]);
+            async () => {
+                try {
+                    // 1. Delete Answer Sheet
+                    await deleteStudentResponse(selectedExamId, selectedSubjectId, studentId);
+                    
+                    // 2. Delete Marks/Result
+                    await deleteResultBatch(selectedExamId, selectedSubjectId, [studentId]);
+                    
+                    // 3. Clear the activeExamSession lock
+                    await updateStudent(studentId, { activeExamSession: null });
 
-                // 3. Update Local State
-                const newMarks = { ...marksData };
-                delete newMarks[studentId];
-                setMarksData(newMarks);
+                    // 4. Update Local State
+                    setMarksData(prev => {
+                        const newMarks = { ...prev };
+                        delete newMarks[studentId];
+                        return newMarks;
+                    });
 
-                showAlert('Reset Successful', 'Student can now retake the exam.', 'success');
+                    showAlert('Reset Successful', 'Student can now retake the exam.', 'success');
+                } catch (error) {
+                    console.error("Retake error:", error);
+                    showAlert('Error', 'Failed to reset student. Please try again.', 'error');
+                }
             }
         );
     };

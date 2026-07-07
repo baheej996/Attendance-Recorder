@@ -70,6 +70,7 @@ export const DataProvider = ({ children }) => {
     // Settings & Misc
     const [questionSuggestions, setQuestionSuggestions] = useState([]);
     const [starDeclarations, setStarDeclarations] = useState([]);
+    const [classPerformances, setClassPerformances] = useState([]);
     const [starConfigs, setStarConfigs] = useState([]); // Per-class configurations
     const [adminRequests, setAdminRequests] = useState([]);
     const [chatSettings, setChatSettings] = useState([]);
@@ -368,6 +369,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('chatMessages', setUnreadChats, where('receiverId', '==', uid), where('isRead', '==', false)),
                 subscribe('notifications', setNotifications, where('audience', 'in', ['students', 'all', 'specific_class']), limit(100)),
                 subscribe('starDeclarations', setStarDeclarations, where('classId', '==', cid)),
+                subscribe('classPerformances', setClassPerformances, where('classId', '==', cid)),
                 subscribe('starConfigs', setStarConfigs, where('classId', '==', cid)),
                 subscribe('students', setStudents, where('classId', 'in', batchClassIds)),
                 subscribe('studentEvaluations', setStudentEvaluations, where('studentId', '==', uid), where('status', '==', 'Published')),
@@ -378,13 +380,13 @@ export const DataProvider = ({ children }) => {
             // On-Demand Heavy Data
             const currentAttendanceLimit = activeFeatures.has('star') ? Math.max(5000, attendanceLimit) : attendanceLimit;
             if (activeFeatures.has('attendance')) {
-                unsubs.push(subscribe('attendance', setAttendance, where('classId', '==', cid), orderBy('date', 'desc'), limit(currentAttendanceLimit)));
+                unsubs.push(subscribe('attendance', setAttendance, where('studentId', '==', uid), orderBy('date', 'desc'), limit(currentAttendanceLimit)));
             }
-            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('classId', 'in', batchClassIds), limit(resultsLimit)));
-            if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('classId', '==', cid)));
+            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('studentId', '==', uid), limit(resultsLimit)));
+            if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('studentId', '==', uid)));
             if (activeFeatures.has('quran')) unsubs.push(
-                subscribe('quranRecitations', setQuranRecitations, where('classId', '==', cid)),
-                subscribe('quranProgress', setQuranProgress, where('classId', '==', cid))
+                subscribe('quranRecitations', setQuranRecitations, where('studentId', '==', uid)),
+                subscribe('quranProgress', setQuranProgress, where('studentId', '==', uid))
             );
             if (activeFeatures.has('activities')) unsubs.push(
                 subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : [''])),
@@ -451,6 +453,7 @@ export const DataProvider = ({ children }) => {
                     subscribe('chatMessages', setChatMessages, where('classId', 'in', assignedClassIds), limit(200)),
                     subscribe('activities', setActivities, where('classId', 'in', assignedClassIds)),
                     subscribe('starDeclarations', setStarDeclarations, where('classId', 'in', assignedClassIds)),
+                    subscribe('classPerformances', setClassPerformances, where('classId', 'in', assignedClassIds)),
                     subscribe('gameProgress', setGameProgress, where('classId', 'in', assignedClassIds))
                 );
 
@@ -1329,6 +1332,7 @@ export const DataProvider = ({ children }) => {
             { items: syllabi, name: 'syllabi' },
             { items: questionSuggestions, name: 'questionSuggestions' },
             { items: starDeclarations, name: 'starDeclarations' },
+            { items: classPerformances, name: 'classPerformances' },
             { items: starConfigs, name: 'starConfigs' },
             { items: adminRequests, name: 'adminRequests' },
             { items: examSettings, name: 'examSettings' },
@@ -1840,6 +1844,23 @@ export const DataProvider = ({ children }) => {
     const saveStarDeclaration = async (dec) => await addDoc(collection(db, 'starDeclarations'), dec);
     const deleteStarDeclaration = async (id) => await deleteDoc(doc(db, 'starDeclarations', id));
 
+    const saveClassPerformance = async (studentId, classId, month, year, marks) => {
+        const id = `${studentId}_${month}_${year}`;
+        const newRecord = { studentId, classId, month, year, marks, timestamp: new Date().toISOString() };
+        
+        setClassPerformances(prev => {
+            const existingIdx = prev.findIndex(p => p.id === id);
+            if (existingIdx >= 0) {
+                const newArr = [...prev];
+                newArr[existingIdx] = { ...newArr[existingIdx], ...newRecord };
+                return newArr;
+            }
+            return [...prev, { ...newRecord, id }];
+        });
+
+        await setDoc(doc(db, 'classPerformances', id), newRecord, { merge: true });
+    };
+
     const updateStarConfig = async (classId, newConfig) => {
         await setDoc(doc(db, 'starConfigs', classId), { classId, config: newConfig }, { merge: true });
     };
@@ -1993,9 +2014,11 @@ export const DataProvider = ({ children }) => {
         questions, addQuestion, updateQuestion, deleteQuestion,
         studentResponses, submitExam, deleteStudentResponse: async (e, s, stuk) => {
             // First try local state (fast path)
-            let r = studentResponses.find(x => x.examId == e && x.subjectId == s && x.studentId == stuk);
-            if (r) {
-                await deleteDoc(doc(db, 'studentResponses', r.id));
+            let matches = studentResponses.filter(x => x.examId == e && x.subjectId == s && x.studentId == stuk);
+            if (matches.length > 0) {
+                for (const r of matches) {
+                    await deleteDoc(doc(db, 'studentResponses', r.id));
+                }
                 return;
             }
             // Fallback: query Firestore directly (handles missing classId on old docs)
@@ -2074,6 +2097,7 @@ export const DataProvider = ({ children }) => {
 
         // New / Misc
         starDeclarations, saveStarDeclaration, deleteStarDeclaration,
+        classPerformances, saveClassPerformance,
         starConfigs, updateStarConfig,
         adminRequests, addAdminRequest, updateAdminRequest, deleteAdminRequest,
         admissionRequests, 

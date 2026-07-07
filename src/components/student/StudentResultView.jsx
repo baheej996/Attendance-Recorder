@@ -297,9 +297,10 @@ const StudentResultView = () => {
                             ref={pdfRef}
                             student={{
                                 ...currentUser,
-                                classDetails: students.find(s => s.id === currentUser.id)?.classId
-                                    ? `${students.find(s => s.id === currentUser.id).classDetails?.name || ''} ${students.find(s => s.id === currentUser.id).classDetails?.division || ''}`
-                                    : ''
+                                classDetails: (() => {
+                                    const c = classes?.find(cls => cls.id === currentUser?.classId);
+                                    return c ? `${c.name} ${c.division || ''}`.trim() : '';
+                                })()
                             }}
                             exam={activeExam}
                             rank={studentRank}
