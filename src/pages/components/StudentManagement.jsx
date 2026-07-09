@@ -28,6 +28,7 @@ const StudentManagement = ({ readOnly = false }) => {
     });
     const [filterStandard, setFilterStandard] = useState('');
     const [filterDivision, setFilterDivision] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
 
     const uniqueStandards = [...new Set(classes.map(c => c.name))].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
     const uniqueDivisions = [...new Set(classes.map(c => c.division))].sort();
@@ -331,9 +332,10 @@ const StudentManagement = ({ readOnly = false }) => {
             const studentClass = classes.find(c => c.id === student.classId);
             const matchesStandard = filterStandard ? studentClass?.name === filterStandard : true;
             const matchesDivision = filterDivision ? studentClass?.division === filterDivision : true;
+            const matchesStatus = filterStatus ? (student.status || 'Active') === filterStatus : true;
             const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 student.registerNo.toLowerCase().includes(searchTerm.toLowerCase());
-            return matchesStandard && matchesDivision && matchesSearch;
+            return matchesStandard && matchesDivision && matchesStatus && matchesSearch;
         };
 
         const attention = [];
@@ -351,7 +353,7 @@ const StudentManagement = ({ readOnly = false }) => {
         });
 
         return { attentionStudents: attention, regularStudents: regular };
-    }, [students, classes, filterStandard, filterDivision, searchTerm]);
+    }, [students, classes, filterStandard, filterDivision, filterStatus, searchTerm]);
 
     const getMentorNameForStudent = (student) => {
         if (!student.classId || !mentors) return 'Unassigned';
@@ -388,7 +390,7 @@ const StudentManagement = ({ readOnly = false }) => {
     // Reset page when filter changes
     React.useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, filterStandard, filterDivision, itemsPerPage]);
+    }, [searchTerm, filterStandard, filterDivision, filterStatus, itemsPerPage]);
 
     const toggleSelection = (id) => {
         setSelectedIds(prev =>
@@ -829,6 +831,17 @@ const StudentManagement = ({ readOnly = false }) => {
                                     <option key={div} value={div}>Division {div}</option>
                                 ))}
                             </Select>
+                            <Select
+                                className="bg-white h-11 min-w-[140px]"
+                                containerClassName="w-full sm:w-auto"
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                            >
+                                <option value="">All Statuses</option>
+                                {studentStatuses.map(status => (
+                                    <option key={status} value={status}>{status}</option>
+                                ))}
+                            </Select>
                         </div>
                     </div>
                 </div>
@@ -940,7 +953,7 @@ const StudentManagement = ({ readOnly = false }) => {
                             {paginatedStudents.length === 0 && (
                                 <tr>
                                     <td colSpan="8" className="px-4 py-12 text-center text-gray-400 font-medium italic">
-                                        {searchTerm || filterStandard || filterDivision ? "No students found matching your filters." : "No students in the directory."}
+                                        {searchTerm || filterStandard || filterDivision || filterStatus ? "No students found matching your filters." : "No students in the directory."}
                                     </td>
                                 </tr>
                             )}
