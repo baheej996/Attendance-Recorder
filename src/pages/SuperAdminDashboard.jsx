@@ -67,7 +67,6 @@ const SuperAdminDashboard = () => {
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Super Admin</h1>
-                        <p className="text-gray-500 text-sm mt-1">Read-Only Access</p>
                     </div>
                     <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-gray-400 hover:text-gray-600">
                         <X className="w-6 h-6" />
