@@ -124,6 +124,7 @@ export const DataProvider = ({ children }) => {
         favicon: '/favicon.png' 
     });
     const [adminCredentials, setAdminCredentials] = useState({ username: 'adminsgm', password: 'GlobalAdmin' });
+    const [superAdminCredentials, setSuperAdminCredentials] = useState({ username: 'superadmin', password: 'SuperGlobalAdmin' });
     const [studentFeatureFlags, setStudentFeatureFlags] = useState({
         welcome: true,
         overview: true,
@@ -278,6 +279,7 @@ export const DataProvider = ({ children }) => {
             snapshot.docs.forEach(doc => {
                 if (doc.id === 'institution') setInstitutionSettings(doc.data());
                 if (doc.id === 'admin') setAdminCredentials(doc.data());
+                if (doc.id === 'superadmin') setSuperAdminCredentials(doc.data());
                 if (doc.id === 'studentFeatures') setStudentFeatureFlags(doc.data());
                 if (doc.id === 'mentorFeatures') setMentorFeatureFlags(doc.data());
                 if (doc.id === 'system') {
@@ -508,7 +510,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('leaderboardRules', setLeaderboardRules),
                 subscribe('leaderboardCompletions', setLeaderboardCompletions)
             );
-        } else if (currentUser.role === 'admin') {
+        } else if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
             unsubs.push(
                 subscribe('students', (data) => { setStudents(data); setAllStudents(data); }),
                 // NOTE: do NOT setClasses here. `classes` is already maintained by the global
@@ -577,7 +579,7 @@ export const DataProvider = ({ children }) => {
                 setLogEntries([]);
                 return;
             }
-        } else if (currentUser.role === 'admin') {
+        } else if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
             // Admin has no where clause, orderBy alone is fine (no composite index needed)
             q = query(collection(db, 'logEntries'), orderBy('timestamp', 'desc'), limit(currentLimit));
         }
@@ -807,6 +809,10 @@ export const DataProvider = ({ children }) => {
 
     const validateAdmin = (username, password) => {
         return username === adminCredentials.username && password === adminCredentials.password;
+    };
+
+    const validateSuperAdmin = (username, password) => {
+        return username === superAdminCredentials.username && password === superAdminCredentials.password;
     };
 
 
@@ -1298,6 +1304,10 @@ export const DataProvider = ({ children }) => {
 
     const updateAdminCredentials = async (username, password) => {
         await setDoc(doc(db, 'settings', 'admin'), { username, password });
+    };
+
+    const updateSuperAdminCredentials = async (username, password) => {
+        await setDoc(doc(db, 'settings', 'superadmin'), { username, password });
     };
 
     const updateStudentStatuses = async (newList) => {
@@ -2053,6 +2063,7 @@ export const DataProvider = ({ children }) => {
         fetchStudentByRegisterNo, fetchMentorByEmail,
         institutionSettings, updateInstitutionSettings,
         adminCredentials, updateAdminCredentials, validateAdmin,
+        superAdminCredentials, updateSuperAdminCredentials, validateSuperAdmin,
         studentStatuses, updateStudentStatuses,
 
         // Pagination & Counts

@@ -182,7 +182,7 @@ const addOneHour = (timeStr) => {
     return `${h.toString().padStart(2, '0')}:${minutes}`;
 };
 
-const ClassCard = ({ cls, isAttention, selectedIds, toggleSelection, openStudentsModal, handleEdit, confirmDelete, openAllotment, students, mentors }) => {
+const ClassCard = ({ cls, isAttention, selectedIds, toggleSelection, openStudentsModal, handleEdit, confirmDelete, openAllotment, students, mentors, readOnly }) => {
     const assignedMentors = mentors.filter(m => (m.assignedClassIds || []).includes(cls.id));
     const studentCount = students.filter(s => s.classId === cls.id && s.status === 'Active').length;
     const isSelected = selectedIds.includes(cls.id);
@@ -240,12 +240,16 @@ const ClassCard = ({ cls, isAttention, selectedIds, toggleSelection, openStudent
                     <button onClick={() => openStudentsModal(cls)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Students">
                         <Eye className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleEdit(cls)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
-                        <Edit className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => confirmDelete(cls.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                        <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!readOnly && (
+                        <>
+                            <button onClick={() => handleEdit(cls)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
+                                <Edit className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => confirmDelete(cls.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -273,20 +277,22 @@ const ClassCard = ({ cls, isAttention, selectedIds, toggleSelection, openStudent
                         <Eye className="w-3.5 h-3.5" />
                         Students
                     </button>
-                    <button
-                        onClick={() => openAllotment(cls)}
-                        className="flex-1 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-100 transition-all flex items-center justify-center gap-1.5"
-                    >
-                        <Users className="w-3.5 h-3.5" />
-                        Allotment
-                    </button>
+                    {!readOnly && (
+                        <button
+                            onClick={() => openAllotment(cls)}
+                            className="flex-1 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-100 transition-all flex items-center justify-center gap-1.5"
+                        >
+                            <Users className="w-3.5 h-3.5" />
+                            Allotment
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-const ClassManagement = () => {
+const ClassManagement = ({ readOnly = false }) => {
     const { classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses, updateMentor, mentors, students, updateStudent, deleteStudent, institutionSettings, updateInstitutionSettings } = useData();
     const { showAlert } = useUI();
     const [formData, setFormData] = useState({ name: '', division: '', startTime: '', endTime: '', days: [] });
@@ -541,7 +547,7 @@ const ClassManagement = () => {
     return (
         <div className="space-y-6 w-full animate-in fade-in duration-300">
             {classesWithMultipleMentors.length > 0 && (
-                <div className="bg-red-50 border border-red-200 p-4 rounded-xl shadow-sm flex items-start gap-3 animate-in fade-in">
+                <div className="bg-red-50 border border-red-200 p-4 rounded-xl shadow-sm flex items-start gap-3 animate-in fade-in mb-6">
                     <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
                     <div>
                         <h3 className="text-sm font-bold text-red-900">Mentor Allotment Warning</h3>
@@ -705,13 +711,13 @@ const ClassManagement = () => {
                 </div>
             </Modal>
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/95 backdrop-blur-sm py-4 lg:sticky lg:top-[64px] z-20 border-b border-gray-200 mb-6">
+            <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 py-4 lg:sticky z-20 border-b border-gray-200 mb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 !mt-0 ${readOnly ? 'lg:top-0' : 'lg:top-[64px]'}`}>
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900 leading-tight">Class Management</h2>
                     <p className="text-sm text-gray-500">Manage classes and divisions</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
-                    {selectedIds.length > 0 ? (
+                    {!readOnly && selectedIds.length > 0 ? (
                         <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-red-100 shadow-sm animate-in fade-in slide-in-from-top-2 w-full md:w-auto h-[44px]">
                             <span className="text-sm font-medium text-gray-700 whitespace-nowrap px-2">{selectedIds.length} Selected</span>
                             <Button variant="secondary" size="sm" onClick={() => setSelectedIds([])} className="h-8 text-gray-500 hover:text-gray-700">Cancel</Button>
@@ -751,14 +757,18 @@ const ClassManagement = () => {
                                 <Button onClick={handleExportPDF} className="h-11 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 px-3" title="Export PDF">
                                     <FileText className="w-4 h-4" />
                                 </Button>
-                                <BulkUploadButton onUploadSuccess={handleBulkUpload} type="class" />
-                                <Button onClick={handleOpenModal} className="h-11 flex items-center justify-center gap-2 whitespace-nowrap px-4">
-                                    <Plus className="w-4 h-4" />
-                                    Add Class
-                                </Button>
-                                <Button variant="secondary" className="h-11 px-3" onClick={() => setSettingsOpen(true)} title="Settings">
-                                    <Settings className="w-4 h-4 text-gray-500" />
-                                </Button>
+                                {!readOnly && (
+                                    <>
+                                        <BulkUploadButton onUploadSuccess={handleBulkUpload} type="class" />
+                                        <Button onClick={handleOpenModal} className="h-11 flex items-center justify-center gap-2 whitespace-nowrap px-4">
+                                            <Plus className="w-4 h-4" />
+                                            Add Class
+                                        </Button>
+                                        <Button variant="secondary" className="h-11 px-3" onClick={() => setSettingsOpen(true)} title="Settings">
+                                            <Settings className="w-4 h-4 text-gray-500" />
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -793,6 +803,7 @@ const ClassManagement = () => {
                                         key={cls.id}
                                         cls={cls}
                                         isAttention={true}
+                                        readOnly={readOnly}
                                         {...{ selectedIds, toggleSelection, openStudentsModal, handleEdit, confirmDelete, openAllotment, students, mentors }}
                                     />
                                 ))}
@@ -838,6 +849,7 @@ const ClassManagement = () => {
                                     key={cls.id}
                                     cls={cls}
                                     isAttention={false}
+                                    readOnly={readOnly}
                                     {...{ selectedIds, toggleSelection, openStudentsModal, handleEdit, confirmDelete, openAllotment, students, mentors }}
                                 />
                             ))}

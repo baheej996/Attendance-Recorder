@@ -15,7 +15,7 @@ import StudentPersonalDetailsModal from './StudentPersonalDetailsModal';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { FileSpreadsheet, FileText } from 'lucide-react';
 
-const StudentManagement = () => {
+const StudentManagement = ({ readOnly = false }) => {
     const { students, addStudent, deleteStudent, deleteStudents, classes, mentors, updateStudent, deleteAllStudents, institutionSettings, studentStatuses, updateStudentStatuses } = useData();
     const { showAlert } = useUI();
     const [formData, setFormData] = useState({
@@ -615,16 +615,18 @@ const StudentManagement = () => {
                 </div>
             </Modal>
 
-            <div className="lg:sticky lg:top-[64px] z-30 bg-gray-50/95 backdrop-blur-sm py-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
+            <div className={`lg:sticky z-30 bg-gray-50 py-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 !mt-0 ${readOnly ? 'lg:top-0' : 'lg:top-[64px]'}`}>
                 <h2 className="text-2xl font-bold text-gray-900">Student Management</h2>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                    <Button
-                        onClick={() => setIsStatusModalOpen(true)}
-                        className="bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
-                    >
-                        <Settings className="w-4 h-4" />
-                        <span className="hidden sm:inline">Statuses</span>
-                    </Button>
+                    {!readOnly && (
+                        <Button
+                            onClick={() => setIsStatusModalOpen(true)}
+                            className="bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                            <Settings className="w-4 h-4" />
+                            <span className="hidden sm:inline">Statuses</span>
+                        </Button>
+                    )}
                     <Button onClick={handleExportExcel} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-2" title="Export to Excel">
                         <FileSpreadsheet className="w-4 h-4" />
                         <span className="hidden sm:inline">Excel</span>
@@ -633,15 +635,17 @@ const StudentManagement = () => {
                         <FileText className="w-4 h-4" />
                         <span className="hidden sm:inline">PDF</span>
                     </Button>
-                    <Button
-                        onClick={handleOpenModal}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-                    >
-                        <UserPlus className="w-4 h-4" />
-                        <span className="hidden sm:inline">Add Student</span>
-                        <span className="sm:hidden">Add</span>
-                    </Button>
-                    {selectedIds.length > 0 && (
+                    {!readOnly && (
+                        <Button
+                            onClick={handleOpenModal}
+                            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                            <span className="hidden sm:inline">Add Student</span>
+                            <span className="sm:hidden">Add</span>
+                        </Button>
+                    )}
+                    {!readOnly && selectedIds.length > 0 && (
                         <div className="flex gap-2">
                             <Button
                                 onClick={() => setSelectedIds([])}
@@ -660,7 +664,7 @@ const StudentManagement = () => {
                             </Button>
                         </div>
                     )}
-                    {students.length > 0 && (
+                    {!readOnly && students.length > 0 && (
                         <Button
                             onClick={confirmDeleteAll}
                             className="bg-white text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-2"
@@ -670,9 +674,11 @@ const StudentManagement = () => {
                             <span className="sm:hidden">Del All</span>
                         </Button>
                     )}
-                    <div className="ml-auto md:ml-0">
-                        <BulkUploadButton type="student" onUploadSuccess={handleBulkUpload} />
-                    </div>
+                    {!readOnly && (
+                        <div className="ml-auto md:ml-0">
+                            <BulkUploadButton type="student" onUploadSuccess={handleBulkUpload} />
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -703,14 +709,16 @@ const StudentManagement = () => {
                                                 </span>
                                             </div>
                                         </div>
-                                        <Button
-                                            onClick={() => handleEdit(student)}
-                                            size="sm"
-                                            className="bg-red-100 text-red-700 hover:bg-red-200 border-none shrink-0"
+                                        {!readOnly && (
+                                            <Button
+                                                onClick={() => handleEdit(student)}
+                                                size="sm"
+                                                className="bg-red-100 text-red-700 hover:bg-red-200 border-none shrink-0"
 
-                                        >
-                                            <Edit className="w-4 h-4 mr-1" /> Edit
-                                        </Button>
+                                            >
+                                                <Edit className="w-4 h-4 mr-1" /> Edit
+                                            </Button>
+                                        )}
                                     </div>
                                 )
                             })}
@@ -753,25 +761,27 @@ const StudentManagement = () => {
                                         </div>
                                     </div>
                                     
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        <div className="w-48">
-                                            <SearchableSelect
-                                                placeholder="Assign to class..."
-                                                options={classOptions}
-                                                value=""
-                                                onChange={(val) => handleTransfer(student.id, val)}
-                                                compact={true}
-                                            />
+                                    {!readOnly && (
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <div className="w-48">
+                                                <SearchableSelect
+                                                    placeholder="Assign to class..."
+                                                    options={classOptions}
+                                                    value=""
+                                                    onChange={(val) => handleTransfer(student.id, val)}
+                                                    compact={true}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleEdit(student)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => confirmDelete(student.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => handleEdit(student)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => confirmDelete(student.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -883,15 +893,17 @@ const StudentManagement = () => {
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-28 flex-shrink-0">
-                                                    <SearchableSelect
-                                                        placeholder="Transfer..."
-                                                        options={classOptions}
-                                                        value=""
-                                                        onChange={(val) => handleTransfer(student.id, val)}
-                                                        compact={true}
-                                                    />
-                                                </div>
+                                                {!readOnly && (
+                                                    <div className="w-28 flex-shrink-0">
+                                                        <SearchableSelect
+                                                            placeholder="Transfer..."
+                                                            options={classOptions}
+                                                            value=""
+                                                            onChange={(val) => handleTransfer(student.id, val)}
+                                                            compact={true}
+                                                        />
+                                                    </div>
+                                                )}
 
                                                 <div className="flex items-center gap-2">
                                                     <button
@@ -901,20 +913,24 @@ const StudentManagement = () => {
                                                     >
                                                         <Eye className="w-4 h-4" />
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleEdit(student)}
-                                                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                                        title="Edit Student"
-                                                    >
-                                                        <Edit className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => confirmDelete(student.id)}
-                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                        title="Delete Student"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    {!readOnly && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleEdit(student)}
+                                                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                                title="Edit Student"
+                                                            >
+                                                                <Edit className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => confirmDelete(student.id)}
+                                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                                title="Delete Student"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
@@ -971,32 +987,38 @@ const StudentManagement = () => {
                                         </div>
 
                                         <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-1 w-28">
-                                                <SearchableSelect
-                                                    placeholder="Transfer"
-                                                    options={classOptions}
-                                                    value=""
-                                                    onChange={(val) => handleTransfer(student.id, val)}
-                                                />
-                                            </div>
+                                            {!readOnly && (
+                                                <div className="flex items-center gap-1 w-28">
+                                                    <SearchableSelect
+                                                        placeholder="Transfer"
+                                                        options={classOptions}
+                                                        value=""
+                                                        onChange={(val) => handleTransfer(student.id, val)}
+                                                    />
+                                                </div>
+                                            )}
                                             <button
                                                 onClick={() => setSelectedStudentForDetails(student)}
                                                 className="text-gray-400 hover:text-indigo-600 p-1"
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </button>
-                                            <button
-                                                onClick={() => handleEdit(student)}
-                                                className="text-indigo-600 p-1"
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => confirmDelete(student.id)}
-                                                className="text-red-600 p-1"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            {!readOnly && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleEdit(student)}
+                                                        className="text-indigo-600 p-1"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => confirmDelete(student.id)}
+                                                        className="text-red-600 p-1"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

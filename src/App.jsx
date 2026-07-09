@@ -5,6 +5,7 @@ import Landing from './pages/Landing';
 import PublicHome from './pages/PublicHome';
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import MentorDashboard from './pages/MentorDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -92,6 +93,13 @@ const AppContent = () => {
           <Route path="/admin/*" element={
             <ProtectedRoute allowedRole="admin">
               <AdminDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* Protected Routes - Super Admin */}
+          <Route path="/superadmin/*" element={
+            <ProtectedRoute allowedRole="superadmin">
+              <SuperAdminDashboard />
             </ProtectedRoute>
           } />
 

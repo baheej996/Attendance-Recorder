@@ -15,7 +15,7 @@ import { Modal } from '../../components/ui/Modal';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { FileSpreadsheet, FileText } from 'lucide-react';
 
-const MentorManagement = () => {
+const MentorManagement = ({ readOnly = false }) => {
     const { mentors, addMentor, updateMentor, deleteMentor, deleteMentors, deleteAllMentors, classes, students, impersonate } = useData();
     const { showAlert } = useUI();
     const navigate = useNavigate();
@@ -357,13 +357,13 @@ const MentorManagement = () => {
                 </div>
             </Modal>
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/95 backdrop-blur-sm py-4 lg:sticky lg:top-[64px] z-20 border-b border-gray-200 mb-6">
+            <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 py-4 lg:sticky z-20 border-b border-gray-200 mb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 !mt-0 ${readOnly ? 'lg:top-0' : 'lg:top-[64px]'}`}>
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Mentor Management</h2>
                     <p className="text-sm text-gray-500">Manage mentors and class assignments</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
-                    {selectedIds.length > 0 ? (
+                    {!readOnly && selectedIds.length > 0 ? (
                         <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-red-100 shadow-sm animate-in fade-in slide-in-from-top-2 w-full md:w-auto">
                             <span className="text-sm font-medium text-gray-700 whitespace-nowrap px-2">{selectedIds.length} Selected</span>
                             <Button variant="secondary" size="sm" onClick={() => setSelectedIds([])} className="text-gray-500 hover:text-gray-700">Cancel</Button>
@@ -391,13 +391,17 @@ const MentorManagement = () => {
                                 <Button onClick={handleExportPDF} className="flex-1 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200" title="Export PDF">
                                     <FileText className="w-4 h-4" />
                                 </Button>
-                                <div className="flex-1">
-                                    <BulkUploadButton onUploadSuccess={handleBulkUpload} type="mentor" />
-                                </div>
-                                <Button onClick={handleOpenModal} className="flex items-center justify-center gap-2 whitespace-nowrap flex-1">
-                                    <Plus className="w-4 h-4" />
-                                    Add Mentor
-                                </Button>
+                                {!readOnly && (
+                                    <>
+                                        <div className="flex-1">
+                                            <BulkUploadButton onUploadSuccess={handleBulkUpload} type="mentor" />
+                                        </div>
+                                        <Button onClick={handleOpenModal} className="flex items-center justify-center gap-2 whitespace-nowrap flex-1">
+                                            <Plus className="w-4 h-4" />
+                                            Add Mentor
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -407,7 +411,7 @@ const MentorManagement = () => {
             <Card>
                 <div className="flex items-center justify-between pb-4">
                     <CardHeader title="Mentors List" description={`Total: ${mentors.length} mentors`} className="p-0 border-none mb-0" />
-                    {mentors.length > 0 && (
+                    {!readOnly && mentors.length > 0 && (
                         <div className="flex items-center gap-2">
                             <input
                                 type="checkbox"
@@ -450,14 +454,16 @@ const MentorManagement = () => {
                                         isSelected ? "bg-indigo-50 border-indigo-200" : "bg-gray-50 border-gray-100 hover:border-indigo-200"
                                     )}
                                 >
-                                    <div className="absolute top-4 left-4 z-10">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={() => toggleSelection(mentor.id)}
-                                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                        />
-                                    </div>
+                                    {!readOnly && (
+                                        <div className="absolute top-4 left-4 z-10">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => toggleSelection(mentor.id)}
+                                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                    )}
 
                                     <div className="flex items-start gap-4 pl-8 w-full">
                                         <div className="w-12 h-12 rounded-full overflow-hidden bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 border border-gray-200">
@@ -507,13 +513,15 @@ const MentorManagement = () => {
                                     </div>
 
                                     <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200">
-                                        <button
-                                            onClick={() => handleDirectSignIn(mentor)}
-                                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm active:scale-95 font-bold text-[10px] whitespace-nowrap"
-                                        >
-                                            <ShieldCheck className="w-3 h-3" />
-                                            Log In
-                                        </button>
+                                        {!readOnly && (
+                                            <button
+                                                onClick={() => handleDirectSignIn(mentor)}
+                                                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm active:scale-95 font-bold text-[10px] whitespace-nowrap"
+                                            >
+                                                <ShieldCheck className="w-3 h-3" />
+                                                Log In
+                                            </button>
+                                        )}
 
                                         <button
                                             onClick={() => setTimetableModal({ isOpen: true, mentor })}
@@ -523,22 +531,24 @@ const MentorManagement = () => {
                                             Timetable
                                         </button>
 
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => handleEdit(mentor)}
-                                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                                title="Edit"
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => confirmDelete(mentor.id)}
-                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors "
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                                        {!readOnly && (
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => handleEdit(mentor)}
+                                                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    title="Edit"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => confirmDelete(mentor.id)}
+                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors "
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );

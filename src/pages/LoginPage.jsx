@@ -10,7 +10,7 @@ import { clsx } from 'clsx';
 const LoginPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { mentors, students, login, validateAdmin, fetchStudentByRegisterNo, currentUser } = useData();
+    const { mentors, students, login, validateAdmin, validateSuperAdmin, fetchStudentByRegisterNo, currentUser } = useData();
 
     // Auto-redirect already-logged-in users straight to their dashboard.
     useEffect(() => {
@@ -41,7 +41,10 @@ const LoginPage = () => {
         setError('');
 
         if (role === 'admin') {
-            if (validateAdmin(formData.username, formData.password) || (formData.username === 'adminsgm' && formData.password === 'GlobalAdmin')) {
+            if (validateSuperAdmin && validateSuperAdmin(formData.username, formData.password)) {
+                login({ role: 'superadmin', name: 'Super Admin', id: 'superadmin' });
+                navigate('/superadmin');
+            } else if (validateAdmin(formData.username, formData.password) || (formData.username === 'adminsgm' && formData.password === 'GlobalAdmin')) {
                 login({ role: 'admin', name: 'Administrator', id: 'admin' });
                 navigate('/admin');
             } else {

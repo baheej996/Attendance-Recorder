@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 
-const ExamManager = () => {
+const ExamManager = ({ readOnly = false }) => {
     const { exams, addExam, updateExam, deleteExam } = useData();
     const { showConfirm } = useUI();
     const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft', instructions: '' });
@@ -59,60 +59,62 @@ const ExamManager = () => {
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={`grid grid-cols-1 ${!readOnly ? 'md:grid-cols-2' : ''} gap-6`}>
                 {/* Create Exam Form */}
-                <Card className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        {editingId ? <Edit className="w-5 h-5 text-indigo-600" /> : <Plus className="w-5 h-5 text-indigo-600" />}
-                        {editingId ? "Edit Exam" : "Create New Exam"}
-                    </h3>
-                    <form onSubmit={handleAdd} className="space-y-4">
-                        <Input
-                            label="Exam Name"
-                            placeholder="e.g. Mid-Term Examination 2024"
-                            value={newExam.name}
-                            onChange={e => setNewExam({ ...newExam, name: e.target.value })}
-                            required
-                        />
-                        <Input
-                            label="Start Date"
-                            type="date"
-                            onChange={e => setNewExam({ ...newExam, date: e.target.value })}
-                            required
-                        />
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Instructions (Optional)</label>
-                            <textarea
-                                value={newExam.instructions}
-                                onChange={e => setNewExam({ ...newExam, instructions: e.target.value })}
-                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
-                                placeholder="e.g. No calculators allowed. Duration is 2 hours."
-                                rows="3"
+                {!readOnly && (
+                    <Card className="p-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            {editingId ? <Edit className="w-5 h-5 text-indigo-600" /> : <Plus className="w-5 h-5 text-indigo-600" />}
+                            {editingId ? "Edit Exam" : "Create New Exam"}
+                        </h3>
+                        <form onSubmit={handleAdd} className="space-y-4">
+                            <Input
+                                label="Exam Name"
+                                placeholder="e.g. Mid-Term Examination 2024"
+                                value={newExam.name}
+                                onChange={e => setNewExam({ ...newExam, name: e.target.value })}
+                                required
                             />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Initial Status</label>
-                            <select
-                                value={newExam.status}
-                                onChange={e => setNewExam({ ...newExam, status: e.target.value })}
-                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
-                            >
-                                <option value="Draft">Draft (Results Hidden)</option>
-                                <option value="Published">Published (Results Visible)</option>
-                            </select>
-                        </div>
-                        <div className="flex gap-2">
-                            {editingId && (
-                                <Button type="button" onClick={handleCancelEdit} variant="secondary" className="w-1/3">
-                                    Cancel
+                            <Input
+                                label="Start Date"
+                                type="date"
+                                onChange={e => setNewExam({ ...newExam, date: e.target.value })}
+                                required
+                            />
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Instructions (Optional)</label>
+                                <textarea
+                                    value={newExam.instructions}
+                                    onChange={e => setNewExam({ ...newExam, instructions: e.target.value })}
+                                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
+                                    placeholder="e.g. No calculators allowed. Duration is 2 hours."
+                                    rows="3"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Initial Status</label>
+                                <select
+                                    value={newExam.status}
+                                    onChange={e => setNewExam({ ...newExam, status: e.target.value })}
+                                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 border bg-white"
+                                >
+                                    <option value="Draft">Draft (Results Hidden)</option>
+                                    <option value="Published">Published (Results Visible)</option>
+                                </select>
+                            </div>
+                            <div className="flex gap-2">
+                                {editingId && (
+                                    <Button type="button" onClick={handleCancelEdit} variant="secondary" className="w-1/3">
+                                        Cancel
+                                    </Button>
+                                )}
+                                <Button type="submit" variant="primary" className="flex-1">
+                                    {editingId ? "Update Exam" : "Create Exam"}
                                 </Button>
-                            )}
-                            <Button type="submit" variant="primary" className="flex-1">
-                                {editingId ? "Update Exam" : "Create Exam"}
-                            </Button>
-                        </div>
-                    </form>
-                </Card>
+                            </div>
+                        </form>
+                    </Card>
+                )}
 
                 {/* Exam List */}
                 <div className="space-y-4">
@@ -156,42 +158,44 @@ const ExamManager = () => {
                                             </p>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end sm:justify-start border-t sm:border-t-0 pt-3 sm:pt-0 mt-2 sm:mt-0 border-gray-100">
-                                        <button
-                                            onClick={() => handleEdit(exam)}
-                                            className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors"
-                                            title="Edit Exam"
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => toggleActive(exam)}
-                                            className={`p-2 rounded-lg transition-colors ${exam.isActive
-                                                ? 'text-blue-600 hover:bg-blue-50'
-                                                : 'text-gray-400 hover:bg-gray-100'
-                                                }`}
-                                            title={exam.isActive ? "Deactivate (Students cannot take)" : "Activate (Students can take)"}
-                                        >
-                                            {exam.isActive ? <PauseCircle className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                                        </button>
-                                        <button
-                                            onClick={() => toggleStatus(exam)}
-                                            className={`p-2 rounded-lg transition-colors ${exam.status === 'Published'
-                                                ? 'text-green-600 hover:bg-green-50'
-                                                : 'text-gray-400 hover:bg-gray-100'
-                                                }`}
-                                            title={exam.status === 'Published' ? "Unpublish Results" : "Publish Results"}
-                                        >
-                                            {exam.status === 'Published' ? <CheckCircle className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(exam.id)}
-                                            className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Delete Exam"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                                    {!readOnly && (
+                                        <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end sm:justify-start border-t sm:border-t-0 pt-3 sm:pt-0 mt-2 sm:mt-0 border-gray-100">
+                                            <button
+                                                onClick={() => handleEdit(exam)}
+                                                className="text-gray-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                title="Edit Exam"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => toggleActive(exam)}
+                                                className={`p-2 rounded-lg transition-colors ${exam.isActive
+                                                    ? 'text-blue-600 hover:bg-blue-50'
+                                                    : 'text-gray-400 hover:bg-gray-100'
+                                                    }`}
+                                                title={exam.isActive ? "Deactivate (Students cannot take)" : "Activate (Students can take)"}
+                                            >
+                                                {exam.isActive ? <PauseCircle className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                                            </button>
+                                            <button
+                                                onClick={() => toggleStatus(exam)}
+                                                className={`p-2 rounded-lg transition-colors ${exam.status === 'Published'
+                                                    ? 'text-green-600 hover:bg-green-50'
+                                                    : 'text-gray-400 hover:bg-gray-100'
+                                                    }`}
+                                                title={exam.status === 'Published' ? "Unpublish Results" : "Publish Results"}
+                                            >
+                                                {exam.status === 'Published' ? <CheckCircle className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(exam.id)}
+                                                className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete Exam"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}
