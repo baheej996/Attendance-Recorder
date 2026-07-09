@@ -570,6 +570,7 @@ const ClassManagement = ({ readOnly = false }) => {
                 classes={classes}
                 onTransfer={handleTransferStudent}
                 onDelete={handleDeleteStudent}
+                readOnly={readOnly}
             />
 
             <DeleteClassSafeguardModal

@@ -14,7 +14,8 @@ export const ClassStudentsModal = ({
     students,
     classes,
     onTransfer,
-    onDelete
+    onDelete,
+    readOnly
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -194,22 +195,24 @@ export const ClassStudentsModal = ({
                                                 <p className="text-[11px] text-gray-400 font-medium tracking-tight uppercase">{student.registerNo || 'No Reg No'}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <button
-                                                onClick={() => handleActionClick(student, 'transfer')}
-                                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all border border-transparent hover:border-indigo-100 shadow-sm sm:shadow-none"
-                                                title="Transfer Student"
-                                            >
-                                                <ArrowRightLeft className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleActionClick(student, 'delete')}
-                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 shadow-sm sm:shadow-none"
-                                                title="Remove Student"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                                        {!readOnly && (
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    onClick={() => handleActionClick(student, 'transfer')}
+                                                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all border border-transparent hover:border-indigo-100 shadow-sm sm:shadow-none"
+                                                    title="Transfer Student"
+                                                >
+                                                    <ArrowRightLeft className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleActionClick(student, 'delete')}
+                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 shadow-sm sm:shadow-none"
+                                                    title="Remove Student"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
