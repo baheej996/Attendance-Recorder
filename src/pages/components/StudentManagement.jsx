@@ -11,7 +11,7 @@ import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { clsx } from 'clsx';
 import { Modal } from '../../components/ui/Modal';
-import StudentPersonalDetailsModal from './StudentPersonalDetailsModal';
+import { StudentProfileModal } from '../../components/mentor/StudentProfileModal';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { FileSpreadsheet, FileText } from 'lucide-react';
 
@@ -451,12 +451,10 @@ const StudentManagement = ({ readOnly = false }) => {
 
     return (
         <div className="space-y-6 w-full animate-in fade-in duration-300">
-            <StudentPersonalDetailsModal
+            <StudentProfileModal
                 isOpen={!!selectedStudentForDetails}
                 onClose={() => setSelectedStudentForDetails(null)}
-                student={selectedStudentForDetails}
-                classes={classes}
-                mentors={mentors}
+                studentId={selectedStudentForDetails?.id}
             />
 
             <ConfirmationModal
@@ -711,16 +709,25 @@ const StudentManagement = ({ readOnly = false }) => {
                                                 </span>
                                             </div>
                                         </div>
-                                        {!readOnly && (
-                                            <Button
-                                                onClick={() => handleEdit(student)}
-                                                size="sm"
-                                                className="bg-red-100 text-red-700 hover:bg-red-200 border-none shrink-0"
-
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setSelectedStudentForDetails(student)}
+                                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                title="View Personal Details"
                                             >
-                                                <Edit className="w-4 h-4 mr-1" /> Edit
-                                            </Button>
-                                        )}
+                                                <Eye className="w-4 h-4" />
+                                            </button>
+                                            {!readOnly && (
+                                                <Button
+                                                    onClick={() => handleEdit(student)}
+                                                    size="sm"
+                                                    className="bg-red-100 text-red-700 hover:bg-red-200 border-none shrink-0"
+    
+                                                >
+                                                    <Edit className="w-4 h-4 mr-1" /> Edit
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
                                 )
                             })}
@@ -775,6 +782,9 @@ const StudentManagement = ({ readOnly = false }) => {
                                                 />
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                <button onClick={() => setSelectedStudentForDetails(student)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
                                                 <button onClick={() => handleEdit(student)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
                                                     <Edit className="w-4 h-4" />
                                                 </button>

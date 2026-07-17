@@ -85,7 +85,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
             // Calculate Rank
             let rank = '-';
             if (examResults.length > 0) {
-                const classStudentIds = students.filter(s => s.classId === student.classId && s.status === 'Active').map(s => s.id);
+                const classStudentIds = students.filter(s => s.classId === student.classId && (s.status === 'Active' || s.id === student.id)).map(s => s.id);
                 const classResults = results.filter(r => r.examId === exam.id && classStudentIds.includes(r.studentId));
 
                 const studentTotals = {};
