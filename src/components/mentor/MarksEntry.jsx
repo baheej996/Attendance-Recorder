@@ -12,7 +12,7 @@ const MarksEntry = () => {
     const {
         subjects, exams, students, results,
         recordResult, deleteResultBatch, deleteExamResultsForClass, classes, currentUser,
-        examSettings, updateExamSetting, deleteStudentResponse, questions, requireFeature, updateStudent
+        examSettings, updateExamSetting, deleteStudentResponse, questions, requireFeature, updateStudent, studentResponses
     } = useData();
     const { showAlert, showConfirm } = useUI();
 
@@ -162,8 +162,10 @@ const MarksEntry = () => {
         let completed = 0;
         let pending = 0;
 
+        const selectedExam = exams.find(e => e.id === selectedExamId);
+
         availableClasses.forEach(cls => {
-            const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false);
+            const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false && !selectedExam?.excludedSubjectNames?.includes(s.name));
             if (clsSubjects.length === 0) {
                 pending++;
                 return;
@@ -176,12 +178,13 @@ const MarksEntry = () => {
         });
 
         return { total: availableClasses.length, completed, pending };
-    }, [availableClasses, selectedExamId, subjects, results]);
+    }, [availableClasses, selectedExamId, subjects, results, exams]);
 
     // Step 3: Subject Stats (for selected Class)
     const subjectStats = useMemo(() => {
         if (!selectedExamId || !selectedClassId) return null;
-        const clsSubjects = subjects.filter(s => s.classId === selectedClassId && s.isExamSubject !== false);
+        const selectedExam = exams.find(e => e.id === selectedExamId);
+        const clsSubjects = subjects.filter(s => s.classId === selectedClassId && s.isExamSubject !== false && !selectedExam?.excludedSubjectNames?.includes(s.name));
         let entered = 0;
 
         clsSubjects.forEach(sub => {
@@ -198,7 +201,7 @@ const MarksEntry = () => {
                 isEntered: results.some(r => r.examId === selectedExamId && r.subjectId === sub.id)
             }))
         };
-    }, [subjects, selectedExamId, selectedClassId, results]);
+    }, [subjects, selectedExamId, selectedClassId, results, exams]);
 
     // Step 4: Students & Marks Loading
     const classStudents = useMemo(() =>
@@ -251,7 +254,8 @@ const MarksEntry = () => {
             if (numMarks > maxMarks) {
                 hasInvalidMarks = true;
             }
-            return { studentId, marks: numMarks };
+            const student = classStudents.find(s => s.id === studentId);
+            return { studentId, marks: numMarks, classId: student?.classId };
         });
 
         if (hasInvalidMarks) {
@@ -274,6 +278,80 @@ const MarksEntry = () => {
                 setMarksData({});
                 setHasChanges(false);
                 showAlert('Deleted', 'Marks deleted successfully!', 'success');
+            }
+        );
+    };
+
+    const handleRecalculateAll = () => {
+        showConfirm(
+            'Recalculate All Marks',
+            'Are you sure you want to recalculate marks for all students based on the current Question Bank? Note: This will only auto-grade MCQ questions.',
+            () => {
+                const subject = classes.flatMap(c => subjects?.filter(s => s.classId === c.id) || []).find(s => s.id === selectedSubjectId) || { name: selectedSubjectId };
+                
+                const newRecords = [];
+                
+                classStudents.forEach(student => {
+                    const response = studentResponses.find(r => 
+                        r.examId === selectedExamId && 
+                        r.subjectId === selectedSubjectId && 
+                        r.studentId === student.id
+                    );
+                    
+                    if (!response) return; 
+                    
+                    const studentClassId = response.classId || student.classId;
+                    const studentClassObj = classes?.find(c => c.id === studentClassId);
+                    const studentClassName = studentClassObj?.name;
+                    
+                    const relevantQuestions = questions.filter(q => {
+                        if (q.examId !== selectedExamId) return false;
+                        const subjectMatch = q.subjectId === selectedSubjectId || q.subjectId === subject.name;
+                        if (!subjectMatch) return false;
+                        
+                        if (!q.shareMode) {
+                            return q.classId === studentClassName || q.classId === studentClassId;
+                        }
+                        
+                        if (q.shareMode === 'Batch') return q.classId === studentClassName;
+                        if (q.shareMode === 'Specific') return q.targetDivisions?.includes(studentClassId);
+                        
+                        return false;
+                    });
+                    
+                    let total = 0;
+                    relevantQuestions.forEach(q => {
+                        if (q.type === 'MCQ') {
+                            if (response.answers && response.answers[q.id] === q.correctAnswer) {
+                                total += Number(q.marks);
+                            }
+                        }
+                    });
+                    
+                    newRecords.push({
+                        studentId: student.id,
+                        marks: total,
+                        classId: studentClassId
+                    });
+                });
+                
+                if (newRecords.length > 0) {
+                    recordResult({
+                        examId: selectedExamId,
+                        subjectId: selectedSubjectId,
+                        records: newRecords
+                    });
+                    
+                    const newMarksData = { ...marksData };
+                    newRecords.forEach(r => {
+                        newMarksData[r.studentId] = r.marks;
+                    });
+                    setMarksData(newMarksData);
+                    
+                    showAlert('Recalculated', `Successfully recalculated marks for ${newRecords.length} student submissions.`, 'success');
+                } else {
+                    showAlert('No Submissions', 'No student submissions found to recalculate.', 'info');
+                }
             }
         );
     };
@@ -375,8 +453,9 @@ const MarksEntry = () => {
         });
 
         // 2. Determine subjects applicable to THIS class
+        const selectedExam = exams.find(e => e.id === selectedExamId);
         const applicableSubjects = subjects.filter(s =>
-            s.isExamSubject !== false && s.classId === selectedClassId
+            s.isExamSubject !== false && s.classId === selectedClassId && !selectedExam?.excludedSubjectNames?.includes(s.name)
         );
 
         // 3. Construct CSV Header
@@ -560,8 +639,9 @@ const MarksEntry = () => {
 
     // 2. Class Selection
     if (!selectedClassId) {
+        const selectedExam = exams.find(e => e.id === selectedExamId);
         const isGlobalRevealed = availableClasses.length > 0 && availableClasses.every(cls => {
-            const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false);
+            const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false && !selectedExam?.excludedSubjectNames?.includes(s.name));
             if (clsSubjects.length === 0) return true; // empty classes count as true to not block global status
             return clsSubjects.every(sub => {
                 const setting = examSettings.find(s => s.examId === selectedExamId && s.classId === cls.id && s.subjectId === sub.id) || 
@@ -577,7 +657,7 @@ const MarksEntry = () => {
                 `Are you sure you want to ${newState ? 'reveal' : 'hide'} answers for ALL classes in this exam?`,
                 () => {
                     availableClasses.forEach(cls => {
-                        const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false);
+                        const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false && !selectedExam?.excludedSubjectNames?.includes(s.name));
                         clsSubjects.forEach(sub => {
                             updateExamSetting(selectedExamId, cls.id, sub.id, { answersRevealed: newState, subjectName: sub.name });
                         });
@@ -640,7 +720,8 @@ const MarksEntry = () => {
                 <div className="grid gap-6">
                     {availableClasses.map(cls => {
                         // Determine status for this specific class
-                        const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false);
+                        const selectedExam = exams.find(e => e.id === selectedExamId);
+                        const clsSubjects = subjects.filter(s => s.classId === cls.id && s.isExamSubject !== false && !selectedExam?.excludedSubjectNames?.includes(s.name));
                         const isComplete = clsSubjects.length > 0 && clsSubjects.every(sub =>
                             results.some(r => r.examId === selectedExamId && r.subjectId === sub.id)
                         );
@@ -1088,6 +1169,14 @@ const MarksEntry = () => {
                             <span className="text-[10px] font-black uppercase tracking-tighter">Live Sync</span>
                         </div>
                         <Button
+                            onClick={handleRecalculateAll}
+                            variant="secondary"
+                            className="flex items-center justify-center gap-1 sm:gap-2 bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 font-medium px-2 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-sm"
+                        >
+                            <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Recalculate All</span>
+                        </Button>
+                        <Button
                             onClick={handleDelete}
                             variant="danger"
                             className="flex items-center justify-center gap-1 sm:gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 font-medium px-2 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-sm"
@@ -1140,7 +1229,7 @@ const MarksEntry = () => {
                                                 type="number"
                                                 min="0"
                                                 max={getCustomMaxMarks(selectedSubjectId)}
-                                                value={marksData[student.id] || ''}
+                                                value={marksData[student.id] !== undefined && marksData[student.id] !== '' ? marksData[student.id] : ''}
                                                 onChange={e => handleMarkChange(student.id, e.target.value)}
                                                 className="w-16 sm:w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs sm:text-sm py-1.5 px-2 border transition-colors outline-none font-bold"
                                                 placeholder="0"

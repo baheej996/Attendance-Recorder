@@ -7,10 +7,12 @@ import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 
 const ExamManager = ({ readOnly = false }) => {
-    const { exams, addExam, updateExam, deleteExam } = useData();
+    const { exams, addExam, updateExam, deleteExam, subjects } = useData();
     const { showConfirm } = useUI();
-    const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft', instructions: '' });
+    const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [] });
     const [editingId, setEditingId] = useState(null);
+
+    const uniqueSubjectNames = [...new Set((subjects || []).filter(s => s.isExamSubject !== false).map(s => s.name))].sort();
 
     const handleAdd = (e) => {
         e.preventDefault();
@@ -22,7 +24,7 @@ const ExamManager = ({ readOnly = false }) => {
         } else {
             addExam(newExam);
         }
-        setNewExam({ name: '', date: '', status: 'Draft', instructions: '' });
+        setNewExam({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [] });
     };
 
     const handleEdit = (exam) => {
@@ -31,13 +33,14 @@ const ExamManager = ({ readOnly = false }) => {
             name: exam.name,
             date: exam.date,
             status: exam.status,
-            instructions: exam.instructions || ''
+            instructions: exam.instructions || '',
+            excludedSubjectNames: exam.excludedSubjectNames || []
         });
     };
 
     const handleCancelEdit = () => {
         setEditingId(null);
-        setNewExam({ name: '', date: '', status: 'Draft', instructions: '' });
+        setNewExam({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [] });
     };
 
     const toggleStatus = (exam) => {
@@ -102,6 +105,39 @@ const ExamManager = ({ readOnly = false }) => {
                                     <option value="Published">Published (Results Visible)</option>
                                 </select>
                             </div>
+                            
+                            {uniqueSubjectNames.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Include Subjects in this Exam</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-gray-50 border border-gray-100 rounded-lg max-h-48 overflow-y-auto">
+                                        {uniqueSubjectNames.map(subjectName => {
+                                            const isExcluded = newExam.excludedSubjectNames?.includes(subjectName);
+                                            return (
+                                                <label key={subjectName} className="flex items-center gap-2 cursor-pointer p-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!isExcluded}
+                                                        onChange={(e) => {
+                                                            const isChecked = e.target.checked;
+                                                            let newExcluded = [...(newExam.excludedSubjectNames || [])];
+                                                            if (isChecked) {
+                                                                newExcluded = newExcluded.filter(name => name !== subjectName);
+                                                            } else {
+                                                                if (!newExcluded.includes(subjectName)) newExcluded.push(subjectName);
+                                                            }
+                                                            setNewExam({ ...newExam, excludedSubjectNames: newExcluded });
+                                                        }}
+                                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                                    />
+                                                    <span className="text-sm text-gray-700 truncate" title={subjectName}>{subjectName}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Uncheck subjects that should not be a part of this exam (e.g. Monthly Tests).</p>
+                                </div>
+                            )}
+
                             <div className="flex gap-2">
                                 {editingId && (
                                     <Button type="button" onClick={handleCancelEdit} variant="secondary" className="w-1/3">

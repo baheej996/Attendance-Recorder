@@ -49,7 +49,25 @@ const StudentResultView = () => {
     }
 
     const totalMarks = myResults.reduce((sum, r) => sum + Number(r.marks), 0);
-    const totalMax = myResults.reduce((sum, r) => sum + getMaxMarks(r.subjectId), 0);
+    
+    const activeExamForMax = exams.find(e => e.id === selectedExamId);
+    const studentClassSubjects = subjects.filter(s => s.classId === currentUser.classId && s.isExamSubject !== false && !activeExamForMax?.excludedSubjectNames?.includes(s.name));
+    
+    const totalMax = studentClassSubjects.reduce((sum, subject) => {
+        const studentClass = classes.find(c => c.id === currentUser.classId);
+        const classLookupId = studentClass?.name || currentUser.classId;
+        const subjectLookupId = subject?.name || subject.id;
+        
+        const customSetting = examSettings?.find(es => 
+            es.examId === selectedExamId && 
+            (es.classId === currentUser.classId || es.classId === classLookupId) && 
+            (es.subjectId === subject.id || es.subjectId === subjectLookupId)
+        );
+        
+        const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : Number(subject.maxMarks || 0);
+        return sum + max;
+    }, 0);
+    
     const percentage = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0;
 
     // Calculate Rank

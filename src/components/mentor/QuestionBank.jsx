@@ -426,7 +426,11 @@ const QuestionBank = () => {
                         const classIdsForName = classes.filter(c => c.name === className).map(c => c.id);
 
                         // 2. Get subjects linked to these Class IDs
-                        const relevantSubjects = examSubjects.filter(s => classIdsForName.includes(s.classId));
+                        const selectedExam = exams.find(e => e.id === selectedExamId);
+                        const relevantSubjects = examSubjects.filter(s => 
+                            classIdsForName.includes(s.classId) && 
+                            !selectedExam?.excludedSubjectNames?.includes(s.name)
+                        );
 
                         // 3. Unique Subject Names
                         const uniqueSubjectNames = [...new Set(relevantSubjects.map(s => s.name))];

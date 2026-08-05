@@ -7,23 +7,75 @@ import { Printer, FileText, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { clsx } from 'clsx';
 
+const getExamAttendanceStats = (classId, className, year, month, examSettings, results, classStudents, subjects) => {
+    const examDays = new Set();
+    const settingsOnDay = {}; 
+    
+    if (examSettings && examSettings.length > 0) {
+        examSettings.forEach(s => {
+            if (!s.startTime) return;
+            try {
+                const start = new Date(s.startTime);
+                if (start.getFullYear() === year && start.getMonth() === month && (s.classId === classId || s.classId === className)) {
+                    const day = start.getDate();
+                    examDays.add(day);
+                    if (!settingsOnDay[day]) settingsOnDay[day] = [];
+                    settingsOnDay[day].push(s);
+                }
+            } catch(e) { }
+        });
+    }
+    
+    const studentExamDays = {}; 
+    if (classStudents && classStudents.length > 0) {
+        classStudents.forEach(stu => {
+            studentExamDays[stu.id] = new Set();
+            examDays.forEach(day => {
+                const settings = settingsOnDay[day] || [];
+                const hasResult = settings.some(s => {
+                    if (!results) return false;
+                    const r = results.find(res => res.studentId === stu.id && res.examId === s.examId && res.subjectId === s.subjectId);
+                    if (!r) return false;
+                    
+                    const subjectInfo = subjects?.find(sub => sub.id === s.subjectId);
+                    if (subjectInfo?.isManualEntry) {
+                        return Number(r.marks) > 0;
+                    }
+                    return true;
+                });
+                if (hasResult) {
+                    studentExamDays[stu.id].add(day);
+                }
+            });
+        });
+    }
+    
+    return { examDays, studentExamDays };
+};
+
 const PrintAttendance = () => {
     const { 
         classes, students, attendance, 
         institutionSettings, currentUser, 
         mentors, requireFeature, getCount, attendanceLimit, loadMoreAttendance,
-        getHistoricalAttendanceStats 
+        getHistoricalAttendanceStats, results, examSettings, subjects
     } = useData();
 
     // Data Subscription
     useEffect(() => {
-        return requireFeature('attendance');
+        const unsubAttendance = requireFeature('attendance');
+        const unsubResults = requireFeature('results');
+        return () => {
+            unsubAttendance();
+            unsubResults();
+        };
     }, [requireFeature]);
 
     const [selectedClassId, setSelectedClassId] = useState('');
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isExporting, setIsExporting] = useState(false);
+    const [importExamAttendance, setImportExamAttendance] = useState(false);
 
     // Filter classes for Mentors
     const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
@@ -61,6 +113,8 @@ const PrintAttendance = () => {
                 const stats = await getHistoricalAttendanceStats(cls.id, selectedYear, selectedMonth);
                 const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
                 const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+                
+                const examStats = importExamAttendance ? getExamAttendanceStats(cls.id, cls.name, selectedYear, selectedMonth, examSettings, results, classStudents, subjects) : { examDays: new Set(), studentExamDays: {} };
 
                 const classMentor = mentors.find(m => m.assignedClassIds?.includes(cls.id));
 
@@ -109,6 +163,25 @@ const PrintAttendance = () => {
                         }
                     });
 
+                    if (importExamAttendance) {
+                        examStats.examDays.forEach(day => {
+                            const attendedExam = examStats.studentExamDays[student.id] && examStats.studentExamDays[student.id].has(day);
+                            if (attendedExam) {
+                                if (currentMonthAttendance[day] !== 'X') {
+                                    currentMonthAttendance[day] = 'X';
+                                    studentThisMonth++;
+                                }
+                            } else {
+                                if (currentMonthAttendance[day] === 'X') {
+                                    currentMonthAttendance[day] = 'A';
+                                    studentThisMonth--;
+                                } else if (currentMonthAttendance[day] !== 'A') {
+                                    currentMonthAttendance[day] = 'A';
+                                }
+                            }
+                        });
+                    }
+
                     const previousTotal = stats.studentTotals[student.id] || 0;
                     totalThisMonth = Math.max(totalThisMonth, studentThisMonth); // This is not quite right for total working days, but let's use the workingDays logic below
 
@@ -128,15 +201,25 @@ const PrintAttendance = () => {
                     const studentIds = new Set(classStudents.map(s => s.id));
                     const classRecords = (stats?.currentMonthRecords || []).filter(r => 
                         studentIds.has(r.studentId) && 
-                        (r.classId === classId || !r.classId) // STRICT BATCH FILTER FOR WORKING DAYS
+                        (r.classId === cls.id || !r.classId) // STRICT BATCH FILTER FOR WORKING DAYS
                     );
-                    const uniqueDates = [...new Set(classRecords.map(r => r.date))];
+                    const uniqueDates = new Set(classRecords.map(r => r.date).filter(Boolean));
                     let thisMonthCount = 0;
                     uniqueDates.forEach(dateStr => {
-                        if (!dateStr) return;
                         const parts = dateStr.split('-');
                         if (parts.length === 3 && parseInt(parts[0], 10) === selectedYear && parseInt(parts[1], 10) === selectedMonth + 1) thisMonthCount++;
                     });
+                    
+                    if (importExamAttendance) {
+                        examStats.examDays.forEach(day => {
+                            const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            if (!uniqueDates.has(dateStr)) {
+                                uniqueDates.add(dateStr);
+                                thisMonthCount++;
+                            }
+                        });
+                    }
+                    
                     return { thisMonth: thisMonthCount, previous: stats.totalWorkingDays, total: thisMonthCount + stats.totalWorkingDays };
                 })();
 
@@ -293,7 +376,7 @@ const PrintAttendance = () => {
 
                 {/* Control Panel Card */}
                 <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.06)] rounded-[2rem] p-6 md:p-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                         <div className="space-y-3">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Class Configuration</label>
                             <div className="relative group">
@@ -335,6 +418,22 @@ const PrintAttendance = () => {
                                     <option key={y} value={y}>{y}</option>
                                 ))}
                             </Select>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Options</label>
+                            <label className="flex items-center gap-3 w-full h-14 bg-gray-50/50 border border-gray-200/60 rounded-2xl px-4 cursor-pointer hover:bg-white transition-all group">
+                                <div className="relative flex items-center justify-center">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={importExamAttendance}
+                                        onChange={(e) => setImportExamAttendance(e.target.checked)}
+                                        className="w-5 h-5 appearance-none border-2 border-gray-300 rounded-lg checked:border-purple-600 checked:bg-purple-600 transition-all cursor-pointer peer"
+                                    />
+                                    <svg className="w-3 h-3 text-white absolute pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                </div>
+                                <span className="text-[11px] font-bold text-gray-700 group-hover:text-purple-700 transition-colors uppercase">Import Exams</span>
+                            </label>
                         </div>
                     </div>
 
@@ -388,11 +487,11 @@ const PrintAttendance = () => {
                         {selectedClassId === 'all' ? (
                             <div className="space-y-12 print:space-y-0">
                                 {availableClasses.map(c => (
-                                    <AttendanceRegister key={c.id} classId={c.id} selectedMonth={selectedMonth} selectedYear={selectedYear} months={months} />
+                                    <AttendanceRegister key={c.id} classId={c.id} selectedMonth={selectedMonth} selectedYear={selectedYear} months={months} importExamAttendance={importExamAttendance} />
                                 ))}
                             </div>
                         ) : (
-                            <AttendanceRegister classId={selectedClassId} selectedMonth={selectedMonth} selectedYear={selectedYear} months={months} />
+                            <AttendanceRegister classId={selectedClassId} selectedMonth={selectedMonth} selectedYear={selectedYear} months={months} importExamAttendance={importExamAttendance} />
                         )}
                     </div>
                 )}
@@ -403,12 +502,12 @@ const PrintAttendance = () => {
 
 
 export const AttendanceRegister = ({ 
-    classId, selectedMonth, selectedYear, months 
+    classId, selectedMonth, selectedYear, months, importExamAttendance
 }) => {
     const { 
         classes, students, attendance, 
         institutionSettings, mentors,
-        getHistoricalAttendanceStats 
+        getHistoricalAttendanceStats, results, examSettings, subjects
     } = useData();
 
     const [historicalData, setHistoricalData] = useState({ studentTotals: {}, totalWorkingDays: 0, loading: true });
@@ -444,6 +543,8 @@ export const AttendanceRegister = ({
             return (a.gender || 'Male') === 'Male' ? -1 : 1;
         });
 
+    const examStats = importExamAttendance ? getExamAttendanceStats(classId, selectedClass.name, selectedYear, selectedMonth, examSettings, results, classStudents, subjects) : { examDays: new Set(), studentExamDays: {} };
+
     const processAttendance = (studentId) => {
         const studentRecords = (historicalData?.currentMonthRecords || []).filter(r => r.studentId === studentId);
         const currentMonthStats = { days: {}, total: 0 };
@@ -466,6 +567,25 @@ export const AttendanceRegister = ({
             }
         });
 
+        if (importExamAttendance) {
+            examStats.examDays.forEach(day => {
+                const attendedExam = examStats.studentExamDays[studentId] && examStats.studentExamDays[studentId].has(day);
+                if (attendedExam) {
+                    if (currentMonthStats.days[day] !== 'X') {
+                        currentMonthStats.days[day] = 'X';
+                        currentMonthStats.total++;
+                    }
+                } else {
+                    if (currentMonthStats.days[day] === 'X') {
+                        currentMonthStats.days[day] = 'A';
+                        currentMonthStats.total--;
+                    } else if (currentMonthStats.days[day] !== 'A') {
+                        currentMonthStats.days[day] = 'A';
+                    }
+                }
+            });
+        }
+
         return {
             currentMonth: currentMonthStats,
             previousTotal,
@@ -487,17 +607,26 @@ export const AttendanceRegister = ({
             studentIds.has(r.studentId) && 
             (r.classId === classId || !r.classId) // STRICT BATCH FILTER FOR WORKING DAYS
         );
-        const uniqueDates = [...new Set(classRecords.map(r => r.date))];
+        const uniqueDates = new Set(classRecords.map(r => r.date).filter(Boolean));
         let thisMonth = 0;
 
         uniqueDates.forEach(dateStr => {
-            if (!dateStr) return;
             const parts = dateStr.split('-');
             if (parts.length !== 3) return;
             const rYear = parseInt(parts[0], 10);
             const rMonth = parseInt(parts[1], 10) - 1;
             if (rMonth === selectedMonth && rYear === selectedYear) thisMonth++;
         });
+
+        if (importExamAttendance) {
+            examStats.examDays.forEach(day => {
+                const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                if (!uniqueDates.has(dateStr)) {
+                    uniqueDates.add(dateStr);
+                    thisMonth++;
+                }
+            });
+        }
 
         // Use true historical totals from server
         const previous = historicalData.totalWorkingDays;

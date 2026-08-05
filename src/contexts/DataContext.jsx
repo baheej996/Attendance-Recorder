@@ -97,7 +97,7 @@ export const DataProvider = ({ children }) => {
     const [allClassesLimit, setAllClassesLimit] = useState(10);
 
     const [attendanceLimit, setAttendanceLimit] = useState(500);
-    const [resultsLimit, setResultsLimit] = useState(500);
+    const [resultsLimit, setResultsLimit] = useState(5000);
     const [activitiesLimit, setActivitiesLimit] = useState(500);
 
     const [totalCounts, setTotalCounts] = useState({ students: 0, mentors: 0, classes: 0 });
@@ -384,7 +384,7 @@ export const DataProvider = ({ children }) => {
             if (activeFeatures.has('attendance')) {
                 unsubs.push(subscribe('attendance', setAttendance, where('studentId', '==', uid), orderBy('date', 'desc'), limit(currentAttendanceLimit)));
             }
-            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('studentId', '==', uid), limit(resultsLimit)));
+            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('classId', 'in', batchClassIds), limit(resultsLimit)));
             if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('studentId', '==', uid)));
             if (activeFeatures.has('quran')) unsubs.push(
                 subscribe('quranRecitations', setQuranRecitations, where('studentId', '==', uid)),

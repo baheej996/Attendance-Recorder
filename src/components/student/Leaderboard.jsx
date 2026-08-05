@@ -98,45 +98,48 @@ const Leaderboard = () => {
         const sortedStudents = studentList.map(student => {
             const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId);
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
-            const totalMaxMarks = studentResults.reduce((sum, r) => {
-                const subject = subjects.find(s => s.id === r.subjectId);
+            
+            const activeExam = exams.find(e => e.id === selectedExamId);
+            const studentClassSubjects = subjects.filter(s => s.classId === student.classId && s.isExamSubject !== false && !activeExam?.excludedSubjectNames?.includes(s.name));
+            
+            const totalMaxMarks = studentClassSubjects.reduce((sum, subject) => {
                 const studentClass = classes.find(c => c.id === student.classId);
                 const classLookupId = studentClass?.name || student.classId;
-                const subjectLookupId = subject?.name || r.subjectId;
+                const subjectLookupId = subject?.name || subject.id;
                 
                 const customSetting = examSettings?.find(es => 
                     es.examId === selectedExamId && 
                     (es.classId === student.classId || es.classId === classLookupId) && 
-                    (es.subjectId === r.subjectId || es.subjectId === subjectLookupId)
+                    (es.subjectId === subject.id || es.subjectId === subjectLookupId)
                 );
                 
-                const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : (subject ? Number(subject.maxMarks) : 0);
+                const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : Number(subject.maxMarks || 0);
                 return sum + max;
             }, 0);
-            const marksMissed = totalMaxMarks - totalMarks;
+            
+            const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
 
             return {
                 ...student,
                 totalMarks,
                 totalMaxMarks,
-                marksMissed,
+                percentage,
                 resultCount: studentResults.length
             };
-        }).filter(s => s.resultCount > 0)
-            .sort((a, b) => {
-                if (a.marksMissed !== b.marksMissed) return a.marksMissed - b.marksMissed;
-                if (b.totalMarks !== a.totalMarks) return b.totalMarks - a.totalMarks;
-                if (a.id === currentUser?.id) return -1;
-                if (b.id === currentUser?.id) return 1;
-                return 0;
-            });
+        }).sort((a, b) => {
+            if (b.percentage !== a.percentage) return b.percentage - a.percentage;
+            if (b.totalMarks !== a.totalMarks) return b.totalMarks - a.totalMarks;
+            if (a.id === currentUser?.id) return -1;
+            if (b.id === currentUser?.id) return 1;
+            return 0;
+        });
 
         // Compute dense ranks (handles ties: 1, 2, 2, 3...)
         let currentRank = 1;
         for (let i = 0; i < sortedStudents.length; i++) {
             if (i > 0 &&
-                (sortedStudents[i].marksMissed !== sortedStudents[i - 1].marksMissed ||
-                    sortedStudents[i].totalMarks !== sortedStudents[i - 1].totalMarks)) {
+                (sortedStudents[i].percentage !== sortedStudents[i - 1].percentage ||
+                 sortedStudents[i].totalMarks !== sortedStudents[i - 1].totalMarks)) {
                 currentRank++;
             }
             sortedStudents[i].rank = currentRank;
@@ -223,8 +226,8 @@ const Leaderboard = () => {
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-3xl font-bold text-red-100">-{myRankData.marksMissed}</p>
-                            <p className="text-indigo-200 text-xs uppercase tracking-wider">Marks Missed</p>
+                            <p className="text-3xl font-bold text-indigo-100">{myRankData.percentage.toFixed(1)}%</p>
+                            <p className="text-indigo-200 text-xs uppercase tracking-wider">Score</p>
                             <p className="text-indigo-100/70 text-xs mt-1">{myRankData.totalMarks} / {myRankData.totalMaxMarks} Points</p>
                         </div>
                     </div>
@@ -307,7 +310,7 @@ const Leaderboard = () => {
                                     <tr>
                                         <th className="p-4 w-16 text-center">Rank</th>
                                         <th className="p-4">Student</th>
-                                        <th className="p-4 text-right">Missed</th>
+                                        <th className="p-4 text-right">Score</th>
                                         <th className="p-4 text-right">Points</th>
                                     </tr>
                                 </thead>
@@ -325,7 +328,7 @@ const Leaderboard = () => {
                                                         {isMe && <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-full">YOU</span>}
                                                     </div>
                                                 </td>
-                                                <td className="p-4 text-right font-bold text-red-500">-{student.marksMissed}</td>
+                                                <td className="p-4 text-right font-bold text-indigo-600">{student.percentage.toFixed(1)}%</td>
                                                 <td className="p-4 text-right">
                                                     <span className="font-medium text-gray-900">{student.totalMarks}</span>
                                                     <span className="text-xs text-gray-500 ml-1">/ {student.totalMaxMarks}</span>
@@ -366,8 +369,8 @@ const Leaderboard = () => {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-sm font-black text-red-500">-{student.marksMissed}</div>
-                                            <div className="text-[8px] font-black uppercase text-gray-400 tracking-tighter">Missed</div>
+                                            <div className="text-sm font-black text-indigo-600">{student.percentage.toFixed(1)}%</div>
+                                            <div className="text-[8px] font-black uppercase text-gray-400 tracking-tighter">Score</div>
                                         </div>
                                     </div>
                                 );

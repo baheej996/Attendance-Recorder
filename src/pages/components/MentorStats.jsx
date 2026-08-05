@@ -359,6 +359,8 @@ const MentorStats = () => {
         if (!selectedClassId || !selectedExamId) return null;
 
         const effectiveResults = results.filter(r => r.examId === selectedExamId);
+        const selectedExam = exams.find(e => e.id === selectedExamId);
+        const examSubjects = classSubjects.filter(s => s.isExamSubject !== false && !selectedExam?.excludedSubjectNames?.includes(s.name));
 
         let totalClassPercentage = 0;
         let passCount = 0;
@@ -368,7 +370,7 @@ const MentorStats = () => {
             let max = 0;
             let clearedSubjects = 0;
 
-            classSubjects.forEach(sub => {
+            examSubjects.forEach(sub => {
                 const r = studentRes.find(res => res.subjectId === sub.id);
                 const marks = r ? Number(r.marks) : 0;
                 const subMax = Number(sub.maxMarks);
@@ -380,7 +382,7 @@ const MentorStats = () => {
             });
 
             const pct = max > 0 ? (obtained / max) * 100 : 0;
-            const isPassed = classSubjects.length > 0 && clearedSubjects === classSubjects.length;
+            const isPassed = examSubjects.length > 0 && clearedSubjects === examSubjects.length;
 
             if (isPassed) passCount++;
             totalClassPercentage += pct;
@@ -389,7 +391,7 @@ const MentorStats = () => {
         });
 
         // Subject-wise Average
-        const subjectAverages = classSubjects.map(sub => {
+        const subjectAverages = examSubjects.map(sub => {
             const subResults = effectiveResults.filter(r => r.subjectId === sub.id);
             if (subResults.length === 0) return { name: sub.name, avg: 0 };
             const totalMarks = subResults.reduce((acc, curr) => acc + Number(curr.marks), 0);
@@ -412,8 +414,8 @@ const MentorStats = () => {
 
         const topPerformer = sortedPerformances[0]?.student;
 
-        return { studentPerformances: sortedPerformances, classAvg, topPerformer, passPercentage, subjectAverages };
-    }, [selectedClassId, selectedExamId, classStudents, classSubjects, results]);
+        return { studentPerformances: sortedPerformances, classAvg, topPerformer, passPercentage, subjectAverages, examSubjects };
+    }, [selectedClassId, selectedExamId, classStudents, classSubjects, results, exams]);
 
 
     const generateAttendanceReport = () => {
@@ -796,7 +798,7 @@ const MentorStats = () => {
                     student={resultModalData.student}
                     exam={resultModalData.exam}
                     rank={resultModalData.rank}
-                    subjects={classSubjects}
+                    subjects={examStats?.examSubjects || []}
                     results={results}
                     onClose={() => setResultModalData(null)}
                 />

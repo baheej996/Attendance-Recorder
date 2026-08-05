@@ -244,26 +244,36 @@ const MentorLeaderboard = () => {
         const sorted = studentList.map(student => {
             const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId);
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
-            const totalMaxMarks = studentResults.reduce((sum, r) => { 
-                const sub = subjects.find(s => s.id === r.subjectId); 
+            
+            const activeExam = exams.find(e => e.id === selectedExamId);
+            const studentClassSubjects = subjects.filter(s => s.classId === student.classId && s.isExamSubject !== false && !activeExam?.excludedSubjectNames?.includes(s.name));
+            
+            const totalMaxMarks = studentClassSubjects.reduce((sum, subject) => {
                 const studentClass = classes.find(c => c.id === student.classId);
                 const classLookupId = studentClass?.name || student.classId;
-                const subjectLookupId = sub?.name || r.subjectId;
+                const subjectLookupId = subject?.name || subject.id;
                 
                 const customSetting = examSettings?.find(es => 
                     es.examId === selectedExamId && 
                     (es.classId === student.classId || es.classId === classLookupId) && 
-                    (es.subjectId === r.subjectId || es.subjectId === subjectLookupId)
+                    (es.subjectId === subject.id || es.subjectId === subjectLookupId)
                 );
                 
-                const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : (sub ? Number(sub.maxMarks) : 0);
-                return sum + max; 
+                const max = customSetting?.maxMarks ? Number(customSetting.maxMarks) : Number(subject.maxMarks || 0);
+                return sum + max;
             }, 0);
-            return { ...student, totalMarks, totalMaxMarks, marksMissed: totalMaxMarks - totalMarks, resultCount: studentResults.length };
-        }).filter(s => s.resultCount > 0).sort((a, b) => a.marksMissed !== b.marksMissed ? a.marksMissed - b.marksMissed : b.totalMarks - a.totalMarks);
+            
+            const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
+            
+            return { ...student, totalMarks, totalMaxMarks, percentage, resultCount: studentResults.length };
+        }).sort((a, b) => {
+            if (b.percentage !== a.percentage) return b.percentage - a.percentage;
+            return b.totalMarks - a.totalMarks;
+        });
+        
         let rank = 1;
         for (let i = 0; i < sorted.length; i++) {
-            if (i > 0 && (sorted[i].marksMissed !== sorted[i-1].marksMissed || sorted[i].totalMarks !== sorted[i-1].totalMarks)) rank++;
+            if (i > 0 && (sorted[i].percentage !== sorted[i-1].percentage || sorted[i].totalMarks !== sorted[i-1].totalMarks)) rank++;
             sorted[i].rank = rank;
         }
         return sorted;
@@ -285,7 +295,7 @@ const MentorLeaderboard = () => {
         const doc = new jsPDF();
         doc.setFontSize(18); doc.setTextColor(79, 70, 229); doc.text(`Exam Leaderboard - ${exam?.name || 'Report'}`, 14, 20);
         doc.setFontSize(12); doc.setTextColor(107, 114, 128); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
-        autoTable(doc, { startY: 40, head: [['Rank','Reg No','Name','Class','Missed','Total']], body: leaderboardData.map(s => { const cls = classes.find(c => c.id === s.classId); return [s.rank, s.registerNo, s.name, cls ? `${cls.name} ${cls.division}` : 'N/A', `-${s.marksMissed}`, `${s.totalMarks}/${s.totalMaxMarks}`]; }), theme: 'striped', headStyles: { fillColor: [79, 70, 229] } });
+        autoTable(doc, { startY: 40, head: [['Rank','Reg No','Name','Class','Score %','Total']], body: leaderboardData.map(s => { const cls = classes.find(c => c.id === s.classId); return [s.rank, s.registerNo, s.name, cls ? `${cls.name} ${cls.division}` : 'N/A', `${s.percentage.toFixed(1)}%`, `${s.totalMarks}/${s.totalMaxMarks}`]; }), theme: 'striped', headStyles: { fillColor: [79, 70, 229] } });
         doc.save(`Leaderboard_${exam?.name || 'Export'}_${Date.now()}.pdf`);
     };
 
@@ -365,7 +375,7 @@ const MentorLeaderboard = () => {
                                             <th className="p-5 w-24 text-center">Rank</th>
                                             <th className="p-5">Student</th>
                                             <th className="p-5 hidden sm:table-cell">Class</th>
-                                            <th className="p-5 text-right">Missed</th>
+                                            <th className="p-5 text-right">Score</th>
                                             <th className="p-5 text-right">Total Marks</th>
                                         </tr>
                                     </thead>
@@ -382,7 +392,7 @@ const MentorLeaderboard = () => {
                                                         </div>
                                                     </td>
                                                     <td className="p-5 hidden sm:table-cell"><span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700">{cls ? `${cls.name} - ${cls.division}` : 'Unknown'}</span></td>
-                                                    <td className="p-5 text-right"><span className="text-lg font-bold text-red-500">-{student.marksMissed}</span></td>
+                                                    <td className="p-5 text-right"><span className="text-lg font-bold text-indigo-600">{student.percentage.toFixed(1)}%</span></td>
                                                     <td className="p-5 text-right"><span className="text-xl font-extrabold text-gray-900">{student.totalMarks}</span><span className="text-sm font-medium text-gray-400"> / {student.totalMaxMarks}</span></td>
                                                 </tr>
                                             );

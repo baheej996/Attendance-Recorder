@@ -1,0 +1,61 @@
+[
+  {
+    "autoScore": 0,
+    "classId": "T4c85cYnepuaeOGRSUxq",
+    "timestamp": "2026-07-27T15:50:02.965Z",
+    "examName": "Quaterly Examination (2026-2027)",
+    "status": "Submitted",
+    "answers": {},
+    "subjectId": "mERNorBYGA3J3kisYDT0",
+    "studentId": "6ivE2wsGnMusIKRbLCGu",
+    "subjectName": "Thareekh",
+    "examId": "UqEsGYiTXbZobXVY42ue"
+  },
+  {
+    "classId": "bw8xI1uppHQMwNhWyiak",
+    "autoScore": 0,
+    "status": "Submitted",
+    "examName": "Quaterly Examination (2026-2027)",
+    "timestamp": "2026-07-27T14:29:22.616Z",
+    "answers": {},
+    "subjectName": "Thareekh",
+    "examId": "UqEsGYiTXbZobXVY42ue",
+    "subjectId": "OpaqY47g03Vh8XIrWFmW",
+    "studentId": "Pc13Vbhy3beMzIgustVd"
+  },
+  {
+    "subjectId": "peSgMTroF0BG04LhxVX5",
+    "studentId": "GwVFlgZf1VVHveoTor97",
+    "subjectName": "Monthly Test",
+    "examId": "PQ6jAru5WVAHs2K9WvjI",
+    "answers": {},
+    "timestamp": "2026-07-01T14:24:27.970Z",
+    "status": "Submitted",
+    "examName": "Monthly Test (June 2026)",
+    "autoScore": 0,
+    "classId": "LsFRjD514lwEmmRQhXdw"
+  },
+  {
+    "status": "Submitted",
+    "attachments": {},
+    "timestamp": "2026-07-27T14:29:22.665Z",
+    "autoScore": 0,
+    "subjectName": "Thareekh",
+    "examId": "UqEsGYiTXbZobXVY42ue",
+    "subjectId": "OpaqY47g03Vh8XIrWFmW",
+    "studentId": "Pc13Vbhy3beMzIgustVd",
+    "answers": {}
+  },
+  {
+    "status": "Submitted",
+    "examName": "Monthly Test (May 2026)",
+    "timestamp": "2026-05-25T10:43:44.239Z",
+    "classId": "NezHSSF8va9AtYx22nSv",
+    "autoScore": 0,
+    "subjectName": "Monthly Test",
+    "examId": "SZpZ7dPHQt9naKeaBZiC",
+    "subjectId": "HEIR2njGhLYGLSK3s5Fu",
+    "studentId": "zsf6MBhl2C1IYhBlb1Jg",
+    "answers": {}
+  }
+]

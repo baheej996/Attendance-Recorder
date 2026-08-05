@@ -160,6 +160,7 @@ const StudentExamView = () => {
             subjectId: realSubject ? realSubject.id : selectedSubjectId,
             subjectName: selectedSubjectId,
             studentId: currentUser.id,
+            classId: currentUser.classId,
             answers: answersRef.current,
             attachments: attachmentsRef.current
         };

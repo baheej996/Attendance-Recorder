@@ -33,7 +33,7 @@ const SubjectManager = () => {
     };
 
     // We now track 'gradeName' instead of specific 'classId'
-    const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both' });
+    const [newSubject, setNewSubject] = useState({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both', isManualEntry: false });
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState(''); // New Search State
     const [sortBy, setSortBy] = useState('grade'); // New Sort State: 'grade' | 'name'
@@ -93,7 +93,8 @@ const SubjectManager = () => {
                         passMarks: Number(newSubject.passMarks),
                         totalChapters: Number(newSubject.totalChapters) || 0,
                         isExamSubject: newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both',
-                        isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both'
+                        isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both',
+                        isManualEntry: newSubject.isManualEntry || false
                     });
                     updatedCount++;
                 });
@@ -109,7 +110,8 @@ const SubjectManager = () => {
                             passMarks: Number(newSubject.passMarks),
                             totalChapters: Number(newSubject.totalChapters) || 0,
                             isExamSubject: newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both',
-                            isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both'
+                            isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both',
+                            isManualEntry: newSubject.isManualEntry || false
                         });
                         updatedCount++;
                     } else if (i >= originalSubjects.length && i < targetClasses.length) {
@@ -121,7 +123,8 @@ const SubjectManager = () => {
                             passMarks: Number(newSubject.passMarks),
                             totalChapters: Number(newSubject.totalChapters) || 0,
                             isExamSubject: newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both',
-                            isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both'
+                            isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both',
+                            isManualEntry: newSubject.isManualEntry || false
                         });
                         addedCount++;
                     } else if (i < originalSubjects.length && i >= targetClasses.length) {
@@ -154,7 +157,8 @@ const SubjectManager = () => {
                         passMarks: Number(newSubject.passMarks),
                         totalChapters: Number(newSubject.totalChapters) || 0,
                         isExamSubject: newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both',
-                        isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both'
+                        isClassSubject: newSubject.subjectMode === 'class' || newSubject.subjectMode === 'both',
+                        isManualEntry: newSubject.isManualEntry || false
                     });
                     addedCount++;
                 }
@@ -173,11 +177,12 @@ const SubjectManager = () => {
             maxMarks: newSubject.maxMarks,
             passMarks: newSubject.passMarks,
             totalChapters: newSubject.totalChapters,
-            subjectMode: newSubject.subjectMode
+            subjectMode: newSubject.subjectMode,
+            isManualEntry: newSubject.isManualEntry
         });
 
         if (editingId) {
-            setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both' });
+            setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both', isManualEntry: false });
         }
     };
 
@@ -197,7 +202,8 @@ const SubjectManager = () => {
             maxMarks: subject.maxMarks,
             passMarks: subject.passMarks || 40,
             totalChapters: subject.totalChapters || 0,
-            subjectMode: currentMode
+            subjectMode: currentMode,
+            isManualEntry: subject.isManualEntry || false
         });
         const formElement = document.getElementById('subject-form');
         if (formElement) formElement.scrollIntoView({ behavior: 'smooth' });
@@ -207,7 +213,7 @@ const SubjectManager = () => {
         setEditingId(null);
         setEditingOriginalName('');
         setEditingOriginalGrade('');
-        setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both' });
+        setNewSubject({ name: '', gradeName: '', maxMarks: 100, passMarks: 40, totalChapters: 0, subjectMode: 'both', isManualEntry: false });
     };
 
     // Helper to get class info
@@ -397,6 +403,15 @@ const SubjectManager = () => {
                             <p className="text-xs text-gray-500 mt-1">
                                 Controls where this subject appears for students and mentors.
                             </p>
+                            <label className="flex items-center gap-2 cursor-pointer mt-3">
+                                <input
+                                    type="checkbox"
+                                    checked={newSubject.isManualEntry || false}
+                                    onChange={(e) => setNewSubject({ ...newSubject, isManualEntry: e.target.checked })}
+                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                />
+                                <span className="text-sm text-gray-700">Manual Mark Entry Only (e.g. Oral Exams)</span>
+                            </label>
                         </div>
 
                         {(newSubject.subjectMode === 'exam' || newSubject.subjectMode === 'both') && (

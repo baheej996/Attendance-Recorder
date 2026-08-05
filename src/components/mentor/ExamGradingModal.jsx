@@ -91,11 +91,12 @@ const ExamGradingModal = ({ isOpen, onClose, examId, subjectId, studentId, stude
 
     const handleSave = () => {
         const totalScore = calculateCurrentTotal();
+        const student = students.find(s => s.id === studentId);
         // Update Results
         recordResult({
             examId,
             subjectId,
-            records: [{ studentId, marks: totalScore }]
+            records: [{ studentId, marks: totalScore, classId: student?.classId }]
         });
         onClose();
         onClose();
