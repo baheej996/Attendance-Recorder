@@ -20,7 +20,7 @@ const StudentResultView = () => {
 
     // Get results for current student for selected exam
     const myResults = results.filter(r =>
-        r.studentId === currentUser?.id && r.examId === selectedExamId
+        r.studentId === currentUser?.id && r.examId === selectedExamId && subjects.some(s => s.id === r.subjectId)
     );
 
     const getSubjectName = (id) => {

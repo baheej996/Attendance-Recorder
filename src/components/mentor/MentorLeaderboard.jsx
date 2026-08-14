@@ -242,7 +242,7 @@ const MentorLeaderboard = () => {
 
     const getAggregatedScores = (studentList) => {
         const sorted = studentList.map(student => {
-            const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId);
+            const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExamId && subjects.some(s => s.id === r.subjectId));
             const totalMarks = studentResults.reduce((sum, r) => sum + Number(r.marks), 0);
             
             const activeExam = exams.find(e => e.id === selectedExamId);

@@ -49,6 +49,8 @@ export const DataProvider = ({ children }) => {
     const [ramadanLogs, setRamadanLogs] = useState([]);
     const [quranProgress, setQuranProgress] = useState([]);
     const [quranRecitations, setQuranRecitations] = useState([]);
+    const [sunnahRecitations, setSunnahRecitations] = useState([]);
+    const [sunnahSettings, setSunnahSettings] = useState([]);
     const [gameProgress, setGameProgress] = useState([]);
     const [liveClasses, setLiveClasses] = useState([]);
     const [syllabi, setSyllabi] = useState([]);
@@ -138,11 +140,13 @@ export const DataProvider = ({ children }) => {
         leaderboard: true,
         star: true,
         "quran-recitation": true,
+        "sunnah-campaign": true,
         feedback: true,
         help: true
     });
     const [mentorFeatureFlags, setMentorFeatureFlags] = useState({
-        "quran-recitation": true
+        "quran-recitation": true,
+        "sunnah-campaign": true
     });
     const [classFeatureFlags, setClassFeatureFlags] = useState([]);
 
@@ -350,6 +354,7 @@ export const DataProvider = ({ children }) => {
             setResults([]);
             setPrayerRecords([]);
             setQuranRecitations([]);
+            setSunnahRecitations([]);
             setChatMessages([]);
             setUnreadChats([]);
             setGameProgress([]);
@@ -389,6 +394,10 @@ export const DataProvider = ({ children }) => {
             if (activeFeatures.has('quran')) unsubs.push(
                 subscribe('quranRecitations', setQuranRecitations, where('studentId', '==', uid)),
                 subscribe('quranProgress', setQuranProgress, where('studentId', '==', uid))
+            );
+            if (activeFeatures.has('sunnah')) unsubs.push(
+                subscribe('sunnahRecitations', setSunnahRecitations, where('studentId', '==', uid)),
+                subscribe('sunnahSettings', setSunnahSettings, where('id', '==', cid))
             );
             if (activeFeatures.has('activities')) unsubs.push(
                 subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : [''])),
@@ -470,6 +479,10 @@ export const DataProvider = ({ children }) => {
                     subscribe('quranRecitations', setQuranRecitations, where('classId', 'in', assignedClassIds)),
                     subscribe('quranProgress', setQuranProgress, where('classId', 'in', assignedClassIds))
                 );
+                if (activeFeatures.has('sunnah')) unsubs.push(
+                    subscribe('sunnahRecitations', setSunnahRecitations, where('classId', 'in', assignedClassIds)),
+                    subscribe('sunnahSettings', setSunnahSettings)
+                );
                 if (activeFeatures.has('activities')) unsubs.push(
                     // Scope to the mentor's assigned classes so the 500-doc cap can't hide a freshly
                     // written submission (especially for older activities whose deterministic doc ID
@@ -541,6 +554,10 @@ export const DataProvider = ({ children }) => {
             if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, limit(resultsLimit)));
             if (activeFeatures.has('activities')) unsubs.push(subscribe('activitySubmissions', setActivitySubmissions));
             if (activeFeatures.has('quran')) unsubs.push(subscribe('quranRecitations', setQuranRecitations, limit(5000)));
+            if (activeFeatures.has('sunnah')) unsubs.push(
+                subscribe('sunnahRecitations', setSunnahRecitations, limit(5000)),
+                subscribe('sunnahSettings', setSunnahSettings)
+            );
             
             // Note: Admins may still need full attendance/results for reports, 
             // but those should ideally be fetched on-demand in the reports page.
@@ -2232,6 +2249,8 @@ export const DataProvider = ({ children }) => {
         },
 
         quranRecitations,
+        sunnahRecitations,
+        sunnahSettings,
 
         // Notifications
         notifications,

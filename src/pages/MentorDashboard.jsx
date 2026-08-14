@@ -23,6 +23,7 @@ import SpecialPrayerManager from '../components/mentor/SpecialPrayerManager';
 import MentorPrayerStats from '../components/mentor/MentorPrayerStats';
 import MentorRamadan from '../components/mentor/MentorRamadan';
 import MentorQuranRecitation from '../components/mentor/MentorQuranRecitation';
+import MentorSunnahCampaign from '../components/mentor/MentorSunnahCampaign';
 import MentorLeaderboard from '../components/mentor/MentorLeaderboard';
 import MentorSubjects from '../components/mentor/MentorSubjects';
 import ClassSubstitution from '../components/mentor/ClassSubstitution';
@@ -633,6 +634,7 @@ const MentorDashboard = () => {
                         <Route path="/chat" element={<MentorChat />} />
                         <Route path="/activities" element={<ActivitiesManager />} />
                         <Route path="/quran-recitation" element={<MentorQuranRecitation />} />
+                        <Route path="/sunnah-campaign" element={<MentorSunnahCampaign />} />
                         <Route path="/logbook" element={<LogBook />} />
                         <Route path="/subjects" element={<MentorSubjects />} />
                         <Route path="/prayer-chart" element={<PrayerStats />} />

@@ -20,6 +20,7 @@ import StudentStarView from '../components/student/StudentStarView';
 import StudentGames from './student/StudentGames';
 import StudentRamadan from '../components/student/StudentRamadan';
 import StudentQuranRecitation from '../components/student/StudentQuranRecitation';
+import StudentSunnahCampaign from '../components/student/StudentSunnahCampaign';
 import StudentSubjects from '../components/student/StudentSubjects';
 import AttendanceHistory from '../components/student/AttendanceHistory';
 import StudentWelcome from '../components/student/StudentWelcome';
@@ -601,6 +602,7 @@ const StudentDashboard = () => {
                         <Route path="/chat" element={<StudentChat />} />
                         <Route path="/prayer-chart" element={<PrayerChart />} />
                         <Route path="/quran-recitation" element={<StudentQuranRecitation />} />
+                        <Route path="/sunnah-campaign" element={<StudentSunnahCampaign />} />
                         <Route path="/ramadan" element={<StudentRamadan />} />
                         <Route path="/history" element={<ClassHistory />} />
                         <Route path="/attendance" element={<AttendanceHistory />} />

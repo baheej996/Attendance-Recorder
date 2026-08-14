@@ -27,7 +27,8 @@ import {
     Sparkles,
     ArrowRight,
     MessageCircle,
-    Gamepad2
+    Gamepad2,
+    BookHeart
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -208,6 +209,7 @@ const StudentWelcome = () => {
         { icon: MessageSquare, label: 'Chat', path: '/student/chat', key: 'chat', color: 'bg-blue-500', badge: unreadChatCount },
         { icon: BookOpen, label: 'Prayer', path: '/student/prayer-chart', key: 'prayer', color: 'bg-cyan-500' },
         { icon: BookOpen, label: 'Quran', path: '/student/quran-recitation', key: 'quran-recitation', color: 'bg-emerald-600' },
+        { icon: BookHeart, label: 'Sunnah', path: '/student/sunnah-campaign', key: 'sunnah', color: 'bg-rose-600' },
         { icon: Moon, label: 'Ramadan', path: '/student/ramadan', key: 'ramadan', color: 'bg-indigo-700' },
         { icon: History, label: 'History', path: '/student/history', key: 'history', color: 'bg-slate-500' },
         { icon: CheckCircle, label: 'Attendance', path: '/student/attendance', key: 'attendanceHistory', color: 'bg-teal-500', badge: unreadAttendanceCount },
