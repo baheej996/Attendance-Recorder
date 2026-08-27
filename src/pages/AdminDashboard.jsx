@@ -108,7 +108,10 @@ const AdminDashboard = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <header className="bg-white shadow-sm z-30 sticky top-0">
+            <header className={clsx(
+                "bg-white shadow-sm z-30 sticky top-0 transition-all duration-300",
+                (isExpandedView && activeTab === 'sunnah-campaign') && "hidden lg:hidden"
+            )}>
                 <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="lg:hidden">
@@ -152,7 +155,10 @@ const AdminDashboard = () => {
                 isDanger={true}
             />
 
-            <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
+            <main className={clsx(
+                "flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative transition-all duration-300",
+                (isExpandedView && activeTab === 'sunnah-campaign') ? "max-w-full" : "max-w-[1600px]"
+            )}>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar Navigation */}
