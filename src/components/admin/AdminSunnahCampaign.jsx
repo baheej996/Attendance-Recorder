@@ -20,16 +20,6 @@ const AdminSunnahCampaign = () => {
         return sunnahRecitations.reduce((acc, sr) => acc + (Number(sr.count) || 0), 0);
     }, [sunnahRecitations]);
 
-    // Calculate count of students who have recorded at least 1 recitation
-    const activeRecitersCount = useMemo(() => {
-        const studentIds = new Set(
-            sunnahRecitations
-                .filter(sr => (Number(sr.count) || 0) > 0)
-                .map(sr => sr.studentId)
-        );
-        return studentIds.size;
-    }, [sunnahRecitations]);
-
     const rankings = useMemo(() => {
         const data = mentors.map(mentor => {
             const assignedClassIds = mentor.assignedClassIds || (mentor.classId ? [mentor.classId] : []);
@@ -127,7 +117,7 @@ const AdminSunnahCampaign = () => {
                     <BookHeart className="w-64 h-64 text-white" />
                 </div>
 
-                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                     <div className="space-y-3">
                         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider text-rose-100 border border-white/20">
                             <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
@@ -145,27 +135,6 @@ const AdminSunnahCampaign = () => {
                             <span className="text-xl sm:text-2xl font-black text-rose-200 uppercase tracking-widest">
                                 Swalaths
                             </span>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 shrink-0 pt-2 lg:pt-0">
-                        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center">
-                            <div className="text-2xl sm:text-3xl font-black text-white">
-                                {activeRecitersCount.toLocaleString()}
-                            </div>
-                            <div className="text-xs text-rose-100 font-semibold mt-1">Reciting Students</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center">
-                            <div className="text-2xl sm:text-3xl font-black text-white">
-                                {students.filter(s => s.status === 'Active').length.toLocaleString()}
-                            </div>
-                            <div className="text-xs text-rose-100 font-semibold mt-1">Total Active Students</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center col-span-2 sm:col-span-1">
-                            <div className="text-2xl sm:text-3xl font-black text-white">
-                                {mentors.length.toLocaleString()}
-                            </div>
-                            <div className="text-xs text-rose-100 font-semibold mt-1">Total Mentors</div>
                         </div>
                     </div>
                 </div>
