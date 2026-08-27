@@ -40,6 +40,7 @@ const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isExpandedView, setIsExpandedView] = useState(false);
 
     const pendingRequestsCount = adminRequests?.filter(r => r.status === 'Pending').length || 0;
     const pendingSubsCount = substitutionRequests?.filter(r => r.status === 'Pending Admin Approval').length || 0;
@@ -92,7 +93,7 @@ const AdminDashboard = () => {
             case 'evaluations': return <EvaluationManager />;
             case 'mentor-evaluation': return <MentorEvaluation />;
             case 'mentor-quran-tracking': return <AdminMentorQuranTracker />;
-            case 'sunnah-campaign': return <AdminSunnahCampaign />;
+            case 'sunnah-campaign': return <AdminSunnahCampaign isExpanded={isExpandedView} onToggleExpand={() => setIsExpandedView(!isExpandedView)} />;
             case 'leaderboard': return <AdminMentorLeaderboard />;
             case 'settings': return <SettingsManager />;
             case 'help': return <Help />;
@@ -213,7 +214,10 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* Desktop Sidebar (hidden on mobile) */}
-                    <div className="hidden lg:block lg:col-span-1 space-y-4 sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pb-4 pr-1">
+                    <div className={clsx(
+                        "space-y-4 sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pb-4 pr-1 transition-all duration-300",
+                        (isExpandedView && activeTab === 'sunnah-campaign') ? "hidden lg:hidden" : "hidden lg:block lg:col-span-1"
+                    )}>
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                             <div className="p-4 bg-gray-50 border-b border-gray-100">
                                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</h2>
@@ -265,7 +269,10 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="lg:col-span-3">
+                    <div className={clsx(
+                        "transition-all duration-300",
+                        (isExpandedView && activeTab === 'sunnah-campaign') ? "lg:col-span-4 w-full" : "lg:col-span-3"
+                    )}>
                         {renderContent()}
                     </div>
                 </div>

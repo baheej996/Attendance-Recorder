@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { Search, Users, Activity, BookHeart, Sparkles } from 'lucide-react';
+import { Search, Users, Activity, BookHeart, Sparkles, Maximize2, Minimize2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -90,7 +90,7 @@ const SlidingCounter = ({ value }) => {
     );
 };
 
-const AdminSunnahCampaign = () => {
+const AdminSunnahCampaign = ({ isExpanded = false, onToggleExpand }) => {
     const { mentors = [], students = [], sunnahRecitations = [], classes = [], requireFeature } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [topLimit, setTopLimit] = useState(10);
@@ -183,9 +183,9 @@ const AdminSunnahCampaign = () => {
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-200">
+                    <div className="w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-200 shrink-0">
                         <BookHeart className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -196,6 +196,26 @@ const AdminSunnahCampaign = () => {
                         </div>
                     </div>
                 </div>
+
+                {onToggleExpand && (
+                    <button
+                        onClick={onToggleExpand}
+                        className="hidden lg:flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
+                        title={isExpanded ? "Show Sidebar" : "Hide Sidebar & Expand Page"}
+                    >
+                        {isExpanded ? (
+                            <>
+                                <Minimize2 className="w-4 h-4 text-rose-600" />
+                                <span>Show Sidebar</span>
+                            </>
+                        ) : (
+                            <>
+                                <Maximize2 className="w-4 h-4 text-rose-600" />
+                                <span>Expand View</span>
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
 
             {/* Grand Total Hero Banner */}
