@@ -4,6 +4,52 @@ import { Card } from '../ui/Card';
 import { Search, Users, Activity, BookHeart, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 
+// Custom hook for smooth count-up animation
+const useCountUp = (endValue, duration = 2000) => {
+    const [count, setCount] = useState(0);
+    const prevEndRef = React.useRef(0);
+
+    useEffect(() => {
+        const startValue = prevEndRef.current;
+        const targetValue = endValue || 0;
+        prevEndRef.current = targetValue;
+
+        if (startValue === targetValue) {
+            setCount(targetValue);
+            return;
+        }
+
+        let startTime = null;
+        let animationFrameId;
+
+        const step = (timestamp) => {
+            if (!startTime) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // Ease-out exponential formula for silky smooth deceleration
+            const easeOutExpo = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+            const currentCount = Math.round(startValue + (targetValue - startValue) * easeOutExpo);
+
+            setCount(currentCount);
+
+            if (progress < 1) {
+                animationFrameId = requestAnimationFrame(step);
+            }
+        };
+
+        animationFrameId = requestAnimationFrame(step);
+
+        return () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        };
+    }, [endValue, duration]);
+
+    return count;
+};
+
 const AdminSunnahCampaign = () => {
     const { mentors = [], students = [], sunnahRecitations = [], classes = [], requireFeature } = useData();
     const [searchTerm, setSearchTerm] = useState('');
@@ -19,6 +65,9 @@ const AdminSunnahCampaign = () => {
     const totalSwalathCount = useMemo(() => {
         return sunnahRecitations.reduce((acc, sr) => acc + (Number(sr.count) || 0), 0);
     }, [sunnahRecitations]);
+
+    // Smooth count-up animated value
+    const animatedCount = useCountUp(totalSwalathCount, 2000);
 
     const rankings = useMemo(() => {
         const data = mentors.map(mentor => {
@@ -130,7 +179,7 @@ const AdminSunnahCampaign = () => {
 
                         <div className="flex items-baseline gap-3 pt-1">
                             <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tight font-mono text-white drop-shadow-md">
-                                {totalSwalathCount.toLocaleString()}
+                                {animatedCount.toLocaleString()}
                             </span>
                             <span className="text-xl sm:text-2xl font-black text-rose-200 uppercase tracking-widest">
                                 Swalaths
