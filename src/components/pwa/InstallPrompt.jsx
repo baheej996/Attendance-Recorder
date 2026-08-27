@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Share, PlusSquare, Smartphone } from 'lucide-react';
 import { clsx } from 'clsx';
+import { safeSessionStorage } from '../../utils/safeStorage';
 
 const InstallPrompt = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -28,7 +29,7 @@ const InstallPrompt = () => {
         // For iOS, show prompt after a small delay if not standalone
         if (isIOSDevice && !isStandalone) {
             // Check if we've already shown it this session to avoid annoyance
-            const hasSeenPrompt = sessionStorage.getItem('pwa_prompt_seen');
+            const hasSeenPrompt = safeSessionStorage.getItem('pwa_prompt_seen');
             if (!hasSeenPrompt) {
                 setTimeout(() => setIsVisible(true), 3000);
             }
@@ -51,7 +52,7 @@ const InstallPrompt = () => {
 
     const handleDismiss = () => {
         setIsVisible(false);
-        sessionStorage.setItem('pwa_prompt_seen', 'true');
+        safeSessionStorage.setItem('pwa_prompt_seen', 'true');
     };
 
     if (!isVisible) return null;

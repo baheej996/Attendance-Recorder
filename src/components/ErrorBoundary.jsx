@@ -1,4 +1,5 @@
 import React from 'react';
+import { safeLocalStorage, safeSessionStorage } from '../utils/safeStorage';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -32,10 +33,11 @@ class ErrorBoundary extends React.Component {
 
                         <button
                             onClick={() => {
-                                localStorage.clear();
+                                safeLocalStorage.clear();
+                                safeSessionStorage.clear();
                                 window.location.reload();
                             }}
-                            className="ml-4 px-6 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                            className="ml-4 px-6 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
                         >
                             Emergency Reset (Clears Data)
                         </button>

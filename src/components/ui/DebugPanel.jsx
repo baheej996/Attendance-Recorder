@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Bug, ChevronDown, ChevronUp, Copy, Trash2, X } from 'lucide-react';
+import { safeLocalStorage } from '../../utils/safeStorage';
 
 const MAX_ENTRIES = 100;
 const STORAGE_KEY = 'debugPanelEnabled';
@@ -45,7 +46,7 @@ export default function DebugPanel() {
             const q = new URLSearchParams(window.location.search);
             if (q.get('debug') === '0') return false;
             if (q.get('debug') === '1') return true;
-            const stored = localStorage.getItem(STORAGE_KEY);
+            const stored = safeLocalStorage.getItem(STORAGE_KEY);
             return stored === null ? true : stored === '1';
         } catch {
             return true;
@@ -58,7 +59,7 @@ export default function DebugPanel() {
 
     // Persist toggle
     useEffect(() => {
-        try { localStorage.setItem(STORAGE_KEY, enabled ? '1' : '0'); } catch { /* ignore */ }
+        safeLocalStorage.setItem(STORAGE_KEY, enabled ? '1' : '0');
     }, [enabled]);
 
     // Keyboard shortcut: Ctrl/Cmd + Shift + D to toggle the panel visibility

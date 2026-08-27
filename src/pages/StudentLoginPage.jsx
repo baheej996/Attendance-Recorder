@@ -4,6 +4,7 @@ import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { safeLocalStorage } from '../utils/safeStorage';
 
 import { GraduationCap, History, X } from 'lucide-react';
 
@@ -13,6 +14,7 @@ const StudentLoginPage = () => {
 
     const [registerNo, setRegisterNo] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const [recentLogins, setRecentLogins] = useState([]);
 
     // Auto-redirect already-logged-in students straight to their dashboard.
@@ -33,7 +35,7 @@ const StudentLoginPage = () => {
 
         // Load recent logins
         try {
-            const history = JSON.parse(localStorage.getItem('student_login_history') || '[]');
+            const history = JSON.parse(safeLocalStorage.getItem('student_login_history') || '[]');
             if (Array.isArray(history)) {
                 setRecentLogins(history);
             }
@@ -51,11 +53,11 @@ const StudentLoginPage = () => {
 
     const saveLoginHistory = (regNo) => {
         try {
-            let history = JSON.parse(localStorage.getItem('student_login_history') || '[]');
+            let history = JSON.parse(safeLocalStorage.getItem('student_login_history') || '[]');
             if (!Array.isArray(history)) history = [];
             // Add to top, remove duplicates, keep max 5
             history = [regNo, ...history.filter(r => r !== regNo)].slice(0, 5);
-            localStorage.setItem('student_login_history', JSON.stringify(history));
+            safeLocalStorage.setItem('student_login_history', JSON.stringify(history));
         } catch (e) {
             console.error("Failed to save login history", e);
         }
@@ -65,7 +67,7 @@ const StudentLoginPage = () => {
         e.stopPropagation(); // Prevent clicking the parent button
         const updated = recentLogins.filter(r => r !== regNo);
         setRecentLogins(updated);
-        localStorage.setItem('student_login_history', JSON.stringify(updated));
+        safeLocalStorage.setItem('student_login_history', JSON.stringify(updated));
     };
 
     const handleLogin = async (e) => {
@@ -135,7 +137,7 @@ const StudentLoginPage = () => {
                             <button
                                 type="button"
                                 onClick={() => {
-                                    localStorage.removeItem('student_login_history');
+                                    safeLocalStorage.removeItem('student_login_history');
                                     setRecentLogins([]);
                                 }}
                                 className="text-xs text-red-400 hover:text-red-600 transition-colors"

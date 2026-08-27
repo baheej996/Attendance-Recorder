@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { safeLocalStorage } from '../utils/safeStorage';
 import { db } from '../firebase';
 import {
     collection,
@@ -152,8 +153,13 @@ export const DataProvider = ({ children }) => {
 
     // Local Session State (No need to sync across devices)
     const [currentUser, setCurrentUser] = useState(() => {
-        const saved = localStorage.getItem('currentUser');
-        return saved ? JSON.parse(saved) : null;
+        try {
+            const saved = safeLocalStorage.getItem('currentUser');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            console.error("Error parsing saved currentUser:", e);
+            return null;
+        }
     });
 
     // --- Current User Sync ---
@@ -802,8 +808,8 @@ export const DataProvider = ({ children }) => {
 
     // --- Auth Logic ---
     useEffect(() => {
-        if (currentUser) localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        else localStorage.removeItem('currentUser');
+        if (currentUser) safeLocalStorage.setItem('currentUser', JSON.stringify(currentUser));
+        else safeLocalStorage.removeItem('currentUser');
     }, [currentUser]);
 
     const login = (user) => setCurrentUser(user);

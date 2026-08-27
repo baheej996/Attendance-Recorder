@@ -5,6 +5,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Upload, FileText, X, Calendar, Info, Lock, ArrowRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { safeLocalStorage } from '../../utils/safeStorage';
 
 const StudentExamView = () => {
     const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings, students, updateStudent, requireFeature } = useData();
@@ -28,10 +29,10 @@ const StudentExamView = () => {
     
     // Unique Device Fingerprint (Stored in browser session)
     const [deviceId] = useState(() => {
-        let id = localStorage.getItem('samastha_device_id');
+        let id = safeLocalStorage.getItem('samastha_device_id');
         if (!id) {
             id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('samastha_device_id', id);
+            safeLocalStorage.setItem('samastha_device_id', id);
         }
         return id;
     });
@@ -83,7 +84,7 @@ const StudentExamView = () => {
     // Timer Effect
     useEffect(() => {
         // Restore Session
-        const savedSession = localStorage.getItem(`active_exam_session_${currentUser.id}`);
+        const savedSession = safeLocalStorage.getItem(`active_exam_session_${currentUser.id}`);
         if (savedSession && !activeExamId) {
             const { examId, subjectName } = JSON.parse(savedSession);
             setActiveExamId(examId);
@@ -106,11 +107,11 @@ const StudentExamView = () => {
 
         if (durationMins > 0) {
             const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
-            const storedStart = localStorage.getItem(storageKey);
+            const storedStart = safeLocalStorage.getItem(storageKey);
             let startTime = storedStart ? parseInt(storedStart) : Date.now();
 
             if (!storedStart) {
-                localStorage.setItem(storageKey, startTime.toString());
+                safeLocalStorage.setItem(storageKey, startTime.toString());
             }
 
             const endTime = startTime + (durationMins * 60 * 1000);
@@ -169,7 +170,7 @@ const StudentExamView = () => {
 
         // Clear Storage
         const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
-        localStorage.removeItem(storageKey);
+        safeLocalStorage.removeItem(storageKey);
 
         setActiveExamId(null);
         setSelectedSubjectId(null);
@@ -192,13 +193,13 @@ const StudentExamView = () => {
 
         if (durationMins > 0) {
             const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
-            const storedStart = localStorage.getItem(storageKey);
+            const storedStart = safeLocalStorage.getItem(storageKey);
 
             // If we just started (no storage), set it. 
             // Note: handleStartExam might have set it, but safe to check here.
             let startTime = storedStart ? parseInt(storedStart) : Date.now();
             if (!storedStart) {
-                localStorage.setItem(storageKey, startTime.toString());
+                safeLocalStorage.setItem(storageKey, startTime.toString());
             }
 
             const endTime = startTime + (durationMins * 60 * 1000);
@@ -239,7 +240,7 @@ const StudentExamView = () => {
             await updateStudent(currentUser.id, { activeExamSession: null });
         }
         
-        localStorage.removeItem(`active_exam_session_${currentUser.id}`);
+        safeLocalStorage.removeItem(`active_exam_session_${currentUser.id}`);
         setActiveExamId(null);
         setSelectedSubjectId(null);
         setTimeLeft(null);
@@ -375,11 +376,11 @@ const StudentExamView = () => {
     };
 
     const confirmSubmit = async () => {
-        localStorage.removeItem(`active_exam_session_${currentUser.id}`);
+        safeLocalStorage.removeItem(`active_exam_session_${currentUser.id}`);
 
         // Clear Timer Storage
         const storageKey = `exam_start_${activeExamId}_${selectedSubjectId}_${currentUser.id}`;
-        localStorage.removeItem(storageKey);
+        safeLocalStorage.removeItem(storageKey);
 
         // Lookup correct GUID for subject
         const realSubject = subjects.find(s => s.name === selectedSubjectId && s.classId === currentUser.classId);

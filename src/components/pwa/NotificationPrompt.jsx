@@ -3,6 +3,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import { Bell, X, Shield, ArrowRight } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { safeSessionStorage } from '../../utils/safeStorage';
 
 const NotificationPrompt = () => {
     const { permission, requestPermission } = useNotifications();
@@ -10,7 +11,7 @@ const NotificationPrompt = () => {
 
     useEffect(() => {
         // Only show if permission is default and not dismissed this session
-        const dismissed = sessionStorage.getItem('notificationPromptDismissed');
+        const dismissed = safeSessionStorage.getItem('notificationPromptDismissed');
         if (permission === 'default' && !dismissed) {
             const timer = setTimeout(() => setShow(true), 3000); // Wait 3s after load
             return () => clearTimeout(timer);
@@ -24,7 +25,7 @@ const NotificationPrompt = () => {
 
     const handleDismiss = () => {
         setShow(false);
-        sessionStorage.setItem('notificationPromptDismissed', 'true');
+        safeSessionStorage.setItem('notificationPromptDismissed', 'true');
     };
 
     if (!show) return null;
