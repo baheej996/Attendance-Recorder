@@ -3,9 +3,10 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Search, Users, Activity, BookHeart, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Custom hook for smooth count-up animation
-const useCountUp = (endValue, duration = 2000) => {
+const useCountUp = (endValue, duration = 2200) => {
     const [count, setCount] = useState(0);
     const prevEndRef = React.useRef(0);
 
@@ -48,6 +49,45 @@ const useCountUp = (endValue, duration = 2000) => {
     }, [endValue, duration]);
 
     return count;
+};
+
+// Rolling digit counter (bottom-to-top update animation)
+const SlidingCounter = ({ value }) => {
+    const formatted = value.toLocaleString();
+    const chars = formatted.split('');
+
+    return (
+        <div className="flex items-baseline text-6xl sm:text-7xl md:text-8xl font-black tracking-tight font-mono text-white drop-shadow-md select-none overflow-hidden py-1">
+            {chars.map((char, index) => {
+                if (char === ',') {
+                    return (
+                        <span key={`comma-${index}`} className="text-white/80">
+                            ,
+                        </span>
+                    );
+                }
+                return (
+                    <div
+                        key={`col-${index}`}
+                        className="relative h-[1.15em] overflow-hidden inline-flex items-center justify-center min-w-[0.58em]"
+                    >
+                        <AnimatePresence mode="popLayout">
+                            <motion.span
+                                key={`digit-${index}-${char}`}
+                                initial={{ y: "80%", opacity: 0 }}
+                                animate={{ y: "0%", opacity: 1 }}
+                                exit={{ y: "-80%", opacity: 0 }}
+                                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                                className="inline-block leading-none"
+                            >
+                                {char}
+                            </motion.span>
+                        </AnimatePresence>
+                    </div>
+                );
+            })}
+        </div>
+    );
 };
 
 const AdminSunnahCampaign = () => {
@@ -177,11 +217,9 @@ const AdminSunnahCampaign = () => {
                             Total Count of Whole Students' Swalath Recitations
                         </p>
 
-                        <div className="flex items-baseline gap-3 pt-1">
-                            <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tight font-mono text-white drop-shadow-md">
-                                {animatedCount.toLocaleString()}
-                            </span>
-                            <span className="text-xl sm:text-2xl font-black text-rose-200 uppercase tracking-widest">
+                        <div className="flex items-baseline gap-3 pt-1 flex-wrap">
+                            <SlidingCounter value={animatedCount} />
+                            <span className="text-xl sm:text-2xl font-black text-rose-200 uppercase tracking-widest pb-1 sm:pb-3">
                                 Swalaths
                             </span>
                         </div>
