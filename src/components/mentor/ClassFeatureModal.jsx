@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, X, Book, CheckCircle, Moon } from 'lucide-react';
+import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, X, Book, CheckCircle, Moon, BookHeart } from 'lucide-react';
 
 const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDisabled, globalDisabledReason, disabledTheme = 'red', onToggle }) => {
     const themeColors = {
@@ -121,6 +121,8 @@ const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }
         { key: 'leave', label: 'Leave Applications', description: 'Allow applying for leave.', icon: Calendar },
         { key: 'chat', label: 'Mentor Chat', description: 'Enable direct messaging.', icon: MessageSquare },
         { key: 'prayer', label: 'Prayer Chart', description: 'Enable daily prayer tracking.', icon: BookOpen },
+        { key: 'quran-recitation', label: 'Quran Recitation', description: 'Track daily Quran recitation status.', icon: BookOpen },
+        { key: 'sunnah-campaign', label: 'Sunnah Campaign', description: 'Track daily Swalath recitations.', icon: BookHeart },
         { key: 'ramadan', label: 'Ramadan', description: 'Enable Ramadan tracking.', icon: Moon },
         { key: 'history', label: 'Class History', description: 'Allow viewing of class logs.', icon: Clock },
         { key: 'attendanceHistory', label: 'Attendance History', description: 'Allow viewing of attendance.', icon: CheckCircle },
