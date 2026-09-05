@@ -14,13 +14,63 @@ const AdminAdmissionRequests = () => {
         addStudent,
         updateStudent,
         deleteStudent,
-        students 
+        students,
+        classes
     } = useData();
     const { showAlert } = useUI();
     
     // Status Modal State
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, request: null });
     const [adminComment, setAdminComment] = useState('');
+
+    const getClassInfo = (req) => {
+        const type = req.type || 'admission';
+        
+        const formatClass = (clsName, div, clsId) => {
+            let name = clsName;
+            let division = div;
+            if (!name && clsId && classes) {
+                const found = classes.find(c => c.id === clsId);
+                if (found) {
+                    name = found.name;
+                    division = found.division;
+                }
+            }
+            if (!name) return null;
+            if (division && !name.toLowerCase().includes(division.toLowerCase())) {
+                return `${name} - ${division}`;
+            }
+            return name;
+        };
+
+        const sourceClass = formatClass(req.className, req.classDivision, req.classId);
+        
+        let targetClass = req.targetClassName;
+        if (!targetClass && req.targetClassId && classes) {
+            const found = classes.find(c => c.id === req.targetClassId);
+            if (found) {
+                targetClass = formatClass(found.name, found.division, found.id);
+            }
+        }
+
+        if (type === 'transfer') {
+            return {
+                type: 'transfer',
+                from: sourceClass || 'N/A',
+                to: targetClass || 'N/A'
+            };
+        } else if (type === 'removal') {
+            return {
+                type: 'removal',
+                from: sourceClass || 'N/A'
+            };
+        } else {
+            return {
+                type: 'admission',
+                to: sourceClass || 'N/A'
+            };
+        }
+    };
 
     const checkDuplicate = (newStudent) => {
         return students.find(s => {
@@ -248,28 +298,64 @@ const AdminAdmissionRequests = () => {
                 )}
 
                 {historyRequests.length > 0 && (
-                    <section className="pt-8 opacity-60">
+                    <section className="pt-8 opacity-90">
                         <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Resolution History</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {historyRequests.map(request => (
-                                <div key={request.id} className="bg-white border border-gray-100 p-3 rounded-xl flex items-start justify-between gap-3 group relative overflow-hidden">
-                                     <div className={`absolute top-0 left-0 w-1 h-full ${request.requestStatus === 'Approved' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                     <div className="min-w-0 flex-1 pl-1">
-                                         <p className="font-bold text-gray-800 text-xs truncate">{request.name}</p>
-                                         <p className="text-[9px] text-gray-400 uppercase tracking-tighter">
-                                             {request.type === 'transfer' ? 'Transfer' : request.type === 'removal' ? 'Removal' : 'Admission'} • {request.requestStatus}
-                                         </p>
-                                         {(request.adminComments || request.adminComment) && (
-                                             <p className="text-[10px] text-gray-500 mt-1 italic break-words whitespace-pre-wrap">
-                                                 "{request.adminComments || request.adminComment}"
+                            {historyRequests.map(request => {
+                                const classInfo = getClassInfo(request);
+                                return (
+                                    <div key={request.id} className="bg-white border border-gray-100 p-3 rounded-xl flex items-start justify-between gap-3 group relative overflow-hidden shadow-sm">
+                                         <div className={`absolute top-0 left-0 w-1 h-full ${request.requestStatus === 'Approved' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                         <div className="min-w-0 flex-1 pl-1">
+                                             <div className="flex items-center gap-2 flex-wrap">
+                                                 <p className="font-bold text-gray-800 text-xs truncate">{request.name}</p>
+                                                 <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                                                     request.requestStatus === 'Approved' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                                                 }`}>
+                                                     {request.requestStatus}
+                                                 </span>
+                                             </div>
+                                             <p className="text-[9px] text-gray-400 uppercase tracking-tighter mt-0.5">
+                                                 {request.type === 'transfer' ? 'Transfer' : request.type === 'removal' ? 'Removal' : 'Admission'}
                                              </p>
-                                         )}
-                                     </div>
-                                     <button onClick={() => handleAction(request, 'delete')} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors shrink-0">
-                                         <Trash2 className="w-3.5 h-3.5" />
-                                     </button>
-                                </div>
-                            ))}
+
+                                             {/* Class information display */}
+                                             <div className="mt-1.5 text-[10px] text-gray-600 bg-gray-50/80 p-1.5 rounded-lg border border-gray-100">
+                                                 {classInfo.type === 'transfer' && (
+                                                     <div className="flex items-center gap-1 flex-wrap">
+                                                         <span className="text-gray-400 font-medium">From:</span>
+                                                         <span className="font-bold text-gray-700">{classInfo.from}</span>
+                                                         <span className="text-amber-500 font-bold px-0.5">➔</span>
+                                                         <span className="text-gray-400 font-medium">To:</span>
+                                                         <span className="font-bold text-amber-700">{classInfo.to}</span>
+                                                     </div>
+                                                 )}
+                                                 {classInfo.type === 'removal' && (
+                                                     <div className="flex items-center gap-1 flex-wrap">
+                                                         <span className="text-gray-400 font-medium">Removed from:</span>
+                                                         <span className="font-bold text-red-700">{classInfo.from}</span>
+                                                     </div>
+                                                 )}
+                                                 {classInfo.type === 'admission' && (
+                                                     <div className="flex items-center gap-1 flex-wrap">
+                                                         <span className="text-gray-400 font-medium">Admitted to:</span>
+                                                         <span className="font-bold text-indigo-700">{classInfo.to}</span>
+                                                     </div>
+                                                 )}
+                                             </div>
+
+                                             {(request.adminComments || request.adminComment) && (
+                                                 <p className="text-[10px] text-gray-500 mt-1.5 italic break-words whitespace-pre-wrap">
+                                                     "{request.adminComments || request.adminComment}"
+                                                 </p>
+                                             )}
+                                         </div>
+                                         <button onClick={() => handleAction(request, 'delete')} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors shrink-0">
+                                             <Trash2 className="w-3.5 h-3.5" />
+                                         </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </section>
                 )}
