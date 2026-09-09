@@ -562,7 +562,7 @@ const MentorManagement = ({ readOnly = false }) => {
                 isOpen={timetableModal.isOpen}
                 onClose={() => setTimetableModal({ isOpen: false, mentor: null })}
                 title={`Full Timetable Matrix: ${timetableModal.mentor?.name}`}
-                className="!max-w-6xl"
+                className="!max-w-[95vw] w-full"
             >
                 <div className="space-y-4">
                     {(() => {
@@ -582,33 +582,54 @@ const MentorManagement = ({ readOnly = false }) => {
                             c.startTime && c.endTime ? `${c.startTime} - ${c.endTime}` : null
                         ))].filter(Boolean);
 
-                        // Sort slots by start time
+                        const parseMinutes = (timeStr) => {
+                            if (!timeStr) return 0;
+                            const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+                            if (!match) return 0;
+                            let [_, h, m, period] = match;
+                            let hr = parseInt(h, 10);
+                            let min = parseInt(m, 10);
+                            if (period) {
+                                period = period.toUpperCase();
+                                if (period === 'PM' && hr < 12) hr += 12;
+                                if (period === 'AM' && hr === 12) hr = 0;
+                            }
+                            return hr * 60 + min;
+                        };
+
+                        // Sort slots chronologically by start time
                         const sortedSlots = rawSlots.sort((a, b) => {
                             const startA = a.split(' - ')[0];
                             const startB = b.split(' - ')[0];
-                            return startA.localeCompare(startB);
+                            return parseMinutes(startA) - parseMinutes(startB);
                         });
 
                         const formatTime = (timeRange) => {
                             return timeRange.split(' - ').map(t => {
-                                let [h, m] = t.split(':');
-                                let hr = parseInt(h);
-                                let am = hr >= 12 ? 'PM' : 'AM';
-                                return `${hr % 12 || 12}:${m} ${am}`;
+                                const match = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+                                if (!match) return t;
+                                let [_, h, m, period] = match;
+                                let hr = parseInt(h, 10);
+                                if (period) {
+                                    return `${hr % 12 || 12}:${m} ${period.toUpperCase()}`;
+                                } else {
+                                    let am = hr >= 12 ? 'PM' : 'AM';
+                                    return `${hr % 12 || 12}:${m} ${am}`;
+                                }
                             }).join(' - ');
                         };
 
                         return (
-                            <div className="border border-gray-100 rounded-2xl shadow-sm overflow-hidden bg-white">
-                                <table className="w-full border-collapse bg-white text-sm">
+                            <div className="border border-gray-100 rounded-2xl shadow-sm overflow-hidden bg-white w-full">
+                                <table className="w-full border-collapse bg-white text-xs">
                                     <thead>
                                         <tr className="bg-indigo-600 text-white">
-                                            <th className="p-4 text-left border-r border-indigo-500/30 w-32 bg-indigo-700">Day / Time</th>
+                                            <th className="p-3 text-left border-r border-indigo-500/30 w-28 bg-indigo-700 whitespace-nowrap">Day / Time</th>
                                             {sortedSlots.map(slot => (
-                                                <th key={slot} className="p-4 text-center border-r border-indigo-500/30 min-w-[140px]">
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <Clock className="w-4 h-4 opacity-70" />
-                                                        <span className="font-bold tracking-tight leading-tight">{formatTime(slot)}</span>
+                                                <th key={slot} className="p-2 text-center border-r border-indigo-500/30">
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <Clock className="w-3.5 h-3.5 opacity-70" />
+                                                        <span className="font-bold tracking-tight leading-tight text-[11px] whitespace-nowrap">{formatTime(slot)}</span>
                                                     </div>
                                                 </th>
                                             ))}
@@ -617,34 +638,38 @@ const MentorManagement = ({ readOnly = false }) => {
                                     <tbody className="divide-y divide-gray-100">
                                         {DAYS.map((day, dIdx) => (
                                             <tr key={day} className={clsx("group transition-colors", dIdx % 2 === 0 ? "bg-white" : "bg-gray-50/30")}>
-                                                <td className="p-4 font-bold text-gray-900 border-r border-gray-100 bg-inherit whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={clsx("w-1.5 h-5 rounded-full", dIdx % 2 === 0 ? "bg-indigo-500" : "bg-purple-500")}></div>
+                                                <td className="p-3 font-bold text-gray-900 border-r border-gray-100 bg-inherit whitespace-nowrap">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className={clsx("w-1.5 h-4 rounded-full", dIdx % 2 === 0 ? "bg-indigo-500" : "bg-purple-500")}></div>
                                                         {day}
                                                     </div>
                                                 </td>
                                                 {sortedSlots.map(slot => {
-                                                    const classAtTime = assignedClasses.find(c => 
+                                                    const classesAtTime = assignedClasses.filter(c => 
                                                         (c.days || []).includes(day) && 
                                                         (`${c.startTime} - ${c.endTime}` === slot)
                                                     );
 
                                                     return (
-                                                        <td key={slot} className="p-2 border-r border-gray-100 align-middle">
-                                                            {classAtTime ? (
-                                                                <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl shadow-sm transition-all transform hover:scale-[1.02] cursor-default">
-                                                                    <div className="flex flex-col items-center text-center gap-1">
-                                                                        <div className="p-1.5 bg-white text-indigo-600 rounded-lg shadow-sm">
-                                                                            <BookOpen className="w-4 h-4" />
+                                                        <td key={slot} className="p-1 border-r border-gray-100 align-middle">
+                                                            {classesAtTime.length > 0 ? (
+                                                                <div className="space-y-1">
+                                                                    {classesAtTime.map(classAtTime => (
+                                                                        <div key={classAtTime.id} className="p-1.5 bg-indigo-50/60 border border-indigo-100 rounded-lg shadow-sm transition-all hover:bg-indigo-100/50 cursor-default">
+                                                                            <div className="flex flex-col items-center text-center gap-0.5">
+                                                                                <div className="p-1 bg-white text-indigo-600 rounded shadow-xs mb-0.5">
+                                                                                    <BookOpen className="w-3 h-3" />
+                                                                                </div>
+                                                                                <span className="font-black text-indigo-900 leading-none whitespace-nowrap text-[11px]">Class {classAtTime.name}</span>
+                                                                                <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[9px] font-black uppercase tracking-wider mt-0.5">
+                                                                                    Div {classAtTime.division}
+                                                                                </span>
+                                                                            </div>
                                                                         </div>
-                                                                        <span className="font-black text-indigo-900 leading-none whitespace-nowrap">Class {classAtTime.name}</span>
-                                                                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px] font-black uppercase tracking-widest mt-1">
-                                                                            Div {classAtTime.division}
-                                                                        </span>
-                                                                    </div>
+                                                                    ))}
                                                                 </div>
                                                             ) : (
-                                                                <div className="h-full flex items-center justify-center py-4 opacity-10">
+                                                                <div className="h-full flex items-center justify-center py-3 opacity-10">
                                                                     <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
                                                                 </div>
                                                             )}
