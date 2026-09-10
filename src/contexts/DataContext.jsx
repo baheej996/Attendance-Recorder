@@ -275,6 +275,8 @@ export const DataProvider = ({ children }) => {
             subscribe('substitutionRequests', setSubstitutionRequests),
             subscribe('questions', setQuestions),
             subscribe('starConfigs', setStarConfigs),
+            subscribe('studentEvaluationTemplates', setStudentEvaluationTemplates),
+            subscribe('parentFeedbackTemplates', setParentFeedbackTemplates),
         ];
 
         // Reference data — rarely changes, real-time sync is wasteful for 2k users.
@@ -282,8 +284,6 @@ export const DataProvider = ({ children }) => {
         loadOnce('chatSettings', setChatSettings);
         loadOnce('specialPrayers', setSpecialPrayers);
         loadOnce('examSettings', setExamSettings);
-        loadOnce('studentEvaluationTemplates', setStudentEvaluationTemplates);
-        loadOnce('parentFeedbackTemplates', setParentFeedbackTemplates);
 
         const settingsUnsub = onSnapshot(collection(db, 'settings'), (snapshot) => {
             snapshot.docs.forEach(doc => {
@@ -386,6 +386,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('starConfigs', setStarConfigs, where('classId', '==', cid)),
                 subscribe('students', setStudents, where('classId', 'in', batchClassIds)),
                 subscribe('studentEvaluations', setStudentEvaluations, where('studentId', '==', uid), where('status', '==', 'Published')),
+                subscribe('parentFeedbacks', setParentFeedbacks, where('studentId', '==', uid)),
                 subscribe('feedbackSettings', setFeedbackSettings, where('classId', '==', cid)),
                 subscribe('gameProgress', setGameProgress, where('classId', '==', cid))
             );
@@ -503,7 +504,6 @@ export const DataProvider = ({ children }) => {
                 
                 unsubs.push(
                     subscribe('studentEvaluations', setStudentEvaluations, where('classId', 'in', assignedClassIds)),
-                    subscribe('parentFeedbacks', setParentFeedbacks, where('classId', 'in', assignedClassIds)),
                     subscribe('feedbackSettings', setFeedbackSettings, where('classId', 'in', assignedClassIds))
                 );
             }
@@ -2359,7 +2359,11 @@ export const DataProvider = ({ children }) => {
         deleteStudentEvaluation: async (id) => await deleteDoc(doc(db, 'studentEvaluations', id)),
         
         parentFeedbacks,
-        addParentFeedback: async (feedback) => await addDoc(collection(db, 'parentFeedbacks'), { ...feedback, submittedAt: new Date().toISOString() }),
+        addParentFeedback: async (feedback) => await addDoc(collection(db, 'parentFeedbacks'), { ...feedback, status: 'pending', readByAdmin: false, submittedAt: new Date().toISOString() }),
+        updateParentFeedbackStatusAndComment: async (id, data) => {
+            await updateDoc(doc(db, 'parentFeedbacks', id), data);
+            setParentFeedbacks(prev => prev.map(f => f.id === id ? { ...f, ...data } : f));
+        },
         deleteParentFeedback: async (id) => await deleteDoc(doc(db, 'parentFeedbacks', id)),
 
         feedbackSettings,

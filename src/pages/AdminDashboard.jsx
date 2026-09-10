@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2, Trophy, FileQuestion, BookHeart } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, MessageCircle, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2, Trophy, FileQuestion, BookHeart } from 'lucide-react';
 import { clsx } from 'clsx';
 import ClassManagement from './components/ClassManagement';
 import AdminLiveClasses from './components/AdminLiveClasses';
@@ -33,10 +33,11 @@ import { AdminAuthModal } from '../components/ui/AdminAuthModal';
 import { Card, CardHeader } from '../components/ui/Card';
 import CountryStatsChart from '../components/admin/CountryStatsChart';
 
+import ParentFeedbackManager from '../components/admin/ParentFeedbackManager';
 import DashboardHome from './components/DashboardHome';
 const AdminDashboard = () => {
     const location = useLocation();
-    const { logout, adminRequests, substitutionRequests, admissionRequests, unreadChats, mentors, students, notifications, mentorTasks, classes } = useData();
+    const { logout, adminRequests, substitutionRequests, admissionRequests, unreadChats, mentors, students, notifications, mentorTasks, classes, parentFeedbacks } = useData();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -61,6 +62,10 @@ const AdminDashboard = () => {
         !(n.readBy || []).includes('admin')
     ).length;
 
+    const unreadParentFeedbacksCount = React.useMemo(() => {
+        return (parentFeedbacks || []).filter(f => !f.status || f.status === 'pending' || !f.readByAdmin).length;
+    }, [parentFeedbacks]);
+
     const attentionClassesCount = React.useMemo(() => {
         return (classes || []).filter(cls => {
             const studentCount = students.filter(s => s.classId === cls.id && s.status === 'Active').length;
@@ -84,6 +89,7 @@ const AdminDashboard = () => {
 
             case 'bulk-transfer': return <BulkTransfer />;
             case 'admissions': return <AdminAdmissionRequests />;
+            case 'parent-feedback': return <ParentFeedbackManager />;
             case 'requests': return <AdminRequests />; // New
             case 'features': return <FeatureControl />; // New
             case 'substitutions': return <SubstitutionManager />;
@@ -181,6 +187,7 @@ const AdminDashboard = () => {
                                     <SidebarItem icon={UserCheck} label="Students" active={activeTab === 'students'} onClick={() => handleTabChange('students')} isMobile />
                                     <SidebarItem icon={ArrowRightLeft} label="Bulk Transfer" active={activeTab === 'bulk-transfer'} onClick={() => handleTabChange('bulk-transfer')} isMobile />
                                     <SidebarItem icon={UserPlus} label="Admissions" active={activeTab === 'admissions'} onClick={() => handleTabChange('admissions')} badge={pendingAdmissionsCount} isMobile />
+                                    <SidebarItem icon={MessageCircle} label="Parent Feedback" active={activeTab === 'parent-feedback'} onClick={() => handleTabChange('parent-feedback')} badge={unreadParentFeedbacksCount} isMobile />
                                     <SidebarItem icon={Bell} label="Requests" active={activeTab === 'requests'} onClick={() => handleTabChange('requests')} badge={pendingRequestsCount} isMobile />
                                     <SidebarItem icon={MessageSquare} label="Messages" active={activeTab === 'messages'} onClick={() => handleTabChange('messages')} badge={unreadMessagesCount} isMobile />
                                     <SidebarItem icon={Megaphone} label="Notifications" active={activeTab === 'notifications'} onClick={() => handleTabChange('notifications')} badge={unreadNotificationsCount} isMobile />
@@ -236,6 +243,7 @@ const AdminDashboard = () => {
                                 <SidebarItem icon={UserCheck} label="Students" active={activeTab === 'students'} onClick={() => setActiveTab('students')} />
                                 <SidebarItem icon={ArrowRightLeft} label="Bulk Transfer" active={activeTab === 'bulk-transfer'} onClick={() => setActiveTab('bulk-transfer')} />
                                 <SidebarItem icon={UserPlus} label="Admissions" active={activeTab === 'admissions'} onClick={() => setActiveTab('admissions')} badge={pendingAdmissionsCount} />
+                                <SidebarItem icon={MessageCircle} label="Parent Feedback" active={activeTab === 'parent-feedback'} onClick={() => setActiveTab('parent-feedback')} badge={unreadParentFeedbacksCount} />
                                 <SidebarItem icon={Bell} label="Requests" active={activeTab === 'requests'} onClick={() => setActiveTab('requests')} badge={pendingRequestsCount} />
                                 <SidebarItem icon={MessageSquare} label="Messages" active={activeTab === 'messages'} onClick={() => setActiveTab('messages')} badge={unreadMessagesCount} />
                                 <SidebarItem icon={Megaphone} label="Notifications" active={activeTab === 'notifications'} onClick={() => setActiveTab('notifications')} badge={unreadNotificationsCount} />

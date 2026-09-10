@@ -17,7 +17,8 @@ import {
     Send,
     Layout,
     Info,
-    CheckSquare
+    CheckSquare,
+    Shield
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -29,17 +30,20 @@ const FeedbackPortal = () => {
         addParentFeedback,
         parentFeedbacks,
         classes,
+        mentors,
         studentEvaluationTemplates,
         parentFeedbackTemplates
     } = useData();
 
     // Get settings for the student's class
-    const settings = useMemo(() => 
-        feedbackSettings.find(s => s.classId === currentUser.classId) || {
-            evaluationEnabled: false,
-            feedbackEnabled: false
-        }
-    , [feedbackSettings, currentUser.classId]);
+    const settings = useMemo(() => {
+        const found = feedbackSettings.find(s => s.classId === currentUser.classId);
+        const hasParentForms = (parentFeedbackTemplates || []).length > 0;
+        return {
+            evaluationEnabled: found ? (found.evaluationEnabled !== false) : true,
+            feedbackEnabled: (found?.feedbackEnabled ?? false) || hasParentForms || true
+        };
+    }, [feedbackSettings, currentUser.classId, parentFeedbackTemplates]);
 
     // Get all published evaluations for this student
     const allEvaluations = useMemo(() => 
@@ -116,10 +120,10 @@ const FeedbackPortal = () => {
     const [activeView, setActiveView] = useState('evaluation');
 
     useEffect(() => {
-        if (!settings.evaluationEnabled && settings.feedbackEnabled) {
+        if ((!settings.evaluationEnabled || allEvaluations.length === 0) && (parentFeedbackTemplates || []).length > 0) {
             setActiveView('form');
         }
-    }, [settings]);
+    }, [settings, allEvaluations.length, parentFeedbackTemplates]);
     
     // Dynamic Form State
     const [responses, setResponses] = useState({});
@@ -141,12 +145,19 @@ const FeedbackPortal = () => {
         setIsSubmitting(true);
         try {
             const studentClass = classes.find(c => c.id === currentUser.classId);
+            const classMentor = (mentors || []).find(m => 
+                m.id === studentClass?.mentorId || 
+                m.classId === currentUser.classId ||
+                (m.assignedClasses && m.assignedClasses.includes(currentUser.classId))
+            );
             const feedbackData = {
                 studentId: currentUser.id,
                 studentName: currentUser.name,
                 classId: currentUser.classId,
                 className: studentClass?.name || 'Unknown',
                 division: studentClass?.division || 'Unknown',
+                mentorId: classMentor?.id || studentClass?.mentorId || '',
+                mentorName: classMentor?.name || 'Not Assigned',
                 country: currentUser.livingCountry || 'Unknown',
                 parentName,
                 templateId: activeParentTemplate.id,
@@ -210,6 +221,92 @@ const FeedbackPortal = () => {
                                 </button>
                             );
                         })}
+                    </div>
+                )}
+
+                {q.type === 'dropdown' && (
+                    <select 
+                        required={q.required}
+                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        value={responses[q.id] || ''}
+                        onChange={(e) => setResponses({ ...responses, [q.id]: e.target.value })}
+                    >
+                        <option value="">Select an option...</option>
+                        {(q.options || []).map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                    </select>
+                )}
+
+                {q.type === 'star_rating' && (
+                    <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-2xl border border-gray-100 w-fit">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                                key={star}
+                                type="button"
+                                onClick={() => setResponses({ ...responses, [q.id]: star })}
+                                className="p-1 hover:scale-125 transition-transform"
+                            >
+                                <Star className={clsx(
+                                    "w-8 h-8 transition-colors",
+                                    star <= (responses[q.id] || 0) ? "text-amber-400 fill-amber-400" : "text-gray-300"
+                                )} />
+                            </button>
+                        ))}
+                        {responses[q.id] && (
+                            <span className="ml-3 text-xs font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                                {responses[q.id]} / 5 ⭐
+                            </span>
+                        )}
+                    </div>
+                )}
+
+                {q.type === 'matrix_rating' && (
+                    <div className="space-y-4 bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+                            <span className="text-xs font-black text-indigo-700 uppercase tracking-widest">Rate from 1 to 5 ⭐</span>
+                            <span className="text-[10px] text-gray-400 font-bold">1 = Needs Improvement, 5 = Excellent</span>
+                        </div>
+                        <div className="space-y-3">
+                            {((q.subQuestions && q.subQuestions.length > 0) ? q.subQuestions : [
+                                'Teaching & Academic Support',
+                                'Approach towards Students',
+                                'Punctuality & Regularity',
+                                'Communication with Parents',
+                                'Follow-up & Individual Attention'
+                            ]).map((aspect) => {
+                                const matrixObj = responses[q.id] || {};
+                                const currentRating = matrixObj[aspect] || 0;
+                                return (
+                                    <div key={aspect} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                        <span className="text-sm font-bold text-gray-800">{aspect}</span>
+                                        <div className="flex items-center gap-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <button
+                                                    key={star}
+                                                    type="button"
+                                                    onClick={() => setResponses({
+                                                        ...responses,
+                                                        [q.id]: { ...(responses[q.id] || {}), [aspect]: star }
+                                                    })}
+                                                    className="p-1 hover:scale-125 transition-transform"
+                                                >
+                                                    <Star className={clsx(
+                                                        "w-6 h-6 transition-colors",
+                                                        star <= currentRating ? "text-amber-400 fill-amber-400" : "text-gray-300"
+                                                    )} />
+                                                </button>
+                                            ))}
+                                            {currentRating > 0 && (
+                                                <span className="ml-2 text-xs font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                                    {currentRating} ⭐
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
 
@@ -570,6 +667,10 @@ const FeedbackPortal = () => {
                                 <div className="relative z-10">
                                     <h2 className="text-3xl font-black mb-2">{activeParentTemplate.title}</h2>
                                     <p className="text-indigo-100 font-bold opacity-80 max-w-md">{activeParentTemplate.description || 'Your feedback helps us improve the quality of education for your child.'}</p>
+                                    <div className="mt-4 p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 flex items-center gap-3 text-emerald-200 font-bold text-xs">
+                                        <Shield className="w-5 h-5 shrink-0 text-emerald-300" />
+                                        <span>🔒 <strong>Confidential Notice:</strong> Your feedback is strictly confidential and visible only to the Chief Mentor / Administration. It will not be shared with class mentors.</span>
+                                    </div>
                                 </div>
                                 <MessageCircle className="absolute -bottom-10 -right-10 w-48 h-48 text-white opacity-10 -rotate-12" />
                             </div>

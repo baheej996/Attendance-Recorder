@@ -33,7 +33,7 @@ import {
 import { clsx } from 'clsx';
 
 const StudentWelcome = () => {
-    const { currentUser, classes, mentors, liveClasses, substitutionRequests, studentFeatureFlags, classFeatureFlags, activities, activitySubmissions, exams, results, unreadChats, requireFeature } = useData();
+    const { currentUser, classes, mentors, liveClasses, substitutionRequests, studentFeatureFlags, classFeatureFlags, activities, activitySubmissions, exams, results, unreadChats, requireFeature, parentFeedbackTemplates, parentFeedbacks } = useData();
     const navigate = useNavigate();
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -368,6 +368,41 @@ const StudentWelcome = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Parent Feedback Quick Action Banner */}
+                {(() => {
+                    const activeParentTemplate = (parentFeedbackTemplates || []).find(t => t.status === 'Published');
+                    if (!activeParentTemplate) return null;
+                    const hasSubmitted = (parentFeedbacks || []).some(f => f.studentId === currentUser.id && f.templateId === activeParentTemplate.id);
+                    if (hasSubmitted) return null;
+
+                    return (
+                        <div className="mt-4 w-full max-w-2xl mx-auto px-4">
+                            <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 rounded-3xl p-6 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-indigo-400/30 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="flex items-center gap-4 text-left">
+                                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white shrink-0">
+                                        <MessageCircle className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-black text-lg">{activeParentTemplate.title}</h3>
+                                            <span className="bg-emerald-400 text-gray-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Open</span>
+                                        </div>
+                                        <p className="text-xs text-indigo-100 font-medium mt-0.5">
+                                            🔒 Strictly Confidential • Visible to Chief Mentor / Admin only
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/student/feedback')}
+                                    className="w-full sm:w-auto px-6 py-3 bg-white text-indigo-700 font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:bg-indigo-50 transition-all shrink-0 flex items-center justify-center gap-2"
+                                >
+                                    Fill Feedback <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* --- App-Style Navigation Grid (Mobile Only) --- */}
                 <div className="md:hidden mt-8 w-full max-w-sm px-2 overflow-y-auto pb-8">

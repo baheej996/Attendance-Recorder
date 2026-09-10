@@ -22,7 +22,8 @@ import {
     Layout,
     FileText,
     ArrowLeft,
-    HelpCircle
+    HelpCircle,
+    Shield
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import EvaluationManager from '../admin/EvaluationManager';
@@ -35,11 +36,9 @@ const StudentAssessment = () => {
         studentEvaluations, 
         addStudentEvaluation, 
         updateStudentEvaluation, 
-        parentFeedbacks,
         feedbackSettings,
         updateFeedbackSettings,
-        studentEvaluationTemplates,
-        parentFeedbackTemplates
+        studentEvaluationTemplates
     } = useData();
 
     const [activeTab, setActiveTab] = useState('evaluations');
@@ -546,80 +545,15 @@ const StudentAssessment = () => {
 
             {activeTab === 'feedback' && (
                 <div className="space-y-4 animate-in fade-in duration-300">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-black text-gray-900">Responses from Parents</h3>
-                        <Button 
-                            className="flex items-center gap-2 text-indigo-600 bg-indigo-50 border-none hover:bg-indigo-100"
-                        >
-                            <Download className="w-4 h-4" /> Export Feedback
-                        </Button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {parentFeedbacks.filter(f => f.classId === selectedClassId).length === 0 ? (
-                            <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                                <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-bold text-gray-400 uppercase tracking-widest">No feedback submitted yet</h3>
-                                <p className="text-sm text-gray-400 mt-2">Ensure the feedback form is enabled in the settings.</p>
-                            </div>
-                        ) : (
-                            parentFeedbacks
-                                .filter(f => f.classId === selectedClassId)
-                                .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
-                                .map(feedback => {
-                                    const template = (parentFeedbackTemplates || []).find(t => t.id === feedback.templateId);
-                                    const questions = template ? template.sections.flatMap(s => s.questions) : [];
-
-                                    return (
-                                        <Card key={feedback.id} className="p-6 overflow-hidden">
-                                            <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg">
-                                                        <User className="w-6 h-6" />
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-lg font-black text-gray-900">{feedback.parentName || 'Parent'}</h4>
-                                                        <p className="text-sm text-indigo-600 font-bold uppercase tracking-tight">
-                                                            Feedback for: <span className="text-gray-900">{feedback.studentName}</span>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs font-black text-gray-400 uppercase tracking-[0.1em] mb-1">Submitted On</div>
-                                                    <div className="text-sm font-bold text-gray-700">{new Date(feedback.submittedAt).toLocaleDateString()}</div>
-                                                    {template && <div className="text-[10px] font-black text-indigo-400 uppercase mt-1">{template.title}</div>}
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                                                {Object.entries(feedback.responses || {}).map(([qId, answer]) => {
-                                                    const question = questions.find(q => q.id === qId);
-                                                    const label = question ? question.label : `Question ${qId}`;
-                                                    
-                                                    return (
-                                                        <div key={qId} className="space-y-1">
-                                                            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{label}</p>
-                                                            <p className="text-sm font-bold text-gray-800">
-                                                                {typeof answer === 'object' && answer !== null 
-                                                                    ? (answer.answer || JSON.stringify(answer)) 
-                                                                    : (Array.isArray(answer) ? answer.join(', ') : answer.toString())
-                                                                }
-                                                            </p>
-                                                            {answer?.details && (
-                                                                <div className="mt-1 flex items-start gap-2 bg-red-50 p-2 rounded-lg border border-red-100">
-                                                                    <Info className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
-                                                                    <p className="text-xs text-red-600 font-medium italic">"{answer.details}"</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </Card>
-                                    );
-                                })
-                        )}
-                    </div>
+                    <Card className="p-12 text-center space-y-4 rounded-3xl bg-indigo-50/50 border border-indigo-100">
+                        <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto shadow-md">
+                            <Shield className="w-8 h-8 text-emerald-600" />
+                        </div>
+                        <h3 className="text-xl font-black text-gray-900">Confidential Parent Feedback</h3>
+                        <p className="text-sm text-gray-500 max-w-md mx-auto font-medium leading-relaxed">
+                            Parent Feedback submissions are strictly confidential and managed directly by the Chief Mentor & Administration. Submissions are not accessible in the mentor portal to ensure parent privacy and transparent communication.
+                        </p>
+                    </Card>
                 </div>
             )}
 

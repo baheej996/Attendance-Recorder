@@ -6,11 +6,14 @@ import { Save, X, Plus, Trash2, GripVertical, Settings2, FileText, CalendarDays,
 import { Reorder } from 'framer-motion';
 
 const QUESTION_TYPES = [
-    { value: 'radio', label: 'Multiple Choice (Single Answer)' },
-    { value: 'checkbox', label: 'Checkboxes (Multiple Answers)' },
-    { value: 'rating', label: 'Custom Rating (Slider)' },
     { value: 'short_answer', label: 'Short Answer' },
     { value: 'paragraph', label: 'Paragraph (Long Answer)' },
+    { value: 'radio', label: 'Multiple Choice (Single Answer)' },
+    { value: 'checkbox', label: 'Checkboxes (Multiple Answers)' },
+    { value: 'dropdown', label: 'Drop Down Menu' },
+    { value: 'star_rating', label: 'Rating (1–5 Stars ⭐)' },
+    { value: 'matrix_rating', label: 'Sub-Question Matrix (1–5 Stars ⭐ per aspect)' },
+    { value: 'rating', label: 'Custom Rating (Slider)' },
     { value: 'file', label: 'File Attachment / Evidence' },
 ];
 
@@ -42,7 +45,7 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
             const formData = { 
                 title, month, year, sections, 
                 sharingType, sharedMentorIds,
-                status: initialData?.status || 'Draft' 
+                status: initialData?.status || (templateType === 'parent' ? 'Published' : 'Draft') 
             };
             
             if (templateType === 'student') {
@@ -179,67 +182,69 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
                 </div>
             </div>
 
-            {/* Sharing Settings Panel */}
-            <div className="max-w-4xl mx-auto">
-                <Card className="p-4 bg-white border-indigo-100 shadow-sm">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-                                <Users className="w-5 h-5" />
+            {/* Sharing Settings Panel (Only applicable for Mentor Evaluations) */}
+            {templateType === 'mentor' && (
+                <div className="max-w-4xl mx-auto">
+                    <Card className="p-4 bg-white border-indigo-100 shadow-sm">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                                    <Users className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-900">Sharing & Visibility</h3>
+                                    <p className="text-xs text-gray-500">Who should see and fill this form?</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-900">Sharing & Visibility</h3>
-                                <p className="text-xs text-gray-500">Who should see and fill this form?</p>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setSharingType('all')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sharingType === 'all' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}
+                                >
+                                    <Globe className="w-4 h-4" />
+                                    All Mentors
+                                </button>
+                                <button
+                                    onClick={() => setSharingType('individual')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sharingType === 'individual' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}
+                                >
+                                    <Users className="w-4 h-4" />
+                                    Specific Mentors
+                                </button>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setSharingType('all')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sharingType === 'all' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}
-                            >
-                                <Globe className="w-4 h-4" />
-                                All Mentors
-                            </button>
-                            <button
-                                onClick={() => setSharingType('individual')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sharingType === 'individual' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}
-                            >
-                                <Users className="w-4 h-4" />
-                                Specific Mentors
-                            </button>
-                        </div>
-                    </div>
-
-                    {sharingType === 'individual' && (
-                        <div className="mt-4 pt-4 border-t border-gray-50">
-                            <div className="flex flex-wrap gap-2">
-                                {mentors.filter(m => m.id !== currentUser?.id).map(m => (
-                                    <button
-                                        key={m.id}
-                                        onClick={() => {
-                                            if (sharedMentorIds.includes(m.id)) {
-                                                setSharedMentorIds(sharedMentorIds.filter(id => id !== m.id));
-                                            } else {
-                                                setSharedMentorIds([...sharedMentorIds, m.id]);
-                                            }
-                                        }}
-                                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 border ${sharedMentorIds.includes(m.id) ? 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-2 ring-indigo-500/20' : 'bg-gray-50 text-gray-400 border-gray-100 hover:border-gray-300'}`}
-                                    >
-                                        <div className={`w-1.5 h-1.5 rounded-full ${sharedMentorIds.includes(m.id) ? 'bg-indigo-600' : 'bg-gray-300'}`} />
-                                        {m.name}
-                                    </button>
-                                ))}
+                        {sharingType === 'individual' && (
+                            <div className="mt-4 pt-4 border-t border-gray-50">
+                                <div className="flex flex-wrap gap-2">
+                                    {mentors.filter(m => m.id !== currentUser?.id).map(m => (
+                                        <button
+                                            key={m.id}
+                                            onClick={() => {
+                                                if (sharedMentorIds.includes(m.id)) {
+                                                    setSharedMentorIds(sharedMentorIds.filter(id => id !== m.id));
+                                                } else {
+                                                    setSharedMentorIds([...sharedMentorIds, m.id]);
+                                                }
+                                            }}
+                                            className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 border ${sharedMentorIds.includes(m.id) ? 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-2 ring-indigo-500/20' : 'bg-gray-50 text-gray-400 border-gray-100 hover:border-gray-300'}`}
+                                        >
+                                            <div className={`w-1.5 h-1.5 rounded-full ${sharedMentorIds.includes(m.id) ? 'bg-indigo-600' : 'bg-gray-300'}`} />
+                                            {m.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                {sharedMentorIds.length === 0 && (
+                                    <p className="text-[10px] text-amber-600 font-bold mt-2 flex items-center gap-1">
+                                        <Settings2 className="w-3 h-3" /> Please select at least one mentor.
+                                    </p>
+                                )}
                             </div>
-                            {sharedMentorIds.length === 0 && (
-                                <p className="text-[10px] text-amber-600 font-bold mt-2 flex items-center gap-1">
-                                    <Settings2 className="w-3 h-3" /> Please select at least one mentor.
-                                </p>
-                            )}
-                        </div>
-                    )}
-                </Card>
-            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
 
             {/* Sections Container */}
             <div className="max-w-4xl mx-auto space-y-8">
@@ -294,13 +299,13 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
 
                                         {/* Dynamic Question Config UI */}
                                         <div className="pl-8 pr-4 space-y-4">
-                                            {(q.type === 'radio' || q.type === 'checkbox') && (
+                                            {(q.type === 'radio' || q.type === 'checkbox' || q.type === 'dropdown') && (
                                                 <div className="space-y-2">
                                                     {(q.options || []).map((opt, optIdx) => (
                                                         <div key={optIdx} className="flex items-center gap-2">
-                                                            <div className={`w-4 h-4 border border-gray-300 ${q.type === 'radio' ? 'rounded-full' : 'rounded'}`}></div>
+                                                            <div className={`w-4 h-4 border border-gray-300 ${q.type === 'radio' ? 'rounded-full' : q.type === 'dropdown' ? 'rounded-sm bg-gray-100' : 'rounded'}`}></div>
                                                             <input 
-                                                                className="flex-1 text-sm bg-transparent border-b border-transparent focus:border-gray-300 outline-none pb-1"
+                                                                className="flex-1 text-sm bg-transparent border-b border-transparent focus:border-gray-300 outline-none pb-1 font-medium"
                                                                 value={opt}
                                                                 onChange={e => {
                                                                     const newOpts = [...q.options];
@@ -323,6 +328,72 @@ const EvaluationFormBuilder = ({ initialData, onClose, templateType = 'mentor' }
                                                     >
                                                         <Plus className="w-3 h-3" /> Add Option
                                                     </button>
+                                                </div>
+                                            )}
+
+                                            {q.type === 'star_rating' && (
+                                                <div className="flex items-center gap-3 p-3 bg-amber-50/50 rounded-xl border border-amber-100 text-sm">
+                                                    <span className="font-bold text-amber-700">Preview:</span>
+                                                    <div className="flex items-center gap-1 text-amber-400">
+                                                        {[1, 2, 3, 4, 5].map(star => (
+                                                            <span key={star} className="text-xl">⭐</span>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-xs text-amber-600 font-medium">(1 to 5 Stars)</span>
+                                                </div>
+                                            )}
+
+                                            {q.type === 'matrix_rating' && (
+                                                <div className="space-y-3 bg-indigo-50/40 p-4 rounded-xl border border-indigo-100">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs font-black text-indigo-700 uppercase tracking-wider">Sub-Questions / Aspects (Rated 1-5 ⭐)</span>
+                                                        <span className="text-[10px] text-indigo-500 font-bold">1 to 5 Stars per Aspect</span>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {((q.subQuestions && q.subQuestions.length > 0) ? q.subQuestions : [
+                                                            'Teaching & Academic Support',
+                                                            'Approach towards Students',
+                                                            'Punctuality & Regularity',
+                                                            'Communication with Parents',
+                                                            'Follow-up & Individual Attention'
+                                                        ]).map((subQ, subIdx, arr) => (
+                                                            <div key={subIdx} className="flex items-center gap-2">
+                                                                <span className="text-xs font-bold text-indigo-500 w-5">{subIdx + 1}.</span>
+                                                                <input 
+                                                                    className="flex-1 text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5 focus:border-indigo-500 outline-none font-medium"
+                                                                    value={subQ}
+                                                                    onChange={e => {
+                                                                        const newSub = [...arr];
+                                                                        newSub[subIdx] = e.target.value;
+                                                                        updateQuestion(sec.id, q.id, { subQuestions: newSub });
+                                                                    }}
+                                                                    placeholder="Sub-question / aspect..."
+                                                                />
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const newSub = arr.filter((_, i) => i !== subIdx);
+                                                                        updateQuestion(sec.id, q.id, { subQuestions: newSub });
+                                                                    }}
+                                                                    className="text-gray-300 hover:text-red-500 p-1"
+                                                                ><X className="w-4 h-4"/></button>
+                                                            </div>
+                                                        ))}
+                                                        <button 
+                                                            onClick={() => {
+                                                                const current = (q.subQuestions && q.subQuestions.length > 0) ? q.subQuestions : [
+                                                                    'Teaching & Academic Support',
+                                                                    'Approach towards Students',
+                                                                    'Punctuality & Regularity',
+                                                                    'Communication with Parents',
+                                                                    'Follow-up & Individual Attention'
+                                                                ];
+                                                                updateQuestion(sec.id, q.id, { subQuestions: [...current, `New Aspect ${current.length + 1}`] });
+                                                            }}
+                                                            className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 mt-2"
+                                                        >
+                                                            <Plus className="w-3 h-3" /> Add Sub-Question Aspect
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
 
