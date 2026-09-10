@@ -104,24 +104,52 @@ const ParentFeedbackManager = () => {
         if (sub?.mentorName && sub.mentorName !== 'Not Assigned' && sub.mentorName !== 'Unknown Mentor') {
             return sub.mentorName;
         }
-        // 1. Try finding by classId / className
-        const cls = (classes || []).find(c => c.id === sub?.classId || c.name === sub?.className);
+
+        // 1. Find class object matching classId OR (name + division)
+        let cls = (classes || []).find(c => c.id === sub?.classId);
+        if (!cls && (sub?.className || sub?.classId)) {
+            const rawClassName = (sub.className || '').replace(/\s*\([A-Z0-9]+\)\s*/i, '').trim();
+            cls = (classes || []).find(c => {
+                const matchId = c.id === sub.classId;
+                const matchName = c.name === sub.className || c.name === rawClassName || `${c.name} (${c.division})` === sub.className;
+                const matchDiv = !sub.division || c.division === sub.division;
+                return matchId || (matchName && matchDiv);
+            });
+        }
+
         if (cls) {
             const mentor = (mentors || []).find(m => 
                 m.id === cls.mentorId || 
-                m.classId === cls.id || 
-                (m.assignedClasses && m.assignedClasses.includes(cls.id)) ||
-                m.assignedClass === cls.name
+                (m.assignedClassIds && Array.isArray(m.assignedClassIds) && m.assignedClassIds.includes(cls.id)) ||
+                (m.assignedClasses && Array.isArray(m.assignedClasses) && m.assignedClasses.includes(cls.id)) ||
+                m.classId === cls.id ||
+                m.assignedClass === cls.name ||
+                m.assignedClass === `${cls.name} (${cls.division})` ||
+                m.assignedClass === `${cls.name}-${cls.division}`
             );
             if (mentor?.name) return mentor.name;
         }
-        // 2. Try finding by studentId
+
+        // 2. Direct mentor lookup via assignedClassIds on mentor
+        if (sub?.classId) {
+            const mByClassId = (mentors || []).find(m => 
+                m.assignedClassIds && Array.isArray(m.assignedClassIds) && m.assignedClassIds.includes(sub.classId)
+            );
+            if (mByClassId?.name) return mByClassId.name;
+        }
+
+        // 3. Fallback: Lookup student to get student.mentorId or student's class mentor
         const student = (allStudents || []).find(s => s.id === sub?.studentId);
         if (student) {
-            const mentor = (mentors || []).find(m => m.id === student.mentorId || m.classId === student.classId);
-            if (mentor?.name) return mentor.name;
+            const studentMentor = (mentors || []).find(m => 
+                m.id === student.mentorId || 
+                (m.assignedClassIds && Array.isArray(m.assignedClassIds) && student.classId && m.assignedClassIds.includes(student.classId)) ||
+                m.classId === student.classId
+            );
+            if (studentMentor?.name) return studentMentor.name;
         }
-        return sub?.mentorName || 'Not Assigned';
+
+        return sub?.mentorName && sub.mentorName !== 'Not Assigned' ? sub.mentorName : 'Not Assigned';
     };
 
     // Unique Mentors (from mentors list + submissions)

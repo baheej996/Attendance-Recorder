@@ -148,7 +148,8 @@ const FeedbackPortal = () => {
             const classMentor = (mentors || []).find(m => 
                 m.id === studentClass?.mentorId || 
                 m.classId === currentUser.classId ||
-                (m.assignedClasses && m.assignedClasses.includes(currentUser.classId))
+                (m.assignedClassIds && Array.isArray(m.assignedClassIds) && m.assignedClassIds.includes(currentUser.classId)) ||
+                (m.assignedClasses && Array.isArray(m.assignedClasses) && m.assignedClasses.includes(currentUser.classId))
             );
             const feedbackData = {
                 studentId: currentUser.id,
