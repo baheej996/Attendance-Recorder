@@ -21,7 +21,8 @@ import {
     ArrowUpDown,
     Download,
     Eye,
-    Shield
+    Shield,
+    AlertTriangle
 } from 'lucide-react';
 import EvaluationFormBuilder from './EvaluationFormBuilder';
 import { clsx } from 'clsx';
@@ -50,6 +51,29 @@ const ParentFeedbackManager = () => {
     const [selectedDivision, setSelectedDivision] = useState('all');
     const [selectedTemplateId, setSelectedTemplateId] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all'); // 'all' | 'pending' | 'reviewed'
+
+    // Custom Web-Themed Confirmation Modal state
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        confirmText: 'Confirm',
+        cancelText: 'Cancel',
+        variant: 'danger',
+        onConfirm: null
+    });
+
+    const triggerConfirm = ({ title, message, confirmText = 'Delete', cancelText = 'Cancel', variant = 'danger', onConfirm }) => {
+        setConfirmModal({
+            isOpen: true,
+            title,
+            message,
+            confirmText,
+            cancelText,
+            variant,
+            onConfirm
+        });
+    };
 
     // Unique Class Names (e.g., '1', '2', '3', '4'...)
     const uniqueClassNames = useMemo(() => {
@@ -456,9 +480,13 @@ const ParentFeedbackManager = () => {
                                                 </Button>
                                                 <button 
                                                     onClick={() => {
-                                                        if (window.confirm("Delete this parent feedback submission?\n\nDeleting this entry will immediately allow the parent to re-submit their feedback from the student portal.")) {
-                                                            deleteParentFeedback(sub.id);
-                                                        }
+                                                        triggerConfirm({
+                                                            title: "Delete Feedback Submission?",
+                                                            message: `Deleting the feedback for ${sub.studentName} (${sub.parentName || 'Parent'}) will permanently remove this record and immediately allow the parent to fill out and re-submit the form from their portal.`,
+                                                            confirmText: "Delete & Re-allow",
+                                                            variant: "danger",
+                                                            onConfirm: () => deleteParentFeedback(sub.id)
+                                                        });
                                                     }}
                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                                                     title="Delete & Allow Parent Resubmission"
@@ -592,9 +620,13 @@ const ParentFeedbackManager = () => {
                                     </button>
                                     <button 
                                         onClick={() => {
-                                            if(window.confirm("Delete this Parent Feedback Form template?")) {
-                                                deleteParentFeedbackTemplate(form.id);
-                                            }
+                                            triggerConfirm({
+                                                title: "Delete Form Template?",
+                                                message: `Are you sure you want to delete "${form.title}"? All section configuration and questions will be permanently removed.`,
+                                                confirmText: "Delete Template",
+                                                variant: "danger",
+                                                onConfirm: () => deleteParentFeedbackTemplate(form.id)
+                                            });
                                         }} 
                                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                                         title="Delete Template"
@@ -654,10 +686,16 @@ const ParentFeedbackManager = () => {
                                 <Button 
                                     variant="outline" 
                                     onClick={() => {
-                                        if (window.confirm("Delete this parent feedback submission?\n\nDeleting this entry will immediately allow the parent to re-submit their feedback from the student portal.")) {
-                                            deleteParentFeedback(detailSubmission.id);
-                                            setDetailSubmission(null);
-                                        }
+                                        triggerConfirm({
+                                            title: "Delete Feedback Submission?",
+                                            message: `Deleting the feedback for ${detailSubmission.studentName} (${detailSubmission.parentName || 'Parent'}) will permanently remove this record and immediately allow the parent to fill out and re-submit the form from their portal.`,
+                                            confirmText: "Delete & Re-allow",
+                                            variant: "danger",
+                                            onConfirm: () => {
+                                                deleteParentFeedback(detailSubmission.id);
+                                                setDetailSubmission(null);
+                                            }
+                                        });
                                     }} 
                                     className="text-xs text-red-600 border-red-200 hover:bg-red-50 gap-1.5"
                                 >
@@ -765,6 +803,72 @@ const ParentFeedbackManager = () => {
                                     Save Note
                                 </Button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* THEMED CONFIRMATION MODAL */}
+            {confirmModal.isOpen && (
+                <div 
+                    className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                >
+                    <div 
+                        className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-gray-100 animate-in zoom-in-95 duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className={clsx(
+                                "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-md",
+                                confirmModal.variant === 'danger' ? "bg-red-50 text-red-600 border border-red-100" : "bg-indigo-50 text-indigo-600 border border-indigo-100"
+                            )}>
+                                {confirmModal.variant === 'danger' ? (
+                                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                                ) : (
+                                    <MessageCircle className="w-6 h-6 text-indigo-600" />
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 leading-tight">
+                                    {confirmModal.title}
+                                </h3>
+                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-full">
+                                    Action Confirmation
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <p className="text-xs text-gray-600 font-medium leading-relaxed">
+                                {confirmModal.message}
+                            </p>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all"
+                            >
+                                {confirmModal.cancelText || 'Cancel'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    if (confirmModal.onConfirm) {
+                                        await confirmModal.onConfirm();
+                                    }
+                                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                }}
+                                className={clsx(
+                                    "px-6 py-2.5 font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2",
+                                    confirmModal.variant === 'danger'
+                                        ? "bg-red-600 hover:bg-red-700 text-white shadow-red-200"
+                                        : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"
+                                )}
+                            >
+                                {confirmModal.confirmText || 'Confirm'}
+                            </button>
                         </div>
                     </div>
                 </div>
