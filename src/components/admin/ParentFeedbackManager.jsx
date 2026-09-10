@@ -456,12 +456,12 @@ const ParentFeedbackManager = () => {
                                                 </Button>
                                                 <button 
                                                     onClick={() => {
-                                                        if (window.confirm("Delete this parent feedback submission?")) {
+                                                        if (window.confirm("Delete this parent feedback submission?\n\nDeleting this entry will immediately allow the parent to re-submit their feedback from the student portal.")) {
                                                             deleteParentFeedback(sub.id);
                                                         }
                                                     }}
                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                                                    title="Delete Submission"
+                                                    title="Delete & Allow Parent Resubmission"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -650,9 +650,23 @@ const ParentFeedbackManager = () => {
                                     Submitted: {new Date(detailSubmission.submittedAt || Date.now()).toLocaleString()}
                                 </p>
                             </div>
-                            <Button variant="secondary" onClick={() => setDetailSubmission(null)} className="text-xs">
-                                Close
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        if (window.confirm("Delete this parent feedback submission?\n\nDeleting this entry will immediately allow the parent to re-submit their feedback from the student portal.")) {
+                                            deleteParentFeedback(detailSubmission.id);
+                                            setDetailSubmission(null);
+                                        }
+                                    }} 
+                                    className="text-xs text-red-600 border-red-200 hover:bg-red-50 gap-1.5"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" /> Delete & Re-allow Form
+                                </Button>
+                                <Button variant="secondary" onClick={() => setDetailSubmission(null)} className="text-xs">
+                                    Close
+                                </Button>
+                            </div>
                         </div>
 
                         {/* Answers Breakdown */}
