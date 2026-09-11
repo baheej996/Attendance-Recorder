@@ -1,25 +1,50 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { Video, Clock, CalendarDays, ExternalLink, Users, AlertTriangle, ChevronRight, PlayCircle, Info } from 'lucide-react';
+import { Video, Clock, CalendarDays, ExternalLink, Users, AlertTriangle, Info } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Card } from '../../components/ui/Card';
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+// Convert any time string (HH:MM or 12-hour AM/PM) to standard 24-hour "HH:MM"
+const normalizeTime24 = (timeStr) => {
+    if (!timeStr) return '';
+    let str = String(timeStr).trim().toUpperCase();
+    
+    const isPM = str.includes('PM');
+    const isAM = str.includes('AM');
+    str = str.replace(/(AM|PM)/g, '').trim();
+    
+    const parts = str.split(':');
+    if (parts.length < 2) return '';
+    
+    let hours = parseInt(parts[0], 10);
+    let minutes = parseInt(parts[1], 10);
+    
+    if (isNaN(hours) || isNaN(minutes)) return '';
+    
+    if (isPM && hours < 12) hours += 12;
+    if (isAM && hours === 12) hours = 0;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
 // Helper to convert an HH:MM string and add 1 hour
 const addOneHour = (timeStr) => {
-    if (!timeStr) return '';
-    let [hours, minutes] = timeStr.split(':');
+    const norm = normalizeTime24(timeStr);
+    if (!norm) return '';
+    let [hours, minutes] = norm.split(':');
     let h = parseInt(hours, 10);
     h = (h + 1) % 24;
     return `${h.toString().padStart(2, '0')}:${minutes}`;
 };
 
-// Convert standard HH:MM to 12-hour format with AM/PM
+// Convert standard HH:MM or raw time to 12-hour format with AM/PM
 const formatTimeAMPM = (timeStr) => {
-    if (!timeStr) return '?';
-    let [h, m] = timeStr.split(':');
-    let hr = parseInt(h);
+    const norm = normalizeTime24(timeStr);
+    if (!norm) return '?';
+    let [h, m] = norm.split(':');
+    let hr = parseInt(h, 10);
     let am = hr >= 12 ? 'PM' : 'AM';
     let formattedHr = hr % 12 || 12;
     return `${formattedHr}:${m} ${am}`;
@@ -27,32 +52,47 @@ const formatTimeAMPM = (timeStr) => {
 
 // Helper: Check if targetTime (HH:MM) falls between startTime and endTime inclusive of start
 const isTimeInRange = (targetTime, startTime, endTime) => {
-    if (!targetTime || !startTime) return false;
-    if (!endTime) endTime = addOneHour(startTime);
+    const target = normalizeTime24(targetTime);
+    const start = normalizeTime24(startTime);
+    let end = normalizeTime24(endTime);
 
-    // Simple string comparison works for HH:MM unless crossing midnight. 
-    // We assume classes don't wrap tightly around midnight for simple comparison.
-    if (endTime < startTime) {
+    if (!target || !start) return false;
+    if (!end) end = addOneHour(start);
+
+    if (end < start) {
         // Crosses midnight (e.g. 23:00 to 01:00)
-        return targetTime >= startTime || targetTime < endTime;
+        return target >= start || target < end;
     }
-    return targetTime >= startTime && targetTime < endTime;
+    return target >= start && target < end;
+};
+
+// Local date helpers to avoid UTC offset issues with ISO strings
+const getLocalDateString = (d = new Date()) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const getLocalTimeString = (d = new Date()) => {
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
 };
 
 const AdminLiveClasses = () => {
     const { classes, liveClasses, mentors, students } = useData();
 
-    // Default to current date and time (IST is ideal, but using local system time is practical for the picker default)
-    const now = new Date();
-    const defaultDate = now.toISOString().split('T')[0];
-    const defaultTime = now.toTimeString().split(':').slice(0, 2).join(':');
-
-    const [selectedDate, setSelectedDate] = useState(defaultDate);
-    const [selectedTime, setSelectedTime] = useState(defaultTime);
+    // Default to current local date and time
+    const [selectedDate, setSelectedDate] = useState(() => getLocalDateString());
+    const [selectedTime, setSelectedTime] = useState(() => getLocalTimeString());
 
     const targetDayOfWeek = useMemo(() => {
         if (!selectedDate) return '';
-        const d = new Date(selectedDate);
+        const parts = selectedDate.split('-').map(Number);
+        if (parts.length < 3) return '';
+        const [year, month, day] = parts;
+        const d = new Date(year, month - 1, day);
         return DAYS_OF_WEEK[d.getDay()];
     }, [selectedDate]);
 
@@ -64,12 +104,20 @@ const AdminLiveClasses = () => {
             const liveConfig = (liveClasses || []).find(lc => lc.classId === cls.id);
             
             // Effective Schedule Calculation
-            // Priority: LiveClass overrides > Class Defaults
-            const effectiveDays = liveConfig?.selectedDays && liveConfig.selectedDays.length > 0 
-                                    ? liveConfig.selectedDays 
-                                    : (cls.days || []);
-            const effectiveTime = liveConfig?.time || cls.startTime || '';
-            const effectiveEndTime = liveConfig?.time ? addOneHour(liveConfig.time) : cls.endTime || addOneHour(cls.startTime);
+            // Priority: Class Defaults (authoritative schedule from Class Management) > LiveClass overrides
+            const effectiveDays = (cls.days && cls.days.length > 0)
+                                    ? cls.days 
+                                    : (liveConfig?.selectedDays && liveConfig.selectedDays.length > 0 ? liveConfig.selectedDays : []);
+
+            const effectiveTime = cls.startTime ? cls.startTime : (liveConfig?.time || '');
+
+            let effectiveEndTime = '';
+            if (cls.endTime) {
+                effectiveEndTime = cls.endTime;
+            } else if (effectiveTime) {
+                effectiveEndTime = addOneHour(effectiveTime);
+            }
+
             const isConfigEnabled = liveConfig?.isEnabled === true;
             const link = liveConfig?.link || '';
 
@@ -167,8 +215,8 @@ const AdminLiveClasses = () => {
                         <button 
                             onClick={() => {
                                 const resetNow = new Date();
-                                setSelectedDate(resetNow.toISOString().split('T')[0]);
-                                setSelectedTime(resetNow.toTimeString().split(':').slice(0, 2).join(':'));
+                                setSelectedDate(getLocalDateString(resetNow));
+                                setSelectedTime(getLocalTimeString(resetNow));
                             }}
                             className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition-colors border border-indigo-100 mt-5"
                         >
