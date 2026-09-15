@@ -6,7 +6,6 @@ import {
     FileBarChart, 
     Sparkles, 
     Download, 
-    Printer, 
     Copy, 
     Search, 
     Star, 
@@ -778,11 +777,6 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         alert("Full report summary copied to clipboard!");
     };
 
-    // Browser Print Trigger
-    const handlePrintReport = () => {
-        window.print();
-    };
-
     // Search filter for detailed view
     const detailedAnswers = useMemo(() => {
         if (!searchTerm.trim()) return questionAnalytics.answers;
@@ -851,9 +845,6 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                     </Button>
                     <Button variant="primary" onClick={handleGeneratePdf} className="gap-2 text-xs py-2 bg-indigo-600 hover:bg-indigo-700">
                         <FileText className="w-4 h-4" /> Download PDF
-                    </Button>
-                    <Button variant="outline" onClick={handlePrintReport} className="gap-2 text-xs py-2">
-                        <Printer className="w-4 h-4" /> Print
                     </Button>
                 </div>
             </div>
