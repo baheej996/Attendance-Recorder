@@ -447,7 +447,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         }
     };
 
-    // PROFESSIONAL PDF GENERATOR USING JSPDF & AUTOTABLE (WITHOUT ADMIN NOTE COLUMN)
+    // PROFESSIONAL PDF GENERATOR (DYNAMIC MENTOR COLUMN HIDING)
     const handleGeneratePdf = () => {
         if (questionAnalytics.answers.length === 0) {
             alert("No responses available to generate PDF.");
@@ -459,6 +459,9 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         const mentorDisplayName = selectedMentorId === 'all' ? 'All Mentors' : (targetMentor ? targetMentor.name : selectedMentorId);
         const formTitle = activeTemplate ? activeTemplate.title : 'Parent Feedback Form';
         const questionLabel = activeQuestion ? activeQuestion.label : 'Question';
+        
+        // Check if a specific mentor is selected (so we can omit repetitive Mentor Name column)
+        const showMentorColumn = selectedMentorId === 'all';
 
         // Header Letterhead Bar (Indigo Theme)
         doc.setFillColor(79, 70, 229);
@@ -550,18 +553,47 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
             currentY += 36;
         }
 
-        // Response Data Table (ADMIN NOTE REMOVED, EXPANDED ANSWER / RATING COLUMN)
-        const tableHeaders = ["#", "Student Name", "Class", "Parent Name", "Mentor Name", "Answer / Rating"];
+        // Table Headers & Data based on Mentor Selection Scope
+        const tableHeaders = showMentorColumn 
+            ? ["#", "Student Name", "Class", "Parent Name", "Mentor Name", "Answer / Rating"]
+            : ["#", "Student Name", "Class", "Parent Name", "Answer / Rating"];
+
         const tableData = questionAnalytics.answers.map((a, idx) => {
-            return [
-                idx + 1,
-                a.studentName,
-                `Class ${a.className}${a.division ? ` (${a.division})` : ''}`,
-                a.parentName,
-                a.mentorName,
-                formatAnswerForPdf(a.answer, activeQuestion?.type)
-            ];
+            const formattedAns = formatAnswerForPdf(a.answer, activeQuestion?.type);
+            if (showMentorColumn) {
+                return [
+                    idx + 1,
+                    a.studentName,
+                    `Class ${a.className}${a.division ? ` (${a.division})` : ''}`,
+                    a.parentName,
+                    a.mentorName,
+                    formattedAns
+                ];
+            } else {
+                return [
+                    idx + 1,
+                    a.studentName,
+                    `Class ${a.className}${a.division ? ` (${a.division})` : ''}`,
+                    a.parentName,
+                    formattedAns
+                ];
+            }
         });
+
+        const columnStylesConfig = showMentorColumn ? {
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 25 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 32 },
+            5: { cellWidth: 45 }
+        } : {
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 42 },
+            2: { cellWidth: 28 },
+            3: { cellWidth: 42 },
+            4: { cellWidth: 60 } // Maximum spacious width for Answer / Rating when Mentor is in header!
+        };
 
         autoTable(doc, {
             startY: currentY,
@@ -570,14 +602,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
             styles: { fontSize: 8.5, cellPadding: 3.5, overflow: 'linebreak' },
             headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
             alternateRowStyles: { fillColor: [249, 250, 251] },
-            columnStyles: {
-                0: { cellWidth: 10, halign: 'center' },
-                1: { cellWidth: 35 },
-                2: { cellWidth: 25 },
-                3: { cellWidth: 35 },
-                4: { cellWidth: 32 },
-                5: { cellWidth: 45 } // Clean spacious answer column
-            },
+            columnStyles: columnStylesConfig,
             margin: { left: 14, right: 14 },
             didDrawPage: (data) => {
                 const str = `Page ${doc.internal.getNumberOfPages()}`;
@@ -599,21 +624,37 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
             return;
         }
 
-        const headers = ["Student Name", "Class", "Division", "Parent Name", "Mentor Name", "Question", "Parent Answer", "Date Submitted"];
+        const showMentor = selectedMentorId === 'all';
+        const headers = showMentor 
+            ? ["Student Name", "Class", "Division", "Parent Name", "Mentor Name", "Question", "Parent Answer", "Date Submitted"]
+            : ["Student Name", "Class", "Division", "Parent Name", "Question", "Parent Answer", "Date Submitted"];
+        
         const qLabel = activeQuestion ? activeQuestion.label : "Question";
 
         const rows = questionAnalytics.answers.map(a => {
             const ansStr = formatAnswerForPdf(a.answer, activeQuestion?.type);
-            return [
-                `"${a.studentName.replace(/"/g, '""')}"`,
-                `"${a.className}"`,
-                `"${a.division}"`,
-                `"${a.parentName.replace(/"/g, '""')}"`,
-                `"${a.mentorName.replace(/"/g, '""')}"`,
-                `"${qLabel.replace(/"/g, '""')}"`,
-                `"${ansStr.replace(/\n/g, ' | ').replace(/"/g, '""')}"`,
-                `"${new Date(a.submittedAt).toLocaleString()}"`
-            ];
+            if (showMentor) {
+                return [
+                    `"${a.studentName.replace(/"/g, '""')}"`,
+                    `"${a.className}"`,
+                    `"${a.division}"`,
+                    `"${a.parentName.replace(/"/g, '""')}"`,
+                    `"${a.mentorName.replace(/"/g, '""')}"`,
+                    `"${qLabel.replace(/"/g, '""')}"`,
+                    `"${ansStr.replace(/\n/g, ' | ').replace(/"/g, '""')}"`,
+                    `"${new Date(a.submittedAt).toLocaleString()}"`
+                ];
+            } else {
+                return [
+                    `"${a.studentName.replace(/"/g, '""')}"`,
+                    `"${a.className}"`,
+                    `"${a.division}"`,
+                    `"${a.parentName.replace(/"/g, '""')}"`,
+                    `"${qLabel.replace(/"/g, '""')}"`,
+                    `"${ansStr.replace(/\n/g, ' | ').replace(/"/g, '""')}"`,
+                    `"${new Date(a.submittedAt).toLocaleString()}"`
+                ];
+            }
         });
 
         const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -631,7 +672,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         let text = `PARENT FEEDBACK QUESTION REPORT\n`;
         text += `==========================================\n`;
         text += `Form: ${activeTemplate?.title || 'N/A'}\n`;
-        text += `Mentor Filter: ${selectedMentorId === 'all' ? 'All Mentors' : selectedMentorId}\n`;
+        text += `Mentor Scope: ${selectedMentorId === 'all' ? 'All Mentors' : (mentorOptions.find(m => m.id === selectedMentorId)?.name || selectedMentorId)}\n`;
         text += `Question: ${activeQuestion?.label || 'N/A'}\n`;
         text += `Total Submissions: ${questionAnalytics.totalSubmissions}\n`;
         text += `Answered Responses: ${questionAnalytics.answeredCount} (${questionAnalytics.responseRate}%)\n`;
@@ -655,7 +696,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         text += `INDIVIDUAL RESPONSES:\n`;
         questionAnalytics.answers.forEach((a, i) => {
             const ansVal = formatAnswerForPdf(a.answer, activeQuestion?.type);
-            text += `[${i + 1}] Student: ${a.studentName} (${a.className}${a.division ? `-${a.division}` : ''}) | Parent: ${a.parentName} | Mentor: ${a.mentorName}\n`;
+            text += `[${i + 1}] Student: ${a.studentName} (${a.className}${a.division ? `-${a.division}` : ''}) | Parent: ${a.parentName}${selectedMentorId === 'all' ? ` | Mentor: ${a.mentorName}` : ''}\n`;
             text += `    Answer:\n${ansVal.split('\n').map(l => `      ${l}`).join('\n')}\n`;
         });
 
@@ -679,6 +720,8 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
             String(a.answer).toLowerCase().includes(term)
         );
     }, [questionAnalytics.answers, searchTerm]);
+
+    const showMentorColumnInUi = selectedMentorId === 'all';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -1162,7 +1205,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                                                     <div>
                                                         <h4 className="text-xs font-black text-gray-900">{item.parentName}</h4>
                                                         <p className="text-[10px] text-gray-500 font-medium">
-                                                            Student: <span className="font-bold text-indigo-600">{item.studentName}</span> • Class {item.className} • Mentor: <span className="font-bold text-purple-700">{item.mentorName}</span>
+                                                            Student: <span className="font-bold text-indigo-600">{item.studentName}</span> • Class {item.className} {showMentorColumnInUi && `• Mentor: ${item.mentorName}`}
                                                         </p>
                                                     </div>
                                                     <span className="text-[10px] text-gray-400">
@@ -1203,7 +1246,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                     </div>
                 )}
 
-                {/* REPORT VIEW: DETAILED BREAKDOWN MODE (WITHOUT ADMIN NOTE COLUMN) */}
+                {/* REPORT VIEW: DETAILED BREAKDOWN MODE (DYNAMIC MENTOR COLUMN) */}
                 {reportMode === 'detailed' && (
                     <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4 print:shadow-none print:border-none">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
@@ -1238,7 +1281,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                                             <th className="py-3 px-4 w-12 text-center">#</th>
                                             <th className="py-3 px-4 w-48">Student & Class</th>
                                             <th className="py-3 px-4 w-40">Parent Name</th>
-                                            <th className="py-3 px-4 w-40">Mentor Name</th>
+                                            {showMentorColumnInUi && <th className="py-3 px-4 w-40">Mentor Name</th>}
                                             <th className="py-3 px-4">Answer / Rating</th>
                                             <th className="py-3 px-4 w-28 text-right">Submitted</th>
                                         </tr>
@@ -1253,7 +1296,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                                                         <span className="text-[10px] text-indigo-600 font-bold">Class {item.className} {item.division && `(${item.division})`}</span>
                                                     </td>
                                                     <td className="py-3 px-4 font-bold text-gray-700">{item.parentName}</td>
-                                                    <td className="py-3 px-4 font-bold text-purple-700">{item.mentorName}</td>
+                                                    {showMentorColumnInUi && <td className="py-3 px-4 font-bold text-purple-700">{item.mentorName}</td>}
                                                     <td className="py-3 px-4">
                                                         {activeQuestion?.type === 'star_rating' ? (
                                                             <span className="font-black text-amber-500 bg-amber-50 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
