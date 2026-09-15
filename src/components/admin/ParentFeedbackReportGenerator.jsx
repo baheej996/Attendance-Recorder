@@ -306,6 +306,25 @@ const ParentFeedbackReportGenerator = () => {
         };
     }, [filteredSubmissions, activeQuestion]);
 
+    // Format Answer for PDF Export (Clean Line-by-Line, No JSON/Emoji bugs)
+    const formatAnswerForPdf = (rawAnswer, qType) => {
+        if (rawAnswer === undefined || rawAnswer === null || rawAnswer === '') {
+            return '-';
+        }
+        if (qType === 'star_rating' || qType === 'rating') {
+            return `${rawAnswer} / 5 Stars`;
+        }
+        if (typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)) {
+            return Object.entries(rawAnswer)
+                .map(([aspect, score]) => `${aspect}: ${score} / 5`)
+                .join('\n');
+        }
+        if (Array.isArray(rawAnswer)) {
+            return rawAnswer.join('\n');
+        }
+        return String(rawAnswer);
+    };
+
     // Save API Key
     const handleSaveApiKey = () => {
         localStorage.setItem('parent_feedback_ai_key', tempApiKey.trim());
@@ -324,8 +343,8 @@ const ParentFeedbackReportGenerator = () => {
         const formTitle = activeTemplate ? activeTemplate.title : 'Parent Feedback';
 
         const sampleAnswers = questionAnalytics.answers.slice(0, 25).map((a, i) => {
-            const val = typeof a.answer === 'object' ? JSON.stringify(a.answer) : Array.isArray(a.answer) ? a.answer.join(', ') : String(a.answer);
-            return `[${i + 1}] Parent of ${a.studentName} (Class ${a.className}): "${val}"`;
+            const val = formatAnswerForPdf(a.answer, activeQuestion?.type);
+            return `[${i + 1}] Parent of ${a.studentName} (Class ${a.className}): "${val.replace(/\n/g, ' ')}"`;
         }).join('\n');
 
         const promptText = `
@@ -428,7 +447,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         }
     };
 
-    // PROFESSIONAL PDF GENERATOR USING JSPDF & AUTOTABLE
+    // PROFESSIONAL PDF GENERATOR USING JSPDF & AUTOTABLE (WITHOUT ADMIN NOTE COLUMN)
     const handleGeneratePdf = () => {
         if (questionAnalytics.answers.length === 0) {
             alert("No responses available to generate PDF.");
@@ -442,7 +461,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         const questionLabel = activeQuestion ? activeQuestion.label : 'Question';
 
         // Header Letterhead Bar (Indigo Theme)
-        doc.setFillColor(79, 70, 229); // Indigo-600
+        doc.setFillColor(79, 70, 229);
         doc.rect(0, 0, 210, 15, 'F');
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
@@ -454,28 +473,27 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         // Document Title
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
-        doc.setTextColor(17, 24, 39); // Gray-900
+        doc.setTextColor(17, 24, 39);
         doc.text(formTitle, 14, currentY);
 
         currentY += 6;
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(107, 114, 128); // Gray-500
+        doc.setTextColor(107, 114, 128);
         doc.text(`Question: ${questionLabel}`, 14, currentY);
 
         currentY += 5;
         doc.text(`Scope: Mentor: ${mentorDisplayName} | Generated: ${new Date().toLocaleString()}`, 14, currentY);
 
         currentY += 6;
-        // Accent Divider line
         doc.setDrawColor(229, 231, 235);
         doc.setLineWidth(0.5);
         doc.line(14, currentY, 196, currentY);
 
         currentY += 7;
 
-        // Key Summary Stats Bar (4 Boxes layout)
-        doc.setFillColor(249, 250, 251); // Gray-50
+        // Key Summary Stats Bar
+        doc.setFillColor(249, 250, 251);
         doc.roundedRect(14, currentY, 182, 16, 2, 2, 'F');
 
         doc.setFontSize(8);
@@ -488,7 +506,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(16, 185, 129); // Emerald
+        doc.setTextColor(16, 185, 129);
         doc.text("RESPONSES", 65, currentY + 6);
         doc.setFontSize(11);
         doc.setTextColor(17, 24, 39);
@@ -496,7 +514,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(245, 158, 11); // Amber
+        doc.setTextColor(245, 158, 11);
         doc.text("AVERAGE RATING", 115, currentY + 6);
         doc.setFontSize(11);
         doc.setTextColor(17, 24, 39);
@@ -504,7 +522,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(147, 51, 234); // Purple
+        doc.setTextColor(147, 51, 234);
         doc.text("MENTOR SCOPE", 160, currentY + 6);
         doc.setFontSize(10);
         doc.setTextColor(17, 24, 39);
@@ -514,8 +532,8 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
 
         // AI Executive Summary block (if available)
         if (aiAnalysis) {
-            doc.setFillColor(245, 243, 255); // Purple-50
-            doc.setDrawColor(216, 180, 254); // Purple-300
+            doc.setFillColor(245, 243, 255);
+            doc.setDrawColor(216, 180, 254);
             doc.roundedRect(14, currentY, 182, 30, 2, 2, 'FD');
 
             doc.setFontSize(9);
@@ -532,17 +550,16 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
             currentY += 36;
         }
 
-        // Response Data Table
-        const tableHeaders = ["#", "Student & Class", "Parent Name", "Mentor Name", "Answer / Rating", "Admin Note"];
+        // Response Data Table (ADMIN NOTE REMOVED, EXPANDED ANSWER / RATING COLUMN)
+        const tableHeaders = ["#", "Student Name", "Class", "Parent Name", "Mentor Name", "Answer / Rating"];
         const tableData = questionAnalytics.answers.map((a, idx) => {
-            const ansStr = typeof a.answer === 'object' ? JSON.stringify(a.answer) : Array.isArray(a.answer) ? a.answer.join(', ') : String(a.answer);
             return [
                 idx + 1,
-                `${a.studentName}\nClass ${a.className}${a.division ? ` (${a.division})` : ''}`,
+                a.studentName,
+                `Class ${a.className}${a.division ? ` (${a.division})` : ''}`,
                 a.parentName,
                 a.mentorName,
-                activeQuestion?.type === 'star_rating' ? `${ansStr} / 5 Stars` : ansStr,
-                a.adminComment || '-'
+                formatAnswerForPdf(a.answer, activeQuestion?.type)
             ];
         });
 
@@ -550,20 +567,19 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
             startY: currentY,
             head: [tableHeaders],
             body: tableData,
-            styles: { fontSize: 8, cellPadding: 3.5, overflow: 'linebreak' },
+            styles: { fontSize: 8.5, cellPadding: 3.5, overflow: 'linebreak' },
             headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
             alternateRowStyles: { fillColor: [249, 250, 251] },
             columnStyles: {
                 0: { cellWidth: 10, halign: 'center' },
                 1: { cellWidth: 35 },
-                2: { cellWidth: 32 },
-                3: { cellWidth: 30 },
-                4: { cellWidth: 45 },
-                5: { cellWidth: 30 }
+                2: { cellWidth: 25 },
+                3: { cellWidth: 35 },
+                4: { cellWidth: 32 },
+                5: { cellWidth: 45 } // Clean spacious answer column
             },
             margin: { left: 14, right: 14 },
             didDrawPage: (data) => {
-                // Page Footer
                 const str = `Page ${doc.internal.getNumberOfPages()}`;
                 doc.setFontSize(8);
                 doc.setFont("helvetica", "normal");
@@ -583,11 +599,11 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
             return;
         }
 
-        const headers = ["Student Name", "Class", "Division", "Parent Name", "Mentor Name", "Question", "Parent Answer", "Date Submitted", "Admin Note"];
+        const headers = ["Student Name", "Class", "Division", "Parent Name", "Mentor Name", "Question", "Parent Answer", "Date Submitted"];
         const qLabel = activeQuestion ? activeQuestion.label : "Question";
 
         const rows = questionAnalytics.answers.map(a => {
-            const ansStr = typeof a.answer === 'object' ? JSON.stringify(a.answer) : Array.isArray(a.answer) ? a.answer.join('; ') : String(a.answer);
+            const ansStr = formatAnswerForPdf(a.answer, activeQuestion?.type);
             return [
                 `"${a.studentName.replace(/"/g, '""')}"`,
                 `"${a.className}"`,
@@ -595,9 +611,8 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                 `"${a.parentName.replace(/"/g, '""')}"`,
                 `"${a.mentorName.replace(/"/g, '""')}"`,
                 `"${qLabel.replace(/"/g, '""')}"`,
-                `"${ansStr.replace(/"/g, '""')}"`,
-                `"${new Date(a.submittedAt).toLocaleString()}"`,
-                `"${(a.adminComment || '').replace(/"/g, '""')}"`
+                `"${ansStr.replace(/\n/g, ' | ').replace(/"/g, '""')}"`,
+                `"${new Date(a.submittedAt).toLocaleString()}"`
             ];
         });
 
@@ -639,10 +654,9 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
 
         text += `INDIVIDUAL RESPONSES:\n`;
         questionAnalytics.answers.forEach((a, i) => {
-            const ansVal = typeof a.answer === 'object' ? JSON.stringify(a.answer) : Array.isArray(a.answer) ? a.answer.join(', ') : String(a.answer);
+            const ansVal = formatAnswerForPdf(a.answer, activeQuestion?.type);
             text += `[${i + 1}] Student: ${a.studentName} (${a.className}${a.division ? `-${a.division}` : ''}) | Parent: ${a.parentName} | Mentor: ${a.mentorName}\n`;
-            text += `    Answer: ${ansVal}\n`;
-            if (a.adminComment) text += `    Note: ${a.adminComment}\n`;
+            text += `    Answer:\n${ansVal.split('\n').map(l => `      ${l}`).join('\n')}\n`;
         });
 
         navigator.clipboard.writeText(text);
@@ -671,7 +685,6 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
             {/* INJECTED PRINT ISOLATION STYLES */}
             <style>{`
                 @media print {
-                    /* Hide surrounding admin UI (header, sidebar, top bar) */
                     body * {
                         visibility: hidden !important;
                     }
@@ -1143,10 +1156,6 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {questionAnalytics.answers.slice(0, 6).map((item, idx) => {
-                                        const ansDisplay = typeof item.answer === 'object' 
-                                            ? JSON.stringify(item.answer) 
-                                            : Array.isArray(item.answer) ? item.answer.join(', ') : String(item.answer);
-
                                         return (
                                             <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2 relative break-inside-avoid">
                                                 <div className="flex justify-between items-start">
@@ -1161,13 +1170,28 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                                                     </span>
                                                 </div>
 
-                                                <div className="p-3 bg-white rounded-xl border border-gray-100 text-xs font-bold text-gray-800 leading-relaxed">
+                                                <div className="p-3 bg-white rounded-xl border border-gray-100 text-xs font-medium text-gray-800 leading-relaxed">
                                                     {activeQuestion?.type === 'star_rating' ? (
-                                                        <div className="flex items-center gap-1 text-amber-500">
-                                                            <span>{ansDisplay} ⭐</span>
+                                                        <span className="font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                            {item.answer} ⭐
+                                                        </span>
+                                                    ) : typeof item.answer === 'object' && item.answer !== null ? (
+                                                        <div className="space-y-1">
+                                                            {Object.entries(item.answer).map(([aspect, score]) => (
+                                                                <div key={aspect} className="flex justify-between items-center text-xs">
+                                                                    <span className="font-semibold text-gray-700">{aspect}:</span>
+                                                                    <span className="font-black text-amber-500">{score} ⭐</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : Array.isArray(item.answer) ? (
+                                                        <div className="space-y-1">
+                                                            {item.answer.map((ans, i) => (
+                                                                <div key={i} className="font-semibold text-gray-800">• {ans}</div>
+                                                            ))}
                                                         </div>
                                                     ) : (
-                                                        ansDisplay
+                                                        <div className="whitespace-pre-wrap">{String(item.answer)}</div>
                                                     )}
                                                 </div>
                                             </div>
@@ -1179,7 +1203,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                     </div>
                 )}
 
-                {/* REPORT VIEW: DETAILED BREAKDOWN MODE */}
+                {/* REPORT VIEW: DETAILED BREAKDOWN MODE (WITHOUT ADMIN NOTE COLUMN) */}
                 {reportMode === 'detailed' && (
                     <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4 print:shadow-none print:border-none">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
@@ -1211,45 +1235,52 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                                 <table className="w-full text-left text-xs border-collapse">
                                     <thead>
                                         <tr className="bg-gray-50 text-gray-500 uppercase text-[10px] font-black tracking-wider border-b border-gray-200">
-                                            <th className="py-3 px-3">#</th>
-                                            <th className="py-3 px-3">Student & Class</th>
-                                            <th className="py-3 px-3">Parent Name</th>
-                                            <th className="py-3 px-3">Mentor Name</th>
-                                            <th className="py-3 px-3">Answer / Response</th>
-                                            <th className="py-3 px-3">Admin Note</th>
-                                            <th className="py-3 px-3">Submitted</th>
+                                            <th className="py-3 px-4 w-12 text-center">#</th>
+                                            <th className="py-3 px-4 w-48">Student & Class</th>
+                                            <th className="py-3 px-4 w-40">Parent Name</th>
+                                            <th className="py-3 px-4 w-40">Mentor Name</th>
+                                            <th className="py-3 px-4">Answer / Rating</th>
+                                            <th className="py-3 px-4 w-28 text-right">Submitted</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
                                         {detailedAnswers.map((item, idx) => {
-                                            const ansDisplay = typeof item.answer === 'object' 
-                                                ? JSON.stringify(item.answer) 
-                                                : Array.isArray(item.answer) ? item.answer.join(', ') : String(item.answer);
-
                                             return (
                                                 <tr key={item.submissionId} className="hover:bg-gray-50/80 transition-colors break-inside-avoid">
-                                                    <td className="py-3 px-3 text-gray-400 font-bold">{idx + 1}</td>
-                                                    <td className="py-3 px-3">
+                                                    <td className="py-3 px-4 text-gray-400 font-bold text-center">{idx + 1}</td>
+                                                    <td className="py-3 px-4">
                                                         <span className="font-bold text-gray-900 block">{item.studentName}</span>
                                                         <span className="text-[10px] text-indigo-600 font-bold">Class {item.className} {item.division && `(${item.division})`}</span>
                                                     </td>
-                                                    <td className="py-3 px-3 font-bold text-gray-700">{item.parentName}</td>
-                                                    <td className="py-3 px-3 font-bold text-purple-700">{item.mentorName}</td>
-                                                    <td className="py-3 px-3 max-w-xs">
+                                                    <td className="py-3 px-4 font-bold text-gray-700">{item.parentName}</td>
+                                                    <td className="py-3 px-4 font-bold text-purple-700">{item.mentorName}</td>
+                                                    <td className="py-3 px-4">
                                                         {activeQuestion?.type === 'star_rating' ? (
-                                                            <span className="font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                                                                {ansDisplay} ⭐
+                                                            <span className="font-black text-amber-500 bg-amber-50 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                                                                {item.answer} ⭐
                                                             </span>
+                                                        ) : typeof item.answer === 'object' && item.answer !== null ? (
+                                                            <div className="space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs">
+                                                                {Object.entries(item.answer).map(([aspect, score]) => (
+                                                                    <div key={aspect} className="flex justify-between items-center py-0.5 border-b border-gray-100 last:border-0">
+                                                                        <span className="font-semibold text-gray-700 pr-4">{aspect}:</span>
+                                                                        <span className="font-black text-amber-500 shrink-0">{score} ⭐</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : Array.isArray(item.answer) ? (
+                                                            <div className="space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                                                {item.answer.map((ans, i) => (
+                                                                    <div key={i} className="font-semibold text-gray-800">• {ans}</div>
+                                                                ))}
+                                                            </div>
                                                         ) : (
-                                                            <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 font-semibold text-gray-900 whitespace-normal break-words">
-                                                                {ansDisplay}
+                                                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 font-semibold text-gray-900 whitespace-pre-wrap leading-relaxed">
+                                                                {String(item.answer)}
                                                             </div>
                                                         )}
                                                     </td>
-                                                    <td className="py-3 px-3 max-w-xs text-gray-500 italic whitespace-normal break-words">
-                                                        {item.adminComment ? item.adminComment : '—'}
-                                                    </td>
-                                                    <td className="py-3 px-3 text-[10px] text-gray-400">
+                                                    <td className="py-3 px-4 text-[10px] text-gray-400 text-right whitespace-nowrap">
                                                         {new Date(item.submittedAt).toLocaleDateString()}
                                                     </td>
                                                 </tr>
