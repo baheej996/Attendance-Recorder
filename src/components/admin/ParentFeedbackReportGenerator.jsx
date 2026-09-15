@@ -8,24 +8,22 @@ import {
     Download, 
     Printer, 
     Copy, 
-    Filter, 
     Search, 
     Star, 
     CheckCircle, 
     User, 
     Key, 
-    Settings, 
     Bot, 
     HelpCircle,
     TrendingUp,
     MessageSquare,
-    ChevronRight,
     AlertCircle,
     FileText,
-    ListFilter,
-    Shield
+    ListFilter
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const AI_MODELS = [
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Recommended)', provider: 'Google AI', badge: 'Fast & Smart' },
@@ -102,7 +100,7 @@ const ParentFeedbackReportGenerator = () => {
         } else {
             setSelectedQuestionId('');
         }
-        setAiAnalysis(null); // Reset AI analysis on question change
+        setAiAnalysis(null);
     }, [availableQuestions]);
 
     // Active Selected Question Object
@@ -226,7 +224,7 @@ const ParentFeedbackReportGenerator = () => {
 
     // Answer Extraction & Analytics
     const questionAnalytics = useMemo(() => {
-        if (!activeQuestion) return { totalCount: 0, answeredCount: 0, answers: [], stats: null };
+        if (!activeQuestion) return { totalSubmissions: 0, answeredCount: 0, responseRate: 0, answers: [], stats: null };
 
         const qId = activeQuestion.id;
         const qType = activeQuestion.type;
@@ -253,7 +251,6 @@ const ParentFeedbackReportGenerator = () => {
             }
         });
 
-        // Compute Stats based on type
         let stats = null;
 
         if (qType === 'star_rating' || qType === 'rating') {
@@ -355,7 +352,6 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
 
         try {
             if (apiKey && apiKey.startsWith('AIza')) {
-                // Call Gemini API directly via REST
                 const apiModel = selectedAiModel.includes('gemini') ? selectedAiModel : 'gemini-2.0-flash';
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent?key=${apiKey}`;
 
@@ -387,8 +383,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                     isLiveAi: true
                 });
             } else {
-                // Fallback Smart Rule-Based AI Engine
-                await new Promise(r => setTimeout(r, 800)); // Simulating processing delay
+                await new Promise(r => setTimeout(r, 600));
 
                 let sentiment = 'Positive';
                 const avgNum = Number(questionAnalytics.stats?.avg || 4.2);
@@ -421,7 +416,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                     concerns,
                     recommendations,
                     generatedAt: new Date().toLocaleString(),
-                    modelUsed: `${selectedAiModel} (Built-in Smart Engine)`,
+                    modelUsed: `${selectedAiModel} (Smart Engine)`,
                     isLiveAi: false
                 });
             }
@@ -431,6 +426,154 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         } finally {
             setIsGeneratingAi(false);
         }
+    };
+
+    // PROFESSIONAL PDF GENERATOR USING JSPDF & AUTOTABLE
+    const handleGeneratePdf = () => {
+        if (questionAnalytics.answers.length === 0) {
+            alert("No responses available to generate PDF.");
+            return;
+        }
+
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const targetMentor = mentorOptions.find(m => m.id === selectedMentorId);
+        const mentorDisplayName = selectedMentorId === 'all' ? 'All Mentors' : (targetMentor ? targetMentor.name : selectedMentorId);
+        const formTitle = activeTemplate ? activeTemplate.title : 'Parent Feedback Form';
+        const questionLabel = activeQuestion ? activeQuestion.label : 'Question';
+
+        // Header Letterhead Bar (Indigo Theme)
+        doc.setFillColor(79, 70, 229); // Indigo-600
+        doc.rect(0, 0, 210, 15, 'F');
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(255, 255, 255);
+        doc.text("SAMASTHA E-LEARNING • PARENT FEEDBACK EVALUATION REPORT", 14, 10);
+
+        let currentY = 24;
+
+        // Document Title
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(17, 24, 39); // Gray-900
+        doc.text(formTitle, 14, currentY);
+
+        currentY += 6;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(107, 114, 128); // Gray-500
+        doc.text(`Question: ${questionLabel}`, 14, currentY);
+
+        currentY += 5;
+        doc.text(`Scope: Mentor: ${mentorDisplayName} | Generated: ${new Date().toLocaleString()}`, 14, currentY);
+
+        currentY += 6;
+        // Accent Divider line
+        doc.setDrawColor(229, 231, 235);
+        doc.setLineWidth(0.5);
+        doc.line(14, currentY, 196, currentY);
+
+        currentY += 7;
+
+        // Key Summary Stats Bar (4 Boxes layout)
+        doc.setFillColor(249, 250, 251); // Gray-50
+        doc.roundedRect(14, currentY, 182, 16, 2, 2, 'F');
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(79, 70, 229);
+        doc.text("SUBMISSIONS", 18, currentY + 6);
+        doc.setFontSize(11);
+        doc.setTextColor(17, 24, 39);
+        doc.text(`${questionAnalytics.totalSubmissions}`, 18, currentY + 12);
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(16, 185, 129); // Emerald
+        doc.text("RESPONSES", 65, currentY + 6);
+        doc.setFontSize(11);
+        doc.setTextColor(17, 24, 39);
+        doc.text(`${questionAnalytics.answeredCount} (${questionAnalytics.responseRate}%)`, 65, currentY + 12);
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(245, 158, 11); // Amber
+        doc.text("AVERAGE RATING", 115, currentY + 6);
+        doc.setFontSize(11);
+        doc.setTextColor(17, 24, 39);
+        doc.text(`${questionAnalytics.stats?.avg ? `${questionAnalytics.stats.avg} / 5 Stars` : 'Qualitative'}`, 115, currentY + 12);
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(147, 51, 234); // Purple
+        doc.text("MENTOR SCOPE", 160, currentY + 6);
+        doc.setFontSize(10);
+        doc.setTextColor(17, 24, 39);
+        doc.text(`${mentorDisplayName.slice(0, 16)}`, 160, currentY + 12);
+
+        currentY += 22;
+
+        // AI Executive Summary block (if available)
+        if (aiAnalysis) {
+            doc.setFillColor(245, 243, 255); // Purple-50
+            doc.setDrawColor(216, 180, 254); // Purple-300
+            doc.roundedRect(14, currentY, 182, 30, 2, 2, 'FD');
+
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(126, 34, 206);
+            doc.text(`AI EXECUTIVE EVALUATION SUMMARY (${aiAnalysis.sentiment} Sentiment)`, 18, currentY + 6);
+
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(55, 65, 81);
+            const splitSummary = doc.splitTextToSize(aiAnalysis.executiveSummary, 174);
+            doc.text(splitSummary, 18, currentY + 12);
+
+            currentY += 36;
+        }
+
+        // Response Data Table
+        const tableHeaders = ["#", "Student & Class", "Parent Name", "Mentor Name", "Answer / Rating", "Admin Note"];
+        const tableData = questionAnalytics.answers.map((a, idx) => {
+            const ansStr = typeof a.answer === 'object' ? JSON.stringify(a.answer) : Array.isArray(a.answer) ? a.answer.join(', ') : String(a.answer);
+            return [
+                idx + 1,
+                `${a.studentName}\nClass ${a.className}${a.division ? ` (${a.division})` : ''}`,
+                a.parentName,
+                a.mentorName,
+                activeQuestion?.type === 'star_rating' ? `${ansStr} / 5 Stars` : ansStr,
+                a.adminComment || '-'
+            ];
+        });
+
+        autoTable(doc, {
+            startY: currentY,
+            head: [tableHeaders],
+            body: tableData,
+            styles: { fontSize: 8, cellPadding: 3.5, overflow: 'linebreak' },
+            headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [249, 250, 251] },
+            columnStyles: {
+                0: { cellWidth: 10, halign: 'center' },
+                1: { cellWidth: 35 },
+                2: { cellWidth: 32 },
+                3: { cellWidth: 30 },
+                4: { cellWidth: 45 },
+                5: { cellWidth: 30 }
+            },
+            margin: { left: 14, right: 14 },
+            didDrawPage: (data) => {
+                // Page Footer
+                const str = `Page ${doc.internal.getNumberOfPages()}`;
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(156, 163, 175);
+                doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                doc.text("Confidential • Samastha E-Learning Admin Portal", doc.internal.pageSize.width - 70, doc.internal.pageSize.height - 10);
+            }
+        });
+
+        doc.save(`Parent_Feedback_Report_${activeTemplate?.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
     };
 
     // Export CSV Helper
@@ -506,7 +649,7 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
         alert("Full report summary copied to clipboard!");
     };
 
-    // Print Report
+    // Browser Print Trigger
     const handlePrintReport = () => {
         window.print();
     };
@@ -525,6 +668,37 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
+            {/* INJECTED PRINT ISOLATION STYLES */}
+            <style>{`
+                @media print {
+                    /* Hide surrounding admin UI (header, sidebar, top bar) */
+                    body * {
+                        visibility: hidden !important;
+                    }
+                    #printable-report-area, #printable-report-area * {
+                        visibility: visible !important;
+                    }
+                    #printable-report-area {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: white !important;
+                    }
+                    .print\\:hidden {
+                        display: none !important;
+                    }
+                    .print\\:border-none {
+                        border: none !important;
+                    }
+                    .print\\:shadow-none {
+                        box-shadow: none !important;
+                    }
+                }
+            `}</style>
+
             {/* Header Card */}
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
                 <div>
@@ -545,529 +719,549 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                     <Button variant="outline" onClick={handleCopySummary} className="gap-2 text-xs py-2">
                         <Copy className="w-4 h-4 text-indigo-600" /> Copy Report
                     </Button>
-                    <Button variant="primary" onClick={handlePrintReport} className="gap-2 text-xs py-2">
-                        <Printer className="w-4 h-4" /> Print / Save PDF
+                    <Button variant="primary" onClick={handleGeneratePdf} className="gap-2 text-xs py-2 bg-indigo-600 hover:bg-indigo-700">
+                        <FileText className="w-4 h-4" /> Download PDF
+                    </Button>
+                    <Button variant="outline" onClick={handlePrintReport} className="gap-2 text-xs py-2">
+                        <Printer className="w-4 h-4" /> Print
                     </Button>
                 </div>
             </div>
 
-            {/* SELECTION CONTROLS BAR */}
-            <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4 print:p-0 print:border-none print:shadow-none">
-                <div className="flex items-center justify-between border-b pb-3 print:hidden">
-                    <span className="text-xs font-black uppercase tracking-wider text-indigo-600 flex items-center gap-2">
-                        <ListFilter className="w-4 h-4" /> Step 1: Report Selection Criteria
-                    </span>
-                    
-                    {/* Short vs Detailed Toggle */}
-                    <div className="flex bg-gray-100 p-1 rounded-xl">
-                        <button
-                            onClick={() => setReportMode('short')}
-                            className={clsx(
-                                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
-                                reportMode === 'short' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                            )}
-                        >
-                            <FileText className="w-3.5 h-3.5" /> Short Summary
-                        </button>
-                        <button
-                            onClick={() => setReportMode('detailed')}
-                            className={clsx(
-                                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
-                                reportMode === 'detailed' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                            )}
-                        >
-                            <User className="w-3.5 h-3.5" /> Detailed Breakdown
-                        </button>
-                    </div>
-                </div>
+            {/* PRINTABLE REPORT WRAPPER */}
+            <div id="printable-report-area" className="space-y-6">
 
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3 print:hidden">
-                    {/* Mentor Selector */}
-                    <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">1. Select Mentor</label>
-                        <select 
-                            value={selectedMentorId} 
-                            onChange={e => setSelectedMentorId(e.target.value)}
-                            className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
-                            <option value="all">All Mentors</option>
-                            {mentorOptions.map(m => (
-                                <option key={m.id} value={m.id}>{m.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Feedback Form Selector */}
-                    <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">2. Select Form Template</label>
-                        <select 
-                            value={selectedTemplateId} 
-                            onChange={e => setSelectedTemplateId(e.target.value)}
-                            className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
-                            {(parentFeedbackTemplates || []).map(t => (
-                                <option key={t.id} value={t.id}>{t.title} ({t.month} {t.year})</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Question Selector */}
-                    <div className="md:col-span-2">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">3. Select Question</label>
-                        <select 
-                            value={selectedQuestionId} 
-                            onChange={e => setSelectedQuestionId(e.target.value)}
-                            className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none truncate"
-                        >
-                            {availableQuestions.length === 0 ? (
-                                <option value="">No questions found in form</option>
-                            ) : (
-                                availableQuestions.map(q => (
-                                    <option key={q.id} value={q.id}>
-                                        [{q.sectionTitle}] {q.label}
-                                    </option>
-                                ))
-                            )}
-                        </select>
-                    </div>
-
-                    {/* Class Filter (Optional) */}
-                    <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Filter Class</label>
-                        <select 
-                            value={selectedClassName} 
-                            onChange={e => setSelectedClassName(e.target.value)}
-                            className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
-                            <option value="all">All Classes</option>
-                            {uniqueClassNames.map(c => (
-                                <option key={c} value={c}>Class {c}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                {/* Print Title Header */}
-                <div className="hidden print:block border-b pb-4 mb-4">
-                    <h1 className="text-xl font-black text-gray-900">{activeTemplate?.title || 'Parent Feedback Report'}</h1>
-                    <p className="text-xs text-gray-600 font-bold mt-0.5">
-                        Question: {activeQuestion?.label} • Mentor: {selectedMentorId === 'all' ? 'All Mentors' : mentorOptions.find(m => m.id === selectedMentorId)?.name}
-                    </p>
-                    <p className="text-[10px] text-gray-400">Generated: {new Date().toLocaleString()}</p>
-                </div>
-            </Card>
-
-            {/* AI ASSISTANT BANNER */}
-            <Card className="p-6 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white rounded-2xl shadow-lg relative overflow-hidden print:hidden">
-                <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-                
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-                    <div className="space-y-2 max-w-2xl">
-                        <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-purple-200 border border-white/10">
-                            <Bot className="w-4 h-4 text-purple-300 animate-pulse" />
-                            AI-Assisted Report Analysis
+                {/* Print Letterhead Header */}
+                <div className="hidden print:block border-b border-gray-200 pb-4 mb-4">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">
+                                SAMASTHA E-LEARNING • PARENT FEEDBACK REPORT
+                            </span>
+                            <h1 className="text-2xl font-black text-gray-900 mt-1">{activeTemplate?.title || 'Parent Feedback Report'}</h1>
+                            <p className="text-xs text-gray-600 font-bold mt-1">
+                                Question: {activeQuestion?.label}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                Mentor Scope: <span className="font-bold text-purple-700">{selectedMentorId === 'all' ? 'All Mentors' : mentorOptions.find(m => m.id === selectedMentorId)?.name}</span>
+                            </p>
                         </div>
-                        <h3 className="text-xl font-black tracking-tight text-white">
-                            Synthesize Parent Responses with AI
-                        </h3>
-                        <p className="text-xs text-indigo-200 leading-relaxed">
-                            Generate executive summaries, parent satisfaction trends, key highlights, and mentor recommendations automatically using Google Gemini AI.
-                        </p>
+                        <div className="text-right text-[10px] text-gray-400">
+                            <p>Generated: {new Date().toLocaleString()}</p>
+                            <p className="font-bold text-emerald-600 mt-1">{questionAnalytics.answeredCount} Responses ({questionAnalytics.responseRate}%)</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SELECTION CONTROLS BAR */}
+                <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4 print:p-0 print:border-none print:shadow-none">
+                    <div className="flex items-center justify-between border-b pb-3 print:hidden">
+                        <span className="text-xs font-black uppercase tracking-wider text-indigo-600 flex items-center gap-2">
+                            <ListFilter className="w-4 h-4" /> Step 1: Report Selection Criteria
+                        </span>
+                        
+                        {/* Short vs Detailed Toggle */}
+                        <div className="flex bg-gray-100 p-1 rounded-xl">
+                            <button
+                                onClick={() => setReportMode('short')}
+                                className={clsx(
+                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                                    reportMode === 'short' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                                )}
+                            >
+                                <FileText className="w-3.5 h-3.5" /> Short Summary
+                            </button>
+                            <button
+                                onClick={() => setReportMode('detailed')}
+                                className={clsx(
+                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                                    reportMode === 'detailed' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                                )}
+                            >
+                                <User className="w-3.5 h-3.5" /> Detailed Breakdown
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-                        {/* Model Selector */}
-                        <div className="relative">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3 print:hidden">
+                        {/* Mentor Selector */}
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">1. Select Mentor</label>
                             <select 
-                                value={selectedAiModel} 
-                                onChange={e => setSelectedAiModel(e.target.value)}
-                                className="w-full bg-white/10 text-white font-bold text-xs border border-white/20 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                                value={selectedMentorId} 
+                                onChange={e => setSelectedMentorId(e.target.value)}
+                                className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
                             >
-                                {AI_MODELS.map(m => (
-                                    <option key={m.id} value={m.id} className="text-gray-900">
-                                        {m.name}
-                                    </option>
+                                <option value="all">All Mentors</option>
+                                {mentorOptions.map(m => (
+                                    <option key={m.id} value={m.id}>{m.name}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* API Key settings trigger */}
-                        <button
-                            onClick={() => { setTempApiKey(apiKey); setShowKeyModal(true); }}
-                            className="p-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl transition-all text-xs font-bold flex items-center justify-center gap-1.5"
-                            title="Configure Gemini API Key"
-                        >
-                            <Key className="w-4 h-4 text-amber-300" />
-                            {apiKey ? <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-1.5 py-0.5 rounded">Active</span> : <span className="text-[10px] text-amber-200">Set Key</span>}
-                        </button>
+                        {/* Feedback Form Selector */}
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">2. Select Form Template</label>
+                            <select 
+                                value={selectedTemplateId} 
+                                onChange={e => setSelectedTemplateId(e.target.value)}
+                                className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            >
+                                {(parentFeedbackTemplates || []).map(t => (
+                                    <option key={t.id} value={t.id}>{t.title} ({t.month} {t.year})</option>
+                                ))}
+                            </select>
+                        </div>
 
-                        {/* Generate AI Button */}
-                        <Button 
-                            variant="primary"
-                            onClick={handleGenerateAiReport}
-                            disabled={isGeneratingAi || questionAnalytics.answeredCount === 0}
-                            className="bg-purple-600 hover:bg-purple-500 text-white font-black text-xs py-2.5 px-5 rounded-xl shadow-md border border-purple-400/30 gap-2 shrink-0"
-                        >
-                            <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-                            {isGeneratingAi ? 'Analyzing Data...' : 'Run AI Analysis'}
-                        </Button>
+                        {/* Question Selector */}
+                        <div className="md:col-span-2">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">3. Select Question</label>
+                            <select 
+                                value={selectedQuestionId} 
+                                onChange={e => setSelectedQuestionId(e.target.value)}
+                                className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none truncate"
+                            >
+                                {availableQuestions.length === 0 ? (
+                                    <option value="">No questions found in form</option>
+                                ) : (
+                                    availableQuestions.map(q => (
+                                        <option key={q.id} value={q.id}>
+                                            [{q.sectionTitle}] {q.label}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
+                        </div>
+
+                        {/* Class Filter (Optional) */}
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Filter Class</label>
+                            <select 
+                                value={selectedClassName} 
+                                onChange={e => setSelectedClassName(e.target.value)}
+                                className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
+                            >
+                                <option value="all">All Classes</option>
+                                {uniqueClassNames.map(c => (
+                                    <option key={c} value={c}>Class {c}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                </div>
+                </Card>
 
-                {/* AI Error Alert */}
-                {aiError && (
-                    <div className="mt-4 p-3 bg-red-500/20 border border-red-400/40 rounded-xl text-xs text-red-100 flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-300 shrink-0" /> {aiError}
-                        </span>
-                        <button onClick={() => setAiError(null)} className="text-white hover:underline text-[10px]">Dismiss</button>
-                    </div>
-                )}
-            </Card>
-
-            {/* AI ANALYSIS OUTPUT CARD */}
-            {aiAnalysis && (
-                <Card className="p-6 bg-white border-2 border-purple-100 shadow-md rounded-2xl space-y-5 animate-in slide-in-from-top-4 duration-300">
-                    <div className="flex justify-between items-start border-b border-gray-100 pb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
-                                <Sparkles className="w-5 h-5 text-purple-600" />
+                {/* AI ASSISTANT BANNER */}
+                <Card className="p-6 bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white rounded-2xl shadow-lg relative overflow-hidden print:hidden">
+                    <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+                    
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                        <div className="space-y-2 max-w-2xl">
+                            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-purple-200 border border-white/10">
+                                <Bot className="w-4 h-4 text-purple-300 animate-pulse" />
+                                AI-Assisted Report Analysis
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-lg font-black text-gray-900">AI Executive Evaluation Summary</h3>
-                                    <span className={clsx(
-                                        "text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider",
-                                        aiAnalysis.sentiment === 'Positive' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                                        aiAnalysis.sentiment === 'Neutral' ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                                        "bg-red-50 text-red-700 border border-red-200"
-                                    )}>
-                                        {aiAnalysis.sentiment} Sentiment
-                                    </span>
+                            <h3 className="text-xl font-black tracking-tight text-white">
+                                Synthesize Parent Responses with AI
+                            </h3>
+                            <p className="text-xs text-indigo-200 leading-relaxed">
+                                Generate executive summaries, parent satisfaction trends, key highlights, and mentor recommendations automatically using Google Gemini AI.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+                            {/* Model Selector */}
+                            <div className="relative">
+                                <select 
+                                    value={selectedAiModel} 
+                                    onChange={e => setSelectedAiModel(e.target.value)}
+                                    className="w-full bg-white/10 text-white font-bold text-xs border border-white/20 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                                >
+                                    {AI_MODELS.map(m => (
+                                        <option key={m.id} value={m.id} className="text-gray-900">
+                                            {m.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* API Key settings trigger */}
+                            <button
+                                onClick={() => { setTempApiKey(apiKey); setShowKeyModal(true); }}
+                                className="p-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl transition-all text-xs font-bold flex items-center justify-center gap-1.5"
+                                title="Configure Gemini API Key"
+                            >
+                                <Key className="w-4 h-4 text-amber-300" />
+                                {apiKey ? <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-1.5 py-0.5 rounded">Active</span> : <span className="text-[10px] text-amber-200">Set Key</span>}
+                            </button>
+
+                            {/* Generate AI Button */}
+                            <Button 
+                                variant="primary"
+                                onClick={handleGenerateAiReport}
+                                disabled={isGeneratingAi || questionAnalytics.answeredCount === 0}
+                                className="bg-purple-600 hover:bg-purple-500 text-white font-black text-xs py-2.5 px-5 rounded-xl shadow-md border border-purple-400/30 gap-2 shrink-0"
+                            >
+                                <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
+                                {isGeneratingAi ? 'Analyzing Data...' : 'Run AI Analysis'}
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* AI Error Alert */}
+                    {aiError && (
+                        <div className="mt-4 p-3 bg-red-500/20 border border-red-400/40 rounded-xl text-xs text-red-100 flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-red-300 shrink-0" /> {aiError}
+                            </span>
+                            <button onClick={() => setAiError(null)} className="text-white hover:underline text-[10px]">Dismiss</button>
+                        </div>
+                    )}
+                </Card>
+
+                {/* AI ANALYSIS OUTPUT CARD */}
+                {aiAnalysis && (
+                    <Card className="p-6 bg-white border-2 border-purple-100 shadow-md rounded-2xl space-y-5 animate-in slide-in-from-top-4 duration-300">
+                        <div className="flex justify-between items-start border-b border-gray-100 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
+                                    <Sparkles className="w-5 h-5 text-purple-600" />
                                 </div>
-                                <p className="text-xs text-gray-400 mt-0.5">
-                                    Generated via <span className="font-bold text-purple-700">{aiAnalysis.modelUsed}</span> at {aiAnalysis.generatedAt}
-                                </p>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-lg font-black text-gray-900">AI Executive Evaluation Summary</h3>
+                                        <span className={clsx(
+                                            "text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider",
+                                            aiAnalysis.sentiment === 'Positive' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                            aiAnalysis.sentiment === 'Neutral' ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                            "bg-red-50 text-red-700 border border-red-200"
+                                        )}>
+                                            {aiAnalysis.sentiment} Sentiment
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                        Generated via <span className="font-bold text-purple-700">{aiAnalysis.modelUsed}</span> at {aiAnalysis.generatedAt}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3 text-emerald-600" /> AI Verified
-                        </span>
-                    </div>
-
-                    {/* Executive Summary Text */}
-                    <div className="p-4 bg-purple-50/50 rounded-2xl border border-purple-100 text-xs font-semibold text-gray-800 leading-relaxed">
-                        "{aiAnalysis.executiveSummary}"
-                    </div>
-
-                    {/* Grid Breakdown: Strengths, Concerns, Recommendations */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Strengths */}
-                        <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 space-y-2">
-                            <h4 className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                                <CheckCircle className="w-4 h-4 text-emerald-600" /> Key Strengths
-                            </h4>
-                            <ul className="space-y-1.5 text-xs text-emerald-900 font-medium">
-                                {aiAnalysis.strengths?.map((s, idx) => (
-                                    <li key={idx} className="flex items-start gap-1.5">
-                                        <span className="text-emerald-500 font-bold">•</span>
-                                        <span>{s}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        {/* Concerns */}
-                        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100 space-y-2">
-                            <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-                                <AlertCircle className="w-4 h-4 text-amber-600" /> Areas of Focus
-                            </h4>
-                            <ul className="space-y-1.5 text-xs text-amber-900 font-medium">
-                                {aiAnalysis.concerns?.map((c, idx) => (
-                                    <li key={idx} className="flex items-start gap-1.5">
-                                        <span className="text-amber-500 font-bold">•</span>
-                                        <span>{c}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        {/* Actionable Recommendations */}
-                        <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-2">
-                            <h4 className="text-xs font-black text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
-                                <TrendingUp className="w-4 h-4 text-indigo-600" /> Action Steps
-                            </h4>
-                            <ul className="space-y-1.5 text-xs text-indigo-900 font-medium">
-                                {aiAnalysis.recommendations?.map((r, idx) => (
-                                    <li key={idx} className="flex items-start gap-1.5">
-                                        <span className="text-indigo-500 font-bold">•</span>
-                                        <span>{r}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                </Card>
-            )}
-
-            {/* KPI METRICS OVERVIEW */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-5 bg-white border-gray-100 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                        <FileText className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Submissions</p>
-                        <h4 className="text-2xl font-black text-gray-900">{questionAnalytics.totalSubmissions}</h4>
-                        <p className="text-[10px] text-gray-400 mt-0.5">Matching current filters</p>
-                    </div>
-                </Card>
-
-                <Card className="p-5 bg-white border-gray-100 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                        <CheckCircle className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Answered Responses</p>
-                        <h4 className="text-2xl font-black text-emerald-600">{questionAnalytics.answeredCount}</h4>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{questionAnalytics.responseRate}% completion rate</p>
-                    </div>
-                </Card>
-
-                <Card className="p-5 bg-white border-gray-100 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-                        <Star className="w-6 h-6 fill-amber-400" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Average Rating</p>
-                        <h4 className="text-2xl font-black text-amber-600">
-                            {questionAnalytics.stats?.avg ? `${questionAnalytics.stats.avg} / 5` : 'N/A'}
-                        </h4>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                            {questionAnalytics.stats?.numericCount ? `${questionAnalytics.stats.numericCount} rated entries` : 'Qualitative response'}
-                        </p>
-                    </div>
-                </Card>
-
-                <Card className="p-5 bg-white border-gray-100 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                        <User className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Selected Mentor</p>
-                        <h4 className="text-sm font-black text-purple-700 truncate max-w-[140px]">
-                            {selectedMentorId === 'all' ? 'All Mentors' : mentorOptions.find(m => m.id === selectedMentorId)?.name || 'Selected Mentor'}
-                        </h4>
-                        <p className="text-[10px] text-gray-400 mt-0.5">Filtered scope</p>
-                    </div>
-                </Card>
-            </div>
-
-            {/* REPORT VIEW: SHORT SUMMARY MODE */}
-            {reportMode === 'short' && (
-                <div className="space-y-6">
-                    {/* Active Question Highlight Banner */}
-                    <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4">
-                        <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
-                            <div>
-                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-full">
-                                    Section: {activeQuestion?.sectionTitle || 'General'}
-                                </span>
-                                <h3 className="text-xl font-black text-gray-900 mt-2">{activeQuestion?.label || 'Question Label'}</h3>
-                            </div>
-                            <span className="text-xs font-bold text-gray-400 bg-gray-50 px-3 py-1 rounded-xl">
-                                Type: {activeQuestion?.type || 'standard'}
+                            <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full flex items-center gap-1 print:hidden">
+                                <CheckCircle className="w-3 h-3 text-emerald-600" /> AI Verified
                             </span>
                         </div>
 
-                        {/* Rating Distribution Breakdown */}
-                        {questionAnalytics.stats?.dist && (
-                            <div className="space-y-3 pt-2">
-                                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Star Rating Breakdown</h4>
-                                <div className="space-y-2">
-                                    {[5, 4, 3, 2, 1].map(stars => {
-                                        const count = questionAnalytics.stats.dist[stars] || 0;
-                                        const pct = questionAnalytics.answeredCount > 0 ? Math.round((count / questionAnalytics.answeredCount) * 100) : 0;
-                                        return (
-                                            <div key={stars} className="flex items-center gap-3 text-xs font-medium">
-                                                <span className="w-12 font-bold text-amber-500 flex items-center gap-1 shrink-0">
-                                                    {stars} ⭐
-                                                </span>
-                                                <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-                                                    <div 
-                                                        className={clsx(
-                                                            "h-full rounded-full transition-all duration-500",
-                                                            stars >= 4 ? "bg-emerald-500" : stars === 3 ? "bg-amber-400" : "bg-red-500"
-                                                        )} 
-                                                        style={{ width: `${pct}%` }} 
-                                                    />
-                                                </div>
-                                                <span className="w-16 text-right text-gray-500 font-bold shrink-0">
-                                                    {count} ({pct}%)
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
+                        {/* Executive Summary Text */}
+                        <div className="p-4 bg-purple-50/50 rounded-2xl border border-purple-100 text-xs font-semibold text-gray-800 leading-relaxed">
+                            "{aiAnalysis.executiveSummary}"
+                        </div>
 
-                        {/* Frequency Distribution for choices */}
-                        {questionAnalytics.stats?.freq && (
-                            <div className="space-y-3 pt-2">
-                                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Option Frequencies</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {Object.entries(questionAnalytics.stats.freq).map(([opt, count]) => {
-                                        const pct = questionAnalytics.answeredCount > 0 ? Math.round((count / questionAnalytics.answeredCount) * 100) : 0;
-                                        return (
-                                            <div key={opt} className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center text-xs">
-                                                <span className="font-bold text-gray-800 truncate pr-2">{opt}</span>
-                                                <span className="font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
-                                                    {count} ({pct}%)
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                        {/* Grid Breakdown */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Strengths */}
+                            <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 space-y-2">
+                                <h4 className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <CheckCircle className="w-4 h-4 text-emerald-600" /> Key Strengths
+                                </h4>
+                                <ul className="space-y-1.5 text-xs text-emerald-900 font-medium">
+                                    {aiAnalysis.strengths?.map((s, idx) => (
+                                        <li key={idx} className="flex items-start gap-1.5">
+                                            <span className="text-emerald-500 font-bold">•</span>
+                                            <span>{s}</span>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
-                        )}
+
+                            {/* Concerns */}
+                            <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100 space-y-2">
+                                <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <AlertCircle className="w-4 h-4 text-amber-600" /> Areas of Focus
+                                </h4>
+                                <ul className="space-y-1.5 text-xs text-amber-900 font-medium">
+                                    {aiAnalysis.concerns?.map((c, idx) => (
+                                        <li key={idx} className="flex items-start gap-1.5">
+                                            <span className="text-amber-500 font-bold">•</span>
+                                            <span>{c}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* Action Steps */}
+                            <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-2">
+                                <h4 className="text-xs font-black text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <TrendingUp className="w-4 h-4 text-indigo-600" /> Action Steps
+                                </h4>
+                                <ul className="space-y-1.5 text-xs text-indigo-900 font-medium">
+                                    {aiAnalysis.recommendations?.map((r, idx) => (
+                                        <li key={idx} className="flex items-start gap-1.5">
+                                            <span className="text-indigo-500 font-bold">•</span>
+                                            <span>{r}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </Card>
+                )}
+
+                {/* KPI METRICS OVERVIEW */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card className="p-5 bg-white border-gray-100 shadow-sm flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                            <FileText className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Submissions</p>
+                            <h4 className="text-2xl font-black text-gray-900">{questionAnalytics.totalSubmissions}</h4>
+                            <p className="text-[10px] text-gray-400 mt-0.5">Matching current filters</p>
+                        </div>
                     </Card>
 
-                    {/* Top Comments / Highlights Grid */}
-                    <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4">
-                        <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                            <MessageSquare className="w-5 h-5 text-indigo-600" />
-                            Recent Parent Comments & Answers Preview
-                        </h3>
+                    <Card className="p-5 bg-white border-gray-100 shadow-sm flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                            <CheckCircle className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Answered Responses</p>
+                            <h4 className="text-2xl font-black text-emerald-600">{questionAnalytics.answeredCount}</h4>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{questionAnalytics.responseRate}% completion rate</p>
+                        </div>
+                    </Card>
 
-                        {questionAnalytics.answers.length === 0 ? (
-                            <div className="py-12 text-center text-gray-400 border-2 border-dashed border-gray-100 rounded-2xl">
-                                <HelpCircle className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                                <p className="text-sm font-bold text-gray-600">No responses recorded for this question yet.</p>
-                                <p className="text-xs text-gray-400 mt-1">Try selecting a different question or mentor filter.</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {questionAnalytics.answers.slice(0, 6).map((item, idx) => {
-                                    const ansDisplay = typeof item.answer === 'object' 
-                                        ? JSON.stringify(item.answer) 
-                                        : Array.isArray(item.answer) ? item.answer.join(', ') : String(item.answer);
+                    <Card className="p-5 bg-white border-gray-100 shadow-sm flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                            <Star className="w-6 h-6 fill-amber-400" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Average Rating</p>
+                            <h4 className="text-2xl font-black text-amber-600">
+                                {questionAnalytics.stats?.avg ? `${questionAnalytics.stats.avg} / 5` : 'N/A'}
+                            </h4>
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                                {questionAnalytics.stats?.numericCount ? `${questionAnalytics.stats.numericCount} rated entries` : 'Qualitative response'}
+                            </p>
+                        </div>
+                    </Card>
 
-                                    return (
-                                        <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2 relative">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h4 className="text-xs font-black text-gray-900">{item.parentName}</h4>
-                                                    <p className="text-[10px] text-gray-500 font-medium">
-                                                        Student: <span className="font-bold text-indigo-600">{item.studentName}</span> • Class {item.className} • Mentor: <span className="font-bold text-purple-700">{item.mentorName}</span>
-                                                    </p>
-                                                </div>
-                                                <span className="text-[10px] text-gray-400">
-                                                    {new Date(item.submittedAt).toLocaleDateString()}
-                                                </span>
-                                            </div>
-
-                                            <div className="p-3 bg-white rounded-xl border border-gray-100 text-xs font-bold text-gray-800 leading-relaxed">
-                                                {activeQuestion?.type === 'star_rating' ? (
-                                                    <div className="flex items-center gap-1 text-amber-500">
-                                                        <span>{ansDisplay} ⭐</span>
-                                                    </div>
-                                                ) : (
-                                                    ansDisplay
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                    <Card className="p-5 bg-white border-gray-100 shadow-sm flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                            <User className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Selected Mentor</p>
+                            <h4 className="text-sm font-black text-purple-700 truncate max-w-[140px]">
+                                {selectedMentorId === 'all' ? 'All Mentors' : mentorOptions.find(m => m.id === selectedMentorId)?.name || 'Selected Mentor'}
+                            </h4>
+                            <p className="text-[10px] text-gray-400 mt-0.5">Filtered scope</p>
+                        </div>
                     </Card>
                 </div>
-            )}
 
-            {/* REPORT VIEW: DETAILED BREAKDOWN MODE */}
-            {reportMode === 'detailed' && (
-                <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
-                        <div>
-                            <h3 className="text-lg font-black text-gray-900">Detailed Student & Parent Response Table</h3>
-                            <p className="text-xs text-gray-500">Showing all individual answers for "{activeQuestion?.label}"</p>
-                        </div>
+                {/* REPORT VIEW: SHORT SUMMARY MODE */}
+                {reportMode === 'short' && (
+                    <div className="space-y-6">
+                        {/* Active Question Highlight Banner */}
+                        <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4">
+                            <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
+                                <div>
+                                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-full">
+                                        Section: {activeQuestion?.sectionTitle || 'General'}
+                                    </span>
+                                    <h3 className="text-xl font-black text-gray-900 mt-2">{activeQuestion?.label || 'Question Label'}</h3>
+                                </div>
+                                <span className="text-xs font-bold text-gray-400 bg-gray-50 px-3 py-1 rounded-xl">
+                                    Type: {activeQuestion?.type || 'standard'}
+                                </span>
+                            </div>
 
-                        {/* Search Filter */}
-                        <div className="relative w-full sm:w-64 print:hidden">
-                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-                            <input 
-                                type="text"
-                                placeholder="Search by student or parent..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                            />
-                        </div>
-                    </div>
+                            {/* Rating Distribution Breakdown */}
+                            {questionAnalytics.stats?.dist && (
+                                <div className="space-y-3 pt-2">
+                                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Star Rating Breakdown</h4>
+                                    <div className="space-y-2">
+                                        {[5, 4, 3, 2, 1].map(stars => {
+                                            const count = questionAnalytics.stats.dist[stars] || 0;
+                                            const pct = questionAnalytics.answeredCount > 0 ? Math.round((count / questionAnalytics.answeredCount) * 100) : 0;
+                                            return (
+                                                <div key={stars} className="flex items-center gap-3 text-xs font-medium">
+                                                    <span className="w-12 font-bold text-amber-500 flex items-center gap-1 shrink-0">
+                                                        {stars} ⭐
+                                                    </span>
+                                                    <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className={clsx(
+                                                                "h-full rounded-full transition-all duration-500",
+                                                                stars >= 4 ? "bg-emerald-500" : stars === 3 ? "bg-amber-400" : "bg-red-500"
+                                                            )} 
+                                                            style={{ width: `${pct}%` }} 
+                                                        />
+                                                    </div>
+                                                    <span className="w-16 text-right text-gray-500 font-bold shrink-0">
+                                                        {count} ({pct}%)
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
-                    {/* Table View */}
-                    {detailedAnswers.length === 0 ? (
-                        <div className="py-12 text-center text-gray-400 border-2 border-dashed border-gray-100 rounded-2xl">
-                            <p className="text-sm font-bold text-gray-600">No matching responses found.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-50 text-gray-500 uppercase text-[10px] font-black tracking-wider border-b border-gray-200">
-                                        <th className="py-3 px-4">#</th>
-                                        <th className="py-3 px-4">Student & Class</th>
-                                        <th className="py-3 px-4">Parent Name</th>
-                                        <th className="py-3 px-4">Mentor Name</th>
-                                        <th className="py-3 px-4">Answer / Response</th>
-                                        <th className="py-3 px-4">Admin Note</th>
-                                        <th className="py-3 px-4">Submitted</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
-                                    {detailedAnswers.map((item, idx) => {
+                            {/* Frequency Distribution */}
+                            {questionAnalytics.stats?.freq && (
+                                <div className="space-y-3 pt-2">
+                                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Option Frequencies</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {Object.entries(questionAnalytics.stats.freq).map(([opt, count]) => {
+                                            const pct = questionAnalytics.answeredCount > 0 ? Math.round((count / questionAnalytics.answeredCount) * 100) : 0;
+                                            return (
+                                                <div key={opt} className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center text-xs">
+                                                    <span className="font-bold text-gray-800 truncate pr-2">{opt}</span>
+                                                    <span className="font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
+                                                        {count} ({pct}%)
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </Card>
+
+                        {/* Top Comments / Highlights Grid */}
+                        <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4">
+                            <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                                <MessageSquare className="w-5 h-5 text-indigo-600" />
+                                Recent Parent Comments & Answers Preview
+                            </h3>
+
+                            {questionAnalytics.answers.length === 0 ? (
+                                <div className="py-12 text-center text-gray-400 border-2 border-dashed border-gray-100 rounded-2xl">
+                                    <HelpCircle className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                                    <p className="text-sm font-bold text-gray-600">No responses recorded for this question yet.</p>
+                                    <p className="text-xs text-gray-400 mt-1">Try selecting a different question or mentor filter.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {questionAnalytics.answers.slice(0, 6).map((item, idx) => {
                                         const ansDisplay = typeof item.answer === 'object' 
                                             ? JSON.stringify(item.answer) 
                                             : Array.isArray(item.answer) ? item.answer.join(', ') : String(item.answer);
 
                                         return (
-                                            <tr key={item.submissionId} className="hover:bg-gray-50/80 transition-colors">
-                                                <td className="py-3 px-4 text-gray-400 font-bold">{idx + 1}</td>
-                                                <td className="py-3 px-4">
-                                                    <span className="font-bold text-gray-900 block">{item.studentName}</span>
-                                                    <span className="text-[10px] text-indigo-600 font-bold">Class {item.className} {item.division && `(${item.division})`}</span>
-                                                </td>
-                                                <td className="py-3 px-4 font-bold text-gray-700">{item.parentName}</td>
-                                                <td className="py-3 px-4 font-bold text-purple-700">{item.mentorName}</td>
-                                                <td className="py-3 px-4 max-w-xs">
+                                            <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2 relative break-inside-avoid">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="text-xs font-black text-gray-900">{item.parentName}</h4>
+                                                        <p className="text-[10px] text-gray-500 font-medium">
+                                                            Student: <span className="font-bold text-indigo-600">{item.studentName}</span> • Class {item.className} • Mentor: <span className="font-bold text-purple-700">{item.mentorName}</span>
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-[10px] text-gray-400">
+                                                        {new Date(item.submittedAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-3 bg-white rounded-xl border border-gray-100 text-xs font-bold text-gray-800 leading-relaxed">
                                                     {activeQuestion?.type === 'star_rating' ? (
-                                                        <span className="font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                                                            {ansDisplay} ⭐
-                                                        </span>
-                                                    ) : (
-                                                        <div className="line-clamp-3 bg-gray-50 p-2 rounded-lg border border-gray-100 font-semibold text-gray-900">
-                                                            {ansDisplay}
+                                                        <div className="flex items-center gap-1 text-amber-500">
+                                                            <span>{ansDisplay} ⭐</span>
                                                         </div>
+                                                    ) : (
+                                                        ansDisplay
                                                     )}
-                                                </td>
-                                                <td className="py-3 px-4 max-w-xs text-gray-500 italic">
-                                                    {item.adminComment ? item.adminComment : '—'}
-                                                </td>
-                                                <td className="py-3 px-4 text-[10px] text-gray-400">
-                                                    {new Date(item.submittedAt).toLocaleDateString()}
-                                                </td>
-                                            </tr>
+                                                </div>
+                                            </div>
                                         );
                                     })}
-                                </tbody>
-                            </table>
+                                </div>
+                            )}
+                        </Card>
+                    </div>
+                )}
+
+                {/* REPORT VIEW: DETAILED BREAKDOWN MODE */}
+                {reportMode === 'detailed' && (
+                    <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4 print:shadow-none print:border-none">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900">Detailed Student & Parent Response Table</h3>
+                                <p className="text-xs text-gray-500">Showing all individual answers for "{activeQuestion?.label}"</p>
+                            </div>
+
+                            {/* Search Filter */}
+                            <div className="relative w-full sm:w-64 print:hidden">
+                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                                <input 
+                                    type="text"
+                                    placeholder="Search by student or parent..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                            </div>
                         </div>
-                    )}
-                </Card>
-            )}
+
+                        {/* Table View */}
+                        {detailedAnswers.length === 0 ? (
+                            <div className="py-12 text-center text-gray-400 border-2 border-dashed border-gray-100 rounded-2xl">
+                                <p className="text-sm font-bold text-gray-600">No matching responses found.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-50 text-gray-500 uppercase text-[10px] font-black tracking-wider border-b border-gray-200">
+                                            <th className="py-3 px-3">#</th>
+                                            <th className="py-3 px-3">Student & Class</th>
+                                            <th className="py-3 px-3">Parent Name</th>
+                                            <th className="py-3 px-3">Mentor Name</th>
+                                            <th className="py-3 px-3">Answer / Response</th>
+                                            <th className="py-3 px-3">Admin Note</th>
+                                            <th className="py-3 px-3">Submitted</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
+                                        {detailedAnswers.map((item, idx) => {
+                                            const ansDisplay = typeof item.answer === 'object' 
+                                                ? JSON.stringify(item.answer) 
+                                                : Array.isArray(item.answer) ? item.answer.join(', ') : String(item.answer);
+
+                                            return (
+                                                <tr key={item.submissionId} className="hover:bg-gray-50/80 transition-colors break-inside-avoid">
+                                                    <td className="py-3 px-3 text-gray-400 font-bold">{idx + 1}</td>
+                                                    <td className="py-3 px-3">
+                                                        <span className="font-bold text-gray-900 block">{item.studentName}</span>
+                                                        <span className="text-[10px] text-indigo-600 font-bold">Class {item.className} {item.division && `(${item.division})`}</span>
+                                                    </td>
+                                                    <td className="py-3 px-3 font-bold text-gray-700">{item.parentName}</td>
+                                                    <td className="py-3 px-3 font-bold text-purple-700">{item.mentorName}</td>
+                                                    <td className="py-3 px-3 max-w-xs">
+                                                        {activeQuestion?.type === 'star_rating' ? (
+                                                            <span className="font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                                {ansDisplay} ⭐
+                                                            </span>
+                                                        ) : (
+                                                            <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 font-semibold text-gray-900 whitespace-normal break-words">
+                                                                {ansDisplay}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 px-3 max-w-xs text-gray-500 italic whitespace-normal break-words">
+                                                        {item.adminComment ? item.adminComment : '—'}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-[10px] text-gray-400">
+                                                        {new Date(item.submittedAt).toLocaleDateString()}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </Card>
+                )}
+            </div>
 
             {/* API KEY CONFIGURATION MODAL */}
             {showKeyModal && (
