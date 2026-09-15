@@ -307,17 +307,33 @@ const ParentFeedbackReportGenerator = () => {
         };
     }, [filteredSubmissions, activeQuestion]);
 
-    // Smooth Trend Chart Data for Recharts (Matching User Screenshot)
+    // Check if current question is a rating/review type
+    const isRatingQuestion = useMemo(() => {
+        return activeQuestion?.type === 'star_rating' || activeQuestion?.type === 'rating' || activeQuestion?.type === 'matrix_rating' || !!questionAnalytics.stats?.avg;
+    }, [activeQuestion, questionAnalytics.stats]);
+
+    // Smooth Trend Chart Data for Recharts (Adapts to selected question & its reviews/ratings)
     const trendChartData = useMemo(() => {
         if (!questionAnalytics.answers || questionAnalytics.answers.length === 0) {
+            if (isRatingQuestion) {
+                return [
+                    { name: 'Mon', value: 4.2, count: 0 },
+                    { name: 'Tue', value: 4.8, count: 0 },
+                    { name: 'Wed', value: 4.5, count: 0 },
+                    { name: 'Thu', value: 4.9, count: 0 },
+                    { name: 'Fri', value: 4.7, count: 0 },
+                    { name: 'Sat', value: 4.8, count: 0 },
+                    { name: 'Sun', value: 5.0, count: 0 }
+                ];
+            }
             return [
-                { name: 'Mon', value: 12 },
-                { name: 'Tue', value: 19 },
-                { name: 'Wed', value: 15 },
-                { name: 'Thu', value: 28 },
-                { name: 'Fri', value: 36 },
-                { name: 'Sat', value: 24 },
-                { name: 'Sun', value: 30 }
+                { name: 'Mon', value: 12, count: 0 },
+                { name: 'Tue', value: 19, count: 0 },
+                { name: 'Wed', value: 15, count: 0 },
+                { name: 'Thu', value: 28, count: 0 },
+                { name: 'Fri', value: 36, count: 0 },
+                { name: 'Sat', value: 24, count: 0 },
+                { name: 'Sun', value: 30, count: 0 }
             ];
         }
 
@@ -327,21 +343,43 @@ const ParentFeedbackReportGenerator = () => {
         sorted.forEach(item => {
             const dStr = new Date(item.submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
             if (!dateMap[dStr]) {
-                dateMap[dStr] = { name: dStr, value: 0 };
+                dateMap[dStr] = { name: dStr, sum: 0, count: 0 };
             }
-            dateMap[dStr].value += 1;
+
+            dateMap[dStr].count += 1;
+
+            if (isRatingQuestion) {
+                let score = 0;
+                if (typeof item.answer === 'number' || (!isNaN(Number(item.answer)) && item.answer !== '')) {
+                    score = Number(item.answer);
+                } else if (typeof item.answer === 'object' && item.answer !== null) {
+                    const vals = Object.values(item.answer).map(v => Number(v)).filter(n => !isNaN(n));
+                    if (vals.length > 0) {
+                        score = vals.reduce((a, b) => a + b, 0) / vals.length;
+                    }
+                }
+                dateMap[dStr].sum += score;
+            }
         });
 
-        const list = Object.values(dateMap);
+        const list = Object.values(dateMap).map(d => {
+            if (isRatingQuestion) {
+                const avg = d.count > 0 ? Number((d.sum / d.count).toFixed(2)) : 0;
+                return { name: d.name, value: avg, count: d.count };
+            } else {
+                return { name: d.name, value: d.count, count: d.count };
+            }
+        });
+
         if (list.length === 1) {
             return [
-                { name: 'Start', value: 0 },
-                { name: list[0].name, value: list[0].value },
-                { name: 'End', value: list[0].value }
+                { name: 'Start', value: isRatingQuestion ? 0 : 0, count: 0 },
+                { name: list[0].name, value: list[0].value, count: list[0].count },
+                { name: 'End', value: list[0].value, count: list[0].count }
             ];
         }
         return list;
-    }, [questionAnalytics.answers]);
+    }, [questionAnalytics.answers, isRatingQuestion]);
 
     // Format Answer for PDF Export (Clean Line-by-Line, No JSON/Emoji bugs)
     const formatAnswerForPdf = (rawAnswer, qType) => {
@@ -942,24 +980,35 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                     </div>
                 </Card>
 
-                {/* SMOOTH BLUE GRADIENT TREND CHART CARD (MATCHING USER SCREENSHOT) */}
+                {/* SMOOTH BLUE GRADIENT TREND CHART CARD (ADAPTS TO SELECTED QUESTION & REVIEWS) */}
                 <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl relative overflow-hidden print:shadow-none print:border-none">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                         {/* Left Side KPI Metric & Subtitle */}
                         <div className="md:col-span-4 space-y-3">
                             <div className="flex items-center gap-3">
-                                <h2 className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tight">
-                                    {questionAnalytics.answeredCount > 0 ? questionAnalytics.answeredCount : (questionAnalytics.totalSubmissions || 346)}
+                                <h2 className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                                    {isRatingQuestion ? (
+                                        <>
+                                            {questionAnalytics.stats?.avg ? questionAnalytics.stats.avg : (trendChartData.length > 0 && trendChartData.some(d => d.value > 0) ? (trendChartData.reduce((acc, curr) => acc + curr.value, 0) / trendChartData.filter(d => d.value > 0).length).toFixed(1) : '5.0')}
+                                            <span className="text-2xl text-amber-500">⭐</span>
+                                        </>
+                                    ) : (
+                                        questionAnalytics.answeredCount > 0 ? questionAnalytics.answeredCount : (questionAnalytics.totalSubmissions || 0)
+                                    )}
                                 </h2>
                                 <span className="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shrink-0">
-                                    <TrendingUp className="w-3.5 h-3.5" /> Responses Trend
+                                    <TrendingUp className="w-3.5 h-3.5" />
+                                    {isRatingQuestion ? 'Rating Score Trend' : 'Response Trend'}
                                 </span>
                             </div>
                             
                             <div className="w-16 h-1 bg-blue-600 rounded-full" />
 
                             <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-xs">
-                                Parent response activity timeline for "{activeQuestion?.label?.slice(0, 45)}..."
+                                {isRatingQuestion 
+                                    ? `Average parent review rating score timeline for "${activeQuestion?.label?.slice(0, 40)}..."`
+                                    : `Parent response activity timeline for "${activeQuestion?.label?.slice(0, 45)}..."`
+                                }
                             </p>
                         </div>
 
@@ -981,14 +1030,28 @@ Provide a clean JSON response (and only JSON, without backticks if possible, or 
                                         tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} 
                                         dy={6}
                                     />
-                                    <YAxis hide domain={['auto', 'auto']} />
+                                    <YAxis hide domain={isRatingQuestion ? [0, 5] : ['auto', 'auto']} />
                                     <Tooltip 
                                         content={({ active, payload }) => {
                                             if (active && payload && payload.length) {
+                                                const itemData = payload[0].payload;
                                                 return (
                                                     <div className="bg-white/95 backdrop-blur-md p-2.5 rounded-xl border border-gray-200 shadow-xl text-xs font-bold text-gray-900">
-                                                        <p className="text-[10px] text-gray-400 font-bold uppercase">{payload[0].payload.name}</p>
-                                                        <p className="text-blue-600 font-black mt-0.5">{payload[0].value} Submissions</p>
+                                                        <p className="text-[10px] text-gray-400 font-bold uppercase">{itemData.name}</p>
+                                                        {isRatingQuestion ? (
+                                                            <>
+                                                                <p className="text-blue-600 font-black mt-0.5 flex items-center gap-1">
+                                                                    Avg Rating: {payload[0].value} / 5 ⭐
+                                                                </p>
+                                                                {itemData.count > 0 && (
+                                                                    <p className="text-[10px] text-gray-500 font-medium">
+                                                                        Based on {itemData.count} review{itemData.count > 1 ? 's' : ''}
+                                                                    </p>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <p className="text-blue-600 font-black mt-0.5">{payload[0].value} Submissions</p>
+                                                        )}
                                                     </div>
                                                 );
                                             }

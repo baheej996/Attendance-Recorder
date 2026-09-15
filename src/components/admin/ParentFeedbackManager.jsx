@@ -24,11 +24,13 @@ import {
     Shield,
     AlertTriangle,
     FileBarChart,
-    Sparkles
+    Sparkles,
+    TrendingUp
 } from 'lucide-react';
 import EvaluationFormBuilder from './EvaluationFormBuilder';
 import ParentFeedbackReportGenerator from './ParentFeedbackReportGenerator';
 import { clsx } from 'clsx';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const ParentFeedbackManager = () => {
     const { 
@@ -261,6 +263,37 @@ const ParentFeedbackManager = () => {
         return (parentFeedbacks || []).filter(s => !s.status || s.status === 'pending' || !s.readByAdmin).length;
     }, [parentFeedbacks]);
 
+    // Submissions activity trend over time (Smooth Blue Area Chart)
+    const submissionsTrendData = useMemo(() => {
+        if (!processedSubmissions || processedSubmissions.length === 0) {
+            return [
+                { name: 'Mon', value: 5 },
+                { name: 'Tue', value: 12 },
+                { name: 'Wed', value: 8 },
+                { name: 'Thu', value: 15 },
+                { name: 'Fri', value: 22 },
+                { name: 'Sat', value: 14 },
+                { name: 'Sun', value: 18 }
+            ];
+        }
+        const dateMap = {};
+        const sorted = [...processedSubmissions].sort((a, b) => new Date(a.submittedAt || a.createdAt || 0) - new Date(b.submittedAt || b.createdAt || 0));
+        sorted.forEach(sub => {
+            const dStr = new Date(sub.submittedAt || sub.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            if (!dateMap[dStr]) dateMap[dStr] = { name: dStr, value: 0 };
+            dateMap[dStr].value += 1;
+        });
+        const list = Object.values(dateMap);
+        if (list.length === 1) {
+            return [
+                { name: 'Start', value: 0 },
+                { name: list[0].name, value: list[0].value },
+                { name: 'End', value: list[0].value }
+            ];
+        }
+        return list;
+    }, [processedSubmissions]);
+
     const handleCreateNew = () => {
         setSelectedForm(null);
         setView('builder');
@@ -374,6 +407,74 @@ const ParentFeedbackManager = () => {
             {/* TAB 1: SUBMISSIONS LIST */}
             {activeTab === 'submissions' && (
                 <div className="space-y-6">
+                    {/* SMOOTH BLUE GRADIENT SUBMISSIONS TREND CHART CARD */}
+                    <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl relative overflow-hidden">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                            {/* Left Side KPI Metric & Subtitle */}
+                            <div className="md:col-span-4 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tight">
+                                        {processedSubmissions.length}
+                                    </h2>
+                                    <span className="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+                                        <TrendingUp className="w-3.5 h-3.5" /> Submissions Activity
+                                    </span>
+                                </div>
+                                
+                                <div className="w-16 h-1 bg-blue-600 rounded-full" />
+
+                                <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-xs">
+                                    Parent feedback submission volume trend over time matching active search and filter options.
+                                </p>
+                            </div>
+
+                            {/* Right Side Smooth Area Chart */}
+                            <div className="md:col-span-8 h-44 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={submissionsTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="subPageTrendGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#2563EB" stopOpacity={0.35}/>
+                                                <stop offset="95%" stopColor="#2563EB" stopOpacity={0.0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={false} stroke="#E5E7EB" />
+                                        <XAxis 
+                                            dataKey="name" 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fontSize: 11, fill: '#9CA3AF', fontWeight: 600 }} 
+                                            dy={6}
+                                        />
+                                        <YAxis hide domain={['auto', 'auto']} />
+                                        <Tooltip 
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    return (
+                                                        <div className="bg-white/95 backdrop-blur-md p-2.5 rounded-xl border border-gray-200 shadow-xl text-xs font-bold text-gray-900">
+                                                            <p className="text-[10px] text-gray-400 font-bold uppercase">{payload[0].payload.name}</p>
+                                                            <p className="text-blue-600 font-black mt-0.5">{payload[0].value} Submissions</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="value" 
+                                            stroke="#2563EB" 
+                                            strokeWidth={3.5} 
+                                            fill="url(#subPageTrendGradient)" 
+                                            dot={{ r: 4, fill: '#2563EB', strokeWidth: 2, stroke: '#FFFFFF' }}
+                                            activeDot={{ r: 7, fill: '#1D4ED8', strokeWidth: 3, stroke: '#FFFFFF' }}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </Card>
+
                     {/* Filters & Search */}
                     <Card className="p-4 bg-white border-gray-100 shadow-sm space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
