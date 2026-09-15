@@ -18,7 +18,8 @@ import {
     MessageSquare,
     AlertCircle,
     FileText,
-    ListFilter
+    ListFilter,
+    ChevronDown
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import jsPDF from 'jspdf';
@@ -53,6 +54,7 @@ const ParentFeedbackReportGenerator = () => {
     // Report Display Controls
     const [reportMode, setReportMode] = useState('short'); // 'short' | 'detailed'
     const [searchTerm, setSearchTerm] = useState('');
+    const [showExportDropdown, setShowExportDropdown] = useState(false);
 
     // AI Configuration State
     const [selectedAiModel, setSelectedAiModel] = useState('gemini-2.0-flash');
@@ -910,84 +912,72 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
                 }
             `}</style>
 
-            {/* Header Card */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
-                <div>
-                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                        <FileBarChart className="w-7 h-7 text-indigo-600" />
-                        Parent Feedback Question Report Generator
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1 font-medium flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-purple-600" />
-                        Analyze parent feedback by selecting Mentor, Form, and Question with AI intelligence.
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="outline" onClick={handleExportCsv} className="gap-2 text-xs py-2">
-                        <Download className="w-4 h-4 text-emerald-600" /> Export CSV
-                    </Button>
-                    <Button variant="outline" onClick={handleCopySummary} className="gap-2 text-xs py-2">
-                        <Copy className="w-4 h-4 text-indigo-600" /> Copy Report
-                    </Button>
-                    <Button variant="primary" onClick={handleGeneratePdf} className="gap-2 text-xs py-2 bg-indigo-600 hover:bg-indigo-700">
-                        <FileText className="w-4 h-4" /> Download PDF
-                    </Button>
-                </div>
-            </div>
-
-            {/* PRINTABLE REPORT WRAPPER */}
+                {/* PRINTABLE REPORT WRAPPER */}
             <div id="printable-report-area" className="space-y-6">
-
-                {/* Print Letterhead Header */}
-                <div className="hidden print:block border-b border-gray-200 pb-4 mb-4">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">
-                                SAMASTHA E-LEARNING • PARENT FEEDBACK REPORT
-                            </span>
-                            <h1 className="text-2xl font-black text-gray-900 mt-1">{activeTemplate?.title || 'Parent Feedback Report'}</h1>
-                            <p className="text-xs text-gray-600 font-bold mt-1">
-                                Question: {activeQuestion?.label}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                                Mentor Scope: <span className="font-bold text-purple-700">{selectedMentorId === 'all' ? 'All Mentors' : mentorOptions.find(m => m.id === selectedMentorId)?.name}</span>
-                            </p>
-                        </div>
-                        <div className="text-right text-[10px] text-gray-400">
-                            <p>Generated: {new Date().toLocaleString()}</p>
-                            <p className="font-bold text-emerald-600 mt-1">{questionAnalytics.answeredCount} Responses ({questionAnalytics.responseRate}%)</p>
-                        </div>
-                    </div>
-                </div>
-
                 {/* SELECTION CONTROLS BAR */}
                 <Card className="p-6 bg-white border-gray-100 shadow-sm space-y-4 print:p-0 print:border-none print:shadow-none">
-                    <div className="flex items-center justify-between border-b pb-3 print:hidden">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 print:hidden">
                         <span className="text-xs font-black uppercase tracking-wider text-indigo-600 flex items-center gap-2">
                             <ListFilter className="w-4 h-4" /> Step 1: Report Selection Criteria
                         </span>
                         
-                        {/* Short vs Detailed Toggle */}
-                        <div className="flex bg-gray-100 p-1 rounded-xl">
-                            <button
-                                onClick={() => setReportMode('short')}
-                                className={clsx(
-                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
-                                    reportMode === 'short' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                            {/* Short vs Detailed Toggle */}
+                            <div className="flex bg-gray-100 p-1 rounded-xl">
+                                <button
+                                    onClick={() => setReportMode('short')}
+                                    className={clsx(
+                                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                                        reportMode === 'short' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                                    )}
+                                >
+                                    <FileText className="w-3.5 h-3.5" /> Short Summary
+                                </button>
+                                <button
+                                    onClick={() => setReportMode('detailed')}
+                                    className={clsx(
+                                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                                        reportMode === 'detailed' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                                    )}
+                                >
+                                    <User className="w-3.5 h-3.5" /> Detailed Breakdown
+                                </button>
+                            </div>
+
+                            {/* Export / Download Actions Dropdown */}
+                            <div className="relative shrink-0">
+                                <button
+                                    onClick={() => setShowExportDropdown(!showExportDropdown)}
+                                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>Export Report</span>
+                                    <ChevronDown className={clsx("w-3.5 h-3.5 transition-transform duration-200", showExportDropdown && "rotate-180")} />
+                                </button>
+
+                                {showExportDropdown && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl p-1.5 z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                                        <button
+                                            onClick={() => { setShowExportDropdown(false); handleGeneratePdf(); }}
+                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2 transition-colors"
+                                        >
+                                            <FileText className="w-4 h-4 text-indigo-600" /> Download PDF
+                                        </button>
+                                        <button
+                                            onClick={() => { setShowExportDropdown(false); handleExportCsv(); }}
+                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 flex items-center gap-2 transition-colors"
+                                        >
+                                            <Download className="w-4 h-4 text-emerald-600" /> Export CSV
+                                        </button>
+                                        <button
+                                            onClick={() => { setShowExportDropdown(false); handleCopySummary(); }}
+                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-2 transition-colors"
+                                        >
+                                            <Copy className="w-4 h-4 text-purple-600" /> Copy Report Text
+                                        </button>
+                                    </div>
                                 )}
-                            >
-                                <FileText className="w-3.5 h-3.5" /> Short Summary
-                            </button>
-                            <button
-                                onClick={() => setReportMode('detailed')}
-                                className={clsx(
-                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
-                                    reportMode === 'detailed' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                                )}
-                            >
-                                <User className="w-3.5 h-3.5" /> Detailed Breakdown
-                            </button>
+                            </div>
                         </div>
                     </div>
 
