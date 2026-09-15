@@ -562,7 +562,7 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
                 // Demerits (Areas of Concern / Low Points)
                 const concerns = [];
                 if (lowScores > 0) {
-                    demerits.push(`Demerit (Low Rating Warning): ${lowScores} parent(s) (${lowPct}%) submitted low ratings (1–2 Stars), indicating dissatisfaction that requires immediate mentor review.`);
+                    concerns.push(`Demerit (Low Rating Warning): ${lowScores} parent(s) (${lowPct}%) submitted low ratings (1–2 Stars), indicating dissatisfaction that requires immediate mentor review.`);
                 }
                 if (criticalComments.length > 0) {
                     concerns.push(`Specific Parent Criticism: Critical comments noted: "${criticalComments[0].text.slice(0, 75)}..." (Parent of ${criticalComments[0].student}).`);
