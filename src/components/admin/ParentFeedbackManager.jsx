@@ -22,9 +22,12 @@ import {
     Download,
     Eye,
     Shield,
-    AlertTriangle
+    AlertTriangle,
+    FileBarChart,
+    Sparkles
 } from 'lucide-react';
 import EvaluationFormBuilder from './EvaluationFormBuilder';
+import ParentFeedbackReportGenerator from './ParentFeedbackReportGenerator';
 import { clsx } from 'clsx';
 
 const ParentFeedbackManager = () => {
@@ -348,6 +351,16 @@ const ParentFeedbackManager = () => {
                             )}
                         >
                             Form Builder
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('reports')}
+                            className={clsx(
+                                "px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2",
+                                activeTab === 'reports' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                            )}
+                        >
+                            <FileBarChart className="w-4 h-4 text-purple-600" />
+                            Question Reports
                         </button>
                     </div>
                     {activeTab === 'templates' && (
@@ -691,6 +704,11 @@ const ParentFeedbackManager = () => {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* TAB 3: QUESTION & AI REPORTS */}
+            {activeTab === 'reports' && (
+                <ParentFeedbackReportGenerator />
             )}
 
             {/* FULL SUBMISSION DETAIL MODAL */}
