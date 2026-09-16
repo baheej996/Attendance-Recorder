@@ -584,58 +584,56 @@ const ParentFeedbackManager = () => {
                                     <Card 
                                         key={sub.id} 
                                         className={clsx(
-                                            "p-6 transition-all border rounded-2xl relative overflow-hidden",
-                                            isPending 
-                                                ? "bg-amber-50/30 border-amber-200 shadow-md ring-1 ring-amber-400/30" 
-                                                : "bg-white border-gray-100 shadow-sm hover:shadow-md"
+                                            "p-5 sm:p-6 transition-all border-2 border-amber-200/90 rounded-3xl relative overflow-hidden bg-white shadow-xs hover:shadow-md",
+                                            isPending && "ring-1 ring-amber-400/20"
                                         )}
                                     >
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100 pb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={clsx(
-                                                    "w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white shadow-md shrink-0",
-                                                    isPending ? "bg-amber-500" : "bg-indigo-600"
-                                                )}>
-                                                    <User className="w-6 h-6" />
+                                            <div className="flex items-center gap-3.5">
+                                                <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                                    <User className="w-6 h-6 text-white" />
                                                 </div>
                                                 <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="text-lg font-black text-gray-900">{sub.parentName || 'Parent / Guardian'}</h3>
+                                                    <div className="flex items-center gap-2.5">
+                                                        <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">{sub.parentName || 'Parent / Guardian'}</h3>
                                                         {isPending ? (
-                                                            <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-                                                                New Feedback
+                                                            <span className="bg-amber-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+                                                                NEW FEEDBACK
                                                             </span>
                                                         ) : (
-                                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                                <CheckCircle className="w-3 h-3 text-emerald-600" /> Reviewed
+                                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 uppercase tracking-wider">
+                                                                <CheckCircle className="w-3 h-3 text-emerald-600" /> REVIEWED
                                                             </span>
                                                         )}
                                                     </div>
                                                     <p className="text-xs text-gray-500 font-medium mt-0.5">
-                                                        Student: <span className="font-bold text-indigo-600">{sub.studentName}</span> • Class: <span className="font-semibold text-gray-700">{sub.className}</span> {sub.division && `(${sub.division})`} • Mentor: <span className="font-bold text-purple-700">{getMentorName(sub)}</span>
+                                                        Student: <span className="font-extrabold text-purple-700">{sub.studentName}</span> • Class: <span className="font-semibold text-gray-700">{sub.className}</span> {sub.division && `(${sub.division})`} • Mentor: <span className="font-extrabold text-purple-700">{getMentorName(sub)}</span>
                                                     </p>
-                                                    <p className="text-[10px] text-gray-400 mt-0.5">
+                                                    <p className="text-[11px] text-gray-400 font-normal mt-0.5">
                                                         Submitted: {new Date(sub.submittedAt || sub.createdAt || Date.now()).toLocaleString()}
                                                     </p>
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center gap-2 self-end md:self-auto">
-                                                <Button 
-                                                    variant={isPending ? "primary" : "outline"} 
+                                                <button 
                                                     onClick={() => handleToggleStatus(sub)}
-                                                    className="gap-1.5 text-xs py-1.5 px-3 rounded-xl"
+                                                    className={clsx(
+                                                        "px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs",
+                                                        isPending
+                                                            ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                            : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
+                                                    )}
                                                 >
                                                     {isPending ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                                                     {isPending ? "Mark as Reviewed" : "Mark Unreviewed"}
-                                                </Button>
-                                                <Button 
-                                                    variant="secondary" 
+                                                </button>
+                                                <button 
                                                     onClick={() => setDetailSubmission(sub)}
-                                                    className="gap-1.5 text-xs py-1.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                                    className="px-4 py-2 rounded-full text-xs font-bold bg-gray-100 hover:bg-gray-200 text-indigo-600 border border-gray-200 flex items-center gap-1.5 transition-all"
                                                 >
                                                     <Eye className="w-4 h-4 text-indigo-600" /> View Full Answers
-                                                </Button>
+                                                </button>
                                                 <button 
                                                     onClick={() => {
                                                         triggerConfirm({
@@ -646,7 +644,7 @@ const ParentFeedbackManager = () => {
                                                             onConfirm: () => deleteParentFeedback(sub.id)
                                                         });
                                                     }}
-                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                    className="p-2 text-gray-400 hover:text-red-500 rounded-full transition-colors ml-1"
                                                     title="Delete & Allow Parent Resubmission"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -654,32 +652,53 @@ const ParentFeedbackManager = () => {
                                             </div>
                                         </div>
 
-                                        {/* Brief Preview of Answers */}
-                                        <div className="py-4 space-y-3">
+                                        {/* Brief Preview of Answers Grid */}
+                                        <div className="py-4">
                                             {template ? (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                                                     {template.sections.flatMap(sec => sec.questions).slice(0, 4).map(q => {
                                                         const answer = sub.responses?.[q.id];
                                                         if (answer === undefined || answer === null || answer === '') return null;
                                                         
+                                                        const numStars = Number(answer);
+                                                        const isStarType = q.type === 'star_rating' || !isNaN(numStars);
+
                                                         return (
-                                                            <div key={q.id} className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs">
-                                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1 truncate">{q.label}</p>
-                                                                {q.type === 'star_rating' ? (
-                                                                    <div className="flex items-center gap-1 font-bold text-amber-500">
-                                                                        <span>{answer} ⭐</span>
+                                                            <div key={q.id} className="bg-gray-50/80 p-4 rounded-2xl border border-gray-100/90 text-xs shadow-none">
+                                                                <p className="text-[10px] sm:text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-1.5 truncate">{q.label}</p>
+                                                                
+                                                                {isStarType && typeof answer !== 'object' ? (
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <div className="flex text-amber-400">
+                                                                            {[1, 2, 3, 4, 5].map(s => (
+                                                                                <Star 
+                                                                                    key={s} 
+                                                                                    className={clsx(
+                                                                                        "w-4 h-4",
+                                                                                        s <= (numStars || 5) ? "fill-amber-400 text-amber-400" : "text-gray-200"
+                                                                                    )} 
+                                                                                />
+                                                                            ))}
+                                                                        </div>
+                                                                        <span className="font-bold text-gray-900 text-xs sm:text-sm">
+                                                                            {q.options?.find(opt => opt.value === answer || opt === answer)?.label || 
+                                                                             (numStars === 5 ? 'Very Satisfied' : numStars === 4 ? 'Satisfied' : numStars === 3 ? 'Good' : numStars === 2 ? 'Fair' : String(answer))}
+                                                                        </span>
                                                                     </div>
                                                                 ) : q.type === 'matrix_rating' && typeof answer === 'object' ? (
-                                                                    <div className="space-y-1">
+                                                                    <div className="space-y-1.5">
                                                                         {Object.entries(answer).slice(0, 2).map(([k, v]) => (
-                                                                            <div key={k} className="flex justify-between font-medium">
-                                                                                <span className="truncate pr-2 text-gray-600">{k}:</span>
-                                                                                <span className="font-bold text-amber-500">{v} ⭐</span>
+                                                                            <div key={k} className="flex justify-between items-center text-xs">
+                                                                                <span className="font-semibold text-gray-700 truncate pr-2">{k}:</span>
+                                                                                <div className="flex items-center gap-1 font-bold text-amber-500 shrink-0">
+                                                                                    <span>{v}</span>
+                                                                                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 inline" />
+                                                                                </div>
                                                                             </div>
                                                                         ))}
                                                                     </div>
                                                                 ) : (
-                                                                    <p className="font-semibold text-gray-800 line-clamp-2">
+                                                                    <p className="font-bold text-gray-900 text-xs sm:text-sm line-clamp-2">
                                                                         {Array.isArray(answer) ? answer.join(', ') : String(answer)}
                                                                     </p>
                                                                 )}
@@ -693,10 +712,10 @@ const ParentFeedbackManager = () => {
                                         </div>
 
                                         {/* Admin Comment / Note Section */}
-                                        <div className="mt-2 pt-3 border-t border-gray-100 bg-gray-50/50 p-4 rounded-xl">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-xs font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
-                                                    <MessageSquare className="w-3.5 h-3.5" /> Admin Note / Internal Comment
+                                        <div className="mt-1 pt-3 border-t border-gray-100 flex flex-col gap-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-extrabold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <MessageSquare className="w-4 h-4 text-indigo-600 stroke-[2.5]" /> ADMIN NOTE / INTERNAL COMMENT
                                                 </span>
                                                 {editingCommentId !== sub.id && (
                                                     <button 
@@ -704,15 +723,15 @@ const ParentFeedbackManager = () => {
                                                             setEditingCommentId(sub.id);
                                                             setCommentText(sub.adminComment || '');
                                                         }}
-                                                        className="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1"
+                                                        className="text-[11px] text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                                                     >
-                                                        <Edit2 className="w-3 h-3" /> {sub.adminComment ? 'Edit Note' : 'Add Note'}
+                                                        <Edit2 className="w-3.5 h-3.5" /> {sub.adminComment ? 'Edit Note' : 'Add Note'}
                                                     </button>
                                                 )}
                                             </div>
 
                                             {editingCommentId === sub.id ? (
-                                                <div className="space-y-2">
+                                                <div className="space-y-2 mt-1">
                                                     <textarea 
                                                         className="w-full p-3 bg-white border border-gray-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                                                         placeholder="Write an internal admin note for this feedback..."
@@ -724,7 +743,7 @@ const ParentFeedbackManager = () => {
                                                         <Button 
                                                             variant="outline" 
                                                             onClick={() => setEditingCommentId(null)}
-                                                            className="text-xs py-1 px-3"
+                                                            className="text-xs py-1 px-3 rounded-lg"
                                                         >
                                                             Cancel
                                                         </Button>
@@ -732,7 +751,7 @@ const ParentFeedbackManager = () => {
                                                             variant="primary" 
                                                             onClick={() => handleSaveComment(sub.id)}
                                                             disabled={savingCommentId === sub.id}
-                                                            className="text-xs py-1 px-3"
+                                                            className="text-xs py-1 px-3 rounded-lg"
                                                         >
                                                             {savingCommentId === sub.id ? 'Saving...' : 'Save Note'}
                                                         </Button>
@@ -741,11 +760,11 @@ const ParentFeedbackManager = () => {
                                             ) : (
                                                 <div>
                                                     {sub.adminComment ? (
-                                                        <p className="text-xs text-gray-700 bg-white p-3 rounded-lg border border-gray-200 font-medium leading-relaxed">
+                                                        <p className="text-xs text-gray-700 bg-white p-3 rounded-xl border border-gray-200 font-medium leading-relaxed mt-1">
                                                             "{sub.adminComment}"
                                                         </p>
                                                     ) : (
-                                                        <p className="text-xs text-gray-400 italic">No admin notes added yet.</p>
+                                                        <p className="text-xs text-gray-400 italic font-normal mt-0.5">No admin notes added yet.</p>
                                                     )}
                                                 </div>
                                             )}
