@@ -934,30 +934,30 @@ const OfficeFeeManagement = () => {
 
                             {selectedStudent && (
                                 <>
-                                    {/* Financial Overview Card */}
-                                    <div className="p-4 bg-gradient-to-r from-slate-900 to-indigo-900 text-white rounded-xl space-y-3">
+                                    {/* Financial Overview Card - Light Theme */}
+                                    <div className="p-4 bg-gradient-to-r from-indigo-50/80 via-slate-50 to-blue-50/80 border border-indigo-100 rounded-2xl space-y-3 shadow-xs">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <h4 className="font-extrabold text-base">{selectedStudent.name}</h4>
-                                                <p className="text-xs text-slate-300">Reg: {selectedStudent.registerNo || 'N/A'}</p>
+                                                <h4 className="font-extrabold text-base text-gray-900">{selectedStudent.name}</h4>
+                                                <p className="text-xs font-semibold text-gray-500">Reg: {selectedStudent.registerNo || 'N/A'}</p>
                                             </div>
-                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${studentTotals.isFullyPaid ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold shadow-xs ${studentTotals.isFullyPaid ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
                                                 {studentTotals.isFullyPaid ? 'FULLY PAID ✅' : 'DUES PENDING ⚠️'}
                                             </span>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-slate-700/80">
-                                            <div>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase">Total Fee</p>
-                                                <p className="text-sm font-black">₹{studentTotals.totalFee.toLocaleString()}</p>
+                                        <div className="grid grid-cols-3 gap-2 text-center pt-3 border-t border-indigo-100/70">
+                                            <div className="p-2 bg-white/80 rounded-xl border border-gray-100 shadow-2xs">
+                                                <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-wider">Total Fee</p>
+                                                <p className="text-sm font-black text-gray-900">₹{studentTotals.totalFee.toLocaleString()}</p>
                                             </div>
-                                            <div>
-                                                <p className="text-[10px] text-emerald-400 font-bold uppercase">Paid So Far</p>
-                                                <p className="text-sm font-black text-emerald-400">₹{studentTotals.totalPaid.toLocaleString()}</p>
+                                            <div className="p-2 bg-emerald-50/60 rounded-xl border border-emerald-100 shadow-2xs">
+                                                <p className="text-[10px] text-emerald-700 font-extrabold uppercase tracking-wider">Paid So Far</p>
+                                                <p className="text-sm font-black text-emerald-600">₹{studentTotals.totalPaid.toLocaleString()}</p>
                                             </div>
-                                            <div>
-                                                <p className="text-[10px] text-rose-400 font-bold uppercase">Remaining</p>
-                                                <p className="text-sm font-black text-rose-400">₹{studentTotals.remainingBalance.toLocaleString()}</p>
+                                            <div className="p-2 bg-rose-50/60 rounded-xl border border-rose-100 shadow-2xs">
+                                                <p className="text-[10px] text-rose-700 font-extrabold uppercase tracking-wider">Remaining</p>
+                                                <p className="text-sm font-black text-rose-600">₹{studentTotals.remainingBalance.toLocaleString()}</p>
                                             </div>
                                         </div>
                                     </div>
