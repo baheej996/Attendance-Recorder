@@ -16,7 +16,8 @@ import {
     limit,
     orderBy,
     serverTimestamp,
-    getCountFromServer
+    getCountFromServer,
+    arrayUnion
 } from 'firebase/firestore';
 
 const DataContext = createContext();
@@ -673,15 +674,28 @@ export const DataProvider = ({ children }) => {
     };
 
     const markNotificationAsRead = async (notificationId, userId) => {
-        const notif = (notifications || []).find(n => n.id === notificationId);
-        if (notif && !(notif.readBy || []).includes(userId)) {
+        if (!notificationId || !userId) return;
+        setNotifications(prev => prev.map(n => {
+            if (n.id === notificationId) {
+                const currentRead = n.readBy || [];
+                return {
+                    ...n,
+                    readBy: currentRead.includes(userId) ? currentRead : [...currentRead, userId]
+                };
+            }
+            return n;
+        }));
+        try {
             await updateDoc(doc(db, 'notifications', notificationId), {
-                readBy: [...(notif.readBy || []), userId]
+                readBy: arrayUnion(userId)
             });
+        } catch (err) {
+            console.error("Error marking notification as read:", err);
         }
     };
 
     const markNotificationAsDismissed = async (notificationId, userId) => {
+        if (!notificationId || !userId) return;
         // 1. Optimistic local state update for instant UI feedback
         setNotifications(prev => prev.map(n => {
             if (n.id === notificationId) {
@@ -696,17 +710,14 @@ export const DataProvider = ({ children }) => {
             return n;
         }));
 
-        // 2. Persist to Firestore
-        const notif = (notifications || []).find(n => n.id === notificationId);
-        if (notif) {
-            const currentDismissed = notif.dismissedBy || [];
-            const currentRead = notif.readBy || [];
-            const updatedDismissed = currentDismissed.includes(userId) ? currentDismissed : [...currentDismissed, userId];
-            const updatedRead = currentRead.includes(userId) ? currentRead : [...currentRead, userId];
+        // 2. Persist to Firestore atomically
+        try {
             await updateDoc(doc(db, 'notifications', notificationId), {
-                dismissedBy: updatedDismissed,
-                readBy: updatedRead
+                dismissedBy: arrayUnion(userId),
+                readBy: arrayUnion(userId)
             });
+        } catch (err) {
+            console.error("Error updating notification dismissal in Firestore:", err);
         }
     };
 
@@ -2301,6 +2312,7 @@ export const DataProvider = ({ children }) => {
         deleteNotification: async (id) => await deleteDoc(doc(db, 'notifications', id)),
         updateNotification: async (id, data) => await updateDoc(doc(db, 'notifications', id), data),
         markNotificationAsRead,
+        markNotificationAsDismissed,
 
         // Evaluations
         evaluationForms,
