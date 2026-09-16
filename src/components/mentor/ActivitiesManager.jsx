@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { db } from '../../firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, getDocs, where } from 'firebase/firestore';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -103,19 +103,28 @@ const ActivitiesManager = () => {
     useEffect(() => {
         if (!showMentorLeaderboard) return;
 
-        const unsubAct = onSnapshot(query(collection(db, 'activities')), (snap) => {
-            setGlobalActivities(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-        }, (err) => console.error('Error fetching global activities:', err));
+        let isMounted = true;
+        const fetchGlobalData = async () => {
+            try {
+                const [actSnap, subSnap] = await Promise.all([
+                    getDocs(collection(db, 'activities')),
+                    getDocs(query(collection(db, 'activitySubmissions'), where('status', '==', 'Completed')))
+                ]);
+                if (isMounted) {
+                    setGlobalActivities(actSnap.docs.map(d => ({ ...d.data(), id: d.id })));
+                    setGlobalSubmissions(subSnap.docs.map(d => ({ ...d.data(), id: d.id })));
+                }
+            } catch (err) {
+                console.error('Error fetching global leaderboard data:', err);
+            }
+        };
 
-        const unsubSub = onSnapshot(query(collection(db, 'activitySubmissions')), (snap) => {
-            setGlobalSubmissions(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-        }, (err) => console.error('Error fetching global submissions:', err));
+        fetchGlobalData();
 
         return () => {
-            unsubAct();
-            unsubSub();
+            isMounted = false;
         };
-    }, [showMentorLeaderboard]);
+    }, [showMentorLeaderboard, selectedLeaderboardMonth]);
 
     // Close Report Dropdown on outside click
     useEffect(() => {
@@ -723,7 +732,9 @@ const ActivitiesManager = () => {
 
         // Filter activities belonging to selected month
         const monthActivities = effectiveActivities.filter(act => {
-            const actDate = act.createdAt ? new Date(act.createdAt) : (act.dueDate ? new Date(act.dueDate) : null);
+            const actDate = act.createdAt 
+                ? (typeof act.createdAt.toDate === 'function' ? act.createdAt.toDate() : new Date(act.createdAt))
+                : (act.dueDate ? new Date(act.dueDate) : null);
             if (!actDate || isNaN(actDate.getTime())) return false;
             return actDate.getFullYear() === targetYear && actDate.getMonth() === targetMonth;
         });
