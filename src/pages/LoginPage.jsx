@@ -4,13 +4,13 @@ import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
-import { LogIn, UserCog, User, GraduationCap } from 'lucide-react';
+import { LogIn, UserCog, User, GraduationCap, Building2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const LoginPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { mentors, students, login, validateAdmin, validateSuperAdmin, fetchStudentByRegisterNo, currentUser } = useData();
+    const { mentors, students, login, validateAdmin, validateSuperAdmin, validateOffice, fetchStudentByRegisterNo, currentUser } = useData();
 
     // Auto-redirect already-logged-in users straight to their dashboard.
     useEffect(() => {
@@ -22,9 +22,9 @@ const LoginPage = () => {
     // Check for ?role=... query param
     const query = new URLSearchParams(location.search);
     const roleParam = query.get('role');
-    const isStudentPortal = roleParam === 'student'; // Keep for backward compatibility if needed, or update logic
+    const isStudentPortal = roleParam === 'student';
 
-    const VALID_ROLES = ['admin', 'mentor', 'student'];
+    const VALID_ROLES = ['admin', 'office', 'mentor', 'student'];
     const initialRole = VALID_ROLES.includes(roleParam) ? roleParam : 'admin';
 
     const [role, setRole] = useState(initialRole);
@@ -49,6 +49,14 @@ const LoginPage = () => {
                 navigate('/admin');
             } else {
                 setError('Invalid Admin Credentials');
+            }
+        }
+        else if (role === 'office') {
+            if (validateOffice && validateOffice(formData.username, formData.password)) {
+                login({ role: 'office', name: 'Office Desk', id: 'office' });
+                navigate('/office');
+            } else {
+                setError('Invalid Office Credentials (Default: office / Office123)');
             }
         }
         else if (role === 'mentor') {
@@ -92,41 +100,49 @@ const LoginPage = () => {
                 </div>
 
                 {/* Role Toggles */}
-                {/* Role Toggles */}
                 {!isStudentPortal && (
-                    <div className="flex p-1 bg-gray-100 rounded-xl mb-6">
+                    <div className="grid grid-cols-4 p-1 bg-gray-100 rounded-xl mb-6 gap-1">
                         <button
                             onClick={() => { setRole('admin'); setError(''); }}
                             className={clsx(
-                                "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
+                                "flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 rounded-lg text-xs font-medium transition-all",
                                 role === 'admin' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
                             )}
                         >
-                            <UserCog className="w-4 h-4" /> Admin
+                            <UserCog className="w-3.5 h-3.5" /> Admin
+                        </button>
+                        <button
+                            onClick={() => { setRole('office'); setError(''); }}
+                            className={clsx(
+                                "flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 rounded-lg text-xs font-medium transition-all",
+                                role === 'office' ? "bg-white text-emerald-600 shadow-sm font-semibold" : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            <Building2 className="w-3.5 h-3.5" /> Office
                         </button>
                         <button
                             onClick={() => { setRole('mentor'); setError(''); }}
                             className={clsx(
-                                "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
+                                "flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 rounded-lg text-xs font-medium transition-all",
                                 role === 'mentor' ? "bg-white text-purple-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
                             )}
                         >
-                            <User className="w-4 h-4" /> Mentor
+                            <User className="w-3.5 h-3.5" /> Mentor
                         </button>
                         <button
                             onClick={() => { setRole('student'); setError(''); }}
                             className={clsx(
-                                "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all",
+                                "flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 rounded-lg text-xs font-medium transition-all",
                                 role === 'student' ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
                             )}
                         >
-                            <GraduationCap className="w-4 h-4" /> Student
+                            <GraduationCap className="w-3.5 h-3.5" /> Student
                         </button>
                     </div>
                 )}
 
                 <form onSubmit={handleLogin} className="space-y-4">
-                    {role === 'admin' && (
+                    {(role === 'admin' || role === 'office') && (
                         <>
                             <Input
                                 label="Username"
@@ -139,7 +155,6 @@ const LoginPage = () => {
                                 value={formData.password}
                                 onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
                             />
-
                         </>
                     )}
 

@@ -87,6 +87,11 @@ export const DataProvider = ({ children }) => {
     const [studentEvaluationTemplates, setStudentEvaluationTemplates] = useState([]);
     const [parentFeedbackTemplates, setParentFeedbackTemplates] = useState([]);
 
+    // Office & Fee Management
+    const [feeStructures, setFeeStructures] = useState([]);
+    const [feePayments, setFeePayments] = useState([]);
+    const [officeCredentials, setOfficeCredentials] = useState({ username: 'office', password: 'Office123' });
+
     // Mentor Performance Leaderboard
     const [leaderboardRules, setLeaderboardRules] = useState([]);
     const [leaderboardCompletions, setLeaderboardCompletions] = useState([]);
@@ -277,6 +282,8 @@ export const DataProvider = ({ children }) => {
             subscribe('starConfigs', setStarConfigs),
             subscribe('studentEvaluationTemplates', setStudentEvaluationTemplates),
             subscribe('parentFeedbackTemplates', setParentFeedbackTemplates),
+            subscribe('feeStructures', setFeeStructures),
+            subscribe('feePayments', setFeePayments),
         ];
 
         // Reference data — rarely changes, real-time sync is wasteful for 2k users.
@@ -529,7 +536,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('leaderboardRules', setLeaderboardRules),
                 subscribe('leaderboardCompletions', setLeaderboardCompletions)
             );
-        } else if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
+        } else if (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.role === 'office') {
             unsubs.push(
                 subscribe('students', (data) => { setStudents(data); setAllStudents(data); }),
                 // NOTE: do NOT setClasses here. `classes` is already maintained by the global
@@ -2370,6 +2377,55 @@ export const DataProvider = ({ children }) => {
         updateFeedbackSettings: async (classId, settings) => {
             await setDoc(doc(db, 'feedbackSettings', classId), { classId, ...settings }, { merge: true });
         },
+
+        // Office & Fee Collection Management
+        feeStructures,
+        feePayments,
+        validateOffice: (username, password) => {
+            return (username === 'office' && password === 'Office123') ||
+                   (username === officeCredentials.username && password === officeCredentials.password);
+        },
+        saveFeeStructure: async (targetId, structureData) => {
+            const docRef = doc(db, 'feeStructures', targetId);
+            await setDoc(docRef, { ...structureData, id: targetId, updatedAt: new Date().toISOString() }, { merge: true });
+            setFeeStructures(prev => {
+                const existing = prev.find(f => f.id === targetId);
+                if (existing) {
+                    return prev.map(f => f.id === targetId ? { ...f, ...structureData, updatedAt: new Date().toISOString() } : f);
+                } else {
+                    return [...prev, { id: targetId, ...structureData, updatedAt: new Date().toISOString() }];
+                }
+            });
+        },
+        recordFeePayment: async (paymentData) => {
+            const year = new Date().getFullYear();
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            const receiptId = `REC-${year}-${randomNum}`;
+            const payload = {
+                ...paymentData,
+                receiptId,
+                createdAt: new Date().toISOString(),
+                paymentDate: paymentData.paymentDate || new Date().toISOString()
+            };
+            const docRef = await addDoc(collection(db, 'feePayments'), payload);
+            const created = { ...payload, id: docRef.id };
+            setFeePayments(prev => [...prev, created]);
+            return created;
+        },
+        deleteFeePayment: async (paymentId) => {
+            await deleteDoc(doc(db, 'feePayments', paymentId));
+            setFeePayments(prev => prev.filter(p => p.id !== paymentId));
+        },
+        sendStudentFeeNotification: async (studentId, title, body) => {
+            const payload = {
+                title: title || 'Fee Payment Notice',
+                body,
+                audience: 'specific_student',
+                targetId: studentId,
+                createdAt: new Date().toISOString()
+            };
+            await addDoc(collection(db, 'notifications'), payload);
+        }
     };
 
     return (

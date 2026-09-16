@@ -8,6 +8,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import MentorDashboard from './pages/MentorDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import OfficeDashboard from './pages/OfficeDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import StudentLoginPage from './pages/StudentLoginPage'; // Import StudentLoginPage
 
@@ -107,6 +108,13 @@ const AppContent = () => {
           <Route path="/mentor/*" element={
             <ProtectedRoute allowedRole="mentor">
               <MentorDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* Protected Routes - Office */}
+          <Route path="/office/*" element={
+            <ProtectedRoute allowedRole="office">
+              <OfficeDashboard />
             </ProtectedRoute>
           } />
 
