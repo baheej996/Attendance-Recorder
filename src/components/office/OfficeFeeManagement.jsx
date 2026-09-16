@@ -154,13 +154,48 @@ const OfficeFeeManagement = () => {
     // TAB 2: PAYMENT COLLECTION & DIGITAL PRINTABLE RECEIPTS
     // -------------------------------------------------------------
     const [selectedStudentId, setSelectedStudentId] = useState('');
-    const [paymentSearch, setPaymentSearch] = useState('');
     const [selectedInstallmentKey, setSelectedInstallmentKey] = useState('inst1');
     const [customPayAmount, setCustomPayAmount] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash'); // 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque'
     const [remarks, setRemarks] = useState('');
     const [submittingPay, setSubmittingPay] = useState(false);
     const [lastIssuedReceipt, setLastIssuedReceipt] = useState(null);
+
+    // Search & Filter States for Payment Collection
+    const [paySearchTerm, setPaySearchTerm] = useState('');
+    const [payClassFilter, setPayClassFilter] = useState('all');
+    const [payMentorFilter, setPayMentorFilter] = useState('all');
+
+    // Filtered Student List for Payment Selection
+    const filteredPaymentStudents = useMemo(() => {
+        return studentPool.filter(s => {
+            const cls = (classes || []).find(c => c.id === s.classId);
+
+            // Class & Division Filter
+            if (payClassFilter !== 'all' && s.classId !== payClassFilter) {
+                return false;
+            }
+
+            // Mentor Filter
+            if (payMentorFilter !== 'all') {
+                const targetMentor = (mentors || []).find(m => m.id === payMentorFilter);
+                const isAssigned = (targetMentor?.assignedClassIds || []).includes(s.classId) || 
+                                   cls?.mentorId === payMentorFilter || 
+                                   cls?.mentorName === targetMentor?.name;
+                if (!isAssigned) return false;
+            }
+
+            // Keyword Search (Name or Register Number)
+            if (paySearchTerm.trim()) {
+                const term = paySearchTerm.toLowerCase().trim();
+                const name = (s.name || '').toLowerCase();
+                const reg = (s.registerNo || '').toLowerCase();
+                return name.includes(term) || reg.includes(term);
+            }
+
+            return true;
+        });
+    }, [studentPool, classes, mentors, payClassFilter, payMentorFilter, paySearchTerm]);
 
     const selectedStudent = useMemo(() => {
         return studentPool.find(s => s.id === selectedStudentId);
@@ -352,6 +387,7 @@ const OfficeFeeManagement = () => {
     const [duesSearchTerm, setDuesSearchTerm] = useState('');
     const [duesStatusFilter, setDuesStatusFilter] = useState('pending'); // 'pending' | 'paid' | 'all'
     const [selectedDuesClassId, setSelectedDuesClassId] = useState('all');
+    const [selectedDuesMentorId, setSelectedDuesMentorId] = useState('all');
 
     const duesListData = useMemo(() => {
         return studentPool.map(s => {
@@ -376,6 +412,15 @@ const OfficeFeeManagement = () => {
             // Filter by Class
             if (selectedDuesClassId !== 'all' && item.student.classId !== selectedDuesClassId) return false;
 
+            // Filter by Mentor
+            if (selectedDuesMentorId !== 'all') {
+                const targetMentor = (mentors || []).find(m => m.id === selectedDuesMentorId);
+                const isAssigned = (targetMentor?.assignedClassIds || []).includes(item.student.classId) || 
+                                   item.cls?.mentorId === selectedDuesMentorId || 
+                                   item.cls?.mentorName === targetMentor?.name;
+                if (!isAssigned) return false;
+            }
+
             // Filter by Status
             if (duesStatusFilter === 'pending' && item.isFullyPaid) return false;
             if (duesStatusFilter === 'paid' && !item.isFullyPaid) return false;
@@ -391,7 +436,7 @@ const OfficeFeeManagement = () => {
 
             return true;
         }).sort((a, b) => b.remainingDues - a.remainingDues);
-    }, [studentPool, classes, feeStructures, feePayments, selectedDuesClassId, duesStatusFilter, duesSearchTerm]);
+    }, [studentPool, classes, mentors, feeStructures, feePayments, selectedDuesClassId, selectedDuesMentorId, duesStatusFilter, duesSearchTerm]);
 
     // Send Reminders Actions
     const handleSendWebsiteNotification = async (item) => {
@@ -542,19 +587,93 @@ const OfficeFeeManagement = () => {
 
                         <form onSubmit={handleRecordPaymentSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">Select Student:</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                                    <span className="flex items-center gap-1">
+                                        <User className="w-3.5 h-3.5 text-indigo-600" /> Select Student:
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                        {filteredPaymentStudents.length} student{filteredPaymentStudents.length !== 1 ? 's' : ''} match filters
+                                    </span>
+                                </label>
+
+                                {/* Search & Filter Controls Card */}
+                                <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2 mb-3">
+                                    <div className="flex items-center justify-between border-b border-gray-200/60 pb-1.5">
+                                        <span className="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                                            <Filter className="w-3.5 h-3.5 text-indigo-600" /> Search & Filter Options
+                                        </span>
+                                        {(paySearchTerm || payClassFilter !== 'all' || payMentorFilter !== 'all') && (
+                                            <button
+                                                type="button"
+                                                onClick={() => { setPaySearchTerm(''); setPayClassFilter('all'); setPayMentorFilter('all'); }}
+                                                className="text-[10px] font-bold text-rose-600 hover:underline"
+                                            >
+                                                Reset Filters
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        {/* 1. Keyword Search */}
+                                        <div className="relative">
+                                            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
+                                            <input
+                                                type="text"
+                                                value={paySearchTerm}
+                                                onChange={(e) => setPaySearchTerm(e.target.value)}
+                                                placeholder="Name / Reg No..."
+                                                className="w-full pl-8 pr-2 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
+                                            />
+                                        </div>
+
+                                        {/* 2. Class & Division Filter */}
+                                        <div>
+                                            <select
+                                                value={payClassFilter}
+                                                onChange={(e) => setPayClassFilter(e.target.value)}
+                                                className="w-full p-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
+                                            >
+                                                <option value="all">All Classes & Divisions</option>
+                                                {(classes || []).map(c => (
+                                                    <option key={c.id} value={c.id}>
+                                                        Class {c.name}-{c.division}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* 3. Mentor Filter */}
+                                        <div>
+                                            <select
+                                                value={payMentorFilter}
+                                                onChange={(e) => setPayMentorFilter(e.target.value)}
+                                                className="w-full p-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
+                                            >
+                                                <option value="all">All Mentors</option>
+                                                {(mentors || []).map(m => (
+                                                    <option key={m.id} value={m.id}>
+                                                        {m.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Filtered Student Selector */}
                                 <select
                                     value={selectedStudentId}
                                     onChange={(e) => setSelectedStudentId(e.target.value)}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 text-sm font-bold rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 text-sm font-bold rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900"
                                     required
                                 >
-                                    <option value="">-- Choose Student --</option>
-                                    {studentPool.map(s => {
+                                    <option value="">-- Choose Student ({filteredPaymentStudents.length} Available) --</option>
+                                    {filteredPaymentStudents.map(s => {
                                         const cls = (classes || []).find(c => c.id === s.classId);
+                                        const m = (mentors || []).find(men => (men.assignedClassIds || []).includes(s.classId) || cls?.mentorId === men.id);
                                         return (
                                             <option key={s.id} value={s.id}>
-                                                {s.name} (Reg: {s.registerNo || 'N/A'}) - {cls ? `${cls.name}-${cls.division}` : 'Class N/A'}
+                                                {s.name} (Reg: {s.registerNo || 'N/A'}) - {cls ? `${cls.name}-${cls.division}` : 'Class N/A'} {m ? `[Mentor: ${m.name}]` : ''}
                                             </option>
                                         );
                                     })}
@@ -919,11 +1038,23 @@ const OfficeFeeManagement = () => {
                             <select
                                 value={selectedDuesClassId}
                                 onChange={(e) => setSelectedDuesClassId(e.target.value)}
-                                className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none"
+                                className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-gray-800"
                             >
-                                <option value="all">All Classes</option>
+                                <option value="all">All Classes & Divisions</option>
                                 {(classes || []).map(c => (
                                     <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
+                                ))}
+                            </select>
+
+                            {/* Mentor Selector */}
+                            <select
+                                value={selectedDuesMentorId}
+                                onChange={(e) => setSelectedDuesMentorId(e.target.value)}
+                                className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-gray-800"
+                            >
+                                <option value="all">All Mentors</option>
+                                {(mentors || []).map(m => (
+                                    <option key={m.id} value={m.id}>{m.name}</option>
                                 ))}
                             </select>
 
