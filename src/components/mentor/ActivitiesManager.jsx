@@ -5,7 +5,7 @@ import { collection, query, onSnapshot, getDocs, where } from 'firebase/firestor
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings, Copy, Download, FileText, Calendar, Edit3, RotateCcw, Save } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, Pencil, Search, Filter, Settings, Copy, Download, FileText, Calendar, Edit3, RotateCcw, Save, Maximize2 } from 'lucide-react';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -95,6 +95,7 @@ const ActivitiesManager = () => {
     const [leaderboardClassId, setLeaderboardClassId] = useState('');
     const [showMentorLeaderboard, setShowMentorLeaderboard] = useState(true);
     const [selectedLeaderboardMonth, setSelectedLeaderboardMonth] = useState(() => format(new Date(), 'yyyy-MM'));
+    const [isExpandedLeaderboardOpen, setIsExpandedLeaderboardOpen] = useState(false);
     const [globalActivities, setGlobalActivities] = useState([]);
     const [globalSubmissions, setGlobalSubmissions] = useState([]);
     const [globalStudents, setGlobalStudents] = useState([]);
@@ -1283,18 +1284,28 @@ const ActivitiesManager = () => {
                                 </div>
                             </div>
 
-                            {/* Month Dropdown */}
-                            <select
-                                value={selectedLeaderboardMonth}
-                                onChange={(e) => setSelectedLeaderboardMonth(e.target.value)}
-                                className="bg-white border border-gray-200 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-700 shadow-xs cursor-pointer"
-                            >
-                                {monthOptions.map(opt => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
+                            {/* Controls: Month Dropdown & Expand Button */}
+                            <div className="flex items-center gap-1.5">
+                                <select
+                                    value={selectedLeaderboardMonth}
+                                    onChange={(e) => setSelectedLeaderboardMonth(e.target.value)}
+                                    className="bg-white border border-gray-200 text-xs font-semibold rounded-lg px-2 py-1.5 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-700 shadow-xs cursor-pointer"
+                                >
+                                    {monthOptions.map(opt => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <button
+                                    onClick={() => setIsExpandedLeaderboardOpen(true)}
+                                    className="p-1.5 text-gray-600 hover:text-amber-700 hover:bg-amber-100/70 bg-white border border-gray-200 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold shadow-2xs"
+                                    title="Expand Detailed Breakdown"
+                                >
+                                    <Maximize2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Column Titles Header */}
@@ -1775,6 +1786,120 @@ const ActivitiesManager = () => {
                             })}
                         </div>
                     </Card>
+                </div>
+            )}
+            {/* Expanded Mentor Leaderboard Breakdown Modal */}
+            {isExpandedLeaderboardOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-100">
+                        {/* Modal Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border-b border-gray-100 bg-gradient-to-r from-amber-50 via-orange-50/40 to-yellow-50/30 gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl shadow-xs">
+                                    <Trophy className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Mentor Leaderboard Breakdown</h2>
+                                    <p className="text-xs text-gray-500 font-medium">Detailed monthly activity submission stats per mentor</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <select
+                                    value={selectedLeaderboardMonth}
+                                    onChange={(e) => setSelectedLeaderboardMonth(e.target.value)}
+                                    className="bg-white border border-gray-200 text-sm font-bold rounded-xl px-3 py-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-700 shadow-xs cursor-pointer"
+                                >
+                                    {monthOptions.map(opt => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <button 
+                                    onClick={() => setIsExpandedLeaderboardOpen(false)} 
+                                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                                >
+                                    <XCircle className="w-6 h-6" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Content Table */}
+                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/40">
+                            {mentorLeaderboardData.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <h3 className="text-lg font-bold text-gray-900">No Data Available</h3>
+                                    <p className="text-gray-500 text-sm">No mentor activity metrics found for this month.</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-xs bg-white">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-gray-900 text-white text-xs uppercase font-bold tracking-wider">
+                                            <tr>
+                                                <th className="p-4 w-16 text-center">Rank</th>
+                                                <th className="p-4">Mentor Name</th>
+                                                <th className="p-4 text-center">
+                                                    {format(new Date(selectedLeaderboardMonth + '-01'), 'MMMM')} Completed Submissions
+                                                </th>
+                                                <th className="p-4 text-center">
+                                                    {format(new Date(selectedLeaderboardMonth + '-01'), 'MMMM')} Total Expected
+                                                </th>
+                                                <th className="p-4 text-right">Actual Completion %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200 text-sm">
+                                            {mentorLeaderboardData.map((m, idx) => {
+                                                const isTop3 = m.rank <= 3;
+                                                return (
+                                                    <tr 
+                                                        key={m.id} 
+                                                        className={`transition-colors hover:bg-amber-50/40 ${
+                                                            isTop3 ? 'bg-amber-50/20' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                                                        }`}
+                                                    >
+                                                        <td className="p-4 text-center">
+                                                            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-black ${
+                                                                m.rank === 1 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                                                                m.rank === 2 ? 'bg-slate-100 text-slate-700 border border-slate-300' :
+                                                                m.rank === 3 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
+                                                                'bg-gray-100 text-gray-600'
+                                                            }`}>
+                                                                {m.rank}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 font-bold text-gray-900">
+                                                            <div>
+                                                                <div className="font-extrabold text-gray-900 text-base">{m.name}</div>
+                                                                <div className="text-xs font-normal text-gray-400">{m.email}</div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-center font-mono font-extrabold text-gray-900 text-base">
+                                                            {m.totalCompleted}
+                                                        </td>
+                                                        <td className="p-4 text-center font-mono font-extrabold text-gray-600 text-base">
+                                                            {m.totalExpected}
+                                                        </td>
+                                                        <td className="p-4 text-right">
+                                                            <span className={`inline-block px-3 py-1.5 rounded-lg font-black text-sm ${
+                                                                m.percentage >= 50 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                                                m.percentage >= 25 ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                                                'bg-gray-100 text-gray-700 border border-gray-200'
+                                                            }`}>
+                                                                {m.percentage}%
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
