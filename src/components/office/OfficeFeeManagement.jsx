@@ -665,101 +665,96 @@ const OfficeFeeManagement = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
-            {/* Top Navigation Banner Header */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            {/* Top Navigation Banner Header & Horizontal Sub-Tabs */}
+            <div className="bg-white p-5 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                            <Receipt className="w-7 h-7 text-indigo-600" />
+                            Fee Collection
+                        </h2>
+                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-2 font-medium">
+                            <Shield className="w-4 h-4 text-emerald-600" />
+                            Real-Time Connected Accounts • Official PDF Receipts & Installment Management
+                        </p>
+                    </div>
+                </div>
+
+                {/* Horizontal Navigation Menu Tabs */}
                 <div>
-                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                        <Receipt className="w-7 h-7 text-indigo-600" />
-                        Fee Collection
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-2 font-medium">
-                        <Shield className="w-4 h-4 text-emerald-600" />
-                        Real-Time Connected Accounts • Official PDF Receipts & Installment Management
-                    </p>
+                    <div className="text-[11px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5 mb-2.5 px-1">
+                        <Filter className="w-3.5 h-3.5 text-indigo-600" /> Navigation Menu
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('payments')}
+                            className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                                activeTab === 'payments'
+                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
+                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-100 hover:border-gray-200'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2.5 truncate">
+                                <CreditCard className={`w-4 h-4 shrink-0 ${activeTab === 'payments' ? 'text-white' : 'text-indigo-600'}`} />
+                                <span className="truncate">Collect Payment & Receipts</span>
+                            </span>
+                            {activeTab === 'payments' && <div className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0 ml-2" />}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('configurator')}
+                            className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                                activeTab === 'configurator'
+                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
+                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-100 hover:border-gray-200'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2.5 truncate">
+                                <DollarSign className={`w-4 h-4 shrink-0 ${activeTab === 'configurator' ? 'text-white' : 'text-indigo-600'}`} />
+                                <span className="truncate">Fee Configurator (3 Installments)</span>
+                            </span>
+                            {activeTab === 'configurator' && <div className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0 ml-2" />}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('dues')}
+                            className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                                activeTab === 'dues'
+                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
+                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-100 hover:border-gray-200'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2.5 truncate">
+                                <AlertCircle className={`w-4 h-4 shrink-0 ${activeTab === 'dues' ? 'text-white' : 'text-rose-500'}`} />
+                                <span className="truncate">Dues & Defaulters Tracker</span>
+                            </span>
+                            {activeTab === 'dues' && <div className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0 ml-2" />}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('reports')}
+                            className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                                activeTab === 'reports'
+                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
+                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-100 hover:border-gray-200'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2.5 truncate">
+                                <TrendingUp className={`w-4 h-4 shrink-0 ${activeTab === 'reports' ? 'text-white' : 'text-emerald-600'}`} />
+                                <span className="truncate">Financial Analytics</span>
+                            </span>
+                            {activeTab === 'reports' && <div className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0 ml-2" />}
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Main 2-Column Sidebar + Content Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* Left In-Page Sidebar Navigation */}
-                <div className="lg:col-span-3 space-y-3 sticky top-6">
-                    <Card className="p-4 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-3">
-                        <div className="px-2 py-1 border-b border-gray-100 flex items-center justify-between">
-                            <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                                <Filter className="w-3.5 h-3.5 text-indigo-600" /> Navigation Menu
-                            </span>
-                        </div>
-
-                        <div className="space-y-2">
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('payments')}
-                                className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                                    activeTab === 'payments'
-                                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-100 hover:border-gray-200'
-                                }`}
-                            >
-                                <span className="flex items-center gap-2.5">
-                                    <CreditCard className={`w-4 h-4 ${activeTab === 'payments' ? 'text-white' : 'text-indigo-600'}`} />
-                                    <span>Collect Payment & Receipts</span>
-                                </span>
-                                {activeTab === 'payments' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('configurator')}
-                                className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                                    activeTab === 'configurator'
-                                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-100 hover:border-gray-200'
-                                }`}
-                            >
-                                <span className="flex items-center gap-2.5">
-                                    <DollarSign className={`w-4 h-4 ${activeTab === 'configurator' ? 'text-white' : 'text-indigo-600'}`} />
-                                    <span>Fee Configurator (3 Installments)</span>
-                                </span>
-                                {activeTab === 'configurator' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('dues')}
-                                className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                                    activeTab === 'dues'
-                                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-100 hover:border-gray-200'
-                                }`}
-                            >
-                                <span className="flex items-center gap-2.5">
-                                    <AlertCircle className={`w-4 h-4 ${activeTab === 'dues' ? 'text-white' : 'text-rose-500'}`} />
-                                    <span>Dues & Defaulters Tracker</span>
-                                </span>
-                                {activeTab === 'dues' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('reports')}
-                                className={`w-full text-left px-3.5 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                                    activeTab === 'reports'
-                                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-100 hover:border-gray-200'
-                                }`}
-                            >
-                                <span className="flex items-center gap-2.5">
-                                    <TrendingUp className={`w-4 h-4 ${activeTab === 'reports' ? 'text-white' : 'text-emerald-600'}`} />
-                                    <span>Financial Analytics</span>
-                                </span>
-                                {activeTab === 'reports' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                            </button>
-                        </div>
-                    </Card>
-                </div>
-
-                {/* Right Active Tab Content */}
-                <div className="lg:col-span-9 space-y-6">
+            {/* Active Tab Content Area */}
+            <div className="space-y-6">
                     {/* TAB 1: PAYMENT COLLECTION & DIGITAL PRINTABLE RECEIPTS */}
                     {activeTab === 'payments' && (
                         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -1653,8 +1648,7 @@ const OfficeFeeManagement = () => {
             )}
         </div>
     </div>
-</div>
-    );
+);
 };
 
 export default OfficeFeeManagement;
