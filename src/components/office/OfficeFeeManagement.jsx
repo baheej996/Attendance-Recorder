@@ -72,8 +72,80 @@ const OfficeFeeManagement = () => {
         inst2: { amount: 4233, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
         inst3: { amount: 4234, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
     });
-    const [savingConfig, setSavingConfig] = useState(false);
-    const [configMessage, setConfigMessage] = useState('');
+    // Search & Filter States for Fee Configurator
+    const [configSearchTerm, setConfigSearchTerm] = useState('');
+    const [configMentorFilter, setConfigMentorFilter] = useState('all');
+    const [configClassFilter, setConfigClassFilter] = useState('all');
+
+    // Cascading Classes based on selected Mentor for Configurator
+    const availableClassesForConfig = useMemo(() => {
+        if (configMentorFilter === 'all') return classes || [];
+        const targetMentor = (mentors || []).find(m => m.id === configMentorFilter);
+        return (classes || []).filter(c => 
+            (targetMentor?.assignedClassIds || []).includes(c.id) || 
+            c.mentorId === configMentorFilter || 
+            c.mentorName === targetMentor?.name
+        );
+    }, [classes, mentors, configMentorFilter]);
+
+    // Reset Config Class filter if selected class is no longer allotted to selected Mentor
+    useEffect(() => {
+        if (configClassFilter !== 'all') {
+            const isValid = availableClassesForConfig.some(c => c.id === configClassFilter);
+            if (!isValid) setConfigClassFilter('all');
+        }
+    }, [availableClassesForConfig, configClassFilter]);
+
+    // Filtered Student List for Configurator Selection
+    const filteredConfigStudents = useMemo(() => {
+        return studentPool.filter(s => {
+            const cls = (classes || []).find(c => c.id === s.classId);
+
+            // Mentor Filter
+            if (configMentorFilter !== 'all') {
+                const targetMentor = (mentors || []).find(m => m.id === configMentorFilter);
+                const isAssigned = (targetMentor?.assignedClassIds || []).includes(s.classId) || 
+                                   cls?.mentorId === configMentorFilter || 
+                                   cls?.mentorName === targetMentor?.name;
+                if (!isAssigned) return false;
+            }
+
+            // Class & Division Filter
+            if (configClassFilter !== 'all' && s.classId !== configClassFilter) {
+                return false;
+            }
+
+            // Keyword Search (Name or Register Number)
+            if (configSearchTerm.trim()) {
+                const term = configSearchTerm.toLowerCase().trim();
+                const name = (s.name || '').toLowerCase();
+                const reg = (s.registerNo || '').toLowerCase();
+                return name.includes(term) || reg.includes(term);
+            }
+
+            return true;
+        });
+    }, [studentPool, classes, mentors, configMentorFilter, configClassFilter, configSearchTerm]);
+
+    // Auto-populate existing Fee Structure when Target Student or Class is selected
+    useEffect(() => {
+        if (!selectedConfigTargetId) return;
+        const existingStruct = (feeStructures || []).find(f => f.targetId === selectedConfigTargetId || f.id === selectedConfigTargetId);
+        if (existingStruct) {
+            setTotalFeeAmount(existingStruct.totalAmount || 12700);
+            if (existingStruct.installments) {
+                setInstallmentConfig(existingStruct.installments);
+            }
+        } else {
+            setTotalFeeAmount(12700);
+            setInstallmentConfig({
+                inst1: { amount: 4233, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
+                inst2: { amount: 4233, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
+                inst3: { amount: 4234, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
+            });
+        }
+    }, [selectedConfigTargetId, feeStructures]);
+
 
     const handleAutoSplit = (total) => {
         const val = Number(total) || 0;
@@ -959,10 +1031,81 @@ const OfficeFeeManagement = () => {
                             </label>
                         </div>
 
+                        {/* Search & Filter Controls Card */}
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+                            <div className="flex items-center justify-between border-b border-gray-200/60 pb-1.5">
+                                <span className="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider flex items-center gap-1">
+                                    <Filter className="w-3.5 h-3.5 text-indigo-600" /> Search & Filter Options
+                                </span>
+                                {(configSearchTerm || configClassFilter !== 'all' || configMentorFilter !== 'all') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setConfigSearchTerm(''); setConfigClassFilter('all'); setConfigMentorFilter('all'); }}
+                                        className="text-[10px] font-bold text-rose-600 hover:underline"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                {/* 1. Mentor Filter (FIRST) */}
+                                <div>
+                                    <select
+                                        value={configMentorFilter}
+                                        onChange={(e) => setConfigMentorFilter(e.target.value)}
+                                        className="w-full p-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
+                                    >
+                                        <option value="all">All Mentors</option>
+                                        {(mentors || []).map(m => (
+                                            <option key={m.id} value={m.id}>
+                                                {m.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* 2. Class & Division Filter (SECOND - Cascading based on Mentor) */}
+                                <div>
+                                    <select
+                                        value={configClassFilter}
+                                        onChange={(e) => setConfigClassFilter(e.target.value)}
+                                        className="w-full p-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
+                                    >
+                                        <option value="all">
+                                            {configMentorFilter !== 'all' ? `All Allotted Classes (${availableClassesForConfig.length})` : 'All Classes & Divisions'}
+                                        </option>
+                                        {availableClassesForConfig.map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                Class {c.name}-{c.division}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* 3. Keyword Search */}
+                                <div className="relative">
+                                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
+                                    <input
+                                        type="text"
+                                        value={configSearchTerm}
+                                        onChange={(e) => setConfigSearchTerm(e.target.value)}
+                                        placeholder="Name / Reg No..."
+                                        className="w-full pl-8 pr-2 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Dropdown for selected Target */}
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1">
-                                Select {configTargetType === 'class' ? 'Target Class' : 'Target Student'}:
+                            <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+                                <span>Select {configTargetType === 'class' ? 'Target Class' : 'Target Student'}:</span>
+                                {configTargetType === 'student' && (
+                                    <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                        {filteredConfigStudents.length} student{filteredConfigStudents.length !== 1 ? 's' : ''} match filters
+                                    </span>
+                                )}
                             </label>
                             {configTargetType === 'class' ? (
                                 <select
@@ -972,7 +1115,7 @@ const OfficeFeeManagement = () => {
                                     required
                                 >
                                     <option value="">-- Choose Class --</option>
-                                    {(classes || []).map(c => (
+                                    {availableClassesForConfig.map(c => (
                                         <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
                                     ))}
                                 </select>
@@ -983,12 +1126,13 @@ const OfficeFeeManagement = () => {
                                     className="w-full p-2.5 bg-gray-50 border border-gray-200 text-sm font-bold rounded-xl outline-none"
                                     required
                                 >
-                                    <option value="">-- Choose Student --</option>
-                                    {studentPool.map(s => {
+                                    <option value="">-- Choose Student ({filteredConfigStudents.length} Available) --</option>
+                                    {filteredConfigStudents.map(s => {
                                         const cls = (classes || []).find(c => c.id === s.classId);
+                                        const m = (mentors || []).find(men => (men.assignedClassIds || []).includes(s.classId) || cls?.mentorId === men.id);
                                         return (
                                             <option key={s.id} value={s.id}>
-                                                {s.name} (Reg: {s.registerNo || 'N/A'}) - {cls ? `${cls.name}-${cls.division}` : ''}
+                                                {s.name} (Reg: {s.registerNo || 'N/A'}) - {cls ? `${cls.name}-${cls.division}` : ''} {m ? `[Mentor: ${m.name}]` : ''}
                                             </option>
                                         );
                                     })}
