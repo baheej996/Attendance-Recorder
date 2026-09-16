@@ -49,7 +49,7 @@ export const FeeNoticePopupModal = ({ notice, student, onClose }) => {
                             Attention: {student?.name || 'Student'}
                         </p>
                         <p className="text-gray-700 leading-relaxed">
-                            {notice.body}
+                            {notice.body || notice.message}
                         </p>
                     </div>
 

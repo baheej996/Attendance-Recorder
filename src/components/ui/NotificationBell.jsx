@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, ClipboardCheck, GraduationCap, Calendar, Trophy, Sparkles, Shield, Users } from 'lucide-react';
+import { Bell, X, ClipboardCheck, GraduationCap, Calendar, Trophy, Sparkles, Shield, Users, CreditCard } from 'lucide-react';
 import { useData } from '../../contexts/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
@@ -81,7 +81,7 @@ export const NotificationBell = ({ user, autoPop = false, className = "" }) => {
 
             {/* Auto Popup for Latest Unread */}
             {isOpen && latestUnread && (
-                <div className="absolute top-0 right-full mr-4 w-66 md:w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 animate-in fade-in zoom-in-95 duration-200 z-50">
+                <div className="absolute top-0 right-full mr-4 w-72 md:w-88 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 animate-in fade-in zoom-in-95 duration-200 z-50">
                     {/* Tooltip Arrow - Adjusted to match top alignment */}
                     <div className="absolute top-4 -right-1.5 w-3 h-3 bg-white border-r border-t border-gray-100 transform rotate-45"></div>
                     
@@ -101,6 +101,7 @@ export const NotificationBell = ({ user, autoPop = false, className = "" }) => {
                             latestUnread.type === 'leave' ? 'bg-orange-100 text-orange-600' :
                             latestUnread.type === 'star' ? 'bg-yellow-100 text-yellow-600' :
                             latestUnread.type === 'activity' ? 'bg-purple-100 text-purple-600' :
+                            (latestUnread.type === 'fee_notice_popup' || latestUnread.type === 'fee') ? 'bg-rose-100 text-rose-600' :
                             'bg-indigo-100 text-indigo-600'
                         }`}>
                             {latestUnread.type === 'attendance' ? <ClipboardCheck className="w-5 h-5" /> :
@@ -108,25 +109,26 @@ export const NotificationBell = ({ user, autoPop = false, className = "" }) => {
                              latestUnread.type === 'leave' ? <Calendar className="w-5 h-5" /> :
                              latestUnread.type === 'star' ? <Trophy className="w-5 h-5" /> :
                              latestUnread.type === 'activity' ? <Sparkles className="w-5 h-5" /> :
+                             (latestUnread.type === 'fee_notice_popup' || latestUnread.type === 'fee') ? <CreditCard className="w-5 h-5" /> :
                              latestUnread.senderRole === 'Admin' ? <Shield className="w-5 h-5" /> : <Users className="w-5 h-5" />}
                         </div>
 
                         <div className="min-w-0 flex-1">
                             {latestUnread.title && (
-                                <h4 className="text-base font-bold text-indigo-900 mb-1 leading-tight truncate">
+                                <h4 className="text-base font-bold text-indigo-900 mb-1 leading-snug break-words">
                                     {latestUnread.title}
                                 </h4>
                             )}
                             <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                                <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">
-                                    {latestUnread.message}
+                                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                    {latestUnread.message || latestUnread.body}
                                 </p>
                             </div>
                         </div>
                     </div>
                     
                     <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
-                        <span className="text-[10px] text-gray-400 font-medium">From: {latestUnread.senderName}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">From: {latestUnread.senderName || latestUnread.senderRole || 'Office Accounts'}</span>
                         <div className="flex items-center gap-2">
                             {user.role === 'mentor' && latestUnread.audience === 'specific_class' && (
                                 <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">

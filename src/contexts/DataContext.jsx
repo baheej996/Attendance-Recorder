@@ -2450,6 +2450,9 @@ export const DataProvider = ({ children }) => {
             const payload = {
                 title: title || '⚠️ Fee Payment Due Notice',
                 body,
+                message: body,
+                senderName: 'Office Accounts',
+                senderRole: 'Office',
                 remainingDues: Number(remainingDues) || 0,
                 audience: 'specific_student',
                 targetId: studentId,

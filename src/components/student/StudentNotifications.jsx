@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { BookOpen, Calendar, Clock, Info, Shield, Users, Trophy, ClipboardCheck, GraduationCap, Sparkles, Star } from 'lucide-react';
+import { BookOpen, Calendar, Clock, Info, Shield, Users, Trophy, ClipboardCheck, GraduationCap, Sparkles, Star, CreditCard } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
 const StudentNotifications = () => {
@@ -45,6 +45,8 @@ const StudentNotifications = () => {
                                 case 'leave': return <Calendar className="w-5 h-5" />;
                                 case 'star': return <Trophy className="w-5 h-5" />;
                                 case 'activity': return <Sparkles className="w-5 h-5" />;
+                                case 'fee_notice_popup':
+                                case 'fee': return <CreditCard className="w-5 h-5" />;
                                 default: 
                                     return notif.senderRole === 'Admin' ? <Shield className="w-5 h-5" /> : <Users className="w-5 h-5" />;
                             }
@@ -58,6 +60,8 @@ const StudentNotifications = () => {
                                 case 'leave': return 'bg-orange-100 text-orange-600';
                                 case 'star': return 'bg-yellow-100 text-yellow-600';
                                 case 'activity': return 'bg-purple-100 text-purple-600';
+                                case 'fee_notice_popup':
+                                case 'fee': return 'bg-rose-100 text-rose-600';
                                 default: return 'bg-indigo-100 text-indigo-600';
                             }
                         };
@@ -87,15 +91,15 @@ const StudentNotifications = () => {
                                             </span>
                                         </div>
                                         <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
-                                            {notif.message}
+                                            {notif.message || notif.body}
                                         </p>
                                         <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[10px] font-black text-white bg-gray-900 px-2 py-0.5 rounded uppercase tracking-wider">
-                                                    {notif.senderRole}
+                                                    {notif.senderRole || 'OFFICE'}
                                                 </span>
                                                 <span className="text-xs font-bold text-gray-500">
-                                                    {notif.senderName}
+                                                    {notif.senderName || 'Office Accounts'}
                                                 </span>
                                             </div>
                                             {isUnread && (
