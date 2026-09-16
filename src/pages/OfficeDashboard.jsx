@@ -25,7 +25,7 @@ const OfficeDashboard = () => {
     const navItems = [
         { 
             id: 'fees', 
-            label: 'Fee & Billing Portal', 
+            label: 'Fee Collection', 
             icon: Wallet,
             badge: null
         },

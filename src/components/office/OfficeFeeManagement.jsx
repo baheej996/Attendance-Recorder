@@ -565,7 +565,7 @@ const OfficeFeeManagement = () => {
                 <div>
                     <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
                         <Receipt className="w-7 h-7 text-indigo-600" />
-                        Office Fee Collection & Accounts Panel
+                        Fee Collection
                     </h2>
                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-2 font-medium">
                         <Shield className="w-4 h-4 text-emerald-600" />
