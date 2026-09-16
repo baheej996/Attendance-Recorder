@@ -72,6 +72,9 @@ const OfficeFeeManagement = () => {
         inst2: { amount: 4233, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
         inst3: { amount: 4234, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
     });
+    const [savingConfig, setSavingConfig] = useState(false);
+    const [configMessage, setConfigMessage] = useState('');
+
     // Search & Filter States for Fee Configurator
     const [configSearchTerm, setConfigSearchTerm] = useState('');
     const [configMentorFilter, setConfigMentorFilter] = useState('all');
