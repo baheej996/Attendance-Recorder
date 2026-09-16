@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import EvaluationFormBuilder from './EvaluationFormBuilder';
 import ParentFeedbackReportGenerator from './ParentFeedbackReportGenerator';
+import ParentFeedbackTracker from './ParentFeedbackTracker';
 import { clsx } from 'clsx';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -395,6 +396,16 @@ const ParentFeedbackManager = () => {
                             <FileBarChart className="w-4 h-4 text-purple-600" />
                             Question Reports
                         </button>
+                        <button
+                            onClick={() => setActiveTab('tracker')}
+                            className={clsx(
+                                "px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2",
+                                activeTab === 'tracker' ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                            )}
+                        >
+                            <User className="w-4 h-4 text-emerald-600" />
+                            Submission Tracker
+                        </button>
                     </div>
                     {activeTab === 'templates' && (
                         <Button variant="primary" onClick={handleCreateNew} className="gap-2 text-xs">
@@ -403,6 +414,11 @@ const ParentFeedbackManager = () => {
                     )}
                 </div>
             </div>
+
+            {/* TAB 4: SUBMISSION TRACKER */}
+            {activeTab === 'tracker' && (
+                <ParentFeedbackTracker />
+            )}
 
             {/* TAB 1: SUBMISSIONS LIST */}
             {activeTab === 'submissions' && (
