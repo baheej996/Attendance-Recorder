@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { db } from '../../firebase';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -12,7 +14,7 @@ import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, end
 const ActivitiesManager = () => {
     const {
         activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
-        classes, students, subjects, currentUser, mentors,
+        classes, students, allStudents, subjects, currentUser, mentors,
         activitySubmissions, markActivityAsDone, markActivityAsPending, requireFeature,
         getStudentActivityPoints, updateStudent
     } = useData();
@@ -93,7 +95,27 @@ const ActivitiesManager = () => {
     const [leaderboardClassId, setLeaderboardClassId] = useState('');
     const [showMentorLeaderboard, setShowMentorLeaderboard] = useState(true);
     const [selectedLeaderboardMonth, setSelectedLeaderboardMonth] = useState(() => format(new Date(), 'yyyy-MM'));
+    const [globalActivities, setGlobalActivities] = useState([]);
+    const [globalSubmissions, setGlobalSubmissions] = useState([]);
     const reportDropdownRef = useRef(null);
+
+    // Fetch global activities & submissions across all classes when Leaderboard is active
+    useEffect(() => {
+        if (!showMentorLeaderboard) return;
+
+        const unsubAct = onSnapshot(query(collection(db, 'activities')), (snap) => {
+            setGlobalActivities(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+        }, (err) => console.error('Error fetching global activities:', err));
+
+        const unsubSub = onSnapshot(query(collection(db, 'activitySubmissions')), (snap) => {
+            setGlobalSubmissions(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+        }, (err) => console.error('Error fetching global submissions:', err));
+
+        return () => {
+            unsubAct();
+            unsubSub();
+        };
+    }, [showMentorLeaderboard]);
 
     // Close Report Dropdown on outside click
     useEffect(() => {
@@ -695,14 +717,18 @@ const ActivitiesManager = () => {
         const targetYear = parseInt(yearStr, 10);
         const targetMonth = parseInt(monthStr, 10) - 1;
 
+        const effectiveActivities = globalActivities.length > 0 ? globalActivities : (activities || []);
+        const effectiveSubmissions = globalSubmissions.length > 0 ? globalSubmissions : (activitySubmissions || []);
+        const studentPool = (allStudents && allStudents.length > 0) ? allStudents : (students || []);
+
         // Filter activities belonging to selected month
-        const monthActivities = (activities || []).filter(act => {
+        const monthActivities = effectiveActivities.filter(act => {
             const actDate = act.createdAt ? new Date(act.createdAt) : (act.dueDate ? new Date(act.dueDate) : null);
             if (!actDate || isNaN(actDate.getTime())) return false;
             return actDate.getFullYear() === targetYear && actDate.getMonth() === targetMonth;
         });
 
-        const activeStudents = (students || []).filter(s => s.status === 'Active');
+        const activeStudents = studentPool.filter(s => s.status === 'Active');
 
         const result = mentors.map(m => {
             const assignedClassIds = m.assignedClassIds || (m.classId ? [m.classId] : []);
@@ -717,7 +743,7 @@ const ActivitiesManager = () => {
                 const classStudents = mentorStudents.filter(s => s.classId === act.classId);
                 totalExpectedSubmissions += classStudents.length;
 
-                const completedCount = (activitySubmissions || []).filter(sub => 
+                const completedCount = effectiveSubmissions.filter(sub => 
                     sub.activityId === act.id && 
                     sub.status === 'Completed' && 
                     classStudents.some(cs => cs.id === sub.studentId)
@@ -755,7 +781,7 @@ const ActivitiesManager = () => {
             }
             return { ...item, rank: currentRank };
         });
-    }, [mentors, activities, students, activitySubmissions, selectedLeaderboardMonth]);
+    }, [mentors, activities, globalActivities, students, allStudents, activitySubmissions, globalSubmissions, selectedLeaderboardMonth]);
 
 
     // Bulk Selection Handlers
@@ -1287,17 +1313,11 @@ const ActivitiesManager = () => {
                                                 isTop3 ? 'bg-amber-50/10' : 'bg-white'
                                             }`}
                                         >
-                                            {/* Rank Icon / Number */}
+                                            {/* Rank Number */}
                                             <div className="col-span-2 flex items-center justify-start">
-                                                {m.rank === 1 ? (
-                                                    <Trophy className="w-5 h-5 text-amber-500" />
-                                                ) : m.rank === 2 ? (
-                                                    <Trophy className="w-5 h-5 text-amber-600/70" />
-                                                ) : m.rank === 3 ? (
-                                                    <Trophy className="w-5 h-5 text-amber-700/60" />
-                                                ) : (
-                                                    <span className="font-bold text-xs text-gray-400 pl-1">{m.rank}</span>
-                                                )}
+                                                <span className={`font-extrabold text-sm ${isTop3 ? 'text-amber-600 font-black' : 'text-gray-500'}`}>
+                                                    {m.rank}
+                                                </span>
                                             </div>
 
                                             {/* Mentor Initial & Details */}
