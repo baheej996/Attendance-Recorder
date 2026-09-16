@@ -1118,7 +1118,13 @@ const ActivitiesManager = () => {
                                                 </div>
 
                                                 {(() => {
-                                                    const ceilingPoints = activity.maxPoints;
+                                                    const classActiveActivities = activities.filter(
+                                                        a => a.classId === activity.classId && a.status === 'Active'
+                                                    );
+                                                    const ceilingPoints = classActiveActivities.reduce(
+                                                        (sum, a) => sum + (Number(a.maxPoints) || 0),
+                                                        0
+                                                    ) || activity.maxPoints;
                                                     return (
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                                             {students
