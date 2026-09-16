@@ -900,13 +900,9 @@ const ActivitiesManager = () => {
                     </div>
 
                     <Button
-                        onClick={() => setShowMentorLeaderboard(prev => !prev)}
+                        onClick={() => setIsLeaderboardModalOpen(true)}
                         variant="secondary"
-                        className={`flex items-center gap-2 flex-1 md:flex-none justify-center border transition-all ${
-                            showMentorLeaderboard
-                                ? 'border-amber-300 bg-amber-100 text-amber-800 shadow-xs font-semibold'
-                                : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800'
-                        }`}
+                        className="flex items-center gap-2 flex-1 md:flex-none justify-center border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
                     >
                         <Trophy className="w-4 h-4 text-amber-500" /> Leaderboard
                     </Button>
