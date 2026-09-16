@@ -52,8 +52,8 @@ const OfficeFeeManagement = () => {
 
     const { showAlert, showConfirm } = useUI();
 
-    // Main Active Sub-Tab: 'payments' | 'configurator' | 'dues' | 'reports'
-    const [activeTab, setActiveTab] = useState('payments');
+    // Main Active Sub-Tab: 'dues' | 'payments' | 'configurator' | 'reports'
+    const [activeTab, setActiveTab] = useState('dues');
 
     // Student Pool (Active students across system)
     const studentPool = useMemo(() => {
@@ -688,6 +688,22 @@ const OfficeFeeManagement = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <button
                             type="button"
+                            onClick={() => setActiveTab('dues')}
+                            className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                                activeTab === 'dues'
+                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
+                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-100 hover:border-gray-200'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2.5 truncate">
+                                <AlertCircle className={`w-4 h-4 shrink-0 ${activeTab === 'dues' ? 'text-white' : 'text-rose-500'}`} />
+                                <span className="truncate">Dues & Defaulters Tracker</span>
+                            </span>
+                            {activeTab === 'dues' && <div className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0 ml-2" />}
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() => setActiveTab('payments')}
                             className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
                                 activeTab === 'payments'
@@ -716,22 +732,6 @@ const OfficeFeeManagement = () => {
                                 <span className="truncate">Fee Configurator (3 Installments)</span>
                             </span>
                             {activeTab === 'configurator' && <div className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0 ml-2" />}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('dues')}
-                            className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                                activeTab === 'dues'
-                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 font-extrabold'
-                                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-100 hover:border-gray-200'
-                            }`}
-                        >
-                            <span className="flex items-center gap-2.5 truncate">
-                                <AlertCircle className={`w-4 h-4 shrink-0 ${activeTab === 'dues' ? 'text-white' : 'text-rose-500'}`} />
-                                <span className="truncate">Dues & Defaulters Tracker</span>
-                            </span>
-                            {activeTab === 'dues' && <div className="w-2 h-2 rounded-full bg-white animate-pulse shrink-0 ml-2" />}
                         </button>
 
                         <button
