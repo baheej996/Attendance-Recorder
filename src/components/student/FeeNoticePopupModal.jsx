@@ -1,9 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShieldAlert, CheckCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 export const FeeNoticePopupModal = ({ notice, student, onClose }) => {
-    if (!notice) return null;
+    const [isClosing, setIsClosing] = useState(false);
+
+    if (!notice || isClosing) return null;
+
+    const handleClose = async () => {
+        setIsClosing(true);
+        if (onClose) {
+            try {
+                await onClose();
+            } catch (err) {
+                console.error("Failed to dismiss notice in Firestore:", err);
+            }
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -67,7 +80,7 @@ export const FeeNoticePopupModal = ({ notice, student, onClose }) => {
                     {/* Action Button */}
                     <Button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
                     >
                         <CheckCircle className="w-4 h-4" />

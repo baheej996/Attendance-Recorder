@@ -457,9 +457,9 @@ export const DataProvider = ({ children }) => {
             const specificNotifUnsub = onSnapshot(specificNotifQ, (snap) => {
                 const specificNotifs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
                 setNotifications(prev => {
-                    const existingIds = new Set(prev.map(n => n.id));
-                    const newNotifs = specificNotifs.filter(n => !existingIds.has(n.id));
-                    return newNotifs.length > 0 ? [...prev, ...newNotifs] : prev;
+                    const map = new Map(prev.map(n => [n.id, n]));
+                    specificNotifs.forEach(n => map.set(n.id, n));
+                    return Array.from(map.values());
                 });
             });
             unsubs.push(specificNotifUnsub);
@@ -682,6 +682,21 @@ export const DataProvider = ({ children }) => {
     };
 
     const markNotificationAsDismissed = async (notificationId, userId) => {
+        // 1. Optimistic local state update for instant UI feedback
+        setNotifications(prev => prev.map(n => {
+            if (n.id === notificationId) {
+                const currentDismissed = n.dismissedBy || [];
+                const currentRead = n.readBy || [];
+                return {
+                    ...n,
+                    dismissedBy: currentDismissed.includes(userId) ? currentDismissed : [...currentDismissed, userId],
+                    readBy: currentRead.includes(userId) ? currentRead : [...currentRead, userId]
+                };
+            }
+            return n;
+        }));
+
+        // 2. Persist to Firestore
         const notif = (notifications || []).find(n => n.id === notificationId);
         if (notif) {
             const currentDismissed = notif.dismissedBy || [];
