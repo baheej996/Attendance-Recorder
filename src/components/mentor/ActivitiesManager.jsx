@@ -97,22 +97,25 @@ const ActivitiesManager = () => {
     const [selectedLeaderboardMonth, setSelectedLeaderboardMonth] = useState(() => format(new Date(), 'yyyy-MM'));
     const [globalActivities, setGlobalActivities] = useState([]);
     const [globalSubmissions, setGlobalSubmissions] = useState([]);
+    const [globalStudents, setGlobalStudents] = useState([]);
     const reportDropdownRef = useRef(null);
 
-    // Fetch global activities & submissions across all classes when Leaderboard is active
+    // Fetch global activities, submissions & students across all classes when Leaderboard is active
     useEffect(() => {
         if (!showMentorLeaderboard) return;
 
         let isMounted = true;
         const fetchGlobalData = async () => {
             try {
-                const [actSnap, subSnap] = await Promise.all([
+                const [actSnap, subSnap, stuSnap] = await Promise.all([
                     getDocs(collection(db, 'activities')),
-                    getDocs(query(collection(db, 'activitySubmissions'), where('status', '==', 'Completed')))
+                    getDocs(query(collection(db, 'activitySubmissions'), where('status', '==', 'Completed'))),
+                    getDocs(query(collection(db, 'students'), where('status', '==', 'Active')))
                 ]);
                 if (isMounted) {
                     setGlobalActivities(actSnap.docs.map(d => ({ ...d.data(), id: d.id })));
                     setGlobalSubmissions(subSnap.docs.map(d => ({ ...d.data(), id: d.id })));
+                    setGlobalStudents(stuSnap.docs.map(d => ({ ...d.data(), id: d.id })));
                 }
             } catch (err) {
                 console.error('Error fetching global leaderboard data:', err);
@@ -728,7 +731,7 @@ const ActivitiesManager = () => {
 
         const effectiveActivities = globalActivities.length > 0 ? globalActivities : (activities || []);
         const effectiveSubmissions = globalSubmissions.length > 0 ? globalSubmissions : (activitySubmissions || []);
-        const studentPool = (allStudents && allStudents.length > 0) ? allStudents : (students || []);
+        const studentPool = globalStudents.length > 0 ? globalStudents : ((allStudents && allStudents.length > 10) ? allStudents : (students || []));
 
         // Filter activities belonging to selected month
         const monthActivities = effectiveActivities.filter(act => {
@@ -784,15 +787,13 @@ const ActivitiesManager = () => {
         return result.map((item, index, arr) => {
             if (index > 0) {
                 const prev = arr[index - 1];
-                if (item.percentage === prev.percentage && item.totalCompleted === prev.totalCompleted) {
-                    currentRank = prev.rank;
-                } else {
+                if (item.percentage !== prev.percentage || item.totalCompleted !== prev.totalCompleted) {
                     currentRank = index + 1;
                 }
             }
             return { ...item, rank: currentRank };
         });
-    }, [mentors, activities, globalActivities, students, allStudents, activitySubmissions, globalSubmissions, selectedLeaderboardMonth]);
+    }, [mentors, activities, globalActivities, globalStudents, students, allStudents, activitySubmissions, globalSubmissions, selectedLeaderboardMonth]);
 
 
     // Bulk Selection Handlers
