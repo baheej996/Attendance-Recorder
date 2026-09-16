@@ -585,11 +585,11 @@ const OfficeFeeManagement = () => {
     const handleSendWebsiteNotification = async (item) => {
         const msg = `Dear ${item.student.name}, your fee payment of INR ${item.remainingDues.toLocaleString()} is currently pending. Please arrange payment with the Office.`;
         try {
-            await sendStudentFeeNotification(item.student.id, '⚠️ Fee Payment Due Notice', msg);
-            showAlert('Notice Dispatched', `Website In-App Fee Notification dispatched to ${item.student.name}!`, 'success');
+            await sendStudentFeeNotification(item.student.id, '⚠️ Fee Payment Due Notice', msg, item.remainingDues);
+            showAlert('Notice Dispatched', `Website Fee Notice Popup sent to ${item.student.name}! It will pop up when they sign into their student account.`, 'success');
         } catch (err) {
             console.error('Error sending in-app notification:', err);
-            showAlert('Error', 'Failed to send website notification.', 'error');
+            showAlert('Error', 'Failed to send website notice popup.', 'error');
         }
     };
 

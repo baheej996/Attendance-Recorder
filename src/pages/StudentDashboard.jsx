@@ -27,6 +27,7 @@ import StudentWelcome from '../components/student/StudentWelcome';
 import StudentNotifications from '../components/student/StudentNotifications';
 import FeedbackPortal from '../components/student/FeedbackPortal';
 import StudentProfileModal from '../components/student/StudentProfileModal';
+import { FeeNoticePopupModal } from '../components/student/FeeNoticePopupModal';
 
 import Help from './Help';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
@@ -56,11 +57,18 @@ const SidebarItem = ({ icon: Icon, label, path, active, onClick, hasNotification
 );
 
 const StudentDashboard = () => {
-    const { currentUser, logout, activities, activitySubmissions, classes, mentors, studentFeatureFlags, classFeatureFlags, attendance, exams, results, liveClasses, substitutionRequests, unreadChats, notifications, students, requireFeature } = useData();
+    const { currentUser, logout, activities, activitySubmissions, classes, mentors, studentFeatureFlags, classFeatureFlags, attendance, exams, results, liveClasses, substitutionRequests, unreadChats, notifications, students, requireFeature, markNotificationAsDismissed } = useData();
     const location = useLocation();
     const navigate = useNavigate();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+    // Active Fee Notice Popup for signed-in student
+    const activeFeeNoticePopup = (notifications || []).find(n => 
+        (n.type === 'fee_notice_popup' || n.isPopup) &&
+        (n.targetId === currentUser?.id || (n.audience === 'specific_student' && n.targetId === currentUser?.id)) &&
+        !(n.dismissedBy || []).includes(currentUser?.id)
+    );
 
     // Check if profile is incomplete
     const isProfileIncomplete = !currentUser?.fatherName || !currentUser?.motherName || !currentUser?.livingCountry || !currentUser?.livingState || !currentUser?.nativeCountry || !currentUser?.nativeState || !currentUser?.contactNo || !currentUser?.whatsappNo;
@@ -650,6 +658,15 @@ const StudentDashboard = () => {
                     </div>
                 )}
             </main>
+
+            {/* Fee Notice Popup Modal (Pops up when student signs in) */}
+            {activeFeeNoticePopup && (
+                <FeeNoticePopupModal
+                    notice={activeFeeNoticePopup}
+                    student={currentUser}
+                    onClose={() => markNotificationAsDismissed(activeFeeNoticePopup.id, currentUser.id)}
+                />
+            )}
         </div>
     );
 };

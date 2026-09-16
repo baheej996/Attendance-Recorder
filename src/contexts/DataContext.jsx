@@ -681,6 +681,21 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+    const markNotificationAsDismissed = async (notificationId, userId) => {
+        const notif = (notifications || []).find(n => n.id === notificationId);
+        if (notif) {
+            const currentDismissed = notif.dismissedBy || [];
+            const currentRead = notif.readBy || [];
+            const updatedDismissed = currentDismissed.includes(userId) ? currentDismissed : [...currentDismissed, userId];
+            const updatedRead = currentRead.includes(userId) ? currentRead : [...currentRead, userId];
+            await updateDoc(doc(db, 'notifications', notificationId), {
+                dismissedBy: updatedDismissed,
+                readBy: updatedRead
+            });
+        }
+    };
+
+
 
     // --- Seeding Logic ---
     useEffect(() => {
@@ -2400,7 +2415,7 @@ export const DataProvider = ({ children }) => {
         recordFeePayment: async (paymentData) => {
             const year = new Date().getFullYear();
             const randomNum = Math.floor(1000 + Math.random() * 9000);
-            const receiptId = `REC-${year}-${randomNum}`;
+            const receiptId = paymentData.receiptId || `REC-${year}-${randomNum}`;
             const payload = {
                 ...paymentData,
                 receiptId,
@@ -2416,12 +2431,18 @@ export const DataProvider = ({ children }) => {
             await deleteDoc(doc(db, 'feePayments', paymentId));
             setFeePayments(prev => prev.filter(p => p.id !== paymentId));
         },
-        sendStudentFeeNotification: async (studentId, title, body) => {
+        sendStudentFeeNotification: async (studentId, title, body, remainingDues = 0) => {
             const payload = {
-                title: title || 'Fee Payment Notice',
+                title: title || '⚠️ Fee Payment Due Notice',
                 body,
+                remainingDues: Number(remainingDues) || 0,
                 audience: 'specific_student',
                 targetId: studentId,
+                type: 'fee_notice_popup',
+                isPopup: true,
+                isBrowserNotification: false,
+                dismissedBy: [],
+                readBy: [],
                 createdAt: new Date().toISOString()
             };
             await addDoc(collection(db, 'notifications'), payload);
