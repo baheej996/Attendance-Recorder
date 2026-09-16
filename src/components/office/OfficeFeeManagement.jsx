@@ -600,6 +600,53 @@ const OfficeFeeManagement = () => {
         return `https://wa.me/${cleanPhone}?text=${msg}`;
     };
 
+    // Direct Record Payment for a Student from Dues Tracker
+    const handleDirectRecordPayment = (student) => {
+        if (!student?.id) return;
+        
+        // 1. Set selected student for payment collection
+        setSelectedStudentId(student.id);
+        
+        // 2. Determine first unpaid installment and calculate remaining due
+        const studentPayments = (feePayments || []).filter(p => p.studentId === student.id);
+        const struct = getStudentFeeStructure(student);
+        const inst1Paid = studentPayments.filter(p => p.installmentKey === 'inst1').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
+        const inst2Paid = studentPayments.filter(p => p.installmentKey === 'inst2').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
+        const inst3Paid = studentPayments.filter(p => p.installmentKey === 'inst3').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
+
+        const inst1Due = Math.max(0, (struct.installments?.inst1?.amount || 4233) - inst1Paid);
+        const inst2Due = Math.max(0, (struct.installments?.inst2?.amount || 4233) - inst2Paid);
+        const inst3Due = Math.max(0, (struct.installments?.inst3?.amount || 4234) - inst3Paid);
+
+        if (inst1Due > 0) {
+            setSelectedInstallmentKey('inst1');
+            setCustomPayAmount(inst1Due);
+        } else if (inst2Due > 0) {
+            setSelectedInstallmentKey('inst2');
+            setCustomPayAmount(inst2Due);
+        } else if (inst3Due > 0) {
+            setSelectedInstallmentKey('inst3');
+            setCustomPayAmount(inst3Due);
+        } else {
+            setSelectedInstallmentKey('inst1');
+            setCustomPayAmount('');
+        }
+
+        // 3. Reset filters to ensure student shows in dropdown
+        setPayMentorFilter('all');
+        setPayClassFilter('all');
+        setPaySearchTerm('');
+
+        // 4. Switch active tab to Payment Collection & Receipts
+        setActiveTab('payments');
+
+        showAlert(
+            'Student Pre-Filled',
+            `Selected ${student.name} (Reg: ${student.registerNo || 'N/A'}). Transferred to Payment Collection.`,
+            'info'
+        );
+    };
+
     // -------------------------------------------------------------
     // TAB 4: FINANCIAL ANALYTICS & AUDIT REPORTS
     // -------------------------------------------------------------
@@ -1433,7 +1480,7 @@ const OfficeFeeManagement = () => {
                                         <th className="p-4 text-center">Total Fee</th>
                                         <th className="p-4 text-center">Paid So Far</th>
                                         <th className="p-4 text-center">Pending Dues</th>
-                                        <th className="p-4 text-right">Send Reminders</th>
+                                        <th className="p-4 text-right">Actions & Reminders</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -1466,32 +1513,39 @@ const OfficeFeeManagement = () => {
                                                     ₹{item.remainingDues.toLocaleString()}
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    {!item.isFullyPaid ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            {/* Website Student Panel In-App Notification */}
-                                                            <button
-                                                                onClick={() => handleSendWebsiteNotification(item)}
-                                                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-200 transition-colors"
-                                                                title="Send Website In-App Notification directly to Student Panel"
-                                                            >
-                                                                <Bell className="w-3.5 h-3.5 text-indigo-600" /> Website Notice
-                                                            </button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {/* Record Fee Payment Button (Pre-fills student data & switches tab) */}
+                                                        <button
+                                                            onClick={() => handleDirectRecordPayment(item.student)}
+                                                            className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                                                            title="Record Fee Payment directly for this student"
+                                                        >
+                                                            <CreditCard className="w-3.5 h-3.5" /> Record Fee Payment
+                                                        </button>
 
-                                                            {/* WhatsApp Link */}
-                                                            <a
-                                                                href={getWhatsAppReminderLink(item)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1 border border-emerald-200 transition-colors"
-                                                            >
-                                                                <Send className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp
-                                                            </a>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg font-black text-xs inline-flex items-center gap-1">
-                                                            <CheckCircle className="w-3.5 h-3.5" /> Fully Cleared
-                                                        </span>
-                                                    )}
+                                                        {!item.isFullyPaid && (
+                                                            <>
+                                                                {/* Website Student Panel In-App Notification */}
+                                                                <button
+                                                                    onClick={() => handleSendWebsiteNotification(item)}
+                                                                    className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-200 transition-colors"
+                                                                    title="Send Website In-App Notification directly to Student Panel"
+                                                                >
+                                                                    <Bell className="w-3.5 h-3.5 text-indigo-600" /> Website Notice
+                                                                </button>
+
+                                                                {/* WhatsApp Link */}
+                                                                <a
+                                                                    href={getWhatsAppReminderLink(item)}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1 border border-emerald-200 transition-colors"
+                                                                >
+                                                                    <Send className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp
+                                                                </a>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
