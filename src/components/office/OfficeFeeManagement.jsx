@@ -934,64 +934,77 @@ const OfficeFeeManagement = () => {
 
                             {selectedStudent && (
                                 <>
-                                    {/* Financial Overview Card - Attractive Light Theme */}
+                                    {/* Financial Overview Card - Matching Reference Theme */}
                                     {(() => {
                                         const selectedStudentClass = (classes || []).find(c => c.id === selectedStudent.classId);
+                                        const targetMentor = selectedStudentClass ? (mentors || []).find(m => (m.assignedClassIds || []).includes(selectedStudentClass.id) || selectedStudentClass.mentorId === m.id) : null;
                                         return (
-                                            <div className="relative overflow-hidden p-5 bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/60 border border-indigo-100 rounded-2xl space-y-4 shadow-sm">
-                                                {/* Soft decorative background glow */}
-                                                <div className="absolute -right-8 -top-8 w-28 h-28 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
-
-                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center font-black text-base shadow-md shadow-indigo-500/20">
-                                                            {selectedStudent.name ? selectedStudent.name.charAt(0).toUpperCase() : 'S'}
+                                            <div className="bg-white border-2 border-amber-200/90 rounded-3xl p-5 shadow-xs space-y-4">
+                                                {/* Header Row */}
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                                    <div className="flex items-center gap-3.5">
+                                                        {/* Orange Avatar Square */}
+                                                        <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0">
+                                                            <User className="w-6 h-6" />
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-black text-base text-gray-900 tracking-tight">{selectedStudent.name}</h4>
-                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className="text-xs font-bold text-gray-500 font-mono">Reg: {selectedStudent.registerNo || 'N/A'}</span>
-                                                                {selectedStudentClass && (
-                                                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-indigo-100/80 text-indigo-700">
-                                                                        Class {selectedStudentClass.name}-{selectedStudentClass.division}
-                                                                    </span>
-                                                                )}
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-black text-lg text-gray-900 tracking-tight">{selectedStudent.name}</h4>
+                                                                <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full text-white shadow-xs ${
+                                                                    studentTotals.isFullyPaid ? 'bg-emerald-500' : 'bg-amber-500'
+                                                                }`}>
+                                                                    {studentTotals.isFullyPaid ? 'FULLY PAID' : 'DUES PENDING'}
+                                                                </span>
                                                             </div>
+                                                            <p className="text-xs text-gray-500 font-medium mt-0.5">
+                                                                Reg: <span className="font-mono font-bold text-gray-800">{selectedStudent.registerNo || 'N/A'}</span>
+                                                                {selectedStudentClass && (
+                                                                    <>
+                                                                        {' • '}Class: <span className="font-bold text-purple-700">{selectedStudentClass.name}-{selectedStudentClass.division}</span>
+                                                                    </>
+                                                                )}
+                                                                {targetMentor && (
+                                                                    <>
+                                                                        {' • '}Mentor: <span className="font-bold text-purple-700">{targetMentor.name}</span>
+                                                                    </>
+                                                                )}
+                                                            </p>
                                                         </div>
                                                     </div>
 
-                                                    <span className={`px-3 py-1.5 rounded-full text-xs font-black shadow-xs flex items-center gap-1.5 border ${
+                                                    {/* Right Status Badge */}
+                                                    <span className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border shadow-2xs ${
                                                         studentTotals.isFullyPaid 
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-emerald-100' 
-                                                            : 'bg-rose-50 text-rose-700 border-rose-200 shadow-rose-100'
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                                            : 'bg-rose-50 text-rose-700 border-rose-200'
                                                     }`}>
                                                         {studentTotals.isFullyPaid ? (
                                                             <>
-                                                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                                                <CheckCircle className="w-4 h-4 text-emerald-600" />
                                                                 <span>FULLY PAID</span>
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <AlertCircle className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
+                                                                <AlertCircle className="w-4 h-4 text-rose-600" />
                                                                 <span>DUES PENDING</span>
                                                             </>
                                                         )}
                                                     </span>
                                                 </div>
 
-                                                {/* Financial Metric Cards */}
-                                                <div className="grid grid-cols-3 gap-3 pt-1 relative z-10">
-                                                    <div className="p-3 bg-white/90 border border-gray-100 rounded-xl shadow-xs text-center transition-all hover:border-indigo-200">
-                                                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-0.5">Total Fee</p>
-                                                        <p className="text-base font-black text-gray-900 font-mono">₹{studentTotals.totalFee.toLocaleString()}</p>
+                                                {/* Inner Content Blocks / Stat Boxes */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                    <div className="p-3.5 bg-gray-50/70 border border-gray-100 rounded-2xl text-center">
+                                                        <p className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">TOTAL FEE</p>
+                                                        <p className="text-base font-black text-gray-900 font-mono mt-0.5">₹{studentTotals.totalFee.toLocaleString()}</p>
                                                     </div>
-                                                    <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-xl shadow-xs text-center transition-all hover:border-emerald-300">
-                                                        <p className="text-[10px] text-emerald-700 font-black uppercase tracking-wider mb-0.5">Paid So Far</p>
-                                                        <p className="text-base font-black text-emerald-600 font-mono">₹{studentTotals.totalPaid.toLocaleString()}</p>
+                                                    <div className="p-3.5 bg-gray-50/70 border border-gray-100 rounded-2xl text-center">
+                                                        <p className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider">PAID SO FAR</p>
+                                                        <p className="text-base font-black text-emerald-600 font-mono mt-0.5">₹{studentTotals.totalPaid.toLocaleString()}</p>
                                                     </div>
-                                                    <div className="p-3 bg-rose-50/80 border border-rose-200/80 rounded-xl shadow-xs text-center transition-all hover:border-rose-300">
-                                                        <p className="text-[10px] text-rose-700 font-black uppercase tracking-wider mb-0.5">Remaining</p>
-                                                        <p className="text-base font-black text-rose-600 font-mono">₹{studentTotals.remainingBalance.toLocaleString()}</p>
+                                                    <div className="p-3.5 bg-gray-50/70 border border-gray-100 rounded-2xl text-center">
+                                                        <p className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wider">REMAINING</p>
+                                                        <p className="text-base font-black text-rose-600 font-mono mt-0.5">₹{studentTotals.remainingBalance.toLocaleString()}</p>
                                                     </div>
                                                 </div>
                                             </div>
