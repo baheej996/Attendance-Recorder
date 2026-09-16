@@ -939,72 +939,127 @@ const OfficeFeeManagement = () => {
                                         const selectedStudentClass = (classes || []).find(c => c.id === selectedStudent.classId);
                                         const targetMentor = selectedStudentClass ? (mentors || []).find(m => (m.assignedClassIds || []).includes(selectedStudentClass.id) || selectedStudentClass.mentorId === m.id) : null;
                                         return (
-                                            <div className="bg-white border-2 border-amber-200/90 rounded-3xl p-5 shadow-xs space-y-4">
+                                            <div className="bg-white border-2 border-amber-200/90 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all space-y-4">
                                                 {/* Header Row */}
-                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
                                                     <div className="flex items-center gap-3.5">
                                                         {/* Orange Avatar Square */}
-                                                        <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0">
-                                                            <User className="w-6 h-6" />
+                                                        <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-lg shadow-xs shrink-0">
+                                                            <User className="w-6 h-6 text-white" />
                                                         </div>
                                                         <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <h4 className="font-black text-lg text-gray-900 tracking-tight">{selectedStudent.name}</h4>
-                                                                <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full text-white shadow-xs ${
-                                                                    studentTotals.isFullyPaid ? 'bg-emerald-500' : 'bg-amber-500'
-                                                                }`}>
-                                                                    {studentTotals.isFullyPaid ? 'FULLY PAID' : 'DUES PENDING'}
-                                                                </span>
+                                                            <div className="flex items-center gap-2.5">
+                                                                <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">{selectedStudent.name}</h3>
+                                                                {studentTotals.isFullyPaid ? (
+                                                                    <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                                                                        <CheckCircle className="w-3 h-3 text-white" /> FULLY PAID
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="bg-amber-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-xs">
+                                                                        DUES PENDING
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <p className="text-xs text-gray-500 font-medium mt-0.5">
                                                                 Reg: <span className="font-mono font-bold text-gray-800">{selectedStudent.registerNo || 'N/A'}</span>
                                                                 {selectedStudentClass && (
                                                                     <>
-                                                                        {' • '}Class: <span className="font-bold text-purple-700">{selectedStudentClass.name}-{selectedStudentClass.division}</span>
+                                                                        {' • '}Class: <span className="font-extrabold text-purple-700">{selectedStudentClass.name}-{selectedStudentClass.division}</span>
                                                                     </>
                                                                 )}
                                                                 {targetMentor && (
                                                                     <>
-                                                                        {' • '}Mentor: <span className="font-bold text-purple-700">{targetMentor.name}</span>
+                                                                        {' • '}Mentor: <span className="font-extrabold text-purple-700">{targetMentor.name}</span>
                                                                     </>
                                                                 )}
+                                                            </p>
+                                                            <p className="text-[11px] text-gray-400 font-normal mt-0.5">
+                                                                Fee Scheme: Academic Standard • 3 Term Installments
                                                             </p>
                                                         </div>
                                                     </div>
 
-                                                    {/* Right Status Badge */}
-                                                    <span className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border shadow-2xs ${
-                                                        studentTotals.isFullyPaid 
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                                            : 'bg-rose-50 text-rose-700 border-rose-200'
-                                                    }`}>
+                                                    {/* Right Action Button */}
+                                                    <div>
                                                         {studentTotals.isFullyPaid ? (
-                                                            <>
-                                                                <CheckCircle className="w-4 h-4 text-emerald-600" />
-                                                                <span>FULLY PAID</span>
-                                                            </>
+                                                            <span className="px-4 py-2 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 shadow-xs">
+                                                                <CheckCircle className="w-4 h-4 text-emerald-600" /> Account Settled
+                                                            </span>
                                                         ) : (
-                                                            <>
-                                                                <AlertCircle className="w-4 h-4 text-rose-600" />
-                                                                <span>DUES PENDING</span>
-                                                            </>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const el = document.getElementById('payment-form-section');
+                                                                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                                                }}
+                                                                className="px-4 py-2 rounded-full text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                                                            >
+                                                                <CreditCard className="w-4 h-4" /> Collect Fee Payment
+                                                            </button>
                                                         )}
-                                                    </span>
+                                                    </div>
                                                 </div>
 
-                                                {/* Inner Content Blocks / Stat Boxes */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                    <div className="p-3.5 bg-gray-50/70 border border-gray-100 rounded-2xl text-center">
-                                                        <p className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">TOTAL FEE</p>
-                                                        <p className="text-base font-black text-gray-900 font-mono mt-0.5">₹{studentTotals.totalFee.toLocaleString()}</p>
+                                                {/* Middle Stat Boxes Grid - Matching Preview Grid Style */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 my-2">
+                                                    <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-100/90 text-center shadow-none">
+                                                        <p className="text-[10px] sm:text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-1 truncate">TOTAL ACADEMIC FEE</p>
+                                                        <p className="text-lg sm:text-xl font-extrabold text-gray-900 font-mono">₹{studentTotals.totalFee.toLocaleString()}</p>
                                                     </div>
-                                                    <div className="p-3.5 bg-gray-50/70 border border-gray-100 rounded-2xl text-center">
-                                                        <p className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider">PAID SO FAR</p>
-                                                        <p className="text-base font-black text-emerald-600 font-mono mt-0.5">₹{studentTotals.totalPaid.toLocaleString()}</p>
+                                                    <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-100/90 text-center shadow-none">
+                                                        <p className="text-[10px] sm:text-[11px] text-emerald-700 font-bold uppercase tracking-wider mb-1 truncate">PAID SO FAR</p>
+                                                        <p className="text-lg sm:text-xl font-extrabold text-emerald-600 font-mono">₹{studentTotals.totalPaid.toLocaleString()}</p>
                                                     </div>
-                                                    <div className="p-3.5 bg-gray-50/70 border border-gray-100 rounded-2xl text-center">
-                                                        <p className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wider">REMAINING</p>
-                                                        <p className="text-base font-black text-rose-600 font-mono mt-0.5">₹{studentTotals.remainingBalance.toLocaleString()}</p>
+                                                    <div className={clsx(
+                                                        "p-4 rounded-2xl border text-center shadow-none",
+                                                        studentTotals.remainingBalance > 0
+                                                            ? "bg-rose-50/60 border-rose-100/90"
+                                                            : "bg-gray-50/80 border-gray-100/90"
+                                                    )}>
+                                                        <p className={clsx(
+                                                            "text-[10px] sm:text-[11px] font-bold uppercase tracking-wider mb-1 truncate",
+                                                            studentTotals.remainingBalance > 0 ? "text-rose-600" : "text-gray-400"
+                                                        )}>
+                                                            REMAINING DUES
+                                                        </p>
+                                                        <p className={clsx(
+                                                            "text-lg sm:text-xl font-extrabold font-mono",
+                                                            studentTotals.remainingBalance > 0 ? "text-rose-600" : "text-gray-900"
+                                                        )}>
+                                                            ₹{studentTotals.remainingBalance.toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Bottom Installment Summary - Matching Admin Note Bar Style */}
+                                                <div className="mt-1 pt-3 border-t border-gray-100 flex flex-col gap-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[11px] font-extrabold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                                                            <CreditCard className="w-4 h-4 text-indigo-600 stroke-[2.5]" /> INSTALLMENT BREAKDOWN SUMMARY
+                                                        </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                        {[
+                                                            { key: 'inst1', label: 'Inst 1 (Admission)', paid: studentTotals.inst1Paid, due: activeFeeStruct.installments?.inst1?.amount || 4233 },
+                                                            { key: 'inst2', label: 'Inst 2 (Mid-Term)', paid: studentTotals.inst2Paid, due: activeFeeStruct.installments?.inst2?.amount || 4233 },
+                                                            { key: 'inst3', label: 'Inst 3 (Final Term)', paid: studentTotals.inst3Paid, due: activeFeeStruct.installments?.inst3?.amount || 4234 }
+                                                        ].map((inst) => {
+                                                            const isPaid = inst.paid >= inst.due;
+                                                            return (
+                                                                <div 
+                                                                    key={inst.key} 
+                                                                    className={clsx(
+                                                                        "p-2.5 rounded-xl border text-xs font-semibold flex justify-between items-center",
+                                                                        isPaid ? "bg-emerald-50/40 border-emerald-100 text-emerald-800" : "bg-gray-50/70 border-gray-100 text-gray-700"
+                                                                    )}
+                                                                >
+                                                                    <span className="truncate pr-1">{inst.label}</span>
+                                                                    <span className={clsx("font-bold text-[11px] shrink-0", isPaid ? "text-emerald-700" : "text-amber-600")}>
+                                                                        {isPaid ? `Paid ₹${inst.paid.toLocaleString()}` : `Due ₹${(inst.due - inst.paid).toLocaleString()}`}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             </div>
