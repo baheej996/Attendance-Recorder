@@ -29,7 +29,9 @@ import {
     School, 
     Sparkles,
     Shield,
-    Receipt
+    Receipt,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import jsPDF from 'jspdf';
@@ -580,6 +582,23 @@ const OfficeFeeManagement = () => {
             return true;
         }).sort((a, b) => b.remainingDues - a.remainingDues);
     }, [studentPool, classes, mentors, feeStructures, feePayments, selectedDuesClassId, selectedDuesMentorId, duesStatusFilter, duesSearchTerm]);
+
+    // Pagination State for Dues & Defaulters Tracker (Max 25 items per page)
+    const [duesCurrentPage, setDuesCurrentPage] = useState(1);
+    const DUES_ITEMS_PER_PAGE = 25;
+
+    // Reset pagination to Page 1 when search or filters change
+    useEffect(() => {
+        setDuesCurrentPage(1);
+    }, [duesSearchTerm, duesStatusFilter, selectedDuesMentorId, selectedDuesClassId]);
+
+    const totalDuesItems = duesListData.length;
+    const totalDuesPages = Math.ceil(totalDuesItems / DUES_ITEMS_PER_PAGE) || 1;
+
+    const paginatedDuesListData = useMemo(() => {
+        const start = (duesCurrentPage - 1) * DUES_ITEMS_PER_PAGE;
+        return duesListData.slice(start, start + DUES_ITEMS_PER_PAGE);
+    }, [duesListData, duesCurrentPage]);
 
     // Send Reminders Actions
     const handleSendWebsiteNotification = async (item) => {
@@ -1484,16 +1503,18 @@ const OfficeFeeManagement = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {duesListData.length === 0 ? (
+                                    {totalDuesItems === 0 ? (
                                         <tr>
                                             <td colSpan="7" className="p-8 text-center text-gray-400 italic">
                                                 No students matching current filter criteria.
                                             </td>
                                         </tr>
                                     ) : (
-                                        duesListData.map((item, idx) => (
+                                        paginatedDuesListData.map((item, idx) => (
                                             <tr key={item.student.id} className={`hover:bg-gray-50 transition-colors ${!item.isFullyPaid ? 'bg-rose-50/10' : ''}`}>
-                                                <td className="p-4 text-center font-bold text-gray-400">{idx + 1}</td>
+                                                <td className="p-4 text-center font-bold text-gray-400">
+                                                    {(duesCurrentPage - 1) * DUES_ITEMS_PER_PAGE + idx + 1}
+                                                </td>
                                                 <td className="p-4 font-bold text-gray-900">
                                                     <div>
                                                         <div className="font-extrabold text-gray-900">{item.student.name}</div>
@@ -1553,6 +1574,63 @@ const OfficeFeeManagement = () => {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination Bar (25 Items Per Page) */}
+                        {totalDuesItems > 0 && (
+                            <div className="p-4 bg-gray-50/80 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div className="text-xs text-gray-500 font-medium">
+                                    Showing <span className="font-bold text-gray-900">{Math.min((duesCurrentPage - 1) * DUES_ITEMS_PER_PAGE + 1, totalDuesItems)}</span> to{' '}
+                                    <span className="font-bold text-gray-900">{Math.min(duesCurrentPage * DUES_ITEMS_PER_PAGE, totalDuesItems)}</span> of{' '}
+                                    <span className="font-extrabold text-indigo-900">{totalDuesItems}</span> students
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={() => setDuesCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={duesCurrentPage === 1}
+                                        className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-xs"
+                                        title="Previous Page"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: totalDuesPages }, (_, i) => i + 1)
+                                            .filter(page => page === 1 || page === totalDuesPages || Math.abs(page - duesCurrentPage) <= 1)
+                                            .map((page, index, array) => {
+                                                const prevPage = array[index - 1];
+                                                const showEllipsis = prevPage && page - prevPage > 1;
+
+                                                return (
+                                                    <React.Fragment key={page}>
+                                                        {showEllipsis && <span className="px-1 text-xs text-gray-400">...</span>}
+                                                        <button
+                                                            onClick={() => setDuesCurrentPage(page)}
+                                                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                                                                duesCurrentPage === page
+                                                                    ? 'bg-indigo-600 text-white shadow-xs'
+                                                                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                                            }`}
+                                                        >
+                                                            {page}
+                                                        </button>
+                                                    </React.Fragment>
+                                                );
+                                            })
+                                        }
+                                    </div>
+
+                                    <button
+                                        onClick={() => setDuesCurrentPage(prev => Math.min(prev + 1, totalDuesPages))}
+                                        disabled={duesCurrentPage >= totalDuesPages}
+                                        className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-xs"
+                                        title="Next Page"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </Card>
                 </div>
             )}
