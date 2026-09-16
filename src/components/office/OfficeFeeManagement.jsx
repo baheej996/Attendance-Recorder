@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input, Select } from '../ui/Input';
@@ -49,6 +50,8 @@ const OfficeFeeManagement = () => {
         sendStudentFeeNotification 
     } = useData();
 
+    const { showAlert, showConfirm } = useUI();
+
     // Main Active Sub-Tab: 'payments' | 'configurator' | 'dues' | 'reports'
     const [activeTab, setActiveTab] = useState('payments');
 
@@ -92,7 +95,7 @@ const OfficeFeeManagement = () => {
     const handleSaveFeeStructure = async (e) => {
         e.preventDefault();
         if (!selectedConfigTargetId) {
-            alert('Please select a Class or Student to configure.');
+            showAlert('Selection Required', 'Please select a Class or Student to configure fee structure.', 'warning');
             return;
         }
         setSavingConfig(true);
@@ -112,10 +115,11 @@ const OfficeFeeManagement = () => {
         try {
             await saveFeeStructure(selectedConfigTargetId, payload);
             setConfigMessage('Fee Structure saved successfully!');
+            showAlert('Success', 'Fee Structure saved successfully!', 'success');
             setTimeout(() => setConfigMessage(''), 4000);
         } catch (err) {
             console.error('Error saving fee structure:', err);
-            alert('Failed to save fee structure.');
+            showAlert('Error', 'Failed to save fee structure.', 'error');
         } finally {
             setSavingConfig(false);
         }
@@ -159,29 +163,20 @@ const OfficeFeeManagement = () => {
     const [lastIssuedReceipt, setLastIssuedReceipt] = useState(null);
 
     const selectedStudent = useMemo(() => {
-        if (!selectedStudentId) return null;
         return studentPool.find(s => s.id === selectedStudentId);
-    }, [selectedStudentId, studentPool]);
+    }, [studentPool, selectedStudentId]);
 
     const activeFeeStruct = useMemo(() => {
         return getStudentFeeStructure(selectedStudent);
     }, [selectedStudent, feeStructures]);
 
-    // Student Payments History
-    const studentPayments = useMemo(() => {
-        if (!selectedStudentId) return [];
-        return (feePayments || []).filter(p => p.studentId === selectedStudentId)
-            .sort((a, b) => new Date(b.paymentDate || b.createdAt || 0) - new Date(a.paymentDate || a.createdAt || 0));
-    }, [selectedStudentId, feePayments]);
-
-    // Student Financial Totals
     const studentTotals = useMemo(() => {
+        if (!selectedStudent) return { totalFee: 15000, totalPaid: 0, remainingBalance: 15000, isFullyPaid: false };
+        const studentPayments = (feePayments || []).filter(p => p.studentId === selectedStudent.id);
+        const totalPaid = studentPayments.reduce((acc, p) => acc + Number(p.amountPaid || 0), 0);
         const totalFee = Number(activeFeeStruct.totalAmount || 15000);
-        const totalPaid = studentPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
         const remainingBalance = Math.max(0, totalFee - totalPaid);
-        const isFullyPaid = remainingBalance <= 0;
 
-        // Installment-wise paid amounts
         const inst1Paid = studentPayments.filter(p => p.installmentKey === 'inst1').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
         const inst2Paid = studentPayments.filter(p => p.installmentKey === 'inst2').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
         const inst3Paid = studentPayments.filter(p => p.installmentKey === 'inst3').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
@@ -190,17 +185,17 @@ const OfficeFeeManagement = () => {
             totalFee,
             totalPaid,
             remainingBalance,
-            isFullyPaid,
+            isFullyPaid: remainingBalance <= 0,
             inst1Paid,
             inst2Paid,
             inst3Paid
         };
-    }, [activeFeeStruct, studentPayments]);
+    }, [selectedStudent, feePayments, activeFeeStruct]);
 
     const handleRecordPaymentSubmit = async (e) => {
         e.preventDefault();
         if (!selectedStudent) {
-            alert('Please select a student first.');
+            showAlert('Student Required', 'Please select a student first.', 'warning');
             return;
         }
 
@@ -208,7 +203,7 @@ const OfficeFeeManagement = () => {
         const payAmount = Number(customPayAmount) || Number(instData.amount) || 5000;
 
         if (payAmount <= 0) {
-            alert('Payment amount must be greater than zero.');
+            showAlert('Invalid Amount', 'Payment amount must be greater than zero.', 'warning');
             return;
         }
 
@@ -235,30 +230,34 @@ const OfficeFeeManagement = () => {
             setLastIssuedReceipt({ ...receipt, totalFee: studentTotals.totalFee, remainingAfterPay: Math.max(0, studentTotals.remainingBalance - payAmount) });
             setCustomPayAmount('');
             setRemarks('');
-            alert(`Payment recorded successfully! Receipt ID: ${receipt.receiptId}`);
+            showAlert('Payment Recorded', `Payment recorded successfully! Receipt ID: #${receipt.receiptId}`, 'success');
         } catch (err) {
             console.error('Error recording payment:', err);
-            alert('Failed to record payment.');
+            showAlert('Error', 'Failed to record payment.', 'error');
         } finally {
             setSubmittingPay(false);
         }
     };
 
-    // Delete Fee Payment Transaction
-    const handleDeletePayment = async (paymentId, receiptId) => {
+    // Delete Fee Payment Transaction (Using Web Theme Confirmation Modal)
+    const handleDeletePayment = (paymentId, receiptId) => {
         if (!paymentId) return;
-        if (window.confirm(`Are you sure you want to delete payment receipt #${receiptId || paymentId}? This action will revert the fee balance for the student.`)) {
-            try {
-                await deleteFeePayment(paymentId);
-                if (lastIssuedReceipt?.id === paymentId) {
-                    setLastIssuedReceipt(null);
+        showConfirm(
+            'Delete Payment Receipt',
+            `Are you sure you want to delete payment receipt #${receiptId || paymentId}? This action will revert the fee balance for the student.`,
+            async () => {
+                try {
+                    await deleteFeePayment(paymentId);
+                    if (lastIssuedReceipt?.id === paymentId) {
+                        setLastIssuedReceipt(null);
+                    }
+                    showAlert('Deleted', 'Fee transaction deleted successfully.', 'success');
+                } catch (err) {
+                    console.error('Failed to delete fee transaction:', err);
+                    showAlert('Error', 'Failed to delete transaction.', 'error');
                 }
-                alert('Transaction deleted successfully.');
-            } catch (err) {
-                console.error('Failed to delete fee transaction:', err);
-                alert('Failed to delete transaction.');
             }
-        }
+        );
     };
 
     // PDF Receipt Generator
@@ -399,10 +398,10 @@ const OfficeFeeManagement = () => {
         const msg = `Dear ${item.student.name}, your fee payment of INR ${item.remainingDues.toLocaleString()} is currently pending. Please arrange payment with the Office.`;
         try {
             await sendStudentFeeNotification(item.student.id, '⚠️ Fee Payment Due Notice', msg);
-            alert(`Website In-App Fee Notification dispatched to ${item.student.name}!`);
+            showAlert('Notice Dispatched', `Website In-App Fee Notification dispatched to ${item.student.name}!`, 'success');
         } catch (err) {
             console.error('Error sending in-app notification:', err);
-            alert('Failed to send website notification.');
+            showAlert('Error', 'Failed to send website notification.', 'error');
         }
     };
 
