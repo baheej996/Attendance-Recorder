@@ -68,26 +68,26 @@ const OfficeDashboard = () => {
 
             {/* Sidebar */}
             <aside className={clsx(
-                "fixed lg:sticky top-0 h-screen w-72 bg-slate-900 text-white flex flex-col transition-transform duration-300 ease-in-out z-50 shadow-xl border-r border-slate-800",
+                "fixed lg:sticky top-0 h-screen w-72 bg-white border-r border-gray-200 text-gray-800 flex flex-col transition-transform duration-300 ease-in-out z-50 shadow-sm",
                 isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
             )}>
                 {/* Header */}
-                <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                            <ShieldCheck className="w-6 h-6 text-white" />
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-600/20 text-white">
+                            <ShieldCheck className="w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-white tracking-wide">Office Portal</h1>
-                            <p className="text-xs text-emerald-400 font-medium flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Office Portal</h1>
+                            <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                 Accounts & Admission
                             </p>
                         </div>
                     </div>
                     <button 
                         onClick={() => setIsMobileMenuOpen(false)} 
-                        className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+                        className="lg:hidden text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"
                     >
                         <X className="w-6 h-6" />
                     </button>
@@ -106,20 +106,20 @@ const OfficeDashboard = () => {
                                     setIsMobileMenuOpen(false);
                                 }}
                                 className={clsx(
-                                    "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group text-left",
+                                    "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 text-left",
                                     isActive
-                                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 font-semibold"
-                                        : "text-slate-300 hover:bg-slate-800 hover:text-white font-medium"
+                                        ? "bg-emerald-50 text-emerald-700 shadow-xs border border-emerald-200 font-bold"
+                                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium"
                                 )}
                             >
                                 <div className="flex items-center gap-3">
-                                    <Icon className={clsx("w-5 h-5 transition-transform duration-200 group-hover:scale-110", isActive ? "text-white" : "text-slate-400 group-hover:text-emerald-400")} />
+                                    <Icon className={clsx("w-5 h-5", isActive ? "text-emerald-600" : "text-gray-400")} />
                                     <span className="text-sm">{item.label}</span>
                                 </div>
                                 {item.badge && (
                                     <span className={clsx(
                                         "px-2 py-0.5 text-xs font-bold rounded-full",
-                                        isActive ? "bg-white text-emerald-700" : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                        isActive ? "bg-emerald-600 text-white" : "bg-emerald-100 text-emerald-800"
                                     )}>
                                         {item.badge}
                                     </span>
@@ -130,16 +130,16 @@ const OfficeDashboard = () => {
                 </nav>
 
                 {/* Office Info & Sign Out Footer */}
-                <div className="p-4 border-t border-slate-800 bg-slate-950/30 space-y-3">
-                    <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
-                        <p className="text-xs text-slate-400">Logistics & Billing Desk</p>
-                        <p className="text-xs font-semibold text-slate-200 truncate">Smart Madrasa Office</p>
+                <div className="p-4 border-t border-gray-100 space-y-3">
+                    <div className="p-3 rounded-xl bg-gray-50 border border-gray-200/80">
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Logistics & Billing Desk</p>
+                        <p className="text-xs font-bold text-gray-800 truncate mt-0.5">Smart Madrasa Office</p>
                     </div>
                     <button
                         onClick={() => setShowLogoutModal(true)}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors font-medium text-sm"
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors font-medium text-sm"
                     >
-                        <LogOut className="w-5 h-5 text-red-400" />
+                        <LogOut className="w-5 h-5 text-red-500" />
                         <span>Sign Out Portal</span>
                     </button>
                 </div>
@@ -148,15 +148,15 @@ const OfficeDashboard = () => {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden h-screen relative">
                 {/* Mobile Top Bar */}
-                <header className="lg:hidden bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-30 shadow-md">
+                <header className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30 shadow-xs">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsMobileMenuOpen(true)}
-                            className="p-2 -ml-2 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+                            className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         >
                             <Menu className="w-6 h-6" />
                         </button>
-                        <h2 className="text-lg font-bold text-white truncate">Office Portal</h2>
+                        <h2 className="text-lg font-bold text-gray-900 truncate">Office Portal</h2>
                     </div>
                 </header>
 

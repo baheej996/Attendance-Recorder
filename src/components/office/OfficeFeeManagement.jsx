@@ -244,6 +244,23 @@ const OfficeFeeManagement = () => {
         }
     };
 
+    // Delete Fee Payment Transaction
+    const handleDeletePayment = async (paymentId, receiptId) => {
+        if (!paymentId) return;
+        if (window.confirm(`Are you sure you want to delete payment receipt #${receiptId || paymentId}? This action will revert the fee balance for the student.`)) {
+            try {
+                await deleteFeePayment(paymentId);
+                if (lastIssuedReceipt?.id === paymentId) {
+                    setLastIssuedReceipt(null);
+                }
+                alert('Transaction deleted successfully.');
+            } catch (err) {
+                console.error('Failed to delete fee transaction:', err);
+                alert('Failed to delete transaction.');
+            }
+        }
+    };
+
     // PDF Receipt Generator
     const generatePrintablePDFReceipt = (receiptObj) => {
         if (!receiptObj) return;
@@ -680,18 +697,27 @@ const OfficeFeeManagement = () => {
                                     <p className="text-xs text-gray-400 italic py-4 text-center">No fee payments recorded yet.</p>
                                 ) : (
                                     (feePayments || []).slice(0, 8).map(p => (
-                                        <div key={p.id} className="py-2.5 flex justify-between items-center text-xs">
+                                        <div key={p.id} className="py-2.5 flex justify-between items-center text-xs group">
                                             <div>
                                                 <p className="font-bold text-gray-900">{p.studentName}</p>
                                                 <p className="text-[10px] text-gray-400">Receipt #{p.receiptId} • {p.paymentMode}</p>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-extrabold text-emerald-600">₹{Number(p.amountPaid || 0).toLocaleString()}</p>
+                                            <div className="text-right flex items-center gap-2">
+                                                <div>
+                                                    <p className="font-extrabold text-emerald-600">₹{Number(p.amountPaid || 0).toLocaleString()}</p>
+                                                    <button
+                                                        onClick={() => generatePrintablePDFReceipt({ ...p, totalFee: 15000, remainingAfterPay: 0 })}
+                                                        className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-0.5 justify-end"
+                                                    >
+                                                        <Download className="w-3 h-3" /> PDF
+                                                    </button>
+                                                </div>
                                                 <button
-                                                    onClick={() => generatePrintablePDFReceipt({ ...p, totalFee: 15000, remainingAfterPay: 0 })}
-                                                    className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-0.5 justify-end"
+                                                    onClick={() => handleDeletePayment(p.id, p.receiptId)}
+                                                    className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    title="Delete this transaction"
                                                 >
-                                                    <Download className="w-3 h-3" /> PDF
+                                                    <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </div>
@@ -1073,6 +1099,86 @@ const OfficeFeeManagement = () => {
                                     <Area type="monotone" dataKey="amount" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#financialGradient)" />
                                 </AreaChart>
                             </ResponsiveContainer>
+                        </div>
+                    </Card>
+
+                    {/* All Transactions Audit & Deletion Table */}
+                    <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-4">
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                    <Receipt className="w-5 h-5 text-emerald-600" /> Transaction Audit & Management Ledger
+                                </h3>
+                                <p className="text-xs text-gray-500">View, download receipts, or delete entered fee payment transactions</p>
+                            </div>
+                            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200">
+                                Total Transactions: {(feePayments || []).length}
+                            </span>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-xl border border-gray-100">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
+                                    <tr>
+                                        <th className="p-3 text-center">#</th>
+                                        <th className="p-3">Receipt ID</th>
+                                        <th className="p-3">Student Name</th>
+                                        <th className="p-3">Class</th>
+                                        <th className="p-3">Installment</th>
+                                        <th className="p-3">Payment Mode</th>
+                                        <th className="p-3 text-center">Date & Time</th>
+                                        <th className="p-3 text-right">Amount (INR)</th>
+                                        <th className="p-3 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
+                                    {(feePayments || []).length === 0 ? (
+                                        <tr>
+                                            <td colSpan="9" className="p-8 text-center text-gray-400 italic">
+                                                No fee payment transactions recorded yet.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        (feePayments || []).map((p, idx) => (
+                                            <tr key={p.id} className="hover:bg-gray-50/80 transition-colors">
+                                                <td className="p-3 text-center font-bold text-gray-400">{idx + 1}</td>
+                                                <td className="p-3 font-mono font-bold text-indigo-600">#{p.receiptId}</td>
+                                                <td className="p-3 font-bold text-gray-900">
+                                                    <div>{p.studentName}</div>
+                                                    <div className="text-[10px] text-gray-400 font-mono">Reg: {p.registerNo || 'N/A'}</div>
+                                                </td>
+                                                <td className="p-3 font-semibold text-gray-700">{p.className || 'N/A'}</td>
+                                                <td className="p-3 font-semibold text-gray-600">{p.installmentName || 'Installment'}</td>
+                                                <td className="p-3 font-bold text-emerald-700">{p.paymentMode || 'Cash'}</td>
+                                                <td className="p-3 text-center text-gray-500 text-[11px]">
+                                                    {format(new Date(p.paymentDate || p.createdAt || Date.now()), 'dd MMM yyyy, p')}
+                                                </td>
+                                                <td className="p-3 text-right font-black text-emerald-600 font-mono text-sm">
+                                                    ₹{Number(p.amountPaid || 0).toLocaleString()}
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => generatePrintablePDFReceipt({ ...p, totalFee: 15000, remainingAfterPay: 0 })}
+                                                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1 font-bold text-[11px]"
+                                                            title="Download PDF Receipt"
+                                                        >
+                                                            <Download className="w-3.5 h-3.5" /> PDF
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeletePayment(p.id, p.receiptId)}
+                                                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 font-bold text-[11px]"
+                                                            title="Delete Transaction"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </Card>
                 </div>
