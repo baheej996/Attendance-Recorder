@@ -934,33 +934,69 @@ const OfficeFeeManagement = () => {
 
                             {selectedStudent && (
                                 <>
-                                    {/* Financial Overview Card - Light Theme */}
-                                    <div className="p-4 bg-gradient-to-r from-indigo-50/80 via-slate-50 to-blue-50/80 border border-indigo-100 rounded-2xl space-y-3 shadow-xs">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h4 className="font-extrabold text-base text-gray-900">{selectedStudent.name}</h4>
-                                                <p className="text-xs font-semibold text-gray-500">Reg: {selectedStudent.registerNo || 'N/A'}</p>
-                                            </div>
-                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold shadow-xs ${studentTotals.isFullyPaid ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
-                                                {studentTotals.isFullyPaid ? 'FULLY PAID ✅' : 'DUES PENDING ⚠️'}
-                                            </span>
-                                        </div>
+                                    {/* Financial Overview Card - Attractive Light Theme */}
+                                    {(() => {
+                                        const selectedStudentClass = (classes || []).find(c => c.id === selectedStudent.classId);
+                                        return (
+                                            <div className="relative overflow-hidden p-5 bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/60 border border-indigo-100 rounded-2xl space-y-4 shadow-sm">
+                                                {/* Soft decorative background glow */}
+                                                <div className="absolute -right-8 -top-8 w-28 h-28 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
 
-                                        <div className="grid grid-cols-3 gap-2 text-center pt-3 border-t border-indigo-100/70">
-                                            <div className="p-2 bg-white/80 rounded-xl border border-gray-100 shadow-2xs">
-                                                <p className="text-[10px] text-gray-500 font-extrabold uppercase tracking-wider">Total Fee</p>
-                                                <p className="text-sm font-black text-gray-900">₹{studentTotals.totalFee.toLocaleString()}</p>
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center font-black text-base shadow-md shadow-indigo-500/20">
+                                                            {selectedStudent.name ? selectedStudent.name.charAt(0).toUpperCase() : 'S'}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-black text-base text-gray-900 tracking-tight">{selectedStudent.name}</h4>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className="text-xs font-bold text-gray-500 font-mono">Reg: {selectedStudent.registerNo || 'N/A'}</span>
+                                                                {selectedStudentClass && (
+                                                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-indigo-100/80 text-indigo-700">
+                                                                        Class {selectedStudentClass.name}-{selectedStudentClass.division}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <span className={`px-3 py-1.5 rounded-full text-xs font-black shadow-xs flex items-center gap-1.5 border ${
+                                                        studentTotals.isFullyPaid 
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-emerald-100' 
+                                                            : 'bg-rose-50 text-rose-700 border-rose-200 shadow-rose-100'
+                                                    }`}>
+                                                        {studentTotals.isFullyPaid ? (
+                                                            <>
+                                                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                                                <span>FULLY PAID</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <AlertCircle className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
+                                                                <span>DUES PENDING</span>
+                                                            </>
+                                                        )}
+                                                    </span>
+                                                </div>
+
+                                                {/* Financial Metric Cards */}
+                                                <div className="grid grid-cols-3 gap-3 pt-1 relative z-10">
+                                                    <div className="p-3 bg-white/90 border border-gray-100 rounded-xl shadow-xs text-center transition-all hover:border-indigo-200">
+                                                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-wider mb-0.5">Total Fee</p>
+                                                        <p className="text-base font-black text-gray-900 font-mono">₹{studentTotals.totalFee.toLocaleString()}</p>
+                                                    </div>
+                                                    <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-xl shadow-xs text-center transition-all hover:border-emerald-300">
+                                                        <p className="text-[10px] text-emerald-700 font-black uppercase tracking-wider mb-0.5">Paid So Far</p>
+                                                        <p className="text-base font-black text-emerald-600 font-mono">₹{studentTotals.totalPaid.toLocaleString()}</p>
+                                                    </div>
+                                                    <div className="p-3 bg-rose-50/80 border border-rose-200/80 rounded-xl shadow-xs text-center transition-all hover:border-rose-300">
+                                                        <p className="text-[10px] text-rose-700 font-black uppercase tracking-wider mb-0.5">Remaining</p>
+                                                        <p className="text-base font-black text-rose-600 font-mono">₹{studentTotals.remainingBalance.toLocaleString()}</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="p-2 bg-emerald-50/60 rounded-xl border border-emerald-100 shadow-2xs">
-                                                <p className="text-[10px] text-emerald-700 font-extrabold uppercase tracking-wider">Paid So Far</p>
-                                                <p className="text-sm font-black text-emerald-600">₹{studentTotals.totalPaid.toLocaleString()}</p>
-                                            </div>
-                                            <div className="p-2 bg-rose-50/60 rounded-xl border border-rose-100 shadow-2xs">
-                                                <p className="text-[10px] text-rose-700 font-extrabold uppercase tracking-wider">Remaining</p>
-                                                <p className="text-sm font-black text-rose-600">₹{studentTotals.remainingBalance.toLocaleString()}</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                        );
+                                    })()}
 
                                     {/* Installment Selection */}
                                     <div>
