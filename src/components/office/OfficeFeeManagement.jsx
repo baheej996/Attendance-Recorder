@@ -163,18 +163,32 @@ const OfficeFeeManagement = () => {
 
     // Search & Filter States for Payment Collection
     const [paySearchTerm, setPaySearchTerm] = useState('');
-    const [payClassFilter, setPayClassFilter] = useState('all');
     const [payMentorFilter, setPayMentorFilter] = useState('all');
+    const [payClassFilter, setPayClassFilter] = useState('all');
+
+    // Cascading Classes based on selected Mentor for Payment Collection
+    const availableClassesForPay = useMemo(() => {
+        if (payMentorFilter === 'all') return classes || [];
+        const targetMentor = (mentors || []).find(m => m.id === payMentorFilter);
+        return (classes || []).filter(c => 
+            (targetMentor?.assignedClassIds || []).includes(c.id) || 
+            c.mentorId === payMentorFilter || 
+            c.mentorName === targetMentor?.name
+        );
+    }, [classes, mentors, payMentorFilter]);
+
+    // Reset Class filter if selected class is no longer allotted to selected Mentor
+    useEffect(() => {
+        if (payClassFilter !== 'all') {
+            const isValid = availableClassesForPay.some(c => c.id === payClassFilter);
+            if (!isValid) setPayClassFilter('all');
+        }
+    }, [availableClassesForPay, payClassFilter]);
 
     // Filtered Student List for Payment Selection
     const filteredPaymentStudents = useMemo(() => {
         return studentPool.filter(s => {
             const cls = (classes || []).find(c => c.id === s.classId);
-
-            // Class & Division Filter
-            if (payClassFilter !== 'all' && s.classId !== payClassFilter) {
-                return false;
-            }
 
             // Mentor Filter
             if (payMentorFilter !== 'all') {
@@ -183,6 +197,11 @@ const OfficeFeeManagement = () => {
                                    cls?.mentorId === payMentorFilter || 
                                    cls?.mentorName === targetMentor?.name;
                 if (!isAssigned) return false;
+            }
+
+            // Class & Division Filter
+            if (payClassFilter !== 'all' && s.classId !== payClassFilter) {
+                return false;
             }
 
             // Keyword Search (Name or Register Number)
@@ -195,7 +214,7 @@ const OfficeFeeManagement = () => {
 
             return true;
         });
-    }, [studentPool, classes, mentors, payClassFilter, payMentorFilter, paySearchTerm]);
+    }, [studentPool, classes, mentors, payMentorFilter, payClassFilter, paySearchTerm]);
 
     const selectedStudent = useMemo(() => {
         return studentPool.find(s => s.id === selectedStudentId);
@@ -386,8 +405,27 @@ const OfficeFeeManagement = () => {
     // -------------------------------------------------------------
     const [duesSearchTerm, setDuesSearchTerm] = useState('');
     const [duesStatusFilter, setDuesStatusFilter] = useState('pending'); // 'pending' | 'paid' | 'all'
-    const [selectedDuesClassId, setSelectedDuesClassId] = useState('all');
     const [selectedDuesMentorId, setSelectedDuesMentorId] = useState('all');
+    const [selectedDuesClassId, setSelectedDuesClassId] = useState('all');
+
+    // Cascading Classes based on selected Mentor for Dues Tracker
+    const availableClassesForDues = useMemo(() => {
+        if (selectedDuesMentorId === 'all') return classes || [];
+        const targetMentor = (mentors || []).find(m => m.id === selectedDuesMentorId);
+        return (classes || []).filter(c => 
+            (targetMentor?.assignedClassIds || []).includes(c.id) || 
+            c.mentorId === selectedDuesMentorId || 
+            c.mentorName === targetMentor?.name
+        );
+    }, [classes, mentors, selectedDuesMentorId]);
+
+    // Reset Dues Class filter if selected class is no longer allotted to selected Mentor
+    useEffect(() => {
+        if (selectedDuesClassId !== 'all') {
+            const isValid = availableClassesForDues.some(c => c.id === selectedDuesClassId);
+            if (!isValid) setSelectedDuesClassId('all');
+        }
+    }, [availableClassesForDues, selectedDuesClassId]);
 
     const duesListData = useMemo(() => {
         return studentPool.map(s => {
@@ -409,9 +447,6 @@ const OfficeFeeManagement = () => {
                 status: isFullyPaid ? 'Paid' : 'Payment Pending'
             };
         }).filter(item => {
-            // Filter by Class
-            if (selectedDuesClassId !== 'all' && item.student.classId !== selectedDuesClassId) return false;
-
             // Filter by Mentor
             if (selectedDuesMentorId !== 'all') {
                 const targetMentor = (mentors || []).find(m => m.id === selectedDuesMentorId);
@@ -420,6 +455,9 @@ const OfficeFeeManagement = () => {
                                    item.cls?.mentorName === targetMentor?.name;
                 if (!isAssigned) return false;
             }
+
+            // Filter by Class
+            if (selectedDuesClassId !== 'all' && item.student.classId !== selectedDuesClassId) return false;
 
             // Filter by Status
             if (duesStatusFilter === 'pending' && item.isFullyPaid) return false;
@@ -614,35 +652,7 @@ const OfficeFeeManagement = () => {
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                        {/* 1. Keyword Search */}
-                                        <div className="relative">
-                                            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
-                                            <input
-                                                type="text"
-                                                value={paySearchTerm}
-                                                onChange={(e) => setPaySearchTerm(e.target.value)}
-                                                placeholder="Name / Reg No..."
-                                                className="w-full pl-8 pr-2 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
-                                            />
-                                        </div>
-
-                                        {/* 2. Class & Division Filter */}
-                                        <div>
-                                            <select
-                                                value={payClassFilter}
-                                                onChange={(e) => setPayClassFilter(e.target.value)}
-                                                className="w-full p-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
-                                            >
-                                                <option value="all">All Classes & Divisions</option>
-                                                {(classes || []).map(c => (
-                                                    <option key={c.id} value={c.id}>
-                                                        Class {c.name}-{c.division}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {/* 3. Mentor Filter */}
+                                        {/* 1. Mentor Filter (FIRST) */}
                                         <div>
                                             <select
                                                 value={payMentorFilter}
@@ -656,6 +666,36 @@ const OfficeFeeManagement = () => {
                                                     </option>
                                                 ))}
                                             </select>
+                                        </div>
+
+                                        {/* 2. Class & Division Filter (SECOND - Cascading based on Mentor) */}
+                                        <div>
+                                            <select
+                                                value={payClassFilter}
+                                                onChange={(e) => setPayClassFilter(e.target.value)}
+                                                className="w-full p-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
+                                            >
+                                                <option value="all">
+                                                    {payMentorFilter !== 'all' ? `All Allotted Classes (${availableClassesForPay.length})` : 'All Classes & Divisions'}
+                                                </option>
+                                                {availableClassesForPay.map(c => (
+                                                    <option key={c.id} value={c.id}>
+                                                        Class {c.name}-{c.division}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* 3. Keyword Search */}
+                                        <div className="relative">
+                                            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
+                                            <input
+                                                type="text"
+                                                value={paySearchTerm}
+                                                onChange={(e) => setPaySearchTerm(e.target.value)}
+                                                placeholder="Name / Reg No..."
+                                                className="w-full pl-8 pr-2 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-gray-800"
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -1034,19 +1074,7 @@ const OfficeFeeManagement = () => {
                                 />
                             </div>
 
-                            {/* Class Selector */}
-                            <select
-                                value={selectedDuesClassId}
-                                onChange={(e) => setSelectedDuesClassId(e.target.value)}
-                                className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-gray-800"
-                            >
-                                <option value="all">All Classes & Divisions</option>
-                                {(classes || []).map(c => (
-                                    <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
-                                ))}
-                            </select>
-
-                            {/* Mentor Selector */}
+                            {/* Mentor Selector (FIRST) */}
                             <select
                                 value={selectedDuesMentorId}
                                 onChange={(e) => setSelectedDuesMentorId(e.target.value)}
@@ -1055,6 +1083,20 @@ const OfficeFeeManagement = () => {
                                 <option value="all">All Mentors</option>
                                 {(mentors || []).map(m => (
                                     <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+                            </select>
+
+                            {/* Class Selector (SECOND - Cascading based on selected Mentor) */}
+                            <select
+                                value={selectedDuesClassId}
+                                onChange={(e) => setSelectedDuesClassId(e.target.value)}
+                                className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-gray-800"
+                            >
+                                <option value="all">
+                                    {selectedDuesMentorId !== 'all' ? `All Allotted Classes (${availableClassesForDues.length})` : 'All Classes & Divisions'}
+                                </option>
+                                {availableClassesForDues.map(c => (
+                                    <option key={c.id} value={c.id}>Class {c.name} - {c.division}</option>
                                 ))}
                             </select>
 
