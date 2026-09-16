@@ -66,11 +66,11 @@ const OfficeFeeManagement = () => {
     // -------------------------------------------------------------
     const [configTargetType, setConfigTargetType] = useState('class'); // 'class' | 'student'
     const [selectedConfigTargetId, setSelectedConfigTargetId] = useState('');
-    const [totalFeeAmount, setTotalFeeAmount] = useState(15000);
+    const [totalFeeAmount, setTotalFeeAmount] = useState(12700);
     const [installmentConfig, setInstallmentConfig] = useState({
-        inst1: { amount: 5000, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
-        inst2: { amount: 5000, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
-        inst3: { amount: 5000, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
+        inst1: { amount: 4233, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
+        inst2: { amount: 4233, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
+        inst3: { amount: 4234, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
     });
     const [savingConfig, setSavingConfig] = useState(false);
     const [configMessage, setConfigMessage] = useState('');
@@ -91,6 +91,36 @@ const OfficeFeeManagement = () => {
         setTotalFeeAmount(num);
         handleAutoSplit(num);
     };
+
+    // Apply Concession / Discount Preset (e.g. 20% for 2nd/3rd Sibling from ₹12,700)
+    const applyConcessionPreset = (discountPercent) => {
+        const base = 12700;
+        const discountAmount = Math.round((base * discountPercent) / 100);
+        const finalFee = Math.max(0, base - discountAmount);
+        setTotalFeeAmount(finalFee);
+        handleAutoSplit(finalFee);
+        showAlert(
+            'Concession Applied',
+            `${discountPercent}% Sibling Concession applied! New Total Fee: ₹${finalFee.toLocaleString()} (Saving ₹${discountAmount.toLocaleString()})`,
+            'success'
+        );
+    };
+
+    // Detect Sibling Household by Parent Phone
+    const detectedSiblings = useMemo(() => {
+        if (configTargetType !== 'student' || !selectedConfigTargetId) return [];
+        const targetStudent = studentPool.find(s => s.id === selectedConfigTargetId);
+        if (!targetStudent) return [];
+
+        const parentPhone = targetStudent.parentPhone || targetStudent.phone || '';
+        const cleanPhone = parentPhone.replace(/[^0-9]/g, '');
+        if (!cleanPhone || cleanPhone.length < 5) return [];
+
+        return studentPool.filter(s => {
+            const sPhone = (s.parentPhone || s.phone || '').replace(/[^0-9]/g, '');
+            return sPhone && sPhone === cleanPhone;
+        });
+    }, [configTargetType, selectedConfigTargetId, studentPool]);
 
     const handleSaveFeeStructure = async (e) => {
         e.preventDefault();
@@ -127,7 +157,7 @@ const OfficeFeeManagement = () => {
 
     // Helper: Resolve effective fee structure for a student (per-student override if exists, else class structure, else default)
     const getStudentFeeStructure = (student) => {
-        if (!student) return { totalAmount: 15000, installments: installmentConfig };
+        if (!student) return { totalAmount: 12700, installments: installmentConfig };
         
         // 1. Direct per-student structure
         const studentStruct = (feeStructures || []).find(f => f.targetId === student.id || f.id === student.id);
@@ -141,11 +171,11 @@ const OfficeFeeManagement = () => {
 
         // 3. Fallback default
         return {
-            totalAmount: 15000,
+            totalAmount: 12700,
             installments: {
-                inst1: { amount: 5000, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
-                inst2: { amount: 5000, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
-                inst3: { amount: 5000, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
+                inst1: { amount: 4233, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
+                inst2: { amount: 4233, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
+                inst3: { amount: 4234, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
             }
         };
     };
@@ -966,8 +996,34 @@ const OfficeFeeManagement = () => {
                             )}
                         </div>
 
-                        {/* Total Fee Field */}
-                        <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+                        {/* Smart Sibling Detection Alert Banner */}
+                        {configTargetType === 'student' && detectedSiblings.length > 1 && (
+                            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 animate-in fade-in">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black text-emerald-800 uppercase flex items-center gap-1.5">
+                                        <Users className="w-4 h-4 text-emerald-600" /> Sibling Household Detected! ({detectedSiblings.length} Children in Family)
+                                    </span>
+                                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                                        20% Concession Available
+                                    </span>
+                                </div>
+                                <p className="text-xs text-gray-700">
+                                    Family members enrolled: <span className="font-bold">{detectedSiblings.map(s => s.name).join(', ')}</span>
+                                </p>
+                                <div className="pt-1">
+                                    <Button
+                                        type="button"
+                                        onClick={() => applyConcessionPreset(20)}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 gap-1 shadow-sm"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" /> Apply 20% Sibling Concession (₹10,160 Total)
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Total Fee Field & Concession Presets */}
+                        <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-3">
                             <div className="flex justify-between items-center">
                                 <label className="text-xs font-extrabold text-indigo-900 uppercase">Total Academic Fee Amount (INR):</label>
                                 <button
@@ -978,6 +1034,7 @@ const OfficeFeeManagement = () => {
                                     <Sparkles className="w-3.5 h-3.5" /> Auto 3-Equal Split
                                 </button>
                             </div>
+                            
                             <Input
                                 type="number"
                                 value={totalFeeAmount}
@@ -985,6 +1042,52 @@ const OfficeFeeManagement = () => {
                                 className="text-lg font-black text-indigo-900 bg-white"
                                 required
                             />
+
+                            {/* Quick Concession Presets */}
+                            <div>
+                                <p className="text-[11px] font-bold text-gray-600 mb-1.5">Quick Fee & Concession Presets:</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => applyConcessionPreset(0)}
+                                        className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
+                                            totalFeeAmount === 12700 ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        Full Fee (₹12,700)
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => applyConcessionPreset(20)}
+                                        className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
+                                            totalFeeAmount === 10160 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                                        }`}
+                                    >
+                                        20% Sibling (₹10,160)
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => applyConcessionPreset(40)}
+                                        className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
+                                            totalFeeAmount === 7620 ? 'bg-purple-600 text-white border-purple-600 shadow-xs' : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+                                        }`}
+                                    >
+                                        40% Sibling (₹7,620)
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => applyConcessionPreset(50)}
+                                        className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
+                                            totalFeeAmount === 6350 ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
+                                        }`}
+                                    >
+                                        50% Half Fee (₹6,350)
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         {/* 3 Installments Grid */}
