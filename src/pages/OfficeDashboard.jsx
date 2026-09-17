@@ -131,10 +131,6 @@ const OfficeDashboard = () => {
 
                 {/* Office Info & Sign Out Footer */}
                 <div className="p-4 border-t border-gray-100 space-y-3">
-                    <div className="p-3 rounded-xl bg-gray-50 border border-gray-200/80">
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Logistics & Billing Desk</p>
-                        <p className="text-xs font-bold text-gray-800 truncate mt-0.5">Smart Madrasa Office</p>
-                    </div>
                     <button
                         onClick={() => setShowLogoutModal(true)}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors font-medium text-sm"
