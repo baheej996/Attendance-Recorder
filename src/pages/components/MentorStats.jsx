@@ -73,9 +73,9 @@ const StudentStatsModal = ({ student, records, onClose }) => {
                 <div className="p-6 grid md:grid-cols-2 gap-8">
                     <div>
                         <h4 className="font-semibold text-gray-900 mb-4">Overall Performance</h4>
-                        <div className="h-64">
+                        <div className="h-64 min-w-0">
                             {total === 0 ? <div className="h-full flex items-center justify-center text-gray-400">No Data</div> : (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                     <PieChart>
                                         <Pie data={data} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                                             {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
@@ -719,8 +719,8 @@ const MentorStats = () => {
                                     {/* Chart */}
                                     <div className="h-64 sm:h-80 w-full bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm">
                                         <h4 className="text-sm sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">Subject-wise Average Marks</h4>
-                                        <div className="h-[180px] sm:h-[calc(100%-2rem)]">
-                                            <ResponsiveContainer width="100%" height="100%">
+                                        <div className="h-[180px] sm:h-[calc(100%-2rem)] min-w-0">
+                                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                                 <BarChart data={examStats.subjectAverages} margin={{ top: 5, right: 10, left: -20, bottom: 20 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 10 }} dy={10} interval={0} angle={-30} textAnchor="end" />

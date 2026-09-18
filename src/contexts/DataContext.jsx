@@ -2458,6 +2458,15 @@ export const DataProvider = ({ children }) => {
             await deleteDoc(doc(db, 'feePayments', paymentId));
             setFeePayments(prev => prev.filter(p => p.id !== paymentId));
         },
+        updateFeePayment: async (paymentId, updatedData) => {
+            if (!paymentId) return;
+            const payload = {
+                ...updatedData,
+                updatedAt: new Date().toISOString()
+            };
+            await updateDoc(doc(db, 'feePayments', paymentId), payload);
+            setFeePayments(prev => prev.map(p => p.id === paymentId ? { ...p, ...payload } : p));
+        },
         sendStudentFeeNotification: async (studentId, title, body, remainingDues = 0) => {
             const payload = {
                 title: title || '⚠️ Fee Payment Due Notice',

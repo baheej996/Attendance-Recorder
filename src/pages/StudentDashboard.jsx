@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Card } from '../components/ui/Card';
@@ -28,6 +28,7 @@ import StudentNotifications from '../components/student/StudentNotifications';
 import FeedbackPortal from '../components/student/FeedbackPortal';
 import StudentProfileModal from '../components/student/StudentProfileModal';
 import { FeeNoticePopupModal } from '../components/student/FeeNoticePopupModal';
+import StudentPayments from '../components/student/StudentPayments';
 
 import Help from './Help';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
@@ -126,6 +127,17 @@ const StudentDashboard = () => {
         !(activitySubmissions || []).some(s => s.activityId === a.id && s.studentId === currentUser.id && s.status === 'Completed')
     ).length;
 
+    // Track seen payment notice IDs for Tuition Fee sidebar badge
+    const [seenPaymentNoticeIds, setSeenPaymentNoticeIds] = useState(() => {
+        if (!currentUser?.id) return [];
+        try {
+            const saved = localStorage.getItem(`seen_payment_notices_${currentUser.id}`);
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+
     const unreadChatCount = (unreadChats || []).length;
 
     const unreadNotificationsList = (notifications || []).filter(n => {
@@ -136,6 +148,32 @@ const StudentDashboard = () => {
     const unreadAttendanceCount = unreadNotificationsList.filter(n => n.type === 'attendance').length;
     const unreadLeaveCount = unreadNotificationsList.filter(n => n.type === 'leave').length;
     const unreadStarCount = unreadNotificationsList.filter(n => n.type === 'star').length;
+
+    // Fee Notifications for Tuition Fee sidebar item badge
+    const allStudentFeeNotices = (notifications || []).filter(n => {
+        const isFeeRelated = n.type === 'fee_notice_popup' || n.type === 'fee_notice' || n.type === 'fee' || n.isPopup || (n.title || '').toLowerCase().includes('fee');
+        const isTargeted = n.audience === 'all' || n.audience === 'students' || (n.audience === 'specific_class' && n.classId === currentUser?.classId) || (n.audience === 'specific_student' && n.targetId === currentUser?.id);
+        return isFeeRelated && isTargeted;
+    });
+
+    const unreadPaymentNoticeCount = allStudentFeeNotices.filter(n => !seenPaymentNoticeIds.includes(n.id)).length;
+
+    const handleMarkPaymentNoticesSeen = useCallback(() => {
+        const noticeIds = allStudentFeeNotices.map(n => n.id);
+        if (noticeIds.length > 0) {
+            setSeenPaymentNoticeIds(prev => {
+                const hasNew = noticeIds.some(id => !prev.includes(id));
+                if (!hasNew) return prev;
+                const updated = Array.from(new Set([...prev, ...noticeIds]));
+                try {
+                    localStorage.setItem(`seen_payment_notices_${currentUser?.id}`, JSON.stringify(updated));
+                } catch (e) {
+                    console.error('Failed to save seen_payment_notices to localStorage', e);
+                }
+                return updated;
+            });
+        }
+    }, [allStudentFeeNotices, currentUser?.id]);
 
     // --- Live Class check (Timezone Aware) ---
     // Get India time string: "Friday", "14:30"
@@ -202,6 +240,10 @@ const StudentDashboard = () => {
 
     if (!currentUser) return null;
 
+    // Check if student panel is restricted due to fee lock
+    const isStudentLocked = currentUser.isFeeLocked === true;
+    const isStudentActive = currentUser.status === 'Active' || currentUser.status === 'active' || isStudentLocked;
+
     // Check feature flags
     const globalFlags = studentFeatureFlags || {};
     const classFlags = classFeatureFlags?.find(f => f.classId === currentUser.classId) || {};
@@ -210,6 +252,11 @@ const StudentDashboard = () => {
     const assignedMentors = mentors?.filter(m => (m.assignedClassIds || []).includes(currentUser.classId)) || [];
 
     const isFeatureEnabled = (key) => {
+        // If student account is locked for pending fees, ONLY allow payments tab
+        if (isStudentLocked) {
+            return key === 'payments';
+        }
+
         // Bypass feature flags on localhost for local testing
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return true;
 
@@ -252,6 +299,9 @@ const StudentDashboard = () => {
             badge = unreadStarCount;
         } else if (item.key === 'notifications') {
             badge = unreadNotificationCount;
+        } else if (item.key === 'payments') {
+            badge = unreadPaymentNoticeCount;
+            hasNotification = unreadPaymentNoticeCount > 0;
         }
 
         return { ...item, badge, hasNotification };
@@ -262,9 +312,17 @@ const StudentDashboard = () => {
         return path !== '/student' && location.pathname.startsWith(path);
     };
 
-    // Redirect if on a disabled page
+    // Redirect if on a disabled page or fee locked
     useEffect(() => {
         const currentPath = location.pathname;
+
+        // If student is locked for fee dues, force redirect directly to Tuition Fee page (/student/payments)
+        if (isStudentLocked) {
+            if (currentPath !== '/student/payments') {
+                navigate('/student/payments', { replace: true });
+            }
+            return;
+        }
 
         // Special check for root /student (Welcome Page)
         if (currentPath === '/student' && !isFeatureEnabled('welcome')) {
@@ -289,7 +347,7 @@ const StudentDashboard = () => {
                 navigate(navItems[0].path, { replace: true });
             }
         }
-    }, [location.pathname, globalFlags, classFlags, currentUser.classId, navigate, navItems]);
+    }, [location.pathname, isStudentLocked, globalFlags, classFlags, currentUser.classId, navigate, navItems]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -426,7 +484,23 @@ const StudentDashboard = () => {
                     currentUser={currentUser} 
                 />
 
-                {currentUser.status === 'Active' ? (
+                {isStudentLocked && (
+                    <div className="mb-6 p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-center justify-between gap-4 shadow-sm animate-in fade-in">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-xs">
+                                <Lock className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-black text-amber-900">Student Portal Access Restricted</h4>
+                                <p className="text-xs text-amber-800 font-medium">
+                                    All other portal features are locked due to pending tuition fee dues. Please complete your fee payment to restore full access.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {isStudentActive ? (
                     <Routes>
                         <Route path="/" element={<StudentWelcome />} />
                         <Route path="/overview" element={
@@ -525,8 +599,8 @@ const StudentDashboard = () => {
                                             <Calendar className="w-5 h-5 text-indigo-600" />
                                             Attendance Overview
                                         </h3>
-                                        <div className="h-64 flex items-center justify-center">
-                                            <ResponsiveContainer width="100%" height="100%">
+                                        <div className="h-64 min-w-0 flex items-center justify-center">
+                                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                                 <PieChart>
                                                     <Pie
                                                         data={pieData}
@@ -604,6 +678,7 @@ const StudentDashboard = () => {
                             </div>
                         } />
                         <Route path="/subjects" element={<StudentSubjects />} />
+                        <Route path="/payments" element={<StudentPayments onMarkNoticesSeen={handleMarkPaymentNoticesSeen} />} />
                         <Route path="/exams" element={<StudentExamView />} />
                         <Route path="/activities" element={<StudentActivities />} />
                         <Route path="/leave" element={<StudentLeave />} />

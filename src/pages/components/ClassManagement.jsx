@@ -712,7 +712,7 @@ const ClassManagement = ({ readOnly = false }) => {
                 </div>
             </Modal>
 
-            <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 py-4 lg:sticky z-20 border-b border-gray-200 mb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 !mt-0 ${readOnly ? 'lg:top-0' : 'lg:top-[64px]'}`}>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-gray-200 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900 leading-tight">Class Management</h2>
                     <p className="text-sm text-gray-500">Manage classes and divisions</p>

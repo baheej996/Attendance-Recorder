@@ -56,7 +56,7 @@ const LoginPage = () => {
                 login({ role: 'office', name: 'Office Desk', id: 'office' });
                 navigate('/office');
             } else {
-                setError('Invalid Office Credentials (Default: office / Office123)');
+                setError('Invalid Office Credentials');
             }
         }
         else if (role === 'mentor') {

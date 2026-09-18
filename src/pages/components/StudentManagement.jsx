@@ -621,7 +621,7 @@ const StudentManagement = ({ readOnly = false }) => {
                 </div>
             </Modal>
 
-            <div className={`lg:sticky z-30 bg-gray-50 py-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 !mt-0 ${readOnly ? 'lg:top-0' : 'lg:top-[64px]'}`}>
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between pb-4 border-b border-gray-200 mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Student Management</h2>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     {!readOnly && (

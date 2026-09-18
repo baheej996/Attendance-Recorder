@@ -68,7 +68,7 @@ export const BulkUploadButton = ({ type, onUploadSuccess }) => {
 
             <input
                 type="file"
-                accept=".csv"
+                accept=".csv, .xlsx, .xls"
                 ref={fileInputRef}
                 className="hidden"
                 onChange={handleFileUpload}

@@ -31,12 +31,19 @@ import {
     Shield,
     Receipt,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Pencil,
+    X,
+    Upload,
+    FileSpreadsheet,
+    Lock,
+    Unlock
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+import { generateCSVTemplate, parseCSV } from '../../utils/csvHelpers';
 
 const OfficeFeeManagement = () => {
     const { 
@@ -49,6 +56,8 @@ const OfficeFeeManagement = () => {
         saveFeeStructure, 
         recordFeePayment, 
         deleteFeePayment, 
+        updateFeePayment, 
+        updateStudent,
         sendStudentFeeNotification 
     } = useData();
 
@@ -264,6 +273,7 @@ const OfficeFeeManagement = () => {
     const [selectedInstallmentKey, setSelectedInstallmentKey] = useState('inst1');
     const [customPayAmount, setCustomPayAmount] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash'); // 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque'
+    const [payAcademicYear, setPayAcademicYear] = useState('2026-2027');
     const [remarks, setRemarks] = useState('');
     const [submittingPay, setSubmittingPay] = useState(false);
     const [lastIssuedReceipt, setLastIssuedReceipt] = useState(null);
@@ -382,6 +392,7 @@ const OfficeFeeManagement = () => {
             installmentName: instData.name || selectedInstallmentKey,
             amountPaid: payAmount,
             paymentMode,
+            academicYear: payAcademicYear || '2026-2027',
             remarks,
             receivedBy: 'Office Accountant'
         };
@@ -419,6 +430,276 @@ const OfficeFeeManagement = () => {
                 }
             }
         );
+    };
+    // Edit Fee Payment Transaction Log State & Handlers
+    const [editingPayment, setEditingPayment] = useState(null);
+    const [editPayAmount, setEditPayAmount] = useState('');
+    const [editPayMode, setEditPayMode] = useState('Cash');
+    const [editInstallmentKey, setEditInstallmentKey] = useState('inst1');
+    const [editAcademicYear, setEditAcademicYear] = useState('2026-2027');
+    const [editPaymentDate, setEditPaymentDate] = useState('');
+    const [editRemarks, setEditRemarks] = useState('');
+    const [submittingEditPay, setSubmittingEditPay] = useState(false);
+
+    const handleOpenEditModal = (p) => {
+        if (!p) return;
+        setEditingPayment(p);
+        setEditPayAmount(p.amountPaid || '');
+        setEditPayMode(p.paymentMode || 'Cash');
+        setEditInstallmentKey(p.installmentKey || 'inst1');
+        setEditAcademicYear(p.academicYear || '2026-2027');
+        const rawDate = p.paymentDate || p.createdAt || '';
+        setEditPaymentDate(rawDate ? rawDate.split('T')[0] : '');
+        setEditRemarks(p.remarks || '');
+    };
+
+    const handleCloseEditModal = () => {
+        setEditingPayment(null);
+        setEditPayAmount('');
+        setEditPayMode('Cash');
+        setEditInstallmentKey('inst1');
+        setEditAcademicYear('2026-2027');
+        setEditPaymentDate('');
+        setEditRemarks('');
+    };
+
+    const handleUpdatePaymentSubmit = async (e) => {
+        e.preventDefault();
+        if (!editingPayment) return;
+
+        const numAmount = Number(editPayAmount);
+        if (isNaN(numAmount) || numAmount <= 0) {
+            showAlert('Invalid Amount', 'Please enter a valid payment amount greater than zero.', 'warning');
+            return;
+        }
+
+        setSubmittingEditPay(true);
+        const instNames = {
+            inst1: 'Installment 1 (Admission)',
+            inst2: 'Installment 2 (Mid-Term)',
+            inst3: 'Installment 3 (Final Term)'
+        };
+
+        const updatedData = {
+            amountPaid: numAmount,
+            paymentMode: editPayMode,
+            installmentKey: editInstallmentKey,
+            installmentName: instNames[editInstallmentKey] || editInstallmentKey,
+            academicYear: editAcademicYear,
+            paymentDate: editPaymentDate ? new Date(editPaymentDate).toISOString() : new Date().toISOString(),
+            remarks: editRemarks
+        };
+
+        try {
+            await updateFeePayment(editingPayment.id, updatedData);
+            if (lastIssuedReceipt?.id === editingPayment.id) {
+                setLastIssuedReceipt(prev => prev ? { ...prev, ...updatedData } : null);
+            }
+            showAlert('Transaction Updated', `Receipt #${editingPayment.receiptId || editingPayment.id} updated successfully!`, 'success');
+            handleCloseEditModal();
+        } catch (err) {
+            console.error('Failed to update fee transaction:', err);
+            showAlert('Error', 'Failed to update transaction log.', 'error');
+        } finally {
+            setSubmittingEditPay(false);
+        }
+    };
+
+    const parseCSVDate = (dateStr) => {
+        if (!dateStr) return new Date().toISOString();
+        const str = String(dateStr).trim();
+        if (!str) return new Date().toISOString();
+        const ddmmyyyyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+        if (ddmmyyyyMatch) {
+            const day = parseInt(ddmmyyyyMatch[1], 10);
+            const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+            const year = parseInt(ddmmyyyyMatch[3], 10);
+            const dateObj = new Date(year, month, day);
+            if (!isNaN(dateObj.getTime())) {
+                return dateObj.toISOString();
+            }
+        }
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString();
+        }
+        return new Date().toISOString();
+    };
+
+    // Bulk Fee Payments CSV Upload Handler
+    const [uploadingCSV, setUploadingCSV] = useState(false);
+
+    const handleBulkCSVUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Reset file input so re-selecting the same file works
+        e.target.value = '';
+
+        setUploadingCSV(true);
+        try {
+            const rows = await parseCSV(file, 'fee_payments');
+            if (!rows || rows.length === 0) {
+                showAlert('CSV Empty', 'The selected CSV file contains no data rows.', 'warning');
+                return;
+            }
+
+            let successCount = 0;
+            let skippedCount = 0;
+            const skippedLog = [];
+
+            const instNames = {
+                inst1: 'Installment 1 (Admission)',
+                inst2: 'Installment 2 (Mid-Term)',
+                inst3: 'Installment 3 (Final Term)'
+            };
+
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i];
+                const regNo = (r.registerno || r.regno || r['register no'] || r['reg no'] || '').trim().toLowerCase();
+                const sName = (r.studentname || r.name || r['student name'] || '').trim().toLowerCase();
+
+                if (!regNo && !sName) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Find matching student by Register No or Name
+                const matchedStudent = studentPool.find(s => {
+                    const sReg = (s.registerNo || '').trim().toLowerCase();
+                    const sN = (s.name || '').trim().toLowerCase();
+                    if (regNo && sReg === regNo) return true;
+                    if (sName && sN === sName) return true;
+                    return false;
+                });
+
+                if (!matchedStudent) {
+                    skippedCount++;
+                    skippedLog.push(`Row ${i + 2}: Student not found (${regNo || sName})`);
+                    continue;
+                }
+
+                const rawMode = (r.paymentmode || r.mode || r['payment mode'] || 'Cash').trim();
+                let paymentMode = 'Cash';
+                if (/upi|gpay|phonepe/i.test(rawMode)) paymentMode = 'UPI';
+                else if (/bank|neft|imps|transfer/i.test(rawMode)) paymentMode = 'Bank Transfer';
+                else if (/cheque|check/i.test(rawMode)) paymentMode = 'Cheque';
+                else paymentMode = 'Cash';
+
+                const rawYearStr = String(r.academicyear || r['academic year'] || r.year || '').trim();
+                let academicYear = '2026-2027';
+                if (rawYearStr.includes('2025-2026') || rawYearStr.includes('2025')) academicYear = '2025-2026';
+                else if (rawYearStr.includes('2024-2025') || rawYearStr.includes('2024')) academicYear = '2024-2025';
+                else if (rawYearStr.includes('2026-2027') || rawYearStr.includes('2026')) academicYear = '2026-2027';
+                else if (rawYearStr) academicYear = rawYearStr;
+
+                const rawDate = r.paymentdate || r['payment date'] || r.date || r.createdat || r['created at'];
+                const paymentDate = parseCSVDate(rawDate);
+                const remarks = r.remarks || 'Bulk CSV Import';
+
+                const studentClassObj = (classes || []).find(c => c.id === matchedStudent.classId);
+                const classNameStr = studentClassObj ? `${studentClassObj.name}-${studentClassObj.division}` : (matchedStudent.className || 'N/A');
+
+                // Check 3 separate installment columns (Installment1, Installment2, Installment3 / Installment 1, Installment 2, Installment 3 / Inst1, Inst2, Inst3)
+                const valInst1 = Number(r.installment1 || r['installment 1'] || r['installment_1'] || r.inst1 || r['inst 1'] || 0);
+                const valInst2 = Number(r.installment2 || r['installment 2'] || r['installment_2'] || r.inst2 || r['inst 2'] || 0);
+                const valInst3 = Number(r.installment3 || r['installment 3'] || r['installment_3'] || r.inst3 || r['inst 3'] || 0);
+
+                const hasMultiInst = (!isNaN(valInst1) && valInst1 > 0) || (!isNaN(valInst2) && valInst2 > 0) || (!isNaN(valInst3) && valInst3 > 0);
+
+                if (hasMultiInst) {
+                    const instItems = [
+                        { key: 'inst1', amount: valInst1 },
+                        { key: 'inst2', amount: valInst2 },
+                        { key: 'inst3', amount: valInst3 }
+                    ];
+
+                    for (const instItem of instItems) {
+                        if (!isNaN(instItem.amount) && instItem.amount > 0) {
+                            const payload = {
+                                studentId: matchedStudent.id,
+                                studentName: matchedStudent.name,
+                                registerNo: matchedStudent.registerNo || 'N/A',
+                                classId: matchedStudent.classId || '',
+                                className: classNameStr,
+                                installmentKey: instItem.key,
+                                installmentName: instNames[instItem.key] || instItem.key,
+                                amountPaid: instItem.amount,
+                                paymentMode,
+                                academicYear,
+                                paymentDate,
+                                remarks,
+                                receivedBy: 'Office Accountant (CSV)'
+                            };
+
+                            try {
+                                await recordFeePayment(payload);
+                                successCount++;
+                            } catch (err) {
+                                console.error(`Failed to record ${instItem.key} for row ${i + 2}:`, err);
+                                skippedCount++;
+                                skippedLog.push(`Row ${i + 2}: Error saving payment for ${instItem.key}`);
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback for single AmountPaid + InstallmentKey format
+                    const rawAmount = r.amountpaid || r.amount || r['amount paid'] || r['amount'];
+                    const amount = Number(rawAmount);
+
+                    if (isNaN(amount) || amount <= 0) {
+                        skippedCount++;
+                        skippedLog.push(`Row ${i + 2}: Invalid amount (${rawAmount})`);
+                        continue;
+                    }
+
+                    const rawInst = (r.installmentkey || r.installment || r['installment key'] || r['installment'] || 'inst1').trim().toLowerCase();
+                    let installmentKey = 'inst1';
+                    if (rawInst.includes('2') || rawInst.includes('mid')) installmentKey = 'inst2';
+                    else if (rawInst.includes('3') || rawInst.includes('final')) installmentKey = 'inst3';
+
+                    const payload = {
+                        studentId: matchedStudent.id,
+                        studentName: matchedStudent.name,
+                        registerNo: matchedStudent.registerNo || 'N/A',
+                        classId: matchedStudent.classId || '',
+                        className: classNameStr,
+                        installmentKey,
+                        installmentName: instNames[installmentKey] || installmentKey,
+                        amountPaid: amount,
+                        paymentMode,
+                        academicYear,
+                        paymentDate,
+                        remarks,
+                        receivedBy: 'Office Accountant (CSV)'
+                    };
+
+                    try {
+                        await recordFeePayment(payload);
+                        successCount++;
+                    } catch (err) {
+                        console.error(`Failed to record row ${i + 2}:`, err);
+                        skippedCount++;
+                        skippedLog.push(`Row ${i + 2}: System error saving payment`);
+                    }
+                }
+            }
+
+            if (successCount > 0) {
+                let msg = `Successfully imported and recorded ${successCount} fee payment(s)!`;
+                if (skippedCount > 0) {
+                    msg += ` (${skippedCount} item(s) skipped: check reg numbers / amounts)`;
+                }
+                showAlert('CSV Upload Complete', msg, 'success');
+            } else {
+                showAlert('CSV Upload Failed', `Could not process payments. ${skippedLog.slice(0, 3).join('; ')}`, 'error');
+            }
+        } catch (err) {
+            console.error('Error parsing CSV file:', err);
+            showAlert('CSV Error', 'Failed to parse CSV file: ' + err.message, 'error');
+        } finally {
+            setUploadingCSV(false);
+        }
     };
 
     // PDF Receipt Generator
@@ -464,6 +745,7 @@ const OfficeFeeManagement = () => {
                 ['Student Name', receiptObj.studentName || 'N/A'],
                 ['Register Number', receiptObj.registerNo || 'N/A'],
                 ['Class / Division', receiptObj.className || 'N/A'],
+                ['Academic Year', (receiptObj.academicYear || '2026-2027') + ((receiptObj.academicYear || '2026-2027') === '2026-2027' ? ' (Current Year)' : ' (Previous Year Arrears)')],
                 ['Installment Paid', receiptObj.installmentName || 'Installment Payment'],
                 ['Payment Mode', receiptObj.paymentMode || 'Cash'],
                 ['Date & Time', paymentDateStr],
@@ -512,6 +794,7 @@ const OfficeFeeManagement = () => {
     // -------------------------------------------------------------
     const [duesSearchTerm, setDuesSearchTerm] = useState('');
     const [duesStatusFilter, setDuesStatusFilter] = useState('pending'); // 'pending' | 'paid' | 'all'
+    const [duesAcademicYearFilter, setDuesAcademicYearFilter] = useState('all'); // 'all' | '2026-2027' | 'previous'
     const [selectedDuesMentorId, setSelectedDuesMentorId] = useState('all');
     const [selectedDuesClassId, setSelectedDuesClassId] = useState('all');
 
@@ -534,21 +817,78 @@ const OfficeFeeManagement = () => {
         }
     }, [availableClassesForDues, selectedDuesClassId]);
 
+    const getStudentJoiningYear = (s) => {
+        if (s.joiningYear) return Number(s.joiningYear);
+        const reg = (s.registerNo || '').trim();
+        const match = reg.match(/^(\d{2})/);
+        if (match) {
+            const yr = parseInt(match[1], 10);
+            if (yr >= 20 && yr <= 35) return 2000 + yr;
+        }
+        return 2026;
+    };
+
     const duesListData = useMemo(() => {
         return studentPool.map(s => {
             const cls = (classes || []).find(c => c.id === s.classId);
             const struct = getStudentFeeStructure(s);
+
             const sPayments = (feePayments || []).filter(p => p.studentId === s.id);
-            const totalPaid = sPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
-            const totalFee = Number(struct.totalAmount || 15000);
-            const remainingDues = Math.max(0, totalFee - totalPaid);
+
+            // Current Academic Year (2026-2027)
+            const currentYearPayments = sPayments.filter(p => (p.academicYear || '2026-2027') === '2026-2027');
+            const currentPaid = currentYearPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+            const currentFee = Number(struct.totalAmount || 12700);
+            const currentDues = Math.max(0, currentFee - currentPaid);
+            const isCurrentPaid = currentDues <= 0;
+
+            // Enrollment Batch / Joining Year
+            const joiningYear = getStudentJoiningYear(s);
+            const isNewAdmission = joiningYear >= 2026;
+
+            // Previous Academic Years / Arrears (2025-2026 and older)
+            const previousYearPayments = sPayments.filter(p => (p.academicYear || '2026-2027') !== '2026-2027');
+            const previousPaid = previousYearPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+            
+            let previousDues = 0;
+            let prevYearFee = 0;
+
+            if (s.previousYearArrears !== undefined && s.previousYearArrears !== null) {
+                previousDues = Math.max(0, Number(s.previousYearArrears) - previousPaid);
+                prevYearFee = Number(s.previousYearArrears) + previousPaid;
+            } else if (!isNewAdmission) {
+                // For continuing students from 2025 or earlier who haven't explicitly set 0 arrears
+                prevYearFee = Number(s.previousYearFee || 12700);
+                previousDues = Math.max(0, prevYearFee - previousPaid);
+            } else {
+                previousDues = 0;
+                prevYearFee = 0;
+            }
+
+            const isPreviousPaid = !isNewAdmission && previousDues <= 0;
+            const hasPreviousArrears = !isNewAdmission && previousDues > 0;
+
+            const totalPaid = currentPaid + previousPaid;
+            const totalFee = currentFee + prevYearFee;
+            const remainingDues = currentDues + previousDues;
             const isFullyPaid = remainingDues <= 0;
 
             return {
                 student: s,
                 cls,
+                joiningYear,
+                isNewAdmission,
                 totalFee,
                 totalPaid,
+                currentFee,
+                currentPaid,
+                currentDues,
+                isCurrentPaid,
+                prevYearFee,
+                previousPaid,
+                previousDues,
+                isPreviousPaid,
+                hasPreviousArrears,
                 remainingDues,
                 isFullyPaid,
                 status: isFullyPaid ? 'Paid' : 'Payment Pending'
@@ -566,6 +906,10 @@ const OfficeFeeManagement = () => {
             // Filter by Class
             if (selectedDuesClassId !== 'all' && item.student.classId !== selectedDuesClassId) return false;
 
+            // Filter by Academic Year Dues Scope
+            if (duesAcademicYearFilter === '2026-2027' && item.currentDues <= 0 && duesStatusFilter === 'pending') return false;
+            if (duesAcademicYearFilter === 'previous' && item.previousDues <= 0 && duesStatusFilter === 'pending') return false;
+
             // Filter by Status
             if (duesStatusFilter === 'pending' && item.isFullyPaid) return false;
             if (duesStatusFilter === 'paid' && !item.isFullyPaid) return false;
@@ -581,7 +925,7 @@ const OfficeFeeManagement = () => {
 
             return true;
         }).sort((a, b) => b.remainingDues - a.remainingDues);
-    }, [studentPool, classes, mentors, feeStructures, feePayments, selectedDuesClassId, selectedDuesMentorId, duesStatusFilter, duesSearchTerm]);
+    }, [studentPool, classes, mentors, feeStructures, feePayments, selectedDuesClassId, selectedDuesMentorId, duesStatusFilter, duesAcademicYearFilter, duesSearchTerm]);
 
     // Pagination State for Dues & Defaulters Tracker (Max 25 items per page)
     const [duesCurrentPage, setDuesCurrentPage] = useState(1);
@@ -590,7 +934,7 @@ const OfficeFeeManagement = () => {
     // Reset pagination to Page 1 when search or filters change
     useEffect(() => {
         setDuesCurrentPage(1);
-    }, [duesSearchTerm, duesStatusFilter, selectedDuesMentorId, selectedDuesClassId]);
+    }, [duesSearchTerm, duesStatusFilter, duesAcademicYearFilter, selectedDuesMentorId, selectedDuesClassId]);
 
     const totalDuesItems = duesListData.length;
     const totalDuesPages = Math.ceil(totalDuesItems / DUES_ITEMS_PER_PAGE) || 1;
@@ -664,6 +1008,59 @@ const OfficeFeeManagement = () => {
             `Selected ${student.name} (Reg: ${student.registerNo || 'N/A'}). Transferred to Payment Collection.`,
             'info'
         );
+    };
+
+    // Manage Previous Year Arrears Modal State & Handler
+    const [editingArrearsStudent, setEditingArrearsStudent] = useState(null);
+    const [inputArrearsAmount, setInputArrearsAmount] = useState('');
+    const [inputJoiningYear, setInputJoiningYear] = useState('2026');
+
+    const handleOpenArrearsModal = (student) => {
+        setEditingArrearsStudent(student);
+        const joining = getStudentJoiningYear(student);
+        setInputArrearsAmount(student.previousYearArrears !== undefined ? student.previousYearArrears : (joining < 2026 ? 12700 : 0));
+        setInputJoiningYear(String(joining));
+    };
+
+    const handleSaveArrearsSubmit = async (e) => {
+        e.preventDefault();
+        if (!editingArrearsStudent) return;
+
+        const arrearsVal = Number(inputArrearsAmount) || 0;
+        const yearVal = Number(inputJoiningYear) || 2026;
+
+        try {
+            await updateStudent(editingArrearsStudent.id, {
+                previousYearArrears: arrearsVal,
+                joiningYear: yearVal
+            });
+            showAlert('Arrears Updated', `Updated previous year arrears for ${editingArrearsStudent.name} to INR ${arrearsVal.toLocaleString()}`, 'success');
+            setEditingArrearsStudent(null);
+        } catch (err) {
+            console.error('Failed to update arrears:', err);
+            showAlert('Error', 'Failed to update student arrears record.', 'error');
+        }
+    };
+
+    // Toggle Lock Student Panel to Tuition Fee Page Only
+    const handleToggleStudentLock = async (student) => {
+        if (!student?.id) return;
+        const nextState = !student.isFeeLocked;
+
+        try {
+            await updateStudent(student.id, { isFeeLocked: nextState });
+
+            if (nextState) {
+                const msg = `Dear ${student.name}, your Student Panel features have been restricted to the Tuition Fee page due to pending dues. Please complete your fee payment to restore full access.`;
+                await sendStudentFeeNotification(student.id, '🔒 Student Panel Access Restricted', msg, student.remainingDues || 0);
+                showAlert('Panel Access Restricted', `${student.name}'s Student Panel is now locked to the Tuition Fee page only!`, 'warning');
+            } else {
+                showAlert('Panel Access Restored', `${student.name}'s full Student Panel access has been restored.`, 'success');
+            }
+        } catch (err) {
+            console.error('Error toggling student lock:', err);
+            showAlert('Error', 'Failed to update student lock state.', 'error');
+        }
     };
 
     // -------------------------------------------------------------
@@ -743,6 +1140,28 @@ const OfficeFeeManagement = () => {
                             <Shield className="w-4 h-4 text-emerald-600" />
                             Real-Time Connected Accounts • Official PDF Receipts & Installment Management
                         </p>
+                    </div>
+
+                    {/* CSV & Excel Bulk Actions */}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                            type="button"
+                            onClick={() => generateCSVTemplate('fee_payments')}
+                            className="px-3.5 py-2 bg-gray-50 hover:bg-gray-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-indigo-200/80 shadow-2xs transition-all cursor-pointer"
+                            title="Download Model Template with Payment Mode Dropdown"
+                        >
+                            <Download className="w-4 h-4 text-indigo-600" /> Download Model Template
+                        </button>
+                        <label className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95">
+                            <Upload className="w-4 h-4" /> {uploadingCSV ? 'Processing File...' : 'Upload Payments (CSV/Excel)'}
+                            <input
+                                type="file"
+                                accept=".csv, .xlsx, .xls"
+                                onChange={handleBulkCSVUpload}
+                                disabled={uploadingCSV}
+                                className="hidden"
+                            />
+                        </label>
                     </div>
                 </div>
 
@@ -1093,7 +1512,19 @@ const OfficeFeeManagement = () => {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">Academic Year:</label>
+                                            <select
+                                                value={payAcademicYear}
+                                                onChange={(e) => setPayAcademicYear(e.target.value)}
+                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl focus:bg-white outline-none"
+                                            >
+                                                <option value="2026-2027">2026-2027 (Current Academic Year)</option>
+                                                <option value="2025-2026">2025-2026 (Previous Year Arrears)</option>
+                                                <option value="2024-2025">2024-2025 (Previous Year Arrears)</option>
+                                            </select>
+                                        </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-700 mb-1">Amount to Collect (INR):</label>
                                             <Input
@@ -1156,6 +1587,15 @@ const OfficeFeeManagement = () => {
                                     </div>
                                     <p className="text-sm font-extrabold text-gray-900">{lastIssuedReceipt.studentName}</p>
                                     <p className="text-xs text-gray-600">Amount: INR {Number(lastIssuedReceipt.amountPaid).toLocaleString()} • {lastIssuedReceipt.paymentMode}</p>
+                                    <div className="pt-1">
+                                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                            (lastIssuedReceipt.academicYear || '2026-2027') === '2026-2027'
+                                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                                : 'bg-amber-100 text-amber-800 border-amber-300'
+                                        }`}>
+                                            {(lastIssuedReceipt.academicYear || '2026-2027') === '2026-2027' ? '🟢 Current (2026-2027)' : `🟠 Arrears (${lastIssuedReceipt.academicYear})`}
+                                        </span>
+                                    </div>
                                     <Button
                                         onClick={() => generatePrintablePDFReceipt(lastIssuedReceipt)}
                                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-2 py-2 mt-2"
@@ -1174,7 +1614,16 @@ const OfficeFeeManagement = () => {
                                         <div key={p.id} className="py-2.5 flex justify-between items-center text-xs group">
                                             <div>
                                                 <p className="font-bold text-gray-900">{p.studentName}</p>
-                                                <p className="text-[10px] text-gray-400">Receipt #{p.receiptId} • {p.paymentMode}</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className="text-[10px] text-gray-400">Receipt #{p.receiptId} • {p.paymentMode}</span>
+                                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${
+                                                        (p.academicYear || '2026-2027') === '2026-2027'
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                    }`}>
+                                                        {(p.academicYear || '2026-2027') === '2026-2027' ? '2026-2027' : `Arrears ${p.academicYear}`}
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div className="text-right flex items-center gap-2">
                                                 <div>
@@ -1186,6 +1635,13 @@ const OfficeFeeManagement = () => {
                                                         <Download className="w-3 h-3" /> PDF
                                                     </button>
                                                 </div>
+                                                <button
+                                                    onClick={() => handleOpenEditModal(p)}
+                                                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    title="Edit this transaction log"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
                                                 <button
                                                     onClick={() => handleDeletePayment(p.id, p.receiptId)}
                                                     className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
@@ -1427,12 +1883,12 @@ const OfficeFeeManagement = () => {
 
                                     <button
                                         type="button"
-                                        onClick={() => applyConcessionPreset(40)}
+                                        onClick={() => applyConcessionPreset(30)}
                                         className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
-                                            totalFeeAmount === 7620 ? 'bg-purple-600 text-white border-purple-600 shadow-xs' : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+                                            totalFeeAmount === 8890 ? 'bg-purple-600 text-white border-purple-600 shadow-xs' : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
                                         }`}
                                     >
-                                        40% Sibling (₹7,620)
+                                        30% Sibling (₹8,890)
                                     </button>
 
                                     <button
@@ -1535,7 +1991,18 @@ const OfficeFeeManagement = () => {
                                 />
                             </div>
 
-                            {/* Mentor Selector (FIRST) */}
+                            {/* 1. Academic Year Filter (FIRST) */}
+                            <select
+                                value={duesAcademicYearFilter}
+                                onChange={(e) => setDuesAcademicYearFilter(e.target.value)}
+                                className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-gray-800"
+                            >
+                                <option value="all">All Academic Years</option>
+                                <option value="2026-2027">Current Year (2026-2027)</option>
+                                <option value="previous">Previous Arrears (2025-2026 & Older)</option>
+                            </select>
+
+                            {/* 2. Mentor Selector (SECOND) */}
                             <select
                                 value={selectedDuesMentorId}
                                 onChange={(e) => setSelectedDuesMentorId(e.target.value)}
@@ -1547,7 +2014,7 @@ const OfficeFeeManagement = () => {
                                 ))}
                             </select>
 
-                            {/* Class Selector (SECOND - Cascading based on selected Mentor) */}
+                            {/* 3. Class Selector (THIRD - Cascading based on selected Mentor) */}
                             <select
                                 value={selectedDuesClassId}
                                 onChange={(e) => setSelectedDuesClassId(e.target.value)}
@@ -1597,47 +2064,90 @@ const OfficeFeeManagement = () => {
                             <table className="w-full text-left border-collapse text-sm">
                                 <thead className="bg-gray-900 text-white text-xs uppercase font-bold tracking-wider">
                                     <tr>
-                                        <th className="p-4 w-12 text-center">#</th>
-                                        <th className="p-4">Student & Reg No</th>
-                                        <th className="p-4">Class</th>
-                                        <th className="p-4 text-center">Total Fee</th>
-                                        <th className="p-4 text-center">Paid So Far</th>
-                                        <th className="p-4 text-center">Pending Dues</th>
-                                        <th className="p-4 text-right">Actions & Reminders</th>
+                                        <th className="px-3.5 py-3 w-10 text-center">#</th>
+                                        <th className="px-3.5 py-3">Student & Reg No</th>
+                                        <th className="px-3.5 py-3">Class</th>
+                                        <th className="px-3.5 py-3">Yearly Fee Status</th>
+                                        <th className="px-3.5 py-3 text-center">Total Fee</th>
+                                        <th className="px-3.5 py-3 text-center">Paid So Far</th>
+                                        <th className="px-3.5 py-3 text-center">Pending Dues</th>
+                                        <th className="px-3.5 py-3 text-right">Actions & Reminders</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {totalDuesItems === 0 ? (
                                         <tr>
-                                            <td colSpan="7" className="p-8 text-center text-gray-400 italic">
+                                            <td colSpan="8" className="p-8 text-center text-gray-400 italic">
                                                 No students matching current filter criteria.
                                             </td>
                                         </tr>
                                     ) : (
                                         paginatedDuesListData.map((item, idx) => (
                                             <tr key={item.student.id} className={`hover:bg-gray-50 transition-colors ${!item.isFullyPaid ? 'bg-rose-50/10' : ''}`}>
-                                                <td className="p-4 text-center font-bold text-gray-400">
+                                                <td className="px-3.5 py-3 text-center font-bold text-gray-400">
                                                     {(duesCurrentPage - 1) * DUES_ITEMS_PER_PAGE + idx + 1}
                                                 </td>
-                                                <td className="p-4 font-bold text-gray-900">
+                                                <td className="px-3.5 py-3 font-bold text-gray-900">
                                                     <div>
-                                                        <div className="font-extrabold text-gray-900">{item.student.name}</div>
-                                                        <div className="text-xs text-gray-400 font-mono">Reg: {item.student.registerNo || 'N/A'}</div>
+                                                        <div className="font-extrabold text-gray-900 text-sm tracking-tight">{item.student.name}</div>
+                                                        <div className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                                                            Reg: {item.student.registerNo || 'N/A'}
+                                                        </div>
                                                     </div>
                                                 </td>
-                                                <td className="p-4 font-bold text-gray-700">
+                                                <td className="px-3.5 py-3 font-bold text-gray-700">
                                                     {item.cls ? `${item.cls.name}-${item.cls.division}` : 'N/A'}
                                                 </td>
-                                                <td className="p-4 text-center font-mono font-bold text-gray-800">
+                                                <td className="px-3.5 py-3">
+                                                    <div className="flex flex-col gap-1 items-start">
+                                                        {/* Current Academic Year Status Badge */}
+                                                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
+                                                            item.isCurrentPaid
+                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                                                        }`}>
+                                                            {item.isCurrentPaid ? '🟢 2026-2027 Paid' : '🔴 2026-2027 Due'}
+                                                        </span>
+
+                                                        {/* Previous Academic Year Status Badge */}
+                                                        {item.isNewAdmission ? (
+                                                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-gray-50 text-gray-500 border-gray-200">
+                                                                ⚪ 2025-2026: N/A (New Student)
+                                                            </span>
+                                                        ) : item.isPreviousPaid ? (
+                                                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200">
+                                                                🟢 2025-2026 Paid
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleOpenArrearsModal(item.student)}
+                                                                className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                                title="Click to edit/update Previous Year Arrears balance"
+                                                            >
+                                                                <span>🟠 2025-2026 Arrears: ₹{item.previousDues.toLocaleString()}</span>
+                                                                <Pencil className="w-3 h-3 text-amber-600 shrink-0" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-3.5 py-3 text-center font-mono font-bold text-gray-800">
                                                     ₹{item.totalFee.toLocaleString()}
                                                 </td>
-                                                <td className="p-4 text-center font-mono font-bold text-emerald-600">
+                                                <td className="px-3.5 py-3 text-center font-mono font-bold text-emerald-600">
                                                     ₹{item.totalPaid.toLocaleString()}
                                                 </td>
-                                                <td className="p-4 text-center font-mono font-black text-rose-600">
-                                                    ₹{item.remainingDues.toLocaleString()}
+                                                <td className="px-3.5 py-3 text-center font-mono">
+                                                    <div className="font-black text-rose-600 text-sm">
+                                                        ₹{item.remainingDues.toLocaleString()}
+                                                    </div>
+                                                    {item.previousDues > 0 && (
+                                                        <div className="text-[10px] text-amber-700 font-extrabold mt-0.5">
+                                                            (Incl. Arrears ₹{item.previousDues.toLocaleString()})
+                                                        </div>
+                                                    )}
                                                 </td>
-                                                <td className="p-4 text-right">
+                                                <td className="px-3.5 py-3 text-right">
                                                     <div className="flex items-center justify-end gap-2">
                                                         {/* Record Fee Payment Button (Pre-fills student data & switches tab) */}
                                                         <button
@@ -1650,6 +2160,27 @@ const OfficeFeeManagement = () => {
 
                                                         {!item.isFullyPaid && (
                                                             <>
+                                                                {/* Lock Student Panel / Restrict Access Button */}
+                                                                <button
+                                                                    onClick={() => handleToggleStudentLock(item.student)}
+                                                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                                                                        item.student.isFeeLocked
+                                                                            ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-xs'
+                                                                            : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+                                                                    }`}
+                                                                    title={item.student.isFeeLocked ? "Unlock student panel access" : "Lock student panel features (restricts directly to Tuition Fee page)"}
+                                                                >
+                                                                    {item.student.isFeeLocked ? (
+                                                                        <>
+                                                                            <Lock className="w-3.5 h-3.5 text-white" /> Panel Locked
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Lock className="w-3.5 h-3.5 text-amber-600" /> Lock Panel
+                                                                        </>
+                                                                    )}
+                                                                </button>
+
                                                                 {/* Website Student Panel In-App Notification */}
                                                                 <button
                                                                     onClick={() => handleSendWebsiteNotification(item)}
@@ -1782,8 +2313,8 @@ const OfficeFeeManagement = () => {
                             <span className="text-xs font-bold text-gray-400">Monthly Revenue</span>
                         </div>
 
-                        <div className="w-full h-64">
-                            <ResponsiveContainer width="100%" height="100%">
+                        <div className="w-full h-64 min-w-0">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                 <AreaChart data={monthlyTrendChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="financialGradient" x1="0" y1="0" x2="0" y2="1">
@@ -1823,6 +2354,7 @@ const OfficeFeeManagement = () => {
                                         <th className="p-3">Receipt ID</th>
                                         <th className="p-3">Student Name</th>
                                         <th className="p-3">Class</th>
+                                        <th className="p-3">Academic Year</th>
                                         <th className="p-3">Installment</th>
                                         <th className="p-3">Payment Mode</th>
                                         <th className="p-3 text-center">Date & Time</th>
@@ -1833,7 +2365,7 @@ const OfficeFeeManagement = () => {
                                 <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
                                     {(feePayments || []).length === 0 ? (
                                         <tr>
-                                            <td colSpan="9" className="p-8 text-center text-gray-400 italic">
+                                            <td colSpan="10" className="p-8 text-center text-gray-400 italic">
                                                 No fee payment transactions recorded yet.
                                             </td>
                                         </tr>
@@ -1847,6 +2379,15 @@ const OfficeFeeManagement = () => {
                                                     <div className="text-[10px] text-gray-400 font-mono">Reg: {p.registerNo || 'N/A'}</div>
                                                 </td>
                                                 <td className="p-3 font-semibold text-gray-700">{p.className || 'N/A'}</td>
+                                                <td className="p-3">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                                                        (p.academicYear || '2026-2027') === '2026-2027'
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                    }`}>
+                                                        {(p.academicYear || '2026-2027') === '2026-2027' ? '🟢 2026-2027 (Current)' : `🟠 ${p.academicYear} (Arrears)`}
+                                                    </span>
+                                                </td>
                                                 <td className="p-3 font-semibold text-gray-600">{p.installmentName || 'Installment'}</td>
                                                 <td className="p-3 font-bold text-emerald-700">{p.paymentMode || 'Cash'}</td>
                                                 <td className="p-3 text-center text-gray-500 text-[11px]">
@@ -1865,6 +2406,13 @@ const OfficeFeeManagement = () => {
                                                             <Download className="w-3.5 h-3.5" /> PDF
                                                         </button>
                                                         <button
+                                                            onClick={() => handleOpenEditModal(p)}
+                                                            className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1 font-bold text-[11px]"
+                                                            title="Edit Transaction"
+                                                        >
+                                                            <Pencil className="w-3.5 h-3.5" /> Edit
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleDeletePayment(p.id, p.receiptId)}
                                                             className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 font-bold text-[11px]"
                                                             title="Delete Transaction"
@@ -1880,6 +2428,204 @@ const OfficeFeeManagement = () => {
                             </table>
                         </div>
                     </Card>
+                </div>
+            )}
+
+            {/* Edit Fee Payment Transaction Modal */}
+            {editingPayment && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 space-y-5 relative">
+                        <div className="flex justify-between items-center border-b pb-3">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                                    <Pencil className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-extrabold text-gray-900">Edit Fee Transaction Log</h3>
+                                    <p className="text-xs text-gray-500 font-mono font-semibold">Receipt #{editingPayment.receiptId || editingPayment.id}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleCloseEditModal}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdatePaymentSubmit} className="space-y-4">
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
+                                <p className="text-xs text-gray-500 font-medium">Student Name & Reg No:</p>
+                                <p className="text-sm font-extrabold text-gray-900">{editingPayment.studentName} <span className="text-xs font-mono text-gray-500 font-semibold">(Reg: {editingPayment.registerNo || 'N/A'})</span></p>
+                                <p className="text-xs text-indigo-600 font-bold">{editingPayment.className || 'Class N/A'}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">Amount Paid (INR):</label>
+                                    <Input
+                                        type="number"
+                                        value={editPayAmount}
+                                        onChange={(e) => setEditPayAmount(e.target.value)}
+                                        placeholder="e.g. 4233"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">Payment Mode:</label>
+                                    <select
+                                        value={editPayMode}
+                                        onChange={(e) => setEditPayMode(e.target.value)}
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl focus:bg-white outline-none"
+                                    >
+                                        <option value="Cash">Cash</option>
+                                        <option value="UPI">UPI / GPay / PhonePe</option>
+                                        <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
+                                        <option value="Cheque">Cheque</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">Academic Year:</label>
+                                    <select
+                                        value={editAcademicYear}
+                                        onChange={(e) => setEditAcademicYear(e.target.value)}
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl focus:bg-white outline-none"
+                                    >
+                                        <option value="2026-2027">2026-2027 (Current Year)</option>
+                                        <option value="2025-2026">2025-2026 (Previous Year Arrears)</option>
+                                        <option value="2024-2025">2024-2025 (Previous Year Arrears)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">Installment Term:</label>
+                                    <select
+                                        value={editInstallmentKey}
+                                        onChange={(e) => setEditInstallmentKey(e.target.value)}
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl focus:bg-white outline-none"
+                                    >
+                                        <option value="inst1">Installment 1 (Admission)</option>
+                                        <option value="inst2">Installment 2 (Mid-Term)</option>
+                                        <option value="inst3">Installment 3 (Final Term)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">Payment Date:</label>
+                                    <Input
+                                        type="date"
+                                        value={editPaymentDate}
+                                        onChange={(e) => setEditPaymentDate(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">Remarks / Note:</label>
+                                <Input
+                                    type="text"
+                                    value={editRemarks}
+                                    onChange={(e) => setEditRemarks(e.target.value)}
+                                    placeholder="e.g. Updated receipt entry"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={handleCloseEditModal}
+                                    className="text-xs py-2 px-4 font-bold"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    className="text-xs py-2 px-4 font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    disabled={submittingEditPay}
+                                >
+                                    {submittingEditPay ? 'Saving Changes...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Edit Previous Year Arrears Modal */}
+            {editingArrearsStudent && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5 relative">
+                        <div className="flex justify-between items-center border-b pb-3">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-amber-50 rounded-xl text-amber-600">
+                                    <Pencil className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-extrabold text-gray-900">Manage Previous Year Arrears</h3>
+                                    <p className="text-xs text-gray-500 font-semibold">{editingArrearsStudent.name}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setEditingArrearsStudent(null)}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveArrearsSubmit} className="space-y-4">
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1 text-xs">
+                                <p className="text-gray-500 font-medium">Student Register Number:</p>
+                                <p className="font-extrabold font-mono text-indigo-600">{editingArrearsStudent.registerNo || 'N/A'}</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">Enrollment / Batch Year:</label>
+                                <select
+                                    value={inputJoiningYear}
+                                    onChange={(e) => setInputJoiningYear(e.target.value)}
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl focus:bg-white outline-none"
+                                >
+                                    <option value="2026">2026-2027 Batch (New Student)</option>
+                                    <option value="2025">2025-2026 Batch (Enrolled 2025)</option>
+                                    <option value="2024">2024-2025 Batch (Enrolled 2024)</option>
+                                    <option value="2023">2023-2024 Batch (Enrolled 2023)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">Previous Academic Year Arrears Balance (INR):</label>
+                                <Input
+                                    type="number"
+                                    value={inputArrearsAmount}
+                                    onChange={(e) => setInputArrearsAmount(e.target.value)}
+                                    placeholder="e.g. 12700"
+                                    required
+                                />
+                                <p className="text-[11px] text-gray-400 mt-1">Set to 0 if all previous year dues are cleared.</p>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => setEditingArrearsStudent(null)}
+                                    className="text-xs py-2 px-4 font-bold"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    className="text-xs py-2 px-4 font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                                >
+                                    Save Arrears
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>

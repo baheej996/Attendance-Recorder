@@ -1,12 +1,13 @@
 import { 
     Home, LayoutDashboard, Layers, Book, FileText, Calendar, 
     MessageSquare, BookOpen, BookHeart, Moon, History, CheckCircle, 
-    Trophy, Star, Bell, Info, MessageCircle, Gamepad2
+    Trophy, Star, Bell, Info, MessageCircle, Gamepad2, CreditCard
 } from 'lucide-react';
 
 export const STUDENT_NAV_ITEMS = [
     { icon: Home, label: 'Welcome', path: '/student', key: 'welcome', description: 'Animated landing page for students.' },
     { icon: LayoutDashboard, label: 'Overview', path: '/student/overview', key: 'overview', description: 'Detailed dashboard with academic stats.' },
+    { icon: CreditCard, label: 'Tuition Fee', path: '/student/payments', key: 'payments', description: 'View tuition fee dues, installment status, and payment receipts.' },
     { icon: Layers, label: 'Activities', path: '/student/activities', key: 'activities', description: 'Assignments and projects for students.' },
     { icon: Book, label: 'My Subjects', path: '/student/subjects', key: 'subjects', description: 'View assigned subjects and materials.' },
     { icon: FileText, label: 'Online Exams', path: '/student/exams', key: 'exams', description: 'MCQ based online examinations.' },

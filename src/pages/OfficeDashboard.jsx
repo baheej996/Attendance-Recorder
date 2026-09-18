@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Wallet, School, UserPlus, LogOut, Menu, X, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Wallet, Users, School, LogOut, Menu, X, ShieldCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useData } from '../contexts/DataContext';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 
 // Components
+import DashboardHome from './components/DashboardHome';
 import OfficeFeeManagement from '../components/office/OfficeFeeManagement';
+import StudentManagement from './components/StudentManagement';
 import ClassManagement from './components/ClassManagement';
-import AdminAdmissionRequests from '../components/admin/AdminAdmissionRequests';
 
 const OfficeDashboard = () => {
-    const { logout, admissionRequests } = useData();
-    const [activeTab, setActiveTab] = useState('fees');
+    const { logout } = useData();
+    const [activeTab, setActiveTab] = useState('overview');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
-
-    const pendingAdmissionsCount = (admissionRequests || []).filter(r => r.requestStatus === 'Pending').length || 0;
 
     const handleLogout = () => {
         setShowLogoutModal(false);
@@ -24,6 +23,12 @@ const OfficeDashboard = () => {
 
     const navItems = [
         { 
+            id: 'overview', 
+            label: 'Overview', 
+            icon: LayoutDashboard,
+            badge: null
+        },
+        { 
             id: 'fees', 
             label: 'Fee Collection', 
             icon: Wallet,
@@ -31,28 +36,32 @@ const OfficeDashboard = () => {
         },
         { 
             id: 'students', 
-            label: 'Student & Class Management', 
-            icon: School,
+            label: 'Student Management', 
+            icon: Users,
             badge: null
         },
         { 
-            id: 'admissions', 
-            label: 'Admissions & Enrolments', 
-            icon: UserPlus,
-            badge: pendingAdmissionsCount > 0 ? pendingAdmissionsCount : null
+            id: 'classes', 
+            label: 'Class Management', 
+            icon: School,
+            badge: null
         },
     ];
 
     const renderContent = () => {
         switch (activeTab) {
+            case 'overview':
+                return <DashboardHome onTabChange={setActiveTab} />;
             case 'fees':
                 return <OfficeFeeManagement />;
             case 'students':
+                return <StudentManagement />;
+            case 'classes':
                 return <ClassManagement />;
-            case 'admissions':
-                return <AdminAdmissionRequests />;
+            case 'mentors':
+                return <StudentManagement />;
             default:
-                return <OfficeFeeManagement />;
+                return <DashboardHome onTabChange={setActiveTab} />;
         }
     };
 
@@ -156,8 +165,8 @@ const OfficeDashboard = () => {
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar relative bg-gray-50">
-                    <div className="max-w-7xl mx-auto pb-20">
+                <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:px-6 lg:py-6 custom-scrollbar relative bg-gray-50">
+                    <div className="w-full max-w-[98%] 2xl:max-w-[1600px] mx-auto pb-20">
                         {renderContent()}
                     </div>
                 </div>
