@@ -57,6 +57,7 @@ const OfficeFeeManagement = () => {
         recordFeePayment, 
         deleteFeePayment, 
         updateFeePayment, 
+        clearAllFeePayments,
         updateStudent,
         sendStudentFeeNotification 
     } = useData();
@@ -793,6 +794,24 @@ const OfficeFeeManagement = () => {
         }
     };
 
+    // Reset all fee payment records (for fresh Excel re-upload)
+    const handleResetAllFeePayments = async () => {
+        const confirmed = await showConfirm(
+            '⚠️ Reset All Fee Payment Records?',
+            'This will delete ALL recorded fee payments in the database so you can perform a fresh Excel re-upload. Student profiles will NOT be deleted.',
+            'danger'
+        );
+        if (!confirmed) return;
+
+        try {
+            const count = await clearAllFeePayments();
+            showAlert('Reset Complete', `Successfully deleted ${count} payment record(s). You can now re-upload your Excel file cleanly!`, 'success');
+        } catch (err) {
+            console.error('Error resetting fee payments:', err);
+            showAlert('Error', 'Failed to clear fee payments: ' + err.message, 'error');
+        }
+    };
+
     // PDF Receipt Generator
     const generatePrintablePDFReceipt = (receiptObj) => {
         if (!receiptObj) return;
@@ -1312,6 +1331,14 @@ const OfficeFeeManagement = () => {
                             title="Clean duplicate payment entries caused by repeated CSV uploads"
                         >
                             Clean Duplicate Payments
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleResetAllFeePayments}
+                            className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-red-200/80 shadow-2xs transition-all cursor-pointer"
+                            title="Delete all current payment records to start fresh before uploading Excel"
+                        >
+                            Reset All Payments
                         </button>
                     </div>
                 </div>

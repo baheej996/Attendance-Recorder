@@ -2467,6 +2467,20 @@ export const DataProvider = ({ children }) => {
             await updateDoc(doc(db, 'feePayments', paymentId), payload);
             setFeePayments(prev => prev.map(p => p.id === paymentId ? { ...p, ...payload } : p));
         },
+        clearAllFeePayments: async () => {
+            const snap = await getDocs(collection(db, 'feePayments'));
+            const docs = snap.docs;
+            if (docs.length === 0) return 0;
+            
+            for (let i = 0; i < docs.length; i += 500) {
+                const batch = writeBatch(db);
+                const chunk = docs.slice(i, i + 500);
+                chunk.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+            setFeePayments([]);
+            return docs.length;
+        },
         sendStudentFeeNotification: async (studentId, title, body, remainingDues = 0) => {
             const payload = {
                 title: title || '⚠️ Fee Payment Due Notice',
