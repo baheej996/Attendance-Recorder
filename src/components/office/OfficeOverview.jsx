@@ -257,15 +257,15 @@ const OfficeOverview = ({ onTabChange }) => {
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Top Banner Header */}
-            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-white border border-gray-200/80 p-6 rounded-2xl shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-emerald-400" /> Office Accounts Portal
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200/80 uppercase tracking-wider flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-indigo-600" /> Office Accounts Portal
                         </span>
                     </div>
-                    <h2 className="text-2xl font-black mt-2 tracking-tight">Financial Overview & Payment Analytics</h2>
-                    <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                    <h2 className="text-2xl font-black mt-2 tracking-tight text-gray-900">Financial Overview & Payment Analytics</h2>
+                    <p className="text-xs text-gray-500 font-medium mt-1 max-w-2xl">
                         Monitor revenue collection metrics, payment mode distributions, monthly trends, and outstanding dues across all classes.
                     </p>
                 </div>
@@ -273,13 +273,13 @@ const OfficeOverview = ({ onTabChange }) => {
                 <div className="flex flex-wrap items-center gap-2.5">
                     <button
                         onClick={() => onTabChange && onTabChange('fees')}
-                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95"
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
                     >
                         <CreditCard className="w-4 h-4" /> Go to Fee Collection
                     </button>
                     <button
                         onClick={exportOverviewPDF}
-                        className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border border-white/15 transition-all cursor-pointer"
+                        className="px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-gray-200 shadow-2xs transition-all cursor-pointer"
                     >
                         <Download className="w-4 h-4" /> PDF Report
                     </button>
