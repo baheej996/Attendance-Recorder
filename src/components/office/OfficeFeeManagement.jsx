@@ -37,7 +37,8 @@ import {
     Upload,
     FileSpreadsheet,
     Lock,
-    Unlock
+    Unlock,
+    Loader2
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import jsPDF from 'jspdf';
@@ -526,6 +527,7 @@ const OfficeFeeManagement = () => {
 
     // Bulk Fee Payments CSV Upload Handler
     const [uploadingCSV, setUploadingCSV] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, percent: 0 });
 
     const handleBulkCSVUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -535,6 +537,8 @@ const OfficeFeeManagement = () => {
         e.target.value = '';
 
         setUploadingCSV(true);
+        setUploadProgress({ current: 0, total: 0, percent: 0 });
+
         try {
             const rows = await parseCSV(file, 'fee_payments');
             if (!rows || rows.length === 0) {
@@ -542,6 +546,7 @@ const OfficeFeeManagement = () => {
                 return;
             }
 
+            const totalRows = rows.length;
             let successCount = 0;
             let skippedCount = 0;
             const skippedLog = [];
@@ -552,7 +557,11 @@ const OfficeFeeManagement = () => {
                 inst3: 'Installment 3 (Final Term)'
             };
 
-            for (let i = 0; i < rows.length; i++) {
+            for (let i = 0; i < totalRows; i++) {
+                const current = i + 1;
+                const percent = Math.round((current / totalRows) * 100);
+                setUploadProgress({ current, total: totalRows, percent });
+
                 const r = rows[i];
                 const regNo = (r.registerno || r.regno || r['register no'] || r['reg no'] || '').trim().toLowerCase();
                 const sName = (r.studentname || r.name || r['student name'] || '').trim().toLowerCase();
@@ -749,6 +758,7 @@ const OfficeFeeManagement = () => {
             showAlert('CSV Error', 'Failed to parse CSV file: ' + err.message, 'error');
         } finally {
             setUploadingCSV(false);
+            setUploadProgress({ current: 0, total: 0, percent: 0 });
         }
     };
 
@@ -1314,15 +1324,35 @@ const OfficeFeeManagement = () => {
                         >
                             <Download className="w-4 h-4 text-indigo-600" /> Download Model Template
                         </button>
-                        <label className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95">
-                            <Upload className="w-4 h-4" /> {uploadingCSV ? 'Processing File...' : 'Upload Payments (CSV/Excel)'}
-                            <input
-                                type="file"
-                                accept=".csv, .xlsx, .xls"
-                                onChange={handleBulkCSVUpload}
-                                disabled={uploadingCSV}
-                                className="hidden"
-                            />
+                        <label className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer relative overflow-hidden ${
+                            uploadingCSV 
+                                ? 'bg-indigo-950 text-white cursor-wait border border-indigo-700' 
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95'
+                        }`}>
+                            {uploadingCSV ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin text-amber-400 z-10 shrink-0" />
+                                    <span className="z-10 font-bold whitespace-nowrap">
+                                        Uploading... {uploadProgress.percent}% ({uploadProgress.current}/{uploadProgress.total})
+                                    </span>
+                                    {/* Animated Fill Bar */}
+                                    <div 
+                                        className="absolute left-0 bottom-0 top-0 bg-indigo-600/60 transition-all duration-150 pointer-events-none"
+                                        style={{ width: `${uploadProgress.percent}%` }}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="w-4 h-4" /> Upload Payments (CSV/Excel)
+                                    <input
+                                        type="file"
+                                        accept=".csv, .xlsx, .xls"
+                                        onChange={handleBulkCSVUpload}
+                                        disabled={uploadingCSV}
+                                        className="hidden"
+                                    />
+                                </>
+                            )}
                         </label>
                     </div>
                 </div>
@@ -2858,6 +2888,31 @@ const OfficeFeeManagement = () => {
                                 </Button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Live Floating Upload Progress Card */}
+            {uploadingCSV && (
+                <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-4 rounded-2xl shadow-2xl border border-slate-700 max-w-sm w-full animate-in slide-in-from-bottom-5 duration-200">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                            <span className="text-xs font-bold tracking-wide">Processing Excel File</span>
+                        </div>
+                        <span className="text-xs font-black text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-800/50">
+                            {uploadProgress.percent}%
+                        </span>
+                    </div>
+                    <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden mb-2">
+                        <div 
+                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full transition-all duration-150 rounded-full"
+                            style={{ width: `${uploadProgress.percent}%` }}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                        <span>Row: <strong className="text-white">{uploadProgress.current}</strong> / {uploadProgress.total}</span>
+                        <span>Saving records...</span>
                     </div>
                 </div>
             )}
