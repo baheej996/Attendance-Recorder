@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { parseCSV } from '../utils/csvHelpers';
 import { safeLocalStorage } from '../utils/safeStorage';
 import { db } from '../firebase';
 import {
@@ -2502,9 +2504,311 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+    // --- Global Bulk Excel/CSV Upload Processing (Persists across navigation) ---
+    const [uploadingCSV, setUploadingCSV] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, percent: 0 });
+
+    const parseCSVDate = (str) => {
+        if (!str) return new Date().toISOString();
+        const ddmmyyyyMatch = String(str).match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+        if (ddmmyyyyMatch) {
+            const day = parseInt(ddmmyyyyMatch[1], 10);
+            const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+            const year = parseInt(ddmmyyyyMatch[3], 10);
+            const dateObj = new Date(year, month, day);
+            if (!isNaN(dateObj.getTime())) {
+                return dateObj.toISOString();
+            }
+        }
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString();
+        }
+        return new Date().toISOString();
+    };
+
+    const handleBulkCSVUpload = async (file, showAlert) => {
+        if (!file) return;
+
+        setUploadingCSV(true);
+        setUploadProgress({ current: 0, total: 0, percent: 0 });
+
+        try {
+            const rows = await parseCSV(file, 'fee_payments');
+            if (!rows || rows.length === 0) {
+                if (showAlert) showAlert('CSV Empty', 'The selected CSV file contains no data rows.', 'warning');
+                return;
+            }
+
+            const totalRows = rows.length;
+            let successCount = 0;
+            let skippedCount = 0;
+            const skippedLog = [];
+
+            const instNames = {
+                inst1: 'Installment 1 (Admission)',
+                inst2: 'Installment 2 (Mid-Term)',
+                inst3: 'Installment 3 (Final Term)'
+            };
+
+            const studentPoolList = (allStudents && allStudents.length > 0) ? allStudents : (students || []);
+            const activeStudents = studentPoolList.filter(s => s.status === 'Active' || s.status === 'active' || s.status === 'Payment Pending');
+
+            for (let i = 0; i < totalRows; i++) {
+                const current = i + 1;
+                const percent = Math.round((current / totalRows) * 100);
+                setUploadProgress({ current, total: totalRows, percent });
+
+                const r = rows[i];
+                const regNo = (r.registerno || r.regno || r['register no'] || r['reg no'] || '').trim().toLowerCase();
+                const sName = (r.studentname || r.name || r['student name'] || '').trim().toLowerCase();
+
+                if (!regNo && !sName) {
+                    skippedCount++;
+                    continue;
+                }
+
+                const matchedStudent = activeStudents.find(s => {
+                    const sReg = (s.registerNo || '').trim().toLowerCase();
+                    const sN = (s.name || '').trim().toLowerCase();
+                    if (regNo && sReg === regNo) return true;
+                    if (sName && sN === sName) return true;
+                    return false;
+                });
+
+                if (!matchedStudent) {
+                    skippedCount++;
+                    skippedLog.push(`Row ${i + 2}: Student not found (${regNo || sName})`);
+                    continue;
+                }
+
+                const rawMode = (r.paymentmode || r.mode || r['payment mode'] || 'Cash').trim();
+                let paymentMode = 'Cash';
+                if (/upi|gpay|phonepe/i.test(rawMode)) paymentMode = 'UPI';
+                else if (/bank|neft|imps|transfer/i.test(rawMode)) paymentMode = 'Bank Transfer';
+                else if (/cheque|check/i.test(rawMode)) paymentMode = 'Cheque';
+                else paymentMode = 'Cash';
+
+                const rawYearStr = String(r.academicyear || r['academic year'] || r.year || '').trim();
+                let academicYear = '2026-2027';
+                if (rawYearStr.includes('2025-2026') || rawYearStr.includes('2025')) academicYear = '2025-2026';
+                else if (rawYearStr.includes('2024-2025') || rawYearStr.includes('2024')) academicYear = '2024-2025';
+                else if (rawYearStr.includes('2026-2027') || rawYearStr.includes('2026')) academicYear = '2026-2027';
+                else if (rawYearStr) academicYear = rawYearStr;
+
+                const rawDate = r.paymentdate || r['payment date'] || r.date || r.createdat || r['created at'];
+                const paymentDate = parseCSVDate(rawDate);
+                const remarks = r.remarks || 'Bulk CSV Import';
+
+                const studentClassObj = (classes || []).find(c => c.id === matchedStudent.classId);
+                const classNameStr = studentClassObj ? `${studentClassObj.name}-${studentClassObj.division}` : (matchedStudent.className || 'N/A');
+
+                // 1. Process ApplicableAmount if present
+                const rawApplicable = r.applicableamount || r['applicable amount'] || r['applicable_amount'] || r.applicableAmount;
+                const appAmount = Number(rawApplicable);
+                if (!isNaN(appAmount) && appAmount > 0) {
+                    const part = Math.floor(appAmount / 3);
+                    const remainder = appAmount - (part * 2);
+                    const feeStructPayload = {
+                        targetType: 'student',
+                        targetId: matchedStudent.id,
+                        totalAmount: appAmount,
+                        sumInstallments: appAmount,
+                        installments: {
+                            inst1: { amount: part, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
+                            inst2: { amount: part, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
+                            inst3: { amount: remainder, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
+                        },
+                        updatedAt: new Date().toISOString()
+                    };
+                    try {
+                        const docRef = doc(db, 'feeStructures', matchedStudent.id);
+                        await setDoc(docRef, { ...feeStructPayload, id: matchedStudent.id, updatedAt: new Date().toISOString() }, { merge: true });
+                        setFeeStructures(prev => {
+                            const existing = prev.find(f => f.id === matchedStudent.id);
+                            if (existing) {
+                                return prev.map(f => f.id === matchedStudent.id ? { ...f, ...feeStructPayload } : f);
+                            } else {
+                                return [...prev, { id: matchedStudent.id, ...feeStructPayload }];
+                            }
+                        });
+                    } catch (e) {
+                        console.error('Error updating fee structure for student:', matchedStudent.id, e);
+                    }
+                }
+
+                // Check 3 separate installment columns
+                const valInst1 = Number(r.installment1 || r['installment 1'] || r['installment_1'] || r.inst1 || r['inst 1'] || 0);
+                const valInst2 = Number(r.installment2 || r['installment 2'] || r['installment_2'] || r.inst2 || r['inst 2'] || 0);
+                const valInst3 = Number(r.installment3 || r['installment 3'] || r['installment_3'] || r.inst3 || r['inst 3'] || 0);
+
+                const hasMultiInst = (!isNaN(valInst1) && valInst1 > 0) || (!isNaN(valInst2) && valInst2 > 0) || (!isNaN(valInst3) && valInst3 > 0);
+
+                if (hasMultiInst) {
+                    const instItems = [
+                        { key: 'inst1', amount: valInst1 },
+                        { key: 'inst2', amount: valInst2 },
+                        { key: 'inst3', amount: valInst3 }
+                    ];
+
+                    for (const instItem of instItems) {
+                        if (!isNaN(instItem.amount) && instItem.amount > 0) {
+                            const payload = {
+                                studentId: matchedStudent.id,
+                                studentName: matchedStudent.name,
+                                registerNo: matchedStudent.registerNo || 'N/A',
+                                classId: matchedStudent.classId || '',
+                                className: classNameStr,
+                                installmentKey: instItem.key,
+                                installmentName: instNames[instItem.key] || instItem.key,
+                                amountPaid: instItem.amount,
+                                paymentMode,
+                                academicYear,
+                                paymentDate,
+                                remarks,
+                                receivedBy: 'Office Accountant (CSV)'
+                            };
+
+                            const existingPayment = (feePayments || []).find(p => 
+                                p.studentId === matchedStudent.id && 
+                                p.installmentKey === instItem.key && 
+                                (p.academicYear || '2026-2027') === academicYear
+                            );
+
+                            try {
+                                if (existingPayment) {
+                                    const payRef = doc(db, 'feePayments', existingPayment.id);
+                                    await updateDoc(payRef, { ...payload, updatedAt: new Date().toISOString() });
+                                    setFeePayments(prev => prev.map(p => p.id === existingPayment.id ? { ...p, ...payload } : p));
+                                } else {
+                                    const year = new Date().getFullYear();
+                                    const randomNum = Math.floor(1000 + Math.random() * 9000);
+                                    const receiptId = payload.receiptId || `REC-${year}-${randomNum}`;
+                                    const fullPayload = { ...payload, receiptId, createdAt: new Date().toISOString() };
+                                    const docRef = await addDoc(collection(db, 'feePayments'), fullPayload);
+                                    setFeePayments(prev => [...prev, { ...fullPayload, id: docRef.id }]);
+                                }
+                                successCount++;
+                            } catch (err) {
+                                console.error(`Failed to record ${instItem.key} for row ${i + 2}:`, err);
+                                skippedCount++;
+                                skippedLog.push(`Row ${i + 2}: Error saving payment for ${instItem.key}`);
+                            }
+                        }
+                    }
+                } else {
+                    const rawAmount = r.amountpaid || r.amount || r['amount paid'] || r['amount'];
+                    const amount = Number(rawAmount);
+
+                    if (isNaN(amount) || amount <= 0) {
+                        if (isNaN(appAmount) || appAmount <= 0) {
+                            skippedCount++;
+                            skippedLog.push(`Row ${i + 2}: Invalid amount (${rawAmount})`);
+                        }
+                        continue;
+                    }
+
+                    const rawInst = (r.installmentkey || r.installment || r['installment key'] || r['installment'] || 'inst1').trim().toLowerCase();
+                    let installmentKey = 'inst1';
+                    if (rawInst.includes('2') || rawInst.includes('mid')) installmentKey = 'inst2';
+                    else if (rawInst.includes('3') || rawInst.includes('final')) installmentKey = 'inst3';
+
+                    const payload = {
+                        studentId: matchedStudent.id,
+                        studentName: matchedStudent.name,
+                        registerNo: matchedStudent.registerNo || 'N/A',
+                        classId: matchedStudent.classId || '',
+                        className: classNameStr,
+                        installmentKey,
+                        installmentName: instNames[installmentKey] || installmentKey,
+                        amountPaid: amount,
+                        paymentMode,
+                        academicYear,
+                        paymentDate,
+                        remarks,
+                        receivedBy: 'Office Accountant (CSV)'
+                    };
+
+                    const existingPayment = (feePayments || []).find(p => 
+                        p.studentId === matchedStudent.id && 
+                        p.installmentKey === installmentKey && 
+                        (p.academicYear || '2026-2027') === academicYear
+                    );
+
+                    try {
+                        if (existingPayment) {
+                            const payRef = doc(db, 'feePayments', existingPayment.id);
+                            await updateDoc(payRef, { ...payload, updatedAt: new Date().toISOString() });
+                            setFeePayments(prev => prev.map(p => p.id === existingPayment.id ? { ...p, ...payload } : p));
+                        } else {
+                            const year = new Date().getFullYear();
+                            const randomNum = Math.floor(1000 + Math.random() * 9000);
+                            const receiptId = payload.receiptId || `REC-${year}-${randomNum}`;
+                            const fullPayload = { ...payload, receiptId, createdAt: new Date().toISOString() };
+                            const docRef = await addDoc(collection(db, 'feePayments'), fullPayload);
+                            setFeePayments(prev => [...prev, { ...fullPayload, id: docRef.id }]);
+                        }
+                        successCount++;
+                    } catch (err) {
+                        console.error(`Failed to record row ${i + 2}:`, err);
+                        skippedCount++;
+                        skippedLog.push(`Row ${i + 2}: System error saving payment`);
+                    }
+                }
+            }
+
+            if (successCount > 0) {
+                let msg = `Successfully imported and recorded ${successCount} fee payment(s)!`;
+                if (skippedCount > 0) {
+                    msg += ` (${skippedCount} item(s) skipped: check reg numbers / amounts)`;
+                }
+                if (showAlert) showAlert('CSV Upload Complete', msg, 'success');
+            } else {
+                if (showAlert) showAlert('CSV Upload Failed', `Could not process payments. ${skippedLog.slice(0, 3).join('; ')}`, 'error');
+            }
+        } catch (err) {
+            console.error('Error parsing CSV file:', err);
+            if (showAlert) showAlert('CSV Error', 'Failed to parse CSV file: ' + err.message, 'error');
+        } finally {
+            setUploadingCSV(false);
+            setUploadProgress({ current: 0, total: 0, percent: 0 });
+        }
+    };
+
+    const combinedValue = {
+        ...value,
+        uploadingCSV,
+        uploadProgress,
+        handleBulkCSVUpload
+    };
+
     return (
-        <DataContext.Provider value={value}>
+        <DataContext.Provider value={combinedValue}>
             {children}
+            {/* Global Persistent Floating Upload Progress Card (persists across tab/page navigation) */}
+            {uploadingCSV && (
+                <div className="fixed bottom-6 right-6 z-[9999] bg-slate-900 text-white px-5 py-4 rounded-2xl shadow-2xl border border-slate-700 max-w-sm w-full animate-in slide-in-from-bottom-5 duration-200">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                            <span className="text-xs font-bold tracking-wide">Processing Excel Import</span>
+                        </div>
+                        <span className="text-xs font-black text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-800/50">
+                            {uploadProgress.percent}%
+                        </span>
+                    </div>
+                    <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden mb-2">
+                        <div 
+                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full transition-all duration-150 rounded-full"
+                            style={{ width: `${uploadProgress.percent}%` }}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                        <span>Row: <strong className="text-white">{uploadProgress.current}</strong> / {uploadProgress.total}</span>
+                        <span>Saving records...</span>
+                    </div>
+                </div>
+            )}
         </DataContext.Provider>
     );
 };
