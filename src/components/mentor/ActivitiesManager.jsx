@@ -11,97 +11,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 
-// Racing Competition Leaderboard Helpers
-const ChequeredFlag = ({ className = "w-5 h-5" }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M4 3V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M4 4H19V14H4V4Z" fill="#1E293B" />
-        <rect x="4" y="4" width="3.75" height="2.5" fill="#FFFFFF" />
-        <rect x="11.5" y="4" width="3.75" height="2.5" fill="#FFFFFF" />
-        <rect x="7.75" y="6.5" width="3.75" height="2.5" fill="#FFFFFF" />
-        <rect x="15.25" y="6.5" width="3.75" height="2.5" fill="#FFFFFF" />
-        <rect x="4" y="9" width="3.75" height="2.5" fill="#FFFFFF" />
-        <rect x="11.5" y="9" width="3.75" height="2.5" fill="#FFFFFF" />
-        <rect x="7.75" y="11.5" width="3.75" height="2.5" fill="#FFFFFF" />
-        <rect x="15.25" y="11.5" width="3.75" height="2.5" fill="#FFFFFF" />
-    </svg>
-);
-
-const RaceCarIcon = ({ color = "#F59E0B", className = "w-8 h-5" }) => (
-    <svg className={className} viewBox="0 0 64 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="8" y="21" width="12" height="6" rx="2.5" fill="#0F172A" />
-        <rect x="44" y="21" width="12" height="6" rx="2.5" fill="#0F172A" />
-        <circle cx="14" cy="24" r="2" fill="#94A3B8" />
-        <circle cx="50" cy="24" r="2" fill="#94A3B8" />
-        <path d="M4 21C4 18.5 6 17 9 17L16 16C19 12 24 9 32 9L44 9C49 9 55 12 58 16L60 18C62 19 63 20 63 21.5C63 23 61.5 24 59 24H7C5 24 4 22.5 4 21Z" fill={color} />
-        <path d="M22 15L27 10.5C28.5 9.5 31 9.5 34 9.5H43C46.5 9.5 49 11.5 50.5 15H22Z" fill="#020617" opacity="0.8" />
-        <path d="M28 11.5L31 10.5H41L46 14.5H25L28 11.5Z" fill="#E2E8F0" opacity="0.45" />
-        <path d="M59 19.5C61 19.5 63 19.5 64 20.5C63 21.5 61 21.5 59 21.5Z" fill="#FEF08A" />
-        <rect x="4" y="19" width="2.5" height="3" rx="1" fill="#EF4444" />
-    </svg>
-);
-
-const getRankTheme = (rank) => {
-    switch (rank) {
-        case 1:
-            return {
-                badgeBg: 'bg-amber-400 text-amber-950 shadow-md shadow-amber-200 border-amber-300 font-extrabold',
-                carColor: '#F59E0B',
-                barGradient: 'from-amber-400 via-amber-300 to-yellow-300',
-                percentBadge: 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold shadow-2xs',
-                rowBg: 'bg-gradient-to-r from-amber-50/90 via-amber-50/40 to-white border-amber-200/90 shadow-xs hover:shadow-md'
-            };
-        case 2:
-            return {
-                badgeBg: 'bg-blue-100 text-blue-700 border-blue-200 font-bold',
-                carColor: '#2563EB',
-                barGradient: 'from-blue-500 via-blue-400 to-cyan-400',
-                percentBadge: 'bg-blue-100 text-blue-900 border-blue-200 font-extrabold shadow-2xs',
-                rowBg: 'bg-white border-slate-200/80 hover:border-blue-300 hover:shadow-xs'
-            };
-        case 3:
-            return {
-                badgeBg: 'bg-orange-100 text-orange-700 border-orange-200 font-bold',
-                carColor: '#F97316',
-                barGradient: 'from-orange-500 via-orange-400 to-amber-400',
-                percentBadge: 'bg-orange-100 text-orange-900 border-orange-200 font-extrabold shadow-2xs',
-                rowBg: 'bg-white border-slate-200/80 hover:border-orange-300 hover:shadow-xs'
-            };
-        case 4:
-            return {
-                badgeBg: 'bg-purple-100 text-purple-700 border-purple-200 font-bold',
-                carColor: '#A855F7',
-                barGradient: 'from-purple-500 via-purple-400 to-indigo-400',
-                percentBadge: 'bg-purple-100 text-purple-900 border-purple-200 font-extrabold shadow-2xs',
-                rowBg: 'bg-white border-slate-200/80 hover:border-purple-300 hover:shadow-xs'
-            };
-        case 5:
-            return {
-                badgeBg: 'bg-emerald-100 text-emerald-700 border-emerald-200 font-bold',
-                carColor: '#10B981',
-                barGradient: 'from-emerald-500 via-emerald-400 to-teal-400',
-                percentBadge: 'bg-emerald-100 text-emerald-900 border-emerald-200 font-extrabold shadow-2xs',
-                rowBg: 'bg-white border-slate-200/80 hover:border-emerald-300 hover:shadow-xs'
-            };
-        case 6:
-            return {
-                badgeBg: 'bg-pink-100 text-pink-700 border-pink-200 font-bold',
-                carColor: '#EC4899',
-                barGradient: 'from-pink-500 via-pink-400 to-rose-400',
-                percentBadge: 'bg-pink-100 text-pink-900 border-pink-200 font-extrabold shadow-2xs',
-                rowBg: 'bg-white border-slate-200/80 hover:border-pink-300 hover:shadow-xs'
-            };
-        default:
-            return {
-                badgeBg: 'bg-slate-100 text-slate-700 border-slate-200 font-bold',
-                carColor: '#64748B',
-                barGradient: 'from-slate-400 via-slate-300 to-gray-300',
-                percentBadge: 'bg-slate-100 text-slate-800 border-slate-200 font-extrabold shadow-2xs',
-                rowBg: 'bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-xs'
-            };
-    }
-};
-
 const ActivitiesManager = () => {
     const {
         activities, addActivity, updateActivity, deleteActivity, toggleActivityStatus,
@@ -187,24 +96,10 @@ const ActivitiesManager = () => {
     const [showMentorLeaderboard, setShowMentorLeaderboard] = useState(false);
     const [selectedLeaderboardMonth, setSelectedLeaderboardMonth] = useState(() => format(new Date(), 'yyyy-MM'));
     const [isExpandedLeaderboardOpen, setIsExpandedLeaderboardOpen] = useState(false);
-    const [animateRace, setAnimateRace] = useState(false);
     const [globalActivities, setGlobalActivities] = useState([]);
     const [globalSubmissions, setGlobalSubmissions] = useState([]);
     const [globalStudents, setGlobalStudents] = useState([]);
     const reportDropdownRef = useRef(null);
-
-    // Trigger car racing animation when Leaderboard Modal opens
-    useEffect(() => {
-        if (isExpandedLeaderboardOpen) {
-            setAnimateRace(false);
-            const timer = setTimeout(() => {
-                setAnimateRace(true);
-            }, 120);
-            return () => clearTimeout(timer);
-        } else {
-            setAnimateRace(false);
-        }
-    }, [isExpandedLeaderboardOpen, selectedLeaderboardMonth]);
 
     // Fetch global activities, submissions & students across all classes when Leaderboard is active
     useEffect(() => {
@@ -1902,178 +1797,116 @@ const ActivitiesManager = () => {
                     </Card>
                 </div>
             )}
-            {/* Expanded Mentor Leaderboard Breakdown Modal - Race to Target Theme */}
+            {/* Expanded Mentor Leaderboard Breakdown Modal */}
             {isExpandedLeaderboardOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/70 backdrop-blur-md animate-fadeIn">
-                    <div className="bg-slate-50/90 rounded-3xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col border border-white/60">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-100">
                         {/* Modal Header */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between px-6 py-5 border-b border-slate-200/80 bg-white shadow-2xs gap-4">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-slate-900 text-amber-400 rounded-2xl shadow-md flex items-center justify-center">
-                                    <ChequeredFlag className="w-7 h-7 text-white" />
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border-b border-gray-100 bg-gradient-to-r from-amber-50 via-orange-50/40 to-yellow-50/30 gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl shadow-xs">
+                                    <Trophy className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-black tracking-widest text-slate-400 uppercase">MENTOR</span>
-                                        <span className="bg-amber-100 text-amber-900 text-[10px] font-black tracking-wider px-2 py-0.5 rounded-full uppercase border border-amber-200">
-                                            RACE TO THE TARGET 🏁
-                                        </span>
-                                    </div>
-                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                                        LEADERBOARD
-                                    </h2>
-                                    <p className="text-xs text-slate-500 font-medium">Detailed monthly activity submission stats per mentor</p>
+                                    <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Mentor Leaderboard Breakdown</h2>
+                                    <p className="text-xs text-gray-500 font-medium">Detailed monthly activity submission stats per mentor</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between md:justify-end gap-3">
-                                <div className="hidden lg:flex flex-col text-right mr-2">
-                                    <span className="text-[10px] font-extrabold text-slate-400 tracking-wider uppercase">MOTTO</span>
-                                    <span className="text-xs font-black text-slate-600 italic">SAME GOAL, BIGGER IMPACT</span>
-                                </div>
+                            <div className="flex items-center gap-3">
+                                <select
+                                    value={selectedLeaderboardMonth}
+                                    onChange={(e) => setSelectedLeaderboardMonth(e.target.value)}
+                                    className="bg-white border border-gray-200 text-sm font-bold rounded-xl px-3 py-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-700 shadow-xs cursor-pointer"
+                                >
+                                    {monthOptions.map(opt => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
 
-                                <div className="flex items-center gap-2.5">
-                                    <div className="flex items-center gap-2 bg-slate-100 border border-slate-200/80 rounded-2xl px-3 py-1.5 shadow-2xs">
-                                        <Calendar className="w-4 h-4 text-slate-500" />
-                                        <select
-                                            value={selectedLeaderboardMonth}
-                                            onChange={(e) => setSelectedLeaderboardMonth(e.target.value)}
-                                            className="bg-transparent text-xs font-bold focus:outline-none text-slate-800 cursor-pointer"
-                                        >
-                                            {monthOptions.map(opt => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <button 
-                                        onClick={() => setIsExpandedLeaderboardOpen(false)} 
-                                        className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-2xl transition-all"
-                                        title="Close Leaderboard"
-                                    >
-                                        <XCircle className="w-6 h-6" />
-                                    </button>
-                                </div>
+                                <button 
+                                    onClick={() => setIsExpandedLeaderboardOpen(false)} 
+                                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                                >
+                                    <XCircle className="w-6 h-6" />
+                                </button>
                             </div>
                         </div>
 
-                        {/* Column Labels */}
-                        <div className="hidden md:grid grid-cols-12 px-6 py-2.5 bg-slate-100/70 border-b border-slate-200/60 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                            <div className="col-span-1 text-center">#</div>
-                            <div className="col-span-3">MENTOR</div>
-                            <div className="col-span-6 text-center">PROGRESS (COMPLETED / TARGET)</div>
-                            <div className="col-span-2 text-right">% COMPLETE</div>
-                        </div>
-
-                        {/* Modal Content - Animated Race Tracks */}
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-slate-50/50">
+                        {/* Modal Content Table */}
+                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/40">
                             {mentorLeaderboardData.length === 0 ? (
-                                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
-                                    <Trophy className="w-14 h-14 text-slate-300 mx-auto mb-3" />
-                                    <h3 className="text-lg font-bold text-slate-800">No Racing Data Available</h3>
-                                    <p className="text-slate-500 text-sm mt-1">No mentor activity metrics recorded for this selected month.</p>
+                                <div className="text-center py-12">
+                                    <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <h3 className="text-lg font-bold text-gray-900">No Data Available</h3>
+                                    <p className="text-gray-500 text-sm">No mentor activity metrics found for this month.</p>
                                 </div>
                             ) : (
-                                mentorLeaderboardData.map((m) => {
-                                    const theme = getRankTheme(m.rank);
-                                    const displayPercentage = Math.min(Math.max(m.percentage, 0), 100);
-
-                                    return (
-                                        <div 
-                                            key={m.id}
-                                            className={`rounded-2xl p-3 sm:p-4 border transition-all duration-300 ${theme.rowBg}`}
-                                        >
-                                            <div className="flex flex-col md:grid md:grid-cols-12 items-center gap-3 sm:gap-4">
-                                                {/* Rank Badge */}
-                                                <div className="col-span-1 flex items-center justify-start md:justify-center w-full md:w-auto">
-                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm ${theme.badgeBg}`}>
-                                                        {m.rank === 1 ? (
-                                                            <span className="text-base" title="1st Place Champion">👑</span>
-                                                        ) : (
-                                                            <span>{m.rank}</span>
-                                                        )}
-                                                    </div>
-                                                    {/* Mobile Mentor Name next to rank */}
-                                                    <div className="md:hidden ml-3">
-                                                        <div className="font-extrabold text-slate-900 text-sm">{m.name}</div>
-                                                        <div className="text-xs text-slate-400 font-normal">{m.email}</div>
-                                                    </div>
-                                                    {/* Mobile % Badge */}
-                                                    <div className="md:hidden ml-auto">
-                                                        <span className={`px-3 py-1 rounded-xl text-xs font-black border ${theme.percentBadge}`}>
-                                                            {m.percentage}%
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Mentor Info (Desktop) */}
-                                                <div className="hidden md:block col-span-3 pr-2">
-                                                    <div className="font-black text-slate-900 text-sm truncate">{m.name}</div>
-                                                    <div className="text-xs font-medium text-slate-400 truncate">{m.email}</div>
-                                                </div>
-
-                                                {/* Animated Race Track (Progress Bar + Car) */}
-                                                <div className="col-span-6 w-full flex items-center gap-3">
-                                                    {/* Track Lane */}
-                                                    <div className="relative flex-1 h-9 bg-slate-200/90 rounded-full flex items-center px-2 overflow-hidden border border-slate-300/60 shadow-inner">
-                                                        {/* Track Center Dashed Line */}
-                                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-b-2 border-dashed border-white/70 pointer-events-none" />
-
-                                                        {/* Filled Progress Bar */}
-                                                        <div 
-                                                            className={`absolute left-0 top-0 bottom-0 rounded-full bg-gradient-to-r ${theme.barGradient} transition-all duration-1000 ease-out shadow-xs`}
-                                                            style={{ width: `${animateRace ? displayPercentage : 0}%` }}
-                                                        />
-
-                                                        {/* Race Car SVG */}
-                                                        <div 
-                                                            className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out z-10 filter drop-shadow-md"
-                                                            style={{ 
-                                                                left: animateRace 
-                                                                    ? `calc(${Math.max(displayPercentage, 2)}% - ${displayPercentage > 10 ? '30px' : '10px'})`
-                                                                    : '4px' 
-                                                            }}
-                                                        >
-                                                            <RaceCarIcon color={theme.carColor} className="w-8 h-5" />
-                                                        </div>
-
-                                                        {/* Finish Line Flag */}
-                                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center bg-slate-900/10 p-0.5 rounded-xs backdrop-blur-2xs">
-                                                            <ChequeredFlag className="w-4 h-4 text-slate-800" />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Submissions count: Completed / Expected */}
-                                                    <div className="text-xs font-black text-slate-700 font-mono whitespace-nowrap bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200/80">
-                                                        {m.totalCompleted} / {m.totalExpected}
-                                                    </div>
-                                                </div>
-
-                                                {/* Completion Percentage (Desktop) */}
-                                                <div className="hidden md:flex col-span-2 justify-end">
-                                                    <span className={`px-3.5 py-1.5 rounded-xl text-sm font-black border ${theme.percentBadge}`}>
-                                                        {m.percentage}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })
+                                <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-xs bg-white">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-gray-900 text-white text-xs uppercase font-bold tracking-wider">
+                                            <tr>
+                                                <th className="p-4 w-16 text-center">Rank</th>
+                                                <th className="p-4">Mentor Name</th>
+                                                <th className="p-4 text-center">
+                                                    {format(new Date(selectedLeaderboardMonth + '-01'), 'MMMM')} Completed Submissions
+                                                </th>
+                                                <th className="p-4 text-center">
+                                                    {format(new Date(selectedLeaderboardMonth + '-01'), 'MMMM')} Total Expected
+                                                </th>
+                                                <th className="p-4 text-right">Actual Completion %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200 text-sm">
+                                            {mentorLeaderboardData.map((m, idx) => {
+                                                const isTop3 = m.rank <= 3;
+                                                return (
+                                                    <tr 
+                                                        key={m.id} 
+                                                        className={`transition-colors hover:bg-amber-50/40 ${
+                                                            isTop3 ? 'bg-amber-50/20' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                                                        }`}
+                                                    >
+                                                        <td className="p-4 text-center">
+                                                            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-black ${
+                                                                m.rank === 1 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                                                                m.rank === 2 ? 'bg-slate-100 text-slate-700 border border-slate-300' :
+                                                                m.rank === 3 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
+                                                                'bg-gray-100 text-gray-600'
+                                                            }`}>
+                                                                {m.rank}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-4 font-bold text-gray-900">
+                                                            <div>
+                                                                <div className="font-extrabold text-gray-900 text-base">{m.name}</div>
+                                                                <div className="text-xs font-normal text-gray-400">{m.email}</div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-center font-mono font-extrabold text-gray-900 text-base">
+                                                            {m.totalCompleted}
+                                                        </td>
+                                                        <td className="p-4 text-center font-mono font-extrabold text-gray-600 text-base">
+                                                            {m.totalExpected}
+                                                        </td>
+                                                        <td className="p-4 text-right">
+                                                            <span className={`inline-block px-3 py-1.5 rounded-lg font-black text-sm ${
+                                                                m.percentage >= 50 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                                                m.percentage >= 25 ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                                                'bg-gray-100 text-gray-700 border border-gray-200'
+                                                            }`}>
+                                                                {m.percentage}%
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             )}
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="px-6 py-3.5 border-t border-slate-200/80 bg-white flex flex-col sm:flex-row items-center justify-between text-xs font-extrabold text-slate-400 gap-2">
-                            <div className="flex items-center gap-2">
-                                <Trophy className="w-4 h-4 text-amber-500" />
-                                <span className="tracking-wider uppercase">MENTORS MAKE A DIFFERENCE</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="tracking-wider uppercase">KEEP MOVING FORWARD</span>
-                                <ChequeredFlag className="w-4 h-4 text-slate-800" />
-                            </div>
                         </div>
                     </div>
                 </div>
