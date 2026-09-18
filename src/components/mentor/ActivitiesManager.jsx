@@ -93,7 +93,7 @@ const ActivitiesManager = () => {
     const [pendingReportConfig, setPendingReportConfig] = useState(null);
     const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
     const [leaderboardClassId, setLeaderboardClassId] = useState('');
-    const [showMentorLeaderboard, setShowMentorLeaderboard] = useState(true);
+    const [showMentorLeaderboard, setShowMentorLeaderboard] = useState(false);
     const [selectedLeaderboardMonth, setSelectedLeaderboardMonth] = useState(() => format(new Date(), 'yyyy-MM'));
     const [isExpandedLeaderboardOpen, setIsExpandedLeaderboardOpen] = useState(false);
     const [globalActivities, setGlobalActivities] = useState([]);
@@ -103,7 +103,7 @@ const ActivitiesManager = () => {
 
     // Fetch global activities, submissions & students across all classes when Leaderboard is active
     useEffect(() => {
-        if (!showMentorLeaderboard) return;
+        if (!showMentorLeaderboard && !isExpandedLeaderboardOpen) return;
 
         let isMounted = true;
         const fetchGlobalData = async () => {
@@ -128,7 +128,7 @@ const ActivitiesManager = () => {
         return () => {
             isMounted = false;
         };
-    }, [showMentorLeaderboard, selectedLeaderboardMonth]);
+    }, [showMentorLeaderboard, isExpandedLeaderboardOpen, selectedLeaderboardMonth]);
 
     // Close Report Dropdown on outside click
     useEffect(() => {
@@ -980,17 +980,26 @@ const ActivitiesManager = () => {
                         <span className="text-sm font-medium text-gray-700 select-none cursor-pointer" onClick={toggleSelectAll}>Select All</span>
                     </div>
 
-                    {/* Sort Dropdown */}
+                    {/* Sort Dropdown & Mentor Leaderboard Button */}
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500 hidden sm:inline">Sort by:</span>
                         <select
                             value={sortOrder}
                             onChange={(e) => setSortOrder(e.target.value)}
-                            className="text-sm border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 cursor-pointer py-1.5 pl-3 pr-8"
+                            className="text-sm border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 cursor-pointer py-1.5 pl-3 pr-8 bg-white text-gray-700 font-medium"
                         >
                             <option value="newest">Newest</option>
                             <option value="oldest">Oldest</option>
                         </select>
+                        <button
+                            type="button"
+                            onClick={() => setIsExpandedLeaderboardOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-lg text-sm font-bold shadow-2xs transition-all cursor-pointer active:scale-95 ml-1"
+                            title="Open Floating Mentor Leaderboard"
+                        >
+                            <Trophy className="w-4 h-4 text-amber-500" />
+                            <span>Mentor Leaderboard</span>
+                        </button>
                     </div>
                 </div>
             )}
