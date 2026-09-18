@@ -597,6 +597,31 @@ const OfficeFeeManagement = () => {
                 const studentClassObj = (classes || []).find(c => c.id === matchedStudent.classId);
                 const classNameStr = studentClassObj ? `${studentClassObj.name}-${studentClassObj.division}` : (matchedStudent.className || 'N/A');
 
+                // 1. Process ApplicableAmount if present in Excel row to update Student Fee Structure
+                const rawApplicable = r.applicableamount || r['applicable amount'] || r['applicable_amount'] || r.applicableAmount;
+                const appAmount = Number(rawApplicable);
+                if (!isNaN(appAmount) && appAmount > 0) {
+                    const part = Math.floor(appAmount / 3);
+                    const remainder = appAmount - (part * 2);
+                    const feeStructPayload = {
+                        targetType: 'student',
+                        targetId: matchedStudent.id,
+                        totalAmount: appAmount,
+                        sumInstallments: appAmount,
+                        installments: {
+                            inst1: { amount: part, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
+                            inst2: { amount: part, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
+                            inst3: { amount: remainder, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
+                        },
+                        updatedAt: new Date().toISOString()
+                    };
+                    try {
+                        await saveFeeStructure(matchedStudent.id, feeStructPayload);
+                    } catch (e) {
+                        console.error('Error updating fee structure for student:', matchedStudent.id, e);
+                    }
+                }
+
                 // Check 3 separate installment columns (Installment1, Installment2, Installment3 / Installment 1, Installment 2, Installment 3 / Inst1, Inst2, Inst3)
                 const valInst1 = Number(r.installment1 || r['installment 1'] || r['installment_1'] || r.inst1 || r['inst 1'] || 0);
                 const valInst2 = Number(r.installment2 || r['installment 2'] || r['installment_2'] || r.inst2 || r['inst 2'] || 0);
@@ -629,8 +654,21 @@ const OfficeFeeManagement = () => {
                                 receivedBy: 'Office Accountant (CSV)'
                             };
 
+                            // Upsert check: see if a payment already exists for this student + installment + academic year
+                            const existingPayment = (feePayments || []).find(p => 
+                                p.studentId === matchedStudent.id && 
+                                p.installmentKey === instItem.key && 
+                                (p.academicYear || '2026-2027') === academicYear
+                            );
+
                             try {
-                                await recordFeePayment(payload);
+                                if (existingPayment) {
+                                    if (typeof updateFeePayment === 'function') {
+                                        await updateFeePayment(existingPayment.id, payload);
+                                    }
+                                } else {
+                                    await recordFeePayment(payload);
+                                }
                                 successCount++;
                             } catch (err) {
                                 console.error(`Failed to record ${instItem.key} for row ${i + 2}:`, err);
@@ -645,8 +683,10 @@ const OfficeFeeManagement = () => {
                     const amount = Number(rawAmount);
 
                     if (isNaN(amount) || amount <= 0) {
-                        skippedCount++;
-                        skippedLog.push(`Row ${i + 2}: Invalid amount (${rawAmount})`);
+                        if (isNaN(appAmount) || appAmount <= 0) {
+                            skippedCount++;
+                            skippedLog.push(`Row ${i + 2}: Invalid amount (${rawAmount})`);
+                        }
                         continue;
                     }
 
@@ -671,8 +711,20 @@ const OfficeFeeManagement = () => {
                         receivedBy: 'Office Accountant (CSV)'
                     };
 
+                    const existingPayment = (feePayments || []).find(p => 
+                        p.studentId === matchedStudent.id && 
+                        p.installmentKey === installmentKey && 
+                        (p.academicYear || '2026-2027') === academicYear
+                    );
+
                     try {
-                        await recordFeePayment(payload);
+                        if (existingPayment) {
+                            if (typeof updateFeePayment === 'function') {
+                                await updateFeePayment(existingPayment.id, payload);
+                            }
+                        } else {
+                            await recordFeePayment(payload);
+                        }
                         successCount++;
                     } catch (err) {
                         console.error(`Failed to record row ${i + 2}:`, err);
@@ -696,6 +748,48 @@ const OfficeFeeManagement = () => {
             showAlert('CSV Error', 'Failed to parse CSV file: ' + err.message, 'error');
         } finally {
             setUploadingCSV(false);
+        }
+    };
+
+    // Clean duplicate payments caused by repeated CSV uploads
+    const handleCleanDuplicatePayments = async () => {
+        if (!feePayments || feePayments.length === 0) {
+            showAlert('No Payments', 'There are no payment records in the database.', 'info');
+            return;
+        }
+
+        const confirmed = await showConfirm(
+            'Remove Duplicate Payments?',
+            'This will scan for duplicate payment records (same student, installment, amount, and academic year) created by repeated CSV uploads and keep only 1 record per installment.',
+            'warning'
+        );
+        if (!confirmed) return;
+
+        const seenMap = new Map();
+        const duplicateIds = [];
+
+        for (const p of feePayments) {
+            const key = `${p.studentId}_${p.installmentKey || 'inst1'}_${p.academicYear || '2026-2027'}_${p.amountPaid}`;
+            if (seenMap.has(key)) {
+                duplicateIds.push(p.id);
+            } else {
+                seenMap.set(key, p.id);
+            }
+        }
+
+        if (duplicateIds.length === 0) {
+            showAlert('No Duplicates', 'No duplicate payment records were found.', 'info');
+            return;
+        }
+
+        try {
+            for (const id of duplicateIds) {
+                await deleteFeePayment(id);
+            }
+            showAlert('Clean Up Complete', `Successfully removed ${duplicateIds.length} duplicate payment record(s)!`, 'success');
+        } catch (err) {
+            console.error('Error cleaning duplicates:', err);
+            showAlert('Error', 'Failed to remove some duplicate payment records.', 'error');
         }
     };
 
@@ -1211,6 +1305,14 @@ const OfficeFeeManagement = () => {
                                 className="hidden"
                             />
                         </label>
+                        <button
+                            type="button"
+                            onClick={handleCleanDuplicatePayments}
+                            className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-amber-200/80 shadow-2xs transition-all cursor-pointer"
+                            title="Clean duplicate payment entries caused by repeated CSV uploads"
+                        >
+                            Clean Duplicate Payments
+                        </button>
                     </div>
                 </div>
 
