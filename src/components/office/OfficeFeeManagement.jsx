@@ -178,16 +178,13 @@ const OfficeFeeManagement = () => {
         handleAutoSplit(num);
     };
 
-    // Apply Concession / Discount Preset (e.g. 20% for 2nd/3rd Sibling from ₹12,700)
-    const applyConcessionPreset = (discountPercent) => {
-        const base = 12700;
-        const discountAmount = Math.round((base * discountPercent) / 100);
-        const finalFee = Math.max(0, base - discountAmount);
-        setTotalFeeAmount(finalFee);
-        handleAutoSplit(finalFee);
+    // Apply Fee Preset (1st Student ₹12,700, 2nd Student ₹10,160, 3rd Student ₹8,000)
+    const applyFeeAmountPreset = (amount, label) => {
+        setTotalFeeAmount(amount);
+        handleAutoSplit(amount);
         showAlert(
-            'Concession Applied',
-            `${discountPercent}% Sibling Concession applied! New Total Fee: ₹${finalFee.toLocaleString()} (Saving ₹${discountAmount.toLocaleString()})`,
+            'Fee Preset Applied',
+            `${label} applied! New Total Fee: ₹${amount.toLocaleString()}`,
             'success'
         );
     };
@@ -1870,19 +1867,26 @@ const OfficeFeeManagement = () => {
                                         <Users className="w-4 h-4 text-emerald-600" /> Sibling Household Detected! ({detectedSiblings.length} Children in Family)
                                     </span>
                                     <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                                        20% Concession Available
+                                        Sibling Concession Available
                                     </span>
                                 </div>
                                 <p className="text-xs text-gray-700">
                                     Family members enrolled: <span className="font-bold">{detectedSiblings.map(s => s.name).join(', ')}</span>
                                 </p>
-                                <div className="pt-1">
+                                <div className="pt-1 flex flex-wrap gap-2">
                                     <Button
                                         type="button"
-                                        onClick={() => applyConcessionPreset(20)}
+                                        onClick={() => applyFeeAmountPreset(10160, '2nd Student Fee (₹10,160)')}
                                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 gap-1 shadow-sm"
                                     >
-                                        <Sparkles className="w-3.5 h-3.5" /> Apply 20% Sibling Concession (₹10,160 Total)
+                                        <Sparkles className="w-3.5 h-3.5" /> Apply 2nd Student Fee (₹10,160)
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={() => applyFeeAmountPreset(8000, '3rd Student Fee (₹8,000)')}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold py-1.5 px-3 gap-1 shadow-sm"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" /> Apply 3rd Student Fee (₹8,000)
                                     </Button>
                                 </div>
                             </div>
@@ -1911,46 +1915,36 @@ const OfficeFeeManagement = () => {
 
                             {/* Quick Concession Presets */}
                             <div>
-                                <p className="text-[11px] font-bold text-gray-600 mb-1.5">Quick Fee & Concession Presets:</p>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <p className="text-[11px] font-bold text-gray-600 mb-1.5">Tuition Fee & Concession Presets:</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                     <button
                                         type="button"
-                                        onClick={() => applyConcessionPreset(0)}
-                                        className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
+                                        onClick={() => applyFeeAmountPreset(12700, '1st Student Fee (₹12,700)')}
+                                        className={`p-2.5 rounded-xl text-xs font-extrabold border transition-all text-center ${
                                             totalFeeAmount === 12700 ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                                         }`}
                                     >
-                                        Full Fee (₹12,700)
+                                        1st Student (₹12,700)
                                     </button>
 
                                     <button
                                         type="button"
-                                        onClick={() => applyConcessionPreset(20)}
-                                        className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
+                                        onClick={() => applyFeeAmountPreset(10160, '2nd Student Fee (₹10,160)')}
+                                        className={`p-2.5 rounded-xl text-xs font-extrabold border transition-all text-center ${
                                             totalFeeAmount === 10160 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
                                         }`}
                                     >
-                                        20% Sibling (₹10,160)
+                                        2nd Student (₹10,160)
                                     </button>
 
                                     <button
                                         type="button"
-                                        onClick={() => applyConcessionPreset(30)}
-                                        className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
-                                            totalFeeAmount === 8890 ? 'bg-purple-600 text-white border-purple-600 shadow-xs' : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+                                        onClick={() => applyFeeAmountPreset(8000, '3rd Student Fee (₹8,000)')}
+                                        className={`p-2.5 rounded-xl text-xs font-extrabold border transition-all text-center ${
+                                            totalFeeAmount === 8000 ? 'bg-purple-600 text-white border-purple-600 shadow-xs' : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
                                         }`}
                                     >
-                                        30% Sibling (₹8,890)
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => applyConcessionPreset(50)}
-                                        className={`p-2 rounded-lg text-xs font-extrabold border transition-all text-center ${
-                                            totalFeeAmount === 6350 ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
-                                        }`}
-                                    >
-                                        50% Half Fee (₹6,350)
+                                        3rd Student (₹8,000)
                                     </button>
                                 </div>
                             </div>

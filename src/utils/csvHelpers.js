@@ -9,6 +9,7 @@ export const generateCSVTemplate = async (type) => {
         worksheet.columns = [
             { header: 'RegisterNo', key: 'registerNo', width: 15 },
             { header: 'StudentName', key: 'studentName', width: 30 },
+            { header: 'ApplicableAmount', key: 'applicableAmount', width: 18 },
             { header: 'Installment1', key: 'inst1', width: 15 },
             { header: 'Installment2', key: 'inst2', width: 15 },
             { header: 'Installment3', key: 'inst3', width: 15 },
@@ -21,30 +22,45 @@ export const generateCSVTemplate = async (type) => {
         worksheet.addRow({
             registerNo: '26M01B07',
             studentName: 'RAIZA THOTTUNGAL SHIHAB',
+            applicableAmount: 12700,
             inst1: 4233,
-            inst2: 0,
-            inst3: 0,
+            inst2: 4233,
+            inst3: 4234,
             paymentMode: 'Cash',
             paymentDate: '30-05-2026',
             academicYear: '2026-2027 (Current Year)',
-            remarks: 'Admission fee'
+            remarks: '1st Student (Full Fee)'
         });
 
         worksheet.addRow({
             registerNo: '26M01B03',
             studentName: 'MUHAMMED ZAYNI AL DAHLAN',
-            inst1: 4233,
-            inst2: 4233,
-            inst3: 0,
+            applicableAmount: 10160,
+            inst1: 3386,
+            inst2: 3386,
+            inst3: 3388,
             paymentMode: 'UPI',
             paymentDate: '30-05-2026',
-            academicYear: '2025-2026 (Previous Year)',
-            remarks: 'Previous year arrear payment'
+            academicYear: '2026-2027 (Current Year)',
+            remarks: '2nd Sibling concession'
         });
 
-        // Add Data Validation dropdown list for PaymentMode column F & AcademicYear column G (F2:G500)
+        worksheet.addRow({
+            registerNo: '26M01B09',
+            studentName: 'FATIMA ZAHRA',
+            applicableAmount: 8000,
+            inst1: 2666,
+            inst2: 2666,
+            inst3: 2668,
+            paymentMode: 'Bank Transfer',
+            paymentDate: '30-05-2026',
+            academicYear: '2026-2027 (Current Year)',
+            remarks: '3rd Sibling concession'
+        });
+
+        // Add Data Validation dropdown list for PaymentMode column G & AcademicYear column I (G2:I500)
         for (let row = 2; row <= 500; row++) {
-            const cellMode = worksheet.getCell(`F${row}`);
+            const cellMode = worksheet.getCell(`G${row}`);
             cellMode.dataValidation = {
                 type: 'list',
                 allowBlank: true,
@@ -54,7 +70,7 @@ export const generateCSVTemplate = async (type) => {
                 error: 'Please select Cash, UPI, Bank Transfer, or Cheque from the dropdown list.'
             };
 
-            const cellYear = worksheet.getCell(`G${row}`);
+            const cellYear = worksheet.getCell(`I${row}`);
             cellYear.dataValidation = {
                 type: 'list',
                 allowBlank: true,
