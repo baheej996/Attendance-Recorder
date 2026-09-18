@@ -1324,22 +1324,6 @@ const OfficeFeeManagement = () => {
                                 className="hidden"
                             />
                         </label>
-                        <button
-                            type="button"
-                            onClick={handleCleanDuplicatePayments}
-                            className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-amber-200/80 shadow-2xs transition-all cursor-pointer"
-                            title="Clean duplicate payment entries caused by repeated CSV uploads"
-                        >
-                            Clean Duplicate Payments
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleResetAllFeePayments}
-                            className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-red-200/80 shadow-2xs transition-all cursor-pointer"
-                            title="Delete all current payment records to start fresh before uploading Excel"
-                        >
-                            Reset All Payments
-                        </button>
                     </div>
                 </div>
 
