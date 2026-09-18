@@ -945,15 +945,23 @@ const OfficeFeeManagement = () => {
     }, [duesListData, duesCurrentPage]);
 
     // Send Reminders Actions
-    const handleSendWebsiteNotification = async (item) => {
-        const msg = `Dear ${item.student.name}, your fee payment of INR ${item.remainingDues.toLocaleString()} is currently pending. Please arrange payment with the Office.`;
-        try {
-            await sendStudentFeeNotification(item.student.id, '⚠️ Fee Payment Due Notice', msg, item.remainingDues);
-            showAlert('Notice Dispatched', `Website Fee Notice Popup sent to ${item.student.name}! It will pop up when they sign into their student account.`, 'success');
-        } catch (err) {
-            console.error('Error sending in-app notification:', err);
-            showAlert('Error', 'Failed to send website notice popup.', 'error');
-        }
+    const handleSendWebsiteNotification = (item) => {
+        if (!item?.student) return;
+
+        showConfirm(
+            'Send Website Notice Popup',
+            `Are you sure you want to send a Fee Payment Due Notice popup to ${item.student.name} (Reg: ${item.student.registerNo || 'N/A'})? This will display as an alert popup when they sign into their Student Panel. Dues: INR ${item.remainingDues.toLocaleString()}`,
+            async () => {
+                const msg = `Dear ${item.student.name}, your fee payment of INR ${item.remainingDues.toLocaleString()} is currently pending. Please arrange payment with the Office.`;
+                try {
+                    await sendStudentFeeNotification(item.student.id, '⚠️ Fee Payment Due Notice', msg, item.remainingDues);
+                    showAlert('Notice Dispatched', `Website Fee Notice Popup sent to ${item.student.name}! It will pop up when they sign into their student account.`, 'success');
+                } catch (err) {
+                    console.error('Error sending in-app notification:', err);
+                    showAlert('Error', 'Failed to send website notice popup.', 'error');
+                }
+            }
+        );
     };
 
     const getWhatsAppReminderLink = (item) => {
