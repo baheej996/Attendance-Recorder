@@ -1,0 +1,603 @@
+import React, { useMemo } from 'react';
+import { 
+    DollarSign, 
+    Wallet, 
+    TrendingUp, 
+    AlertCircle, 
+    CheckCircle, 
+    CreditCard, 
+    Receipt, 
+    PieChart as PieChartIcon, 
+    BarChart3, 
+    ArrowUpRight, 
+    Download, 
+    Users, 
+    Calendar,
+    ChevronRight,
+    Sparkles
+} from 'lucide-react';
+import { 
+    ResponsiveContainer, 
+    AreaChart, 
+    Area, 
+    BarChart, 
+    Bar, 
+    PieChart, 
+    Pie, 
+    Cell, 
+    XAxis, 
+    YAxis, 
+    Tooltip, 
+    Legend, 
+    CartesianGrid 
+} from 'recharts';
+import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useData } from '../../contexts/DataContext';
+import { useUI } from '../../contexts/UIContext';
+import { Card } from '../ui/Card';
+
+const OfficeOverview = ({ onTabChange }) => {
+    const { 
+        allStudents, 
+        students, 
+        classes, 
+        feeStructures, 
+        feePayments 
+    } = useData();
+
+    const { showAlert } = useUI();
+
+    // Active Student Pool
+    const studentPool = useMemo(() => {
+        const list = (allStudents && allStudents.length > 0) ? allStudents : (students || []);
+        return list.filter(s => s.status === 'Active' || s.status === 'active' || s.status === 'Payment Pending');
+    }, [allStudents, students]);
+
+    // Helper: Get student fee structure
+    const getStudentFeeStructure = (student) => {
+        if (!student) return { totalAmount: 12700 };
+        // 1. Direct student structure
+        const studentStruct = (feeStructures || []).find(f => f.targetId === student.id || f.id === student.id);
+        if (studentStruct) return studentStruct;
+
+        // 2. Class fee structure
+        if (student.classId) {
+            const classStruct = (feeStructures || []).find(f => f.targetId === student.classId || f.id === student.classId);
+            if (classStruct) return classStruct;
+        }
+
+        // 3. Fallback default
+        return { totalAmount: 12700 };
+    };
+
+    // Calculate High Level Financial Metrics
+    const financialKPIs = useMemo(() => {
+        const totalExpectedRevenue = studentPool.reduce((sum, s) => {
+            const struct = getStudentFeeStructure(s);
+            return sum + Number(struct.totalAmount || 12700);
+        }, 0);
+
+        const totalCollectedRevenue = (feePayments || []).reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+        const totalPendingRevenue = Math.max(0, totalExpectedRevenue - totalCollectedRevenue);
+        const collectionRate = totalExpectedRevenue > 0 ? Math.round((totalCollectedRevenue / totalExpectedRevenue) * 100) : 0;
+        
+        const totalReceiptsCount = (feePayments || []).length;
+        const avgPaymentAmount = totalReceiptsCount > 0 ? Math.round(totalCollectedRevenue / totalReceiptsCount) : 0;
+
+        return {
+            totalExpectedRevenue,
+            totalCollectedRevenue,
+            totalPendingRevenue,
+            collectionRate,
+            totalReceiptsCount,
+            avgPaymentAmount
+        };
+    }, [studentPool, feeStructures, feePayments]);
+
+    // Monthly Collection Trend Chart Data
+    const monthlyTrendChartData = useMemo(() => {
+        const monthsMap = {};
+        (feePayments || []).forEach(p => {
+            const d = new Date(p.paymentDate || p.createdAt || Date.now());
+            const mKey = format(d, 'MMM yyyy');
+            if (!monthsMap[mKey]) monthsMap[mKey] = { name: mKey, amount: 0, count: 0 };
+            monthsMap[mKey].amount += Number(p.amountPaid || 0);
+            monthsMap[mKey].count += 1;
+        });
+        const list = Object.values(monthsMap);
+        return list.length > 0 ? list : [{ name: 'Current Month', amount: financialKPIs.totalCollectedRevenue, count: financialKPIs.totalReceiptsCount }];
+    }, [feePayments, financialKPIs]);
+
+    // Payment Mode Distribution Pie Chart Data
+    const paymentModeChartData = useMemo(() => {
+        const modeCounts = {
+            'Cash': 0,
+            'UPI': 0,
+            'Bank Transfer': 0,
+            'Cheque': 0
+        };
+
+        (feePayments || []).forEach(p => {
+            const m = (p.paymentMode || 'Cash').trim();
+            if (modeCounts[m] !== undefined) {
+                modeCounts[m] += Number(p.amountPaid || 0);
+            } else {
+                modeCounts['Cash'] += Number(p.amountPaid || 0);
+            }
+        });
+
+        const COLORS = {
+            'Cash': '#10B981',
+            'UPI': '#4F46E5',
+            'Bank Transfer': '#F59E0B',
+            'Cheque': '#EC4899'
+        };
+
+        return Object.entries(modeCounts)
+            .filter(([_, val]) => val > 0)
+            .map(([name, value]) => ({
+                name,
+                value,
+                color: COLORS[name] || '#6B7280'
+            }));
+    }, [feePayments]);
+
+    // Academic Year Distribution Data
+    const academicYearChartData = useMemo(() => {
+        let currentYearSum = 0;
+        let previousYearSum = 0;
+
+        (feePayments || []).forEach(p => {
+            const yr = p.academicYear || '2026-2027';
+            if (yr === '2026-2027') {
+                currentYearSum += Number(p.amountPaid || 0);
+            } else {
+                previousYearSum += Number(p.amountPaid || 0);
+            }
+        });
+
+        return [
+            { name: 'Current Year (2026-2027)', amount: currentYearSum },
+            { name: 'Previous Arrears (2025-2026 & Older)', amount: previousYearSum }
+        ];
+    }, [feePayments]);
+
+    // Class Collection Progress List
+    const classCollectionProgress = useMemo(() => {
+        const list = (classes || []).map(cls => {
+            const clsStudents = studentPool.filter(s => s.classId === cls.id);
+            const expectedFee = clsStudents.reduce((sum, s) => {
+                const struct = getStudentFeeStructure(s);
+                return sum + Number(struct.totalAmount || 12700);
+            }, 0);
+
+            const collectedFee = (feePayments || []).filter(p => {
+                const s = studentPool.find(st => st.id === p.studentId);
+                return s ? s.classId === cls.id : p.className?.includes(`${cls.name}-${cls.division}`);
+            }).reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+
+            const rate = expectedFee > 0 ? Math.min(100, Math.round((collectedFee / expectedFee) * 100)) : 0;
+
+            return {
+                id: cls.id,
+                name: `Class ${cls.name}-${cls.division}`,
+                studentCount: clsStudents.length,
+                expectedFee,
+                collectedFee,
+                pendingFee: Math.max(0, expectedFee - collectedFee),
+                rate
+            };
+        });
+
+        return list.sort((a, b) => b.collectedFee - a.collectedFee).slice(0, 6);
+    }, [classes, studentPool, feeStructures, feePayments]);
+
+    // Recent 5 Transactions Stream
+    const recentTransactions = useMemo(() => {
+        return (feePayments || []).slice(0, 5);
+    }, [feePayments]);
+
+    // PDF Report Generator
+    const exportOverviewPDF = () => {
+        const doc = new jsPDF();
+        
+        doc.setFillColor(30, 41, 59);
+        doc.rect(0, 0, 210, 36, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        doc.setFont(undefined, 'bold');
+        doc.text('OFFICE FINANCIAL OVERVIEW REPORT', 14, 16);
+
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.text(`Real-Time Payment Summary • Generated on: ${format(new Date(), 'PPP p')}`, 14, 26);
+
+        // KPI Summary Box
+        autoTable(doc, {
+            startY: 42,
+            head: [['Financial KPI Metric', 'Value']],
+            body: [
+                ['Total Expected Annual Revenue', `INR ${financialKPIs.totalExpectedRevenue.toLocaleString()}`],
+                ['Total Collected Revenue So Far', `INR ${financialKPIs.totalCollectedRevenue.toLocaleString()} (${financialKPIs.collectionRate}%)`],
+                ['Total Pending Outstandings / Dues', `INR ${financialKPIs.totalPendingRevenue.toLocaleString()}`],
+                ['Total Receipt Transactions Issued', `${financialKPIs.totalReceiptsCount} Receipts`],
+                ['Average Payment Amount Per Transaction', `INR ${financialKPIs.avgPaymentAmount.toLocaleString()}`]
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229] },
+            styles: { fontSize: 10, cellPadding: 3 }
+        });
+
+        // Class Breakdown Table
+        const classTableRows = classCollectionProgress.map(c => [
+            c.name,
+            `${c.studentCount} Students`,
+            `INR ${c.expectedFee.toLocaleString()}`,
+            `INR ${c.collectedFee.toLocaleString()}`,
+            `INR ${c.pendingFee.toLocaleString()}`,
+            `${c.rate}%`
+        ]);
+
+        autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + 10,
+            head: [['Class Name', 'Enrolled', 'Expected Fee', 'Collected', 'Pending Dues', 'Rate %']],
+            body: classTableRows,
+            theme: 'striped',
+            headStyles: { fillColor: [16, 185, 129] },
+            styles: { fontSize: 9, cellPadding: 3 }
+        });
+
+        doc.save(`Office_Financial_Overview_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+        showAlert('PDF Exported', 'Office Financial Overview Report downloaded successfully!', 'success');
+    };
+
+    return (
+        <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Top Banner Header */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-emerald-400" /> Office Accounts Portal
+                        </span>
+                    </div>
+                    <h2 className="text-2xl font-black mt-2 tracking-tight">Financial Overview & Payment Analytics</h2>
+                    <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                        Monitor revenue collection metrics, payment mode distributions, monthly trends, and outstanding dues across all classes.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                        onClick={() => onTabChange && onTabChange('fees')}
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-95"
+                    >
+                        <CreditCard className="w-4 h-4" /> Go to Fee Collection
+                    </button>
+                    <button
+                        onClick={exportOverviewPDF}
+                        className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 border border-white/15 transition-all cursor-pointer"
+                    >
+                        <Download className="w-4 h-4" /> PDF Report
+                    </button>
+                </div>
+            </div>
+
+            {/* 4 Financial KPI Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Total Expected Revenue */}
+                <Card className="p-5 bg-white border border-gray-100 shadow-sm rounded-2xl relative overflow-hidden group hover:border-indigo-200 transition-all">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-extrabold uppercase text-gray-400 tracking-wider">Total Expected Fee</p>
+                            <h3 className="text-2xl font-black text-gray-900 mt-1 font-mono">
+                                ₹{financialKPIs.totalExpectedRevenue.toLocaleString()}
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <DollarSign className="w-6 h-6" />
+                        </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+                        <Users className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>{studentPool.length} active enrolled students</span>
+                    </div>
+                </Card>
+
+                {/* 2. Total Collected Revenue */}
+                <Card className="p-5 bg-emerald-50/40 border border-emerald-100 shadow-sm rounded-2xl relative overflow-hidden group hover:border-emerald-200 transition-all">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-extrabold uppercase text-emerald-800 tracking-wider">Collected Revenue</p>
+                            <h3 className="text-2xl font-black text-emerald-700 mt-1 font-mono">
+                                ₹{financialKPIs.totalCollectedRevenue.toLocaleString()}
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl group-hover:scale-110 transition-transform">
+                            <Wallet className="w-6 h-6" />
+                        </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                        <span className="text-xs font-extrabold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">
+                            {financialKPIs.collectionRate}% Collected
+                        </span>
+                        <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-0.5">
+                            <TrendingUp className="w-3.5 h-3.5" /> Real-time
+                        </span>
+                    </div>
+                </Card>
+
+                {/* 3. Pending Dues */}
+                <Card className="p-5 bg-rose-50/40 border border-rose-100 shadow-sm rounded-2xl relative overflow-hidden group hover:border-rose-200 transition-all">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-extrabold uppercase text-rose-800 tracking-wider">Pending Dues</p>
+                            <h3 className="text-2xl font-black text-rose-600 mt-1 font-mono">
+                                ₹{financialKPIs.totalPendingRevenue.toLocaleString()}
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-rose-100 text-rose-700 rounded-xl group-hover:scale-110 transition-transform">
+                            <AlertCircle className="w-6 h-6" />
+                        </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                        <span className="text-xs font-extrabold px-2 py-0.5 bg-rose-100 text-rose-800 rounded-md">
+                            {100 - financialKPIs.collectionRate}% Uncollected
+                        </span>
+                        <button
+                            onClick={() => onTabChange && onTabChange('fees')}
+                            className="text-[11px] font-bold text-rose-700 hover:underline flex items-center gap-0.5 cursor-pointer"
+                        >
+                            View Defaulters <ChevronRight className="w-3 h-3" />
+                        </button>
+                    </div>
+                </Card>
+
+                {/* 4. Total Receipts Issued */}
+                <Card className="p-5 bg-white border border-gray-100 shadow-sm rounded-2xl relative overflow-hidden group hover:border-indigo-200 transition-all">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-extrabold uppercase text-gray-400 tracking-wider">Issued Receipts</p>
+                            <h3 className="text-2xl font-black text-gray-900 mt-1 font-mono">
+                                {financialKPIs.totalReceiptsCount} <span className="text-xs text-gray-500 font-sans font-bold">Transactions</span>
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <Receipt className="w-6 h-6" />
+                        </div>
+                    </div>
+                    <div className="mt-3 text-xs font-semibold text-gray-500">
+                        <span>Avg Payment: </span>
+                        <span className="font-extrabold text-gray-900 font-mono">₹{financialKPIs.avgPaymentAmount.toLocaleString()}</span>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Graphs Grid Row 1: Monthly Trend & Payment Mode Pie Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Monthly Revenue Trend Area Chart */}
+                <Card className="lg:col-span-8 p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4">
+                    <div className="flex justify-between items-center border-b pb-3">
+                        <div>
+                            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 text-indigo-600" /> Revenue Collection Trend Over Time
+                            </h3>
+                            <p className="text-xs text-gray-400">Monthly breakdown of fee payments collected</p>
+                        </div>
+                        <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg">
+                            Timeline Chart
+                        </span>
+                    </div>
+
+                    <div className="w-full h-72 min-w-0">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                            <AreaChart data={monthlyTrendChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="officeRevenueGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.35}/>
+                                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6B7280', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', fontWeight: 'bold', borderColor: '#E5E7EB' }} 
+                                    formatter={(val) => [`INR ${val.toLocaleString()}`, 'Collection']} 
+                                />
+                                <Area type="monotone" dataKey="amount" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#officeRevenueGrad)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+
+                {/* Payment Mode Breakdown Pie Chart */}
+                <Card className="lg:col-span-4 p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
+                    <div className="border-b pb-3">
+                        <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                            <PieChartIcon className="w-5 h-5 text-emerald-600" /> Payment Mode Split
+                        </h3>
+                        <p className="text-xs text-gray-400">Cash, UPI, Bank Transfer & Cheque</p>
+                    </div>
+
+                    {paymentModeChartData.length === 0 ? (
+                        <div className="py-12 text-center text-gray-400 text-xs italic">
+                            No payment transactions recorded yet.
+                        </div>
+                    ) : (
+                        <div className="w-full h-56 min-w-0">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                <PieChart>
+                                    <Pie
+                                        data={paymentModeChartData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={55}
+                                        outerRadius={80}
+                                        paddingAngle={4}
+                                        dataKey="value"
+                                    >
+                                        {paymentModeChartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip 
+                                        formatter={(val) => [`INR ${val.toLocaleString()}`, 'Amount']} 
+                                        contentStyle={{ borderRadius: '12px', fontWeight: 'bold' }} 
+                                    />
+                                    <Legend 
+                                        formatter={(value) => <span className="text-xs font-bold text-gray-700">{value}</span>} 
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
+
+                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-gray-500">
+                        <span>Total Tracked Modes:</span>
+                        <span className="font-extrabold text-gray-900">{paymentModeChartData.length} Modes</span>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Graphs Grid Row 2: Academic Year Split & Top Classes Leaderboard */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Academic Year Distribution Bar Chart */}
+                <Card className="lg:col-span-6 p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4">
+                    <div className="border-b pb-3 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                <BarChart3 className="w-5 h-5 text-indigo-600" /> Academic Year Revenue Split
+                            </h3>
+                            <p className="text-xs text-gray-400">Current 2026-2027 vs Previous Year Arrears</p>
+                        </div>
+                    </div>
+
+                    <div className="w-full h-60 min-w-0">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                            <BarChart data={academicYearChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6B7280', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={{ borderRadius: '12px', fontWeight: 'bold' }} formatter={(val) => [`INR ${val.toLocaleString()}`, 'Collection']} />
+                                <Bar dataKey="amount" fill="#4F46E5" radius={[8, 8, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+
+                {/* Top Class Collection Progress List */}
+                <Card className="lg:col-span-6 p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
+                    <div>
+                        <div className="border-b pb-3 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                    <CheckCircle className="w-5 h-5 text-emerald-600" /> Highest Revenue Classes
+                                </h3>
+                                <p className="text-xs text-gray-400">Collection progress by class</p>
+                            </div>
+                            <button
+                                onClick={() => onTabChange && onTabChange('fees')}
+                                className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                            >
+                                Full List <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 mt-3">
+                            {classCollectionProgress.length === 0 ? (
+                                <p className="text-xs text-gray-400 italic py-4 text-center">No class collection data available.</p>
+                            ) : (
+                                classCollectionProgress.map(cls => (
+                                    <div key={cls.id} className="space-y-1">
+                                        <div className="flex justify-between items-center text-xs font-bold">
+                                            <span className="text-gray-900">{cls.name} <span className="text-gray-400 font-normal">({cls.studentCount} Students)</span></span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono text-emerald-600">₹{cls.collectedFee.toLocaleString()}</span>
+                                                <span className={`px-2 py-0.5 rounded text-[10px] ${
+                                                    cls.rate >= 80 ? 'bg-emerald-50 text-emerald-700' : cls.rate >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
+                                                }`}>
+                                                    {cls.rate}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-500 ${
+                                                    cls.rate >= 80 ? 'bg-emerald-500' : cls.rate >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                                                }`}
+                                                style={{ width: `${cls.rate}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Recent Payments Stream */}
+            <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4">
+                <div className="flex justify-between items-center border-b pb-3">
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                            <Receipt className="w-5 h-5 text-indigo-600" /> Recent Payment Receipts Stream
+                        </h3>
+                        <p className="text-xs text-gray-400">Latest fee transactions recorded in system</p>
+                    </div>
+                    <button
+                        onClick={() => onTabChange && onTabChange('fees')}
+                        className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                    >
+                        Manage All Receipts <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+
+                <div className="divide-y divide-gray-100">
+                    {recentTransactions.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic py-6 text-center">No fee payments recorded yet.</p>
+                    ) : (
+                        recentTransactions.map(p => (
+                            <div key={p.id} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-gray-50/80 px-2 rounded-xl transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl font-mono text-xs font-bold">
+                                        #{p.receiptId}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-extrabold text-gray-900">{p.studentName}</p>
+                                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                                            <span>Reg: {p.registerNo || 'N/A'}</span>
+                                            <span>•</span>
+                                            <span>{p.className || 'N/A'}</span>
+                                            <span>•</span>
+                                            <span className="text-[11px]">{format(new Date(p.paymentDate || p.createdAt || Date.now()), 'dd MMM yyyy, p')}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 self-end sm:self-center">
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                        p.paymentMode === 'UPI' ? 'bg-indigo-50 text-indigo-700' :
+                                        p.paymentMode === 'Bank Transfer' ? 'bg-amber-50 text-amber-700' :
+                                        'bg-emerald-50 text-emerald-700'
+                                    }`}>
+                                        {p.paymentMode || 'Cash'}
+                                    </span>
+                                    <span className="font-mono font-black text-emerald-600 text-sm">
+                                        +₹{Number(p.amountPaid || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </Card>
+        </div>
+    );
+};
+
+export default OfficeOverview;

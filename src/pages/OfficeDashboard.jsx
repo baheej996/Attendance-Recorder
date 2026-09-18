@@ -5,7 +5,7 @@ import { useData } from '../contexts/DataContext';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 
 // Components
-import DashboardHome from './components/DashboardHome';
+import OfficeOverview from '../components/office/OfficeOverview';
 import OfficeFeeManagement from '../components/office/OfficeFeeManagement';
 import StudentManagement from './components/StudentManagement';
 import ClassManagement from './components/ClassManagement';
@@ -51,7 +51,7 @@ const OfficeDashboard = () => {
     const renderContent = () => {
         switch (activeTab) {
             case 'overview':
-                return <DashboardHome onTabChange={setActiveTab} />;
+                return <OfficeOverview onTabChange={setActiveTab} />;
             case 'fees':
                 return <OfficeFeeManagement />;
             case 'students':
@@ -61,7 +61,7 @@ const OfficeDashboard = () => {
             case 'mentors':
                 return <StudentManagement />;
             default:
-                return <DashboardHome onTabChange={setActiveTab} />;
+                return <OfficeOverview onTabChange={setActiveTab} />;
         }
     };
 
