@@ -1074,6 +1074,50 @@ const OfficeFeeManagement = () => {
     // -------------------------------------------------------------
     // TAB 4: FINANCIAL ANALYTICS & AUDIT REPORTS
     // -------------------------------------------------------------
+    const [ledgerSearchTerm, setLedgerSearchTerm] = useState('');
+    const [ledgerCurrentPage, setLedgerCurrentPage] = useState(1);
+    const LEDGER_ITEMS_PER_PAGE = 10;
+
+    useEffect(() => {
+        setLedgerCurrentPage(1);
+    }, [ledgerSearchTerm]);
+
+    const filteredLedgerPayments = useMemo(() => {
+        const list = feePayments || [];
+        if (!ledgerSearchTerm.trim()) return list;
+
+        const term = ledgerSearchTerm.toLowerCase().trim();
+        return list.filter(p => {
+            const studentName = (p.studentName || '').toLowerCase();
+            const regNo = (p.registerNo || '').toLowerCase();
+            const receiptId = String(p.receiptId || '').toLowerCase();
+            const className = (p.className || '').toLowerCase();
+            const paymentMode = (p.paymentMode || '').toLowerCase();
+            const academicYear = (p.academicYear || '').toLowerCase();
+            const installmentName = (p.installmentName || '').toLowerCase();
+            const remarks = (p.remarks || '').toLowerCase();
+
+            return (
+                studentName.includes(term) ||
+                regNo.includes(term) ||
+                receiptId.includes(term) ||
+                className.includes(term) ||
+                paymentMode.includes(term) ||
+                academicYear.includes(term) ||
+                installmentName.includes(term) ||
+                remarks.includes(term)
+            );
+        });
+    }, [feePayments, ledgerSearchTerm]);
+
+    const totalLedgerItems = filteredLedgerPayments.length;
+    const totalLedgerPages = Math.ceil(totalLedgerItems / LEDGER_ITEMS_PER_PAGE) || 1;
+
+    const paginatedLedgerPayments = useMemo(() => {
+        const start = (ledgerCurrentPage - 1) * LEDGER_ITEMS_PER_PAGE;
+        return filteredLedgerPayments.slice(start, start + LEDGER_ITEMS_PER_PAGE);
+    }, [filteredLedgerPayments, ledgerCurrentPage]);
+
     const overallFinancialKPIs = useMemo(() => {
         const totalExpectedRevenue = studentPool.reduce((sum, s) => {
             const struct = getStudentFeeStructure(s);
@@ -2342,16 +2386,31 @@ const OfficeFeeManagement = () => {
 
                     {/* All Transactions Audit & Deletion Table */}
                     <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
                             <div>
                                 <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                                     <Receipt className="w-5 h-5 text-emerald-600" /> Transaction Audit & Management Ledger
                                 </h3>
                                 <p className="text-xs text-gray-500">View, download receipts, or delete entered fee payment transactions</p>
                             </div>
-                            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200">
-                                Total Transactions: {(feePayments || []).length}
-                            </span>
+
+                            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                                {/* Search Bar for Ledger */}
+                                <div className="relative flex-1 sm:w-64">
+                                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search name, reg no, receipt ID..."
+                                        value={ledgerSearchTerm}
+                                        onChange={(e) => setLedgerSearchTerm(e.target.value)}
+                                        className="w-full pl-9 pr-3 py-1.5 text-xs font-semibold bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
+                                    />
+                                </div>
+
+                                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 whitespace-nowrap">
+                                    Total Transactions: {totalLedgerItems.toLocaleString()}
+                                </span>
+                            </div>
                         </div>
 
                         <div className="overflow-x-auto rounded-xl border border-gray-100">
@@ -2371,16 +2430,18 @@ const OfficeFeeManagement = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
-                                    {(feePayments || []).length === 0 ? (
+                                    {totalLedgerItems === 0 ? (
                                         <tr>
                                             <td colSpan="10" className="p-8 text-center text-gray-400 italic">
-                                                No fee payment transactions recorded yet.
+                                                No fee payment transactions matching search criteria.
                                             </td>
                                         </tr>
                                     ) : (
-                                        (feePayments || []).map((p, idx) => (
+                                        paginatedLedgerPayments.map((p, idx) => (
                                             <tr key={p.id} className="hover:bg-gray-50/80 transition-colors">
-                                                <td className="p-3 text-center font-bold text-gray-400">{idx + 1}</td>
+                                                <td className="p-3 text-center font-bold text-gray-400">
+                                                    {(ledgerCurrentPage - 1) * LEDGER_ITEMS_PER_PAGE + idx + 1}
+                                                </td>
                                                 <td className="p-3 font-mono font-bold text-indigo-600">#{p.receiptId}</td>
                                                 <td className="p-3 font-bold text-gray-900">
                                                     <div>{p.studentName}</div>
@@ -2435,6 +2496,63 @@ const OfficeFeeManagement = () => {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination Bar (10 Items Per Page) */}
+                        {totalLedgerItems > 0 && (
+                            <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div className="text-xs text-gray-500 font-medium">
+                                    Showing <span className="font-bold text-gray-900">{Math.min((ledgerCurrentPage - 1) * LEDGER_ITEMS_PER_PAGE + 1, totalLedgerItems)}</span> to{' '}
+                                    <span className="font-bold text-gray-900">{Math.min(ledgerCurrentPage * LEDGER_ITEMS_PER_PAGE, totalLedgerItems)}</span> of{' '}
+                                    <span className="font-extrabold text-indigo-900">{totalLedgerItems.toLocaleString()}</span> transactions
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={() => setLedgerCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={ledgerCurrentPage === 1}
+                                        className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs"
+                                        title="Previous Page"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: totalLedgerPages }, (_, i) => i + 1)
+                                            .filter(page => page === 1 || page === totalLedgerPages || Math.abs(page - ledgerCurrentPage) <= 1)
+                                            .map((page, index, array) => {
+                                                const prevPage = array[index - 1];
+                                                const showEllipsis = prevPage && page - prevPage > 1;
+
+                                                return (
+                                                    <React.Fragment key={page}>
+                                                        {showEllipsis && <span className="px-1 text-xs text-gray-400">...</span>}
+                                                        <button
+                                                            onClick={() => setLedgerCurrentPage(page)}
+                                                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                                                                ledgerCurrentPage === page
+                                                                    ? 'bg-indigo-600 text-white shadow-xs'
+                                                                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                                            }`}
+                                                        >
+                                                            {page}
+                                                        </button>
+                                                    </React.Fragment>
+                                                );
+                                            })
+                                        }
+                                    </div>
+
+                                    <button
+                                        onClick={() => setLedgerCurrentPage(prev => Math.min(prev + 1, totalLedgerPages))}
+                                        disabled={ledgerCurrentPage >= totalLedgerPages}
+                                        className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs"
+                                        title="Next Page"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </Card>
                 </div>
             )}
