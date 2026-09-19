@@ -13,6 +13,7 @@ import { clsx } from 'clsx';
 import { Modal } from '../../components/ui/Modal';
 import { StudentProfileModal } from '../../components/mentor/StudentProfileModal';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { ExportButtons } from '../../components/ui/ExportButtons';
 import { FileSpreadsheet, FileText } from 'lucide-react';
 
 const StudentManagement = ({ readOnly = false }) => {
@@ -633,14 +634,10 @@ const StudentManagement = ({ readOnly = false }) => {
                             <span className="hidden sm:inline">Statuses</span>
                         </Button>
                     )}
-                    <Button onClick={handleExportExcel} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-2" title="Export to Excel">
-                        <FileSpreadsheet className="w-4 h-4" />
-                        <span className="hidden sm:inline">Excel</span>
-                    </Button>
-                    <Button onClick={handleExportPDF} className="bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 flex items-center gap-2" title="Export to PDF">
-                        <FileText className="w-4 h-4" />
-                        <span className="hidden sm:inline">PDF</span>
-                    </Button>
+                    <ExportButtons
+                        onExportExcel={handleExportExcel}
+                        onExportPDF={handleExportPDF}
+                    />
                     {!readOnly && (
                         <Button
                             onClick={handleOpenModal}

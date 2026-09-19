@@ -12,6 +12,7 @@ import { Modal } from '../../components/ui/Modal';
 import { ClassStudentsModal } from '../../components/admin/ClassStudentsModal';
 import { DeleteClassSafeguardModal } from '../../components/admin/DeleteClassSafeguardModal';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { ExportButtons } from '../../components/ui/ExportButtons';
 import { FileSpreadsheet, FileText } from 'lucide-react';
 
 // Keeping ClassAllotmentModal as it was part of the file logic
@@ -752,12 +753,10 @@ const ClassManagement = ({ readOnly = false }) => {
                                 ))}
                             </Select>
                             <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <Button onClick={handleExportExcel} className="h-11 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-3" title="Export Excel">
-                                    <FileSpreadsheet className="w-4 h-4" />
-                                </Button>
-                                <Button onClick={handleExportPDF} className="h-11 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 px-3" title="Export PDF">
-                                    <FileText className="w-4 h-4" />
-                                </Button>
+                                <ExportButtons
+                                    onExportExcel={handleExportExcel}
+                                    onExportPDF={handleExportPDF}
+                                />
                                 {!readOnly && (
                                     <>
                                         <BulkUploadButton onUploadSuccess={handleBulkUpload} type="class" />

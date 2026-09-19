@@ -6,6 +6,8 @@ import { Input } from '../ui/Input';
 import { Search, Trash2, ArrowRightLeft, UserX, AlertTriangle, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { ExportButtons } from '../ui/ExportButtons';
+import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 
 export const ClassStudentsModal = ({
     isOpen,
@@ -32,6 +34,32 @@ export const ClassStudentsModal = ({
         s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.registerNo?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleExportRosterExcel = () => {
+        const data = classStudents.map((s, idx) => ({
+            '#': idx + 1,
+            'Student Name': s.name || '',
+            'Register No': s.registerNo || '',
+            'Class': `${classItem.name}-${classItem.division}`,
+            'Gender': s.gender || '',
+            'Status': s.status || 'Active',
+            'Parent Phone': s.parentPhone || s.phone || 'N/A'
+        }));
+        exportToExcel(data, `Class_${classItem.name}_${classItem.division}_Roster`, `Class ${classItem.name}-${classItem.division}`);
+    };
+
+    const handleExportRosterPDF = () => {
+        const headers = ['#', 'Student Name', 'Register No', 'Gender', 'Status', 'Parent Phone'];
+        const data = classStudents.map((s, idx) => [
+            idx + 1,
+            s.name || '',
+            s.registerNo || '',
+            s.gender || '',
+            s.status || 'Active',
+            s.parentPhone || s.phone || 'N/A'
+        ]);
+        exportToPDF(data, headers, `Class_${classItem.name}_${classItem.division}_Roster`, `CLASS ${classItem.name}-${classItem.division} STUDENT ROSTER`, `Total Enrolled: ${classStudents.length} Students`);
+    };
 
     const handleActionClick = (student, type) => {
         setSelectedStudent(student);
@@ -164,13 +192,20 @@ export const ClassStudentsModal = ({
                 maxWidth="2xl"
             >
                 <div className="flex flex-col h-[60vh]">
-                    <div className="mb-4 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <Input
-                            placeholder="Search students..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9"
+                    <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <Input
+                                placeholder="Search students..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <ExportButtons
+                            onExportExcel={handleExportRosterExcel}
+                            onExportPDF={handleExportRosterPDF}
+                            size="sm"
                         />
                     </div>
 

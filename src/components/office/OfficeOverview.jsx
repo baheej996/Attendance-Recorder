@@ -37,6 +37,8 @@ import autoTable from 'jspdf-autotable';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
+import { ExportButtons } from '../ui/ExportButtons';
+import { exportMultiSheetExcel } from '../../utils/exportUtils';
 
 const OfficeOverview = ({ onTabChange }) => {
     const { 
@@ -199,6 +201,47 @@ const OfficeOverview = ({ onTabChange }) => {
         return (feePayments || []).slice(0, 5);
     }, [feePayments]);
 
+    // Excel Report Generator
+    const exportOverviewExcel = () => {
+        const kpiData = [
+            { Metric: 'Total Expected Revenue', Value: financialKPIs.totalExpectedRevenue },
+            { Metric: 'Total Collected Revenue', Value: financialKPIs.totalCollectedRevenue },
+            { Metric: 'Collection Rate (%)', Value: `${financialKPIs.collectionRate}%` },
+            { Metric: 'Total Pending Outstandings', Value: financialKPIs.totalPendingRevenue },
+            { Metric: 'Total Receipts Issued', Value: financialKPIs.totalReceiptsCount },
+            { Metric: 'Average Payment Amount', Value: financialKPIs.avgPaymentAmount }
+        ];
+
+        const classData = classCollectionProgress.map(c => ({
+            'Class Name': c.name,
+            'Enrolled Students': c.studentCount,
+            'Expected Fee (INR)': c.expectedFee,
+            'Collected Fee (INR)': c.collectedFee,
+            'Pending Dues (INR)': c.pendingFee,
+            'Collection Rate (%)': `${c.rate}%`
+        }));
+
+        const transactionData = (feePayments || []).map(p => ({
+            'Receipt ID': p.receiptId || '',
+            'Date': format(new Date(p.paymentDate || p.createdAt || Date.now()), 'yyyy-MM-dd HH:mm'),
+            'Student Name': p.studentName || '',
+            'Register No': p.registerNo || '',
+            'Class': p.className || '',
+            'Amount Paid (INR)': Number(p.amountPaid || 0),
+            'Payment Mode': p.paymentMode || 'Cash',
+            'Academic Year': p.academicYear || '2026-2027',
+            'Notes': p.notes || ''
+        }));
+
+        exportMultiSheetExcel([
+            { sheetName: 'Financial Summary', data: kpiData },
+            { sheetName: 'Class Progress', data: classData },
+            { sheetName: 'Recent Payments', data: transactionData }
+        ], `Office_Financial_Overview_${format(new Date(), 'yyyy-MM-dd')}`);
+
+        showAlert('Excel Exported', 'Office Financial Overview spreadsheet downloaded successfully!', 'success');
+    };
+
     // PDF Report Generator
     const exportOverviewPDF = () => {
         const doc = new jsPDF();
@@ -277,12 +320,10 @@ const OfficeOverview = ({ onTabChange }) => {
                     >
                         <CreditCard className="w-4 h-4" /> Go to Fee Collection
                     </button>
-                    <button
-                        onClick={exportOverviewPDF}
-                        className="px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-gray-200 shadow-2xs transition-all cursor-pointer"
-                    >
-                        <Download className="w-4 h-4" /> PDF Report
-                    </button>
+                    <ExportButtons
+                        onExportExcel={exportOverviewExcel}
+                        onExportPDF={exportOverviewPDF}
+                    />
                 </div>
             </div>
 

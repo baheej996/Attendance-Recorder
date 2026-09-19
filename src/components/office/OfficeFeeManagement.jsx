@@ -45,6 +45,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { generateCSVTemplate, parseCSV } from '../../utils/csvHelpers';
+import { ExportButtons } from '../ui/ExportButtons';
+import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 
 const OfficeFeeManagement = () => {
     const { 
@@ -1037,33 +1039,107 @@ const OfficeFeeManagement = () => {
         return list.length > 0 ? list : [{ name: 'Current Month', amount: overallFinancialKPIs.totalCollectedRevenue }];
     }, [feePayments, overallFinancialKPIs]);
 
-    const exportFinancialLedgerPDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.setFont(undefined, 'bold');
-        doc.text('OFFICIAL FINANCIAL AUDIT LEDGER', 14, 15);
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
-        doc.text(`Generated on: ${format(new Date(), 'PPP p')}`, 14, 22);
+    // Dues Tracker Exports
+    const exportDuesExcel = () => {
+        const data = duesListData.map(item => ({
+            'Register No': item.student.registerNo || '',
+            'Student Name': item.student.name || '',
+            'Class': item.cls ? `${item.cls.name}-${item.cls.division}` : 'N/A',
+            'Parent Phone': item.student.parentPhone || item.student.phone || 'N/A',
+            'Joining Year': item.joiningYear,
+            'Current Fee (INR)': item.currentFee,
+            'Current Paid (INR)': item.currentPaid,
+            'Current Dues (INR)': item.currentDues,
+            'Previous Arrears (INR)': item.previousDues,
+            'Total Remaining Dues (INR)': item.remainingDues,
+            'Payment Status': item.status
+        }));
+        exportToExcel(data, `Fee_Dues_Report_${format(new Date(), 'yyyy-MM-dd')}`, 'Fee Dues');
+        showAlert('Excel Exported', 'Fee Dues and Defaulters list downloaded as Excel!', 'success');
+    };
 
-        const tableBody = (feePayments || []).map(p => [
-            p.receiptId || 'N/A',
-            p.studentName || 'N/A',
-            p.className || 'N/A',
-            p.paymentMode || 'Cash',
-            `INR ${Number(p.amountPaid || 0).toLocaleString()}`,
-            format(new Date(p.paymentDate || p.createdAt || Date.now()), 'yyyy-MM-dd')
+    const exportDuesPDF = () => {
+        const headers = ['Reg No', 'Student Name', 'Class', 'Parent Phone', 'Current Dues', 'Arrears', 'Total Dues', 'Status'];
+        const data = duesListData.map(item => [
+            item.student.registerNo || '',
+            item.student.name || '',
+            item.cls ? `${item.cls.name}-${item.cls.division}` : 'N/A',
+            item.student.parentPhone || item.student.phone || 'N/A',
+            `INR ${item.currentDues.toLocaleString()}`,
+            `INR ${item.previousDues.toLocaleString()}`,
+            `INR ${item.remainingDues.toLocaleString()}`,
+            item.status
         ]);
+        exportToPDF(data, headers, `Fee_Dues_Report_${format(new Date(), 'yyyy-MM-dd')}`, 'OFFICE FEE DUES & DEFAULTERS REPORT', `Filtered total: ${duesListData.length} students`);
+        showAlert('PDF Exported', 'Fee Dues and Defaulters report downloaded as PDF!', 'success');
+    };
 
-        autoTable(doc, {
-            startY: 28,
-            head: [['Receipt ID', 'Student', 'Class', 'Mode', 'Amount', 'Date']],
-            body: tableBody,
-            theme: 'grid',
-            headStyles: { fillColor: [30, 41, 59] }
-        });
+    // Ledger / Payment Receipts History Exports
+    const exportPaymentsExcel = () => {
+        const data = (filteredLedgerPayments || feePayments || []).map(p => ({
+            'Receipt ID': p.receiptId || '',
+            'Payment Date': format(new Date(p.paymentDate || p.createdAt || Date.now()), 'yyyy-MM-dd HH:mm'),
+            'Student Name': p.studentName || '',
+            'Register No': p.registerNo || '',
+            'Class': p.className || '',
+            'Amount Paid (INR)': Number(p.amountPaid || 0),
+            'Payment Mode': p.paymentMode || 'Cash',
+            'Academic Year': p.academicYear || '2026-2027',
+            'Installment': p.installmentName || '',
+            'Received By': p.receivedBy || 'Office',
+            'Remarks': p.remarks || p.notes || ''
+        }));
+        exportToExcel(data, `Fee_Payments_Ledger_${format(new Date(), 'yyyy-MM-dd')}`, 'Receipts');
+        showAlert('Excel Exported', 'Fee Payments transaction log downloaded as Excel!', 'success');
+    };
 
-        doc.save(`Financial_Ledger_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    const exportPaymentsPDF = () => {
+        const headers = ['Receipt #', 'Date', 'Student Name', 'Reg No', 'Class', 'Amount', 'Mode', 'Academic Year'];
+        const data = (filteredLedgerPayments || feePayments || []).map(p => [
+            p.receiptId || '',
+            format(new Date(p.paymentDate || p.createdAt || Date.now()), 'dd MMM yyyy'),
+            p.studentName || '',
+            p.registerNo || '',
+            p.className || '',
+            `INR ${Number(p.amountPaid || 0).toLocaleString()}`,
+            p.paymentMode || 'Cash',
+            p.academicYear || '2026-2027'
+        ]);
+        exportToPDF(data, headers, `Fee_Payments_Ledger_${format(new Date(), 'yyyy-MM-dd')}`, 'FEE PAYMENTS & RECEIPTS AUDIT LEDGER', `Total Receipts: ${(filteredLedgerPayments || feePayments || []).length}`);
+        showAlert('PDF Exported', 'Fee Payments transaction ledger downloaded as PDF!', 'success');
+    };
+
+    // Configurator Exports
+    const exportConfigExcel = () => {
+        const data = (feeStructures || []).map(f => ({
+            'Structure ID': f.id || '',
+            'Target Type': f.targetType || 'Class',
+            'Target Name/ID': f.targetId || f.className || '',
+            'Total Fee (INR)': Number(f.totalAmount || 12700),
+            'Installment 1': f.installments?.inst1?.amount || 4233,
+            'Installment 2': f.installments?.inst2?.amount || 4233,
+            'Installment 3': f.installments?.inst3?.amount || 4234
+        }));
+        exportToExcel(data, `Fee_Structures_Config_${format(new Date(), 'yyyy-MM-dd')}`, 'Structures');
+        showAlert('Excel Exported', 'Configured Fee Structures downloaded as Excel!', 'success');
+    };
+
+    const exportConfigPDF = () => {
+        const headers = ['Target Type', 'Target ID / Class', 'Total Fee', 'Inst 1', 'Inst 2', 'Inst 3'];
+        const data = (feeStructures || []).map(f => [
+            f.targetType || 'Class',
+            f.targetId || f.className || '',
+            `INR ${Number(f.totalAmount || 12700).toLocaleString()}`,
+            `INR ${(f.installments?.inst1?.amount || 4233).toLocaleString()}`,
+            `INR ${(f.installments?.inst2?.amount || 4233).toLocaleString()}`,
+            `INR ${(f.installments?.inst3?.amount || 4234).toLocaleString()}`
+        ]);
+        exportToPDF(data, headers, `Fee_Structures_Config_${format(new Date(), 'yyyy-MM-dd')}`, 'FEE STRUCTURE CONFIGURATIONS REPORT', `Total Configured Structures: ${(feeStructures || []).length}`);
+        showAlert('PDF Exported', 'Configured Fee Structures downloaded as PDF!', 'success');
+    };
+
+    const exportFinancialLedgerPDF = () => {
+        exportPaymentsPDF();
     };
 
     return (
@@ -1628,14 +1704,21 @@ const OfficeFeeManagement = () => {
             {/* TAB 2: FEE STRUCTURE CONFIGURATOR (CLASS & PER-STUDENT) */}
             {activeTab === 'configurator' && (
                 <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-6 max-w-4xl mx-auto">
-                    <div className="border-b pb-4">
-                        <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                            <DollarSign className="w-6 h-6 text-indigo-600" />
-                            3-Installment Fee Structure Configurator
-                        </h3>
-                        <p className="text-xs text-gray-500 font-medium mt-1">
-                            Set up annual fee totals and split into 3 custom installments per Class or customize for individual Students.
-                        </p>
+                    <div className="border-b pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                                <DollarSign className="w-6 h-6 text-indigo-600" />
+                                3-Installment Fee Structure Configurator
+                            </h3>
+                            <p className="text-xs text-gray-500 font-medium mt-1">
+                                Set up annual fee totals and split into 3 custom installments per Class or customize for individual Students.
+                            </p>
+                        </div>
+                        <ExportButtons
+                            onExportExcel={exportConfigExcel}
+                            onExportPDF={exportConfigPDF}
+                            size="sm"
+                        />
                     </div>
 
                     <form onSubmit={handleSaveFeeStructure} className="space-y-6">
@@ -1991,8 +2074,8 @@ const OfficeFeeManagement = () => {
                                 ))}
                             </select>
 
-                            {/* Status Filter Buttons */}
-                            <div className="flex items-center gap-2">
+                            {/* Status Filter Buttons & Export */}
+                            <div className="flex items-center gap-2 flex-wrap">
                                 <button
                                     onClick={() => setDuesStatusFilter('pending')}
                                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -2017,6 +2100,12 @@ const OfficeFeeManagement = () => {
                                 >
                                     All Students
                                 </button>
+
+                                <ExportButtons
+                                    onExportExcel={exportDuesExcel}
+                                    onExportPDF={exportDuesPDF}
+                                    size="sm"
+                                />
                             </div>
                         </div>
                     </Card>
@@ -2261,9 +2350,13 @@ const OfficeFeeManagement = () => {
                                 <p className="text-xs font-bold uppercase text-gray-500">Collection Rate</p>
                                 <h3 className="text-3xl font-black text-gray-900 mt-1">{overallFinancialKPIs.collectionRate}%</h3>
                             </div>
-                            <Button onClick={exportFinancialLedgerPDF} variant="secondary" className="text-xs font-bold gap-1 mt-2">
-                                <Download className="w-3.5 h-3.5" /> PDF Ledger Export
-                            </Button>
+                            <div className="mt-2">
+                                <ExportButtons
+                                    onExportExcel={exportPaymentsExcel}
+                                    onExportPDF={exportPaymentsPDF}
+                                    size="sm"
+                                />
+                            </div>
                         </Card>
                     </div>
 
@@ -2321,6 +2414,12 @@ const OfficeFeeManagement = () => {
                                 <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 whitespace-nowrap">
                                     Total Transactions: {totalLedgerItems.toLocaleString()}
                                 </span>
+
+                                <ExportButtons
+                                    onExportExcel={exportPaymentsExcel}
+                                    onExportPDF={exportPaymentsPDF}
+                                    size="sm"
+                                />
                             </div>
                         </div>
 
