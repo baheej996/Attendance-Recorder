@@ -804,9 +804,13 @@ const OfficeFeeManagement = () => {
             if (duesAcademicYearFilter === '2026-2027' && item.currentDues <= 0 && duesStatusFilter === 'pending') return false;
             if (duesAcademicYearFilter === 'previous' && item.previousDues <= 0 && duesStatusFilter === 'pending') return false;
 
-            // Filter by Status
+            // Filter by Status & Completion Breakdown
             if (duesStatusFilter === 'pending' && item.isFullyPaid) return false;
             if (duesStatusFilter === 'paid' && !item.isFullyPaid) return false;
+            if (duesStatusFilter === 'paid_current' && !item.isCurrentPaid) return false;
+            if (duesStatusFilter === 'paid_previous' && !item.isPreviousPaid) return false;
+            if (duesStatusFilter === 'pending_current' && item.currentDues <= 0) return false;
+            if (duesStatusFilter === 'pending_previous' && item.previousDues <= 0) return false;
 
             // Search Filter
             if (duesSearchTerm.trim()) {
@@ -2089,39 +2093,26 @@ const OfficeFeeManagement = () => {
                                 ))}
                             </select>
 
-                            {/* Status Filter Buttons & Export */}
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <button
-                                    onClick={() => setDuesStatusFilter('pending')}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                                        duesStatusFilter === 'pending' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-700'
-                                    }`}
-                                >
-                                    Payment Pending Only
-                                </button>
-                                <button
-                                    onClick={() => setDuesStatusFilter('paid')}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                                        duesStatusFilter === 'paid' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700'
-                                    }`}
-                                >
-                                    Fully Paid
-                                </button>
-                                <button
-                                    onClick={() => setDuesStatusFilter('all')}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                                        duesStatusFilter === 'all' ? 'bg-gray-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600'
-                                    }`}
-                                >
-                                    All Students
-                                </button>
+                            {/* 4. Payment Completion Status Filter */}
+                            <select
+                                value={duesStatusFilter}
+                                onChange={(e) => setDuesStatusFilter(e.target.value)}
+                                className="bg-indigo-50 border border-indigo-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-indigo-900 shadow-xs"
+                            >
+                                <option value="pending">⚠️ Payment Pending (Defaulters)</option>
+                                <option value="paid">🟢 Fully Paid - Both Years (100% Cleared)</option>
+                                <option value="paid_current">❇️ Fully Paid - Current Year (2026-2027)</option>
+                                <option value="paid_previous">🟠 Fully Paid - Previous Year Arrears</option>
+                                <option value="pending_current">🔴 Pending - Current Year Dues</option>
+                                <option value="pending_previous">🟤 Pending - Previous Year Arrears</option>
+                                <option value="all">👥 All Students</option>
+                            </select>
 
-                                <ExportButtons
-                                    onExportExcel={exportDuesExcel}
-                                    onExportPDF={exportDuesPDF}
-                                    size="sm"
-                                />
-                            </div>
+                            <ExportButtons
+                                onExportExcel={exportDuesExcel}
+                                onExportPDF={exportDuesPDF}
+                                size="sm"
+                            />
                         </div>
                     </Card>
 
