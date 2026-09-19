@@ -90,6 +90,11 @@ const OfficeOverview = ({ onTabChange }) => {
         return 12700;
     };
 
+    // Strictly filter payments for the current academic year (2026-2027)
+    const currentYearPayments = useMemo(() => {
+        return (feePayments || []).filter(p => (p.academicYear || '2026-2027') === '2026-2027');
+    }, [feePayments]);
+
     // Calculate High Level Financial Metrics (O(N) single pass)
     const financialKPIs = useMemo(() => {
         let totalExpectedRevenue = 0;
@@ -97,11 +102,11 @@ const OfficeOverview = ({ onTabChange }) => {
             totalExpectedRevenue += getStudentFeeAmount(s);
         });
 
-        const totalCollectedRevenue = (feePayments || []).reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+        const totalCollectedRevenue = currentYearPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
         const totalPendingRevenue = Math.max(0, totalExpectedRevenue - totalCollectedRevenue);
         const collectionRate = totalExpectedRevenue > 0 ? Math.round((totalCollectedRevenue / totalExpectedRevenue) * 100) : 0;
         
-        const totalReceiptsCount = (feePayments || []).length;
+        const totalReceiptsCount = currentYearPayments.length;
         const avgPaymentAmount = totalReceiptsCount > 0 ? Math.round(totalCollectedRevenue / totalReceiptsCount) : 0;
 
         return {
@@ -112,12 +117,12 @@ const OfficeOverview = ({ onTabChange }) => {
             totalReceiptsCount,
             avgPaymentAmount
         };
-    }, [studentPool, feeStructureMap, feePayments]);
+    }, [studentPool, feeStructureMap, currentYearPayments]);
 
     // Monthly Collection Trend Chart Data
     const monthlyTrendChartData = useMemo(() => {
         const monthsMap = {};
-        (feePayments || []).forEach(p => {
+        currentYearPayments.forEach(p => {
             const d = new Date(p.paymentDate || p.createdAt || Date.now());
             const mKey = format(d, 'MMM yyyy');
             if (!monthsMap[mKey]) monthsMap[mKey] = { name: mKey, amount: 0, count: 0 };
@@ -126,7 +131,7 @@ const OfficeOverview = ({ onTabChange }) => {
         });
         const list = Object.values(monthsMap);
         return list.length > 0 ? list : [{ name: 'Current Month', amount: financialKPIs.totalCollectedRevenue, count: financialKPIs.totalReceiptsCount }];
-    }, [feePayments, financialKPIs]);
+    }, [currentYearPayments, financialKPIs]);
 
     // Payment Mode Distribution Pie Chart Data
     const paymentModeChartData = useMemo(() => {
@@ -137,7 +142,7 @@ const OfficeOverview = ({ onTabChange }) => {
             'Cheque': 0
         };
 
-        (feePayments || []).forEach(p => {
+        currentYearPayments.forEach(p => {
             const m = (p.paymentMode || 'Cash').trim();
             if (modeCounts[m] !== undefined) {
                 modeCounts[m] += Number(p.amountPaid || 0);
@@ -160,7 +165,7 @@ const OfficeOverview = ({ onTabChange }) => {
                 value,
                 color: COLORS[name] || '#6B7280'
             }));
-    }, [feePayments]);
+    }, [currentYearPayments]);
 
     // Class Collection Progress List (Optimized single-pass O(N + P))
     const classCollectionProgress = useMemo(() => {
@@ -189,8 +194,8 @@ const OfficeOverview = ({ onTabChange }) => {
             }
         });
 
-        // 3. Pass over feePayments to aggregate collected fee per class
-        (feePayments || []).forEach(p => {
+        // 3. Pass over currentYearPayments to aggregate collected fee per class
+        currentYearPayments.forEach(p => {
             const amount = Number(p.amountPaid || 0);
             if (amount <= 0) return;
 
@@ -219,12 +224,12 @@ const OfficeOverview = ({ onTabChange }) => {
         });
 
         return list.sort((a, b) => b.collectedFee - a.collectedFee).slice(0, 6);
-    }, [classes, studentPool, feeStructureMap, feePayments, studentClassMap]);
+    }, [classes, studentPool, feeStructureMap, currentYearPayments, studentClassMap]);
 
     // Recent 5 Transactions Stream
     const recentTransactions = useMemo(() => {
-        return (feePayments || []).slice(0, 5);
-    }, [feePayments]);
+        return currentYearPayments.slice(0, 5);
+    }, [currentYearPayments]);
 
     // Excel Report Generator
     const exportOverviewExcel = () => {
