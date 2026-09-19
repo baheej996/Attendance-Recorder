@@ -245,29 +245,22 @@ const OfficeFeeManagement = () => {
         }
     };
 
-    // Helper: Resolve effective fee structure for a student (per-student override if exists, else class structure, else default)
+    // Helper: Resolve effective fee structure for a student (returns null if unconfigured)
     const getStudentFeeStructure = (student) => {
-        if (!student) return { totalAmount: 12700, installments: installmentConfig };
+        if (!student) return null;
         
         // 1. Direct per-student structure
         const studentStruct = (feeStructures || []).find(f => f.targetId === student.id || f.id === student.id);
-        if (studentStruct) return studentStruct;
+        if (studentStruct && studentStruct.totalAmount !== undefined && studentStruct.totalAmount !== null) return studentStruct;
 
         // 2. Class fee structure
         if (student.classId) {
             const classStruct = (feeStructures || []).find(f => f.targetId === student.classId || f.id === student.classId);
-            if (classStruct) return classStruct;
+            if (classStruct && classStruct.totalAmount !== undefined && classStruct.totalAmount !== null) return classStruct;
         }
 
-        // 3. Fallback default
-        return {
-            totalAmount: 12700,
-            installments: {
-                inst1: { amount: 4233, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
-                inst2: { amount: 4233, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
-                inst3: { amount: 4234, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
-            }
-        };
+        // Return null if no fee is configured (no hardcoded fallback)
+        return null;
     };
 
     // -------------------------------------------------------------
@@ -683,9 +676,60 @@ const OfficeFeeManagement = () => {
     // TAB 3: DUES & DEFAULTERS TRACKER (WITH WEBSITE NOTIFICATIONS)
     // -------------------------------------------------------------
     const [duesSearchTerm, setDuesSearchTerm] = useState('');
-    const [duesStatusFilter, setDuesStatusFilter] = useState('pending'); // 'pending' | 'paid' | 'all'
+    const [duesStatusFilter, setDuesStatusFilter] = useState('pending'); // 'pending' | 'paid' | 'exempt' | 'unconfigured' | 'all'
     const [selectedDuesMentorId, setSelectedDuesMentorId] = useState('all');
     const [selectedDuesClassId, setSelectedDuesClassId] = useState('all');
+
+    // Quick Set Fee Amount Modal State
+    const [editingFeeStudent, setEditingFeeStudent] = useState(null);
+    const [inputSetFeeAmount, setInputSetFeeAmount] = useState('');
+
+    const handleOpenSetFeeModal = (student) => {
+        setEditingFeeStudent(student);
+        const struct = getStudentFeeStructure(student);
+        setInputSetFeeAmount(struct && struct.totalAmount !== undefined ? String(struct.totalAmount) : '');
+    };
+
+    const handleSaveStudentFeeSubmit = async (e) => {
+        e.preventDefault();
+        if (!editingFeeStudent) return;
+
+        const val = Number(inputSetFeeAmount);
+        if (isNaN(val) || val < 0) {
+            showAlert('Invalid Amount', 'Please enter a valid fee amount (0 or greater).', 'warning');
+            return;
+        }
+
+        const part = val === 0 ? 0 : Math.floor(val / 3);
+        const remainder = val === 0 ? 0 : val - (part * 2);
+        const payload = {
+            targetType: 'student',
+            targetId: editingFeeStudent.id,
+            totalAmount: val,
+            sumInstallments: val,
+            installments: {
+                inst1: { amount: part, name: 'Installment 1 (Admission)', dueDate: '2026-05-30' },
+                inst2: { amount: part, name: 'Installment 2 (Mid-Term)', dueDate: '2026-09-30' },
+                inst3: { amount: remainder, name: 'Installment 3 (Final Term)', dueDate: '2027-01-30' }
+            },
+            updatedAt: new Date().toISOString()
+        };
+
+        try {
+            const docRef = doc(db, 'feeStructures', editingFeeStudent.id);
+            await setDoc(docRef, { ...payload, id: editingFeeStudent.id }, { merge: true });
+            setFeeStructures(prev => {
+                const existing = prev.find(f => f.id === editingFeeStudent.id);
+                if (existing) return prev.map(f => f.id === editingFeeStudent.id ? { ...f, ...payload } : f);
+                return [...prev, { id: editingFeeStudent.id, ...payload }];
+            });
+            showAlert('Fee Amount Updated', `Fee structure for ${editingFeeStudent.name} set to INR ${val.toLocaleString()} (${val === 0 ? 'Exempt' : 'Configured'})!`, 'success');
+            setEditingFeeStudent(null);
+        } catch (err) {
+            console.error('Failed to save student fee amount:', err);
+            showAlert('Error', 'Failed to update student fee structure.', 'error');
+        }
+    };
 
     // Cascading Classes based on selected Mentor for Dues Tracker
     const availableClassesForDues = useMemo(() => {
@@ -723,30 +767,44 @@ const OfficeFeeManagement = () => {
             const struct = getStudentFeeStructure(s);
 
             const sPayments = (feePayments || []).filter(p => p.studentId === s.id);
-
             const currentPaid = sPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
-            const currentFee = (struct && struct.totalAmount !== undefined && struct.totalAmount !== null) ? Number(struct.totalAmount) : 12700;
-            const isFeeExempt = currentFee === 0;
-            const currentDues = isFeeExempt ? 0 : Math.max(0, currentFee - currentPaid);
-            const isCurrentPaid = currentDues <= 0;
 
-            const totalPaid = currentPaid;
-            const totalFee = currentFee;
-            const remainingDues = currentDues;
-            const isFullyPaid = remainingDues <= 0;
+            const isConfigured = struct !== null && struct.totalAmount !== undefined && struct.totalAmount !== null;
+            const totalFee = isConfigured ? Number(struct.totalAmount) : null;
+            const isFeeExempt = isConfigured && totalFee === 0;
+
+            let currentDues = 0;
+            let isCurrentPaid = false;
+            let isFullyPaid = false;
+
+            if (!isConfigured) {
+                currentDues = 0;
+                isCurrentPaid = false;
+                isFullyPaid = false;
+            } else if (isFeeExempt) {
+                currentDues = 0;
+                isCurrentPaid = true;
+                isFullyPaid = true;
+            } else {
+                currentDues = Math.max(0, totalFee - currentPaid);
+                isCurrentPaid = currentDues <= 0;
+                isFullyPaid = isCurrentPaid;
+            }
 
             return {
                 student: s,
                 cls,
+                isConfigured,
+                isFeeExempt,
                 totalFee,
-                totalPaid,
-                currentFee,
+                totalPaid: currentPaid,
+                currentFee: totalFee,
                 currentPaid,
                 currentDues,
+                remainingDues: currentDues,
                 isCurrentPaid,
-                remainingDues,
                 isFullyPaid,
-                status: isFullyPaid ? 'Paid' : 'Payment Pending'
+                status: !isConfigured ? 'Unconfigured' : (isFeeExempt ? 'Exempt' : (isFullyPaid ? 'Paid' : 'Payment Pending'))
             };
         }).filter(item => {
             // Filter by Mentor
@@ -762,8 +820,10 @@ const OfficeFeeManagement = () => {
             if (selectedDuesClassId !== 'all' && item.student.classId !== selectedDuesClassId) return false;
 
             // Filter by Status
-            if (duesStatusFilter === 'pending' && item.isFullyPaid) return false;
-            if (duesStatusFilter === 'paid' && !item.isFullyPaid) return false;
+            if (duesStatusFilter === 'pending' && (item.isFullyPaid || !item.isConfigured)) return false;
+            if (duesStatusFilter === 'paid' && (!item.isFullyPaid || !item.isConfigured)) return false;
+            if (duesStatusFilter === 'unconfigured' && item.isConfigured) return false;
+            if (duesStatusFilter === 'exempt' && !item.isFeeExempt) return false;
 
             // Search Filter
             if (duesSearchTerm.trim()) {
@@ -2048,6 +2108,22 @@ const OfficeFeeManagement = () => {
                                     Fully Paid
                                 </button>
                                 <button
+                                    onClick={() => setDuesStatusFilter('exempt')}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                        duesStatusFilter === 'exempt' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-800'
+                                    }`}
+                                >
+                                    🎓 Exempt (₹0 Fee)
+                                </button>
+                                <button
+                                    onClick={() => setDuesStatusFilter('unconfigured')}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                        duesStatusFilter === 'unconfigured' ? 'bg-orange-600 text-white shadow-xs' : 'bg-orange-50 text-orange-800'
+                                    }`}
+                                >
+                                    ⚠️ Fee Not Set
+                                </button>
+                                <button
                                     onClick={() => setDuesStatusFilter('all')}
                                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                                         duesStatusFilter === 'all' ? 'bg-gray-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600'
@@ -2107,32 +2183,55 @@ const OfficeFeeManagement = () => {
                                                 </td>
                                                 <td className="px-3.5 py-3">
                                                     <div className="flex flex-col gap-1 items-start">
-                                                        {/* Current Academic Year Status Badge */}
-                                                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
-                                                            item.isCurrentPaid
-                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                                : 'bg-rose-50 text-rose-700 border-rose-200'
-                                                        }`}>
-                                                            {item.isCurrentPaid ? '🟢 2026-2027 Paid' : '🔴 2026-2027 Due'}
-                                                        </span>
-
-                                                        {/* Previous Academic Year Status Badge */}
+                                                        {/* Status Badges */}
+                                                        {!item.isConfigured ? (
+                                                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-amber-50 text-amber-800 border-amber-300">
+                                                                ⚠️ Fee Not Configured
+                                                            </span>
+                                                        ) : item.isFeeExempt ? (
+                                                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-amber-100 text-amber-900 border-amber-300">
+                                                                🎓 Exempt (₹0 Fee)
+                                                            </span>
+                                                        ) : item.isCurrentPaid ? (
+                                                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200">
+                                                                🟢 2026-2027 Paid
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200">
+                                                                🔴 Payment Pending
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-3.5 py-3 text-center font-mono font-bold text-gray-800">
-                                                    ₹{item.totalFee.toLocaleString()}
+                                                    {item.isConfigured ? `₹${item.totalFee.toLocaleString()}` : <span className="text-amber-600 text-xs italic">Not Set</span>}
                                                 </td>
                                                 <td className="px-3.5 py-3 text-center font-mono font-bold text-emerald-600">
                                                     ₹{item.totalPaid.toLocaleString()}
                                                 </td>
                                                 <td className="px-3.5 py-3 text-center font-mono">
-                                                    <div className="font-black text-rose-600 text-sm">
-                                                        ₹{item.remainingDues.toLocaleString()}
-                                                    </div>
+                                                    {!item.isConfigured ? (
+                                                        <div className="font-bold text-amber-600 text-xs">⚠️ Fee Not Set</div>
+                                                    ) : item.isFeeExempt ? (
+                                                        <div className="font-bold text-emerald-600 text-xs">₹0 (Exempt)</div>
+                                                    ) : (
+                                                        <div className="font-black text-rose-600 text-sm">
+                                                            ₹{item.remainingDues.toLocaleString()}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-3.5 py-3 text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        {/* Record Fee Payment Button (Pre-fills student data & switches tab) */}
+                                                        {/* Set Fee Amount Button */}
+                                                        <button
+                                                            onClick={() => handleOpenSetFeeModal(item.student)}
+                                                            className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                                                            title="Manually set or update fee amount for this student"
+                                                        >
+                                                            <Settings className="w-3.5 h-3.5 text-amber-600" /> {!item.isConfigured ? 'Set Fee' : 'Edit Fee'}
+                                                        </button>
+
+                                                        {/* Record Fee Payment Button */}
                                                         <button
                                                             onClick={() => handleDirectRecordPayment(item.student)}
                                                             className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
@@ -2614,6 +2713,88 @@ const OfficeFeeManagement = () => {
                                     disabled={submittingEditPay}
                                 >
                                     {submittingEditPay ? 'Saving Changes...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+
+            {/* Quick Set / Edit Fee Amount Modal */}
+            {editingFeeStudent && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-1">
+                                    Set Custom Fee Structure
+                                </span>
+                                <h3 className="text-lg font-black text-slate-900 leading-tight">
+                                    {editingFeeStudent.name}
+                                </h3>
+                                <p className="text-xs text-slate-500 font-medium">
+                                    Reg No: <strong className="text-slate-700">{editingFeeStudent.registerNo || 'N/A'}</strong> | Class: {editingFeeStudent.className || 'Unassigned'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setEditingFeeStudent(null)}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveStudentFeeSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Total Annual Fee Amount (₹)
+                                </label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    value={inputSetFeeAmount}
+                                    onChange={(e) => setInputSetFeeAmount(e.target.value)}
+                                    placeholder="Enter total fee (e.g. 12700, or 0 for Exempt)"
+                                    className="w-full text-sm font-semibold"
+                                    required
+                                />
+                                <p className="text-[11px] text-slate-500 mt-1">
+                                    Enter <strong>0</strong> to mark student as <strong>Exempt (₹0 Fee)</strong>, or enter the full annual tuition amount.
+                                </p>
+                            </div>
+
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs space-y-1">
+                                <div className="font-bold text-slate-700 mb-1">Automatic Installment Split:</div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Installment 1 (Admission):</span>
+                                    <strong className="text-slate-800">₹{Math.floor((Number(inputSetFeeAmount) || 0) / 3).toLocaleString()}</strong>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Installment 2 (Mid-Term):</span>
+                                    <strong className="text-slate-800">₹{Math.floor((Number(inputSetFeeAmount) || 0) / 3).toLocaleString()}</strong>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Installment 3 (Final Term):</span>
+                                    <strong className="text-slate-800">₹{((Number(inputSetFeeAmount) || 0) - (Math.floor((Number(inputSetFeeAmount) || 0) / 3) * 2)).toLocaleString()}</strong>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => setEditingFeeStudent(null)}
+                                    className="text-xs py-2 px-4 font-bold"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    className="text-xs py-2 px-4 font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
+                                >
+                                    Save Fee Amount
                                 </Button>
                             </div>
                         </form>

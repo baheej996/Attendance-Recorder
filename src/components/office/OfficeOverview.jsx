@@ -76,9 +76,9 @@ const OfficeOverview = ({ onTabChange }) => {
         return map;
     }, [feeStructures]);
 
-    // O(1) Helper: Get student fee structure amount (respects 0 for fee exempt students)
+    // O(1) Helper: Get student fee structure amount (returns null if fee is not set/configured)
     const getStudentFeeAmount = (student) => {
-        if (!student) return 12700;
+        if (!student) return null;
         const sStruct = feeStructureMap.get(student.id);
         if (sStruct && sStruct.totalAmount !== undefined && sStruct.totalAmount !== null) return Number(sStruct.totalAmount);
 
@@ -87,7 +87,7 @@ const OfficeOverview = ({ onTabChange }) => {
             if (cStruct && cStruct.totalAmount !== undefined && cStruct.totalAmount !== null) return Number(cStruct.totalAmount);
         }
 
-        return 12700;
+        return null;
     };
 
     // Strictly filter payments for the current academic year (2026-2027)
@@ -98,8 +98,15 @@ const OfficeOverview = ({ onTabChange }) => {
     // Calculate High Level Financial Metrics (O(N) single pass)
     const financialKPIs = useMemo(() => {
         let totalExpectedRevenue = 0;
+        let unconfiguredCount = 0;
+
         studentPool.forEach(s => {
-            totalExpectedRevenue += getStudentFeeAmount(s);
+            const fee = getStudentFeeAmount(s);
+            if (fee !== null) {
+                totalExpectedRevenue += fee;
+            } else {
+                unconfiguredCount += 1;
+            }
         });
 
         const totalCollectedRevenue = currentYearPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
@@ -115,7 +122,8 @@ const OfficeOverview = ({ onTabChange }) => {
             totalPendingRevenue,
             collectionRate,
             totalReceiptsCount,
-            avgPaymentAmount
+            avgPaymentAmount,
+            unconfiguredCount
         };
     }, [studentPool, feeStructureMap, currentYearPayments]);
 
@@ -356,6 +364,27 @@ const OfficeOverview = ({ onTabChange }) => {
                     />
                 </div>
             </div>
+
+            {/* Unconfigured Fee Warning Banner */}
+            {financialKPIs.unconfiguredCount > 0 && (
+                <div className="bg-amber-50 border-2 border-amber-200/90 text-amber-900 px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-500 text-white rounded-xl shadow-xs shrink-0">
+                            <AlertCircle className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black text-gray-900">⚠️ {financialKPIs.unconfiguredCount} Active Enrolled Students Do Not Have Fee Amounts Configured</p>
+                            <p className="text-[11px] text-amber-800 font-bold mt-0.5">Their fee amounts are missing from the current uploaded data. Click below to configure their fees.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => onTabChange && onTabChange('fees')}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-extrabold shrink-0 transition-all shadow-xs cursor-pointer"
+                    >
+                        Configure Student Fees ➔
+                    </button>
+                </div>
+            )}
 
             {/* 4 Financial KPI Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
