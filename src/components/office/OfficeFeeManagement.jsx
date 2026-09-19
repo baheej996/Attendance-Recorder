@@ -785,7 +785,7 @@ const OfficeFeeManagement = () => {
     // Reset pagination to Page 1 when search or filters change
     useEffect(() => {
         setDuesCurrentPage(1);
-    }, [duesSearchTerm, duesStatusFilter, duesAcademicYearFilter, selectedDuesMentorId, selectedDuesClassId]);
+    }, [duesSearchTerm, duesStatusFilter, selectedDuesMentorId, selectedDuesClassId]);
 
     const totalDuesItems = duesListData.length;
     const totalDuesPages = Math.ceil(totalDuesItems / DUES_ITEMS_PER_PAGE) || 1;
