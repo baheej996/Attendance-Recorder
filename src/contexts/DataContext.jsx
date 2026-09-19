@@ -2603,12 +2603,12 @@ export const DataProvider = ({ children }) => {
                 const studentClassObj = (classes || []).find(c => c.id === matchedStudent.classId);
                 const classNameStr = studentClassObj ? `${studentClassObj.name}-${studentClassObj.division}` : (matchedStudent.className || 'N/A');
 
-                // 1. Process ApplicableAmount if present
+                // 1. Process ApplicableAmount if present (supports 0 for fee exempt/scholarship)
                 const rawApplicable = r.applicableamount || r['applicable amount'] || r['applicable_amount'] || r.applicableAmount;
                 const appAmount = Number(rawApplicable);
-                if (!isNaN(appAmount) && appAmount > 0) {
-                    const part = Math.floor(appAmount / 3);
-                    const remainder = appAmount - (part * 2);
+                if (rawApplicable !== undefined && rawApplicable !== '' && !isNaN(appAmount) && appAmount >= 0) {
+                    const part = appAmount === 0 ? 0 : Math.floor(appAmount / 3);
+                    const remainder = appAmount === 0 ? 0 : appAmount - (part * 2);
                     const feeStructPayload = {
                         targetType: 'student',
                         targetId: matchedStudent.id,

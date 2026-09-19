@@ -153,7 +153,7 @@ const OfficeFeeManagement = () => {
         if (!selectedConfigTargetId) return;
         const existingStruct = (feeStructures || []).find(f => f.targetId === selectedConfigTargetId || f.id === selectedConfigTargetId);
         if (existingStruct) {
-            setTotalFeeAmount(existingStruct.totalAmount || 12700);
+            setTotalFeeAmount(existingStruct.totalAmount !== undefined && existingStruct.totalAmount !== null ? Number(existingStruct.totalAmount) : 12700);
             if (existingStruct.installments) {
                 setInstallmentConfig(existingStruct.installments);
             }
@@ -349,7 +349,7 @@ const OfficeFeeManagement = () => {
         if (!selectedStudent) return { totalFee: 15000, totalPaid: 0, remainingBalance: 15000, isFullyPaid: false };
         const studentPayments = (feePayments || []).filter(p => p.studentId === selectedStudent.id);
         const totalPaid = studentPayments.reduce((acc, p) => acc + Number(p.amountPaid || 0), 0);
-        const totalFee = Number(activeFeeStruct.totalAmount || 15000);
+        const totalFee = (activeFeeStruct && activeFeeStruct.totalAmount !== undefined && activeFeeStruct.totalAmount !== null) ? Number(activeFeeStruct.totalAmount) : 12700;
         const remainingBalance = Math.max(0, totalFee - totalPaid);
 
         const inst1Paid = studentPayments.filter(p => p.installmentKey === 'inst1').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
@@ -728,8 +728,9 @@ const OfficeFeeManagement = () => {
             // Current Academic Year (2026-2027)
             const currentYearPayments = sPayments.filter(p => (p.academicYear || '2026-2027') === '2026-2027');
             const currentPaid = currentYearPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
-            const currentFee = Number(struct.totalAmount || 12700);
-            const currentDues = Math.max(0, currentFee - currentPaid);
+            const currentFee = (struct && struct.totalAmount !== undefined && struct.totalAmount !== null) ? Number(struct.totalAmount) : 12700;
+            const isFeeExempt = currentFee === 0;
+            const currentDues = isFeeExempt ? 0 : Math.max(0, currentFee - currentPaid);
             const isCurrentPaid = currentDues <= 0;
 
             // Enrollment Batch / Joining Year
@@ -743,7 +744,10 @@ const OfficeFeeManagement = () => {
             let previousDues = 0;
             let prevYearFee = 0;
 
-            if (s.previousYearArrears !== undefined && s.previousYearArrears !== null) {
+            if (isFeeExempt) {
+                previousDues = 0;
+                prevYearFee = 0;
+            } else if (s.previousYearArrears !== undefined && s.previousYearArrears !== null) {
                 previousDues = Math.max(0, Number(s.previousYearArrears) - previousPaid);
                 prevYearFee = Number(s.previousYearArrears) + previousPaid;
             } else if (!isNewAdmission) {
@@ -1011,7 +1015,8 @@ const OfficeFeeManagement = () => {
     const overallFinancialKPIs = useMemo(() => {
         const totalExpectedRevenue = studentPool.reduce((sum, s) => {
             const struct = getStudentFeeStructure(s);
-            return sum + Number(struct.totalAmount || 15000);
+            const amt = (struct && struct.totalAmount !== undefined && struct.totalAmount !== null) ? Number(struct.totalAmount) : 12700;
+            return sum + amt;
         }, 0);
 
         const totalCollectedRevenue = (feePayments || []).reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
@@ -1916,7 +1921,7 @@ const OfficeFeeManagement = () => {
                             {/* Quick Concession Presets */}
                             <div>
                                 <p className="text-[11px] font-bold text-gray-600 mb-1.5">Tuition Fee & Concession Presets:</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                                     <button
                                         type="button"
                                         onClick={() => applyFeeAmountPreset(12700, '1st Student Fee (₹12,700)')}
@@ -1945,6 +1950,16 @@ const OfficeFeeManagement = () => {
                                         }`}
                                     >
                                         3rd Student (₹8,000)
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => applyFeeAmountPreset(0, 'Fee Exemption / 100% Scholarship (₹0)')}
+                                        className={`p-2.5 rounded-xl text-xs font-extrabold border transition-all text-center flex items-center justify-center gap-1 ${
+                                            totalFeeAmount === 0 ? 'bg-amber-600 text-white border-amber-600 shadow-xs' : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                        }`}
+                                    >
+                                        🎓 Exempt / Free (₹0)
                                     </button>
                                 </div>
                             </div>

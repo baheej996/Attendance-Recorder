@@ -88,7 +88,7 @@ const StudentPayments = ({ onMarkNoticesSeen }) => {
 
     // 3. Compute overall financial totals & installment breakdown
     const financialStats = useMemo(() => {
-        const totalFee = Number(activeFeeStructure?.totalAmount || 12700);
+        const totalFee = (activeFeeStructure && activeFeeStructure.totalAmount !== undefined && activeFeeStructure.totalAmount !== null) ? Number(activeFeeStructure.totalAmount) : 12700;
         const totalPaid = studentPayments.reduce((acc, p) => acc + Number(p.amountPaid || 0), 0);
         const remainingBalance = Math.max(0, totalFee - totalPaid);
 

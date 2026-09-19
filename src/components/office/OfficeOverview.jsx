@@ -76,15 +76,15 @@ const OfficeOverview = ({ onTabChange }) => {
         return map;
     }, [feeStructures]);
 
-    // O(1) Helper: Get student fee structure amount
+    // O(1) Helper: Get student fee structure amount (respects 0 for fee exempt students)
     const getStudentFeeAmount = (student) => {
         if (!student) return 12700;
         const sStruct = feeStructureMap.get(student.id);
-        if (sStruct) return Number(sStruct.totalAmount || 12700);
+        if (sStruct && sStruct.totalAmount !== undefined && sStruct.totalAmount !== null) return Number(sStruct.totalAmount);
 
         if (student.classId) {
             const cStruct = feeStructureMap.get(student.classId);
-            if (cStruct) return Number(cStruct.totalAmount || 12700);
+            if (cStruct && cStruct.totalAmount !== undefined && cStruct.totalAmount !== null) return Number(cStruct.totalAmount);
         }
 
         return 12700;
