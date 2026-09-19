@@ -57,29 +57,45 @@ const OfficeOverview = ({ onTabChange }) => {
         return list.filter(s => s.status === 'Active' || s.status === 'active' || s.status === 'Payment Pending');
     }, [allStudents, students]);
 
-    // Helper: Get student fee structure
-    const getStudentFeeStructure = (student) => {
-        if (!student) return { totalAmount: 12700 };
-        // 1. Direct student structure
-        const studentStruct = (feeStructures || []).find(f => f.targetId === student.id || f.id === student.id);
-        if (studentStruct) return studentStruct;
+    // 1. Map of Student ID -> Class ID for O(1) lookups
+    const studentClassMap = useMemo(() => {
+        const map = new Map();
+        studentPool.forEach(s => {
+            if (s.id) map.set(s.id, s.classId);
+        });
+        return map;
+    }, [studentPool]);
 
-        // 2. Class fee structure
+    // 2. Fast Map of Target ID -> Fee Structure
+    const feeStructureMap = useMemo(() => {
+        const map = new Map();
+        (feeStructures || []).forEach(f => {
+            if (f.targetId) map.set(f.targetId, f);
+            if (f.id) map.set(f.id, f);
+        });
+        return map;
+    }, [feeStructures]);
+
+    // O(1) Helper: Get student fee structure amount
+    const getStudentFeeAmount = (student) => {
+        if (!student) return 12700;
+        const sStruct = feeStructureMap.get(student.id);
+        if (sStruct) return Number(sStruct.totalAmount || 12700);
+
         if (student.classId) {
-            const classStruct = (feeStructures || []).find(f => f.targetId === student.classId || f.id === student.classId);
-            if (classStruct) return classStruct;
+            const cStruct = feeStructureMap.get(student.classId);
+            if (cStruct) return Number(cStruct.totalAmount || 12700);
         }
 
-        // 3. Fallback default
-        return { totalAmount: 12700 };
+        return 12700;
     };
 
-    // Calculate High Level Financial Metrics
+    // Calculate High Level Financial Metrics (O(N) single pass)
     const financialKPIs = useMemo(() => {
-        const totalExpectedRevenue = studentPool.reduce((sum, s) => {
-            const struct = getStudentFeeStructure(s);
-            return sum + Number(struct.totalAmount || 12700);
-        }, 0);
+        let totalExpectedRevenue = 0;
+        studentPool.forEach(s => {
+            totalExpectedRevenue += getStudentFeeAmount(s);
+        });
 
         const totalCollectedRevenue = (feePayments || []).reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
         const totalPendingRevenue = Math.max(0, totalExpectedRevenue - totalCollectedRevenue);
@@ -96,7 +112,7 @@ const OfficeOverview = ({ onTabChange }) => {
             totalReceiptsCount,
             avgPaymentAmount
         };
-    }, [studentPool, feeStructures, feePayments]);
+    }, [studentPool, feeStructureMap, feePayments]);
 
     // Monthly Collection Trend Chart Data
     const monthlyTrendChartData = useMemo(() => {
@@ -166,35 +182,64 @@ const OfficeOverview = ({ onTabChange }) => {
         ];
     }, [feePayments]);
 
-    // Class Collection Progress List
+    // Class Collection Progress List (Optimized single-pass O(N + P))
     const classCollectionProgress = useMemo(() => {
-        const list = (classes || []).map(cls => {
-            const clsStudents = studentPool.filter(s => s.classId === cls.id);
-            const expectedFee = clsStudents.reduce((sum, s) => {
-                const struct = getStudentFeeStructure(s);
-                return sum + Number(struct.totalAmount || 12700);
-            }, 0);
+        const classStatsMap = new Map();
+        const classNameToIdMap = new Map();
 
-            const collectedFee = (feePayments || []).filter(p => {
-                const s = studentPool.find(st => st.id === p.studentId);
-                return s ? s.classId === cls.id : p.className?.includes(`${cls.name}-${cls.division}`);
-            }).reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
-
-            const rate = expectedFee > 0 ? Math.min(100, Math.round((collectedFee / expectedFee) * 100)) : 0;
-
-            return {
+        // 1. Initialize stats for each class
+        (classes || []).forEach(cls => {
+            const classKey = `${cls.name}-${cls.division}`;
+            classStatsMap.set(cls.id, {
                 id: cls.id,
-                name: `Class ${cls.name}-${cls.division}`,
-                studentCount: clsStudents.length,
-                expectedFee,
-                collectedFee,
-                pendingFee: Math.max(0, expectedFee - collectedFee),
+                name: `Class ${classKey}`,
+                studentCount: 0,
+                expectedFee: 0,
+                collectedFee: 0,
+            });
+            classNameToIdMap.set(classKey, cls.id);
+        });
+
+        // 2. Pass over studentPool to aggregate studentCount & expectedFee per class
+        studentPool.forEach(s => {
+            if (s.classId && classStatsMap.has(s.classId)) {
+                const stat = classStatsMap.get(s.classId);
+                stat.studentCount += 1;
+                stat.expectedFee += getStudentFeeAmount(s);
+            }
+        });
+
+        // 3. Pass over feePayments to aggregate collected fee per class
+        (feePayments || []).forEach(p => {
+            const amount = Number(p.amountPaid || 0);
+            if (amount <= 0) return;
+
+            let targetClassId = studentClassMap.get(p.studentId);
+            if (!targetClassId && p.className) {
+                for (const [classKey, clsId] of classNameToIdMap.entries()) {
+                    if (p.className.includes(classKey)) {
+                        targetClassId = clsId;
+                        break;
+                    }
+                }
+            }
+
+            if (targetClassId && classStatsMap.has(targetClassId)) {
+                classStatsMap.get(targetClassId).collectedFee += amount;
+            }
+        });
+
+        const list = Array.from(classStatsMap.values()).map(cls => {
+            const rate = cls.expectedFee > 0 ? Math.min(100, Math.round((cls.collectedFee / cls.expectedFee) * 100)) : 0;
+            return {
+                ...cls,
+                pendingFee: Math.max(0, cls.expectedFee - cls.collectedFee),
                 rate
             };
         });
 
         return list.sort((a, b) => b.collectedFee - a.collectedFee).slice(0, 6);
-    }, [classes, studentPool, feeStructures, feePayments]);
+    }, [classes, studentPool, feeStructureMap, feePayments, studentClassMap]);
 
     // Recent 5 Transactions Stream
     const recentTransactions = useMemo(() => {
