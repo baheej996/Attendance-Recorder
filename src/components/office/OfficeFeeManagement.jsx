@@ -38,7 +38,8 @@ import {
     FileSpreadsheet,
     Lock,
     Unlock,
-    Loader2
+    Loader2,
+    Settings
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import jsPDF from 'jspdf';
