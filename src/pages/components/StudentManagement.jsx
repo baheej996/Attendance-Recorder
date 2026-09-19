@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
-import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown, Eye } from 'lucide-react';
+import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown, Eye, Download, Upload, FileSpreadsheet, FileText } from 'lucide-react';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
@@ -14,11 +14,27 @@ import { Modal } from '../../components/ui/Modal';
 import { StudentProfileModal } from '../../components/mentor/StudentProfileModal';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { ExportButtons } from '../../components/ui/ExportButtons';
-import { FileSpreadsheet, FileText } from 'lucide-react';
+import { generateCSVTemplate, parseCSV } from '../../utils/csvHelpers';
 
 const StudentManagement = ({ readOnly = false }) => {
     const { students, addStudent, deleteStudent, deleteStudents, classes, mentors, updateStudent, deleteAllStudents, institutionSettings, studentStatuses, updateStudentStatuses } = useData();
     const { showAlert } = useUI();
+
+    const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+    const fileInputRef = useRef(null);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const data = await parseCSV(file, 'student');
+            handleBulkUpload(data);
+            e.target.value = '';
+        } catch (error) {
+            showAlert('CSV Error', "Error parsing CSV: " + error, 'error');
+        }
+    };
     const [formData, setFormData] = useState({
         name: '',
         registerNo: '',
@@ -624,64 +640,161 @@ const StudentManagement = ({ readOnly = false }) => {
 
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between pb-4 border-b border-gray-200 mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Student Management</h2>
-                <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                    {!readOnly && (
-                        <Button
-                            onClick={() => setIsStatusModalOpen(true)}
-                            className="bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
-                        >
-                            <Settings className="w-4 h-4" />
-                            <span className="hidden sm:inline">Statuses</span>
-                        </Button>
-                    )}
-                    <ExportButtons
-                        onExportExcel={handleExportExcel}
-                        onExportPDF={handleExportPDF}
-                    />
+                <div className="flex items-center gap-2.5">
+                    {/* Primary Direct Button: Add Student */}
                     {!readOnly && (
                         <Button
                             onClick={handleOpenModal}
-                            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm font-bold text-xs py-2 px-4 rounded-xl cursor-pointer active:scale-95 transition-all"
                         >
                             <UserPlus className="w-4 h-4" />
-                            <span className="hidden sm:inline">Add Student</span>
-                            <span className="sm:hidden">Add</span>
+                            <span>Add Student</span>
                         </Button>
                     )}
-                    {!readOnly && selectedIds.length > 0 && (
-                        <div className="flex gap-2">
-                            <Button
-                                onClick={() => setSelectedIds([])}
-                                className="bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
-                            >
-                                <X className="w-4 h-4" />
-                                <span className="hidden sm:inline">Cancel</span>
-                            </Button>
-                            <Button
-                                onClick={confirmDeleteSelected}
-                                className="bg-white text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-2"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                <span className="hidden sm:inline">Delete ({selectedIds.length})</span>
-                                <span className="sm:hidden">Del ({selectedIds.length})</span>
-                            </Button>
-                        </div>
-                    )}
-                    {!readOnly && students.length > 0 && (
-                        <Button
-                            onClick={confirmDeleteAll}
-                            className="bg-white text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-2"
+
+                    {/* Settings Dropdown Button */}
+                    <div className="relative inline-block text-left">
+                        <button
+                            type="button"
+                            onClick={() => setIsSettingsMenuOpen(prev => !prev)}
+                            className={clsx(
+                                "p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center shadow-xs active:scale-95",
+                                isSettingsMenuOpen
+                                    ? "bg-indigo-50 border-indigo-300 text-indigo-700 ring-2 ring-indigo-200"
+                                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                            )}
+                            title="Student Management Settings & Export Options"
                         >
-                            <Trash2 className="w-4 h-4" />
-                            <span className="hidden sm:inline">Delete All</span>
-                            <span className="sm:hidden">Del All</span>
-                        </Button>
-                    )}
-                    {!readOnly && (
-                        <div className="ml-auto md:ml-0">
-                            <BulkUploadButton type="student" onUploadSuccess={handleBulkUpload} />
-                        </div>
-                    )}
+                            <Settings className={clsx("w-5 h-5 transition-transform duration-200", isSettingsMenuOpen && "rotate-45 text-indigo-600")} />
+                        </button>
+
+                        {/* Settings Dropdown Popover */}
+                        {isSettingsMenuOpen && (
+                            <>
+                                {/* Backdrop overlay */}
+                                <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setIsSettingsMenuOpen(false)}
+                                />
+
+                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                                    <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-gray-400 border-b border-gray-100">
+                                        Management Options
+                                    </div>
+
+                                    {!readOnly && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsSettingsMenuOpen(false);
+                                                setIsStatusModalOpen(true);
+                                            }}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors text-left"
+                                        >
+                                            <Settings className="w-4 h-4 text-gray-500" />
+                                            <span>Statuses</span>
+                                        </button>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsSettingsMenuOpen(false);
+                                            handleExportExcel();
+                                        }}
+                                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-xl transition-colors text-left"
+                                    >
+                                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                                        <span>Export Excel</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsSettingsMenuOpen(false);
+                                            handleExportPDF();
+                                        }}
+                                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 rounded-xl transition-colors text-left"
+                                    >
+                                        <FileText className="w-4 h-4 text-rose-600" />
+                                        <span>Export PDF</span>
+                                    </button>
+
+                                    {!readOnly && (
+                                        <>
+                                            <div className="h-px bg-gray-100 my-1" />
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsSettingsMenuOpen(false);
+                                                    generateCSVTemplate('student');
+                                                }}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors text-left"
+                                            >
+                                                <Download className="w-4 h-4 text-indigo-600" />
+                                                <span>Download Model Template</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsSettingsMenuOpen(false);
+                                                    fileInputRef.current?.click();
+                                                }}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50 rounded-xl transition-colors text-left"
+                                            >
+                                                <Upload className="w-4 h-4 text-indigo-600" />
+                                                <span>Bulk Upload CSV</span>
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {!readOnly && (selectedIds.length > 0 || students.length > 0) && (
+                                        <>
+                                            <div className="h-px bg-gray-100 my-1" />
+
+                                            {selectedIds.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsSettingsMenuOpen(false);
+                                                        confirmDeleteSelected();
+                                                    }}
+                                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left"
+                                                >
+                                                    <Trash2 className="w-4 h-4 text-rose-600" />
+                                                    <span>Delete Selected ({selectedIds.length})</span>
+                                                </button>
+                                            )}
+
+                                            {students.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsSettingsMenuOpen(false);
+                                                        confirmDeleteAll();
+                                                    }}
+                                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left"
+                                                >
+                                                    <Trash2 className="w-4 h-4 text-rose-600" />
+                                                    <span>Delete All</span>
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <input
+                        type="file"
+                        accept=".csv, .xlsx, .xls"
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={handleFileUpload}
+                    />
                 </div>
             </div>
 
