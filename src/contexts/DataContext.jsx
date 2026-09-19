@@ -2589,12 +2589,7 @@ export const DataProvider = ({ children }) => {
                 else if (/cheque|check/i.test(rawMode)) paymentMode = 'Cheque';
                 else paymentMode = 'Cash';
 
-                const rawYearStr = String(r.academicyear || r['academic year'] || r.year || '').trim();
-                let academicYear = '2026-2027';
-                if (rawYearStr.includes('2025-2026') || rawYearStr.includes('2025')) academicYear = '2025-2026';
-                else if (rawYearStr.includes('2024-2025') || rawYearStr.includes('2024')) academicYear = '2024-2025';
-                else if (rawYearStr.includes('2026-2027') || rawYearStr.includes('2026')) academicYear = '2026-2027';
-                else if (rawYearStr) academicYear = rawYearStr;
+                const academicYear = '2026-2027';
 
                 const rawDate = r.paymentdate || r['payment date'] || r.date || r.createdat || r['created at'];
                 const paymentDate = parseCSVDate(rawDate);

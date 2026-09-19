@@ -162,26 +162,6 @@ const OfficeOverview = ({ onTabChange }) => {
             }));
     }, [feePayments]);
 
-    // Academic Year Distribution Data
-    const academicYearChartData = useMemo(() => {
-        let currentYearSum = 0;
-        let previousYearSum = 0;
-
-        (feePayments || []).forEach(p => {
-            const yr = p.academicYear || '2026-2027';
-            if (yr === '2026-2027') {
-                currentYearSum += Number(p.amountPaid || 0);
-            } else {
-                previousYearSum += Number(p.amountPaid || 0);
-            }
-        });
-
-        return [
-            { name: 'Current Year (2026-2027)', amount: currentYearSum },
-            { name: 'Previous Arrears (2025-2026 & Older)', amount: previousYearSum }
-        ];
-    }, [feePayments]);
-
     // Class Collection Progress List (Optimized single-pass O(N + P))
     const classCollectionProgress = useMemo(() => {
         const classStatsMap = new Map();
@@ -549,34 +529,10 @@ const OfficeOverview = ({ onTabChange }) => {
                 </Card>
             </div>
 
-            {/* Graphs Grid Row 2: Academic Year Split & Top Classes Leaderboard */}
+            {/* Graphs Grid Row 2: Top Classes Leaderboard */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Academic Year Distribution Bar Chart */}
-                <Card className="lg:col-span-6 p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4">
-                    <div className="border-b pb-3 flex justify-between items-center">
-                        <div>
-                            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                                <BarChart3 className="w-5 h-5 text-indigo-600" /> Academic Year Revenue Split
-                            </h3>
-                            <p className="text-xs text-gray-400">Current 2026-2027 vs Previous Year Arrears</p>
-                        </div>
-                    </div>
-
-                    <div className="w-full h-60 min-w-0">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <BarChart data={academicYearChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6B7280', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={{ borderRadius: '12px', fontWeight: 'bold' }} formatter={(val) => [`INR ${val.toLocaleString()}`, 'Collection']} />
-                                <Bar dataKey="amount" fill="#4F46E5" radius={[8, 8, 0, 0]} barSize={40} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </Card>
-
                 {/* Top Class Collection Progress List */}
-                <Card className="lg:col-span-6 p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
+                <Card className="lg:col-span-12 p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
                     <div>
                         <div className="border-b pb-3 flex justify-between items-center">
                             <div>

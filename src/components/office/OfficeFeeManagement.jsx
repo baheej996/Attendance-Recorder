@@ -684,7 +684,6 @@ const OfficeFeeManagement = () => {
     // -------------------------------------------------------------
     const [duesSearchTerm, setDuesSearchTerm] = useState('');
     const [duesStatusFilter, setDuesStatusFilter] = useState('pending'); // 'pending' | 'paid' | 'all'
-    const [duesAcademicYearFilter, setDuesAcademicYearFilter] = useState('all'); // 'all' | '2026-2027' | 'previous'
     const [selectedDuesMentorId, setSelectedDuesMentorId] = useState('all');
     const [selectedDuesClassId, setSelectedDuesClassId] = useState('all');
 
@@ -725,64 +724,26 @@ const OfficeFeeManagement = () => {
 
             const sPayments = (feePayments || []).filter(p => p.studentId === s.id);
 
-            // Current Academic Year (2026-2027)
-            const currentYearPayments = sPayments.filter(p => (p.academicYear || '2026-2027') === '2026-2027');
-            const currentPaid = currentYearPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+            const currentPaid = sPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
             const currentFee = (struct && struct.totalAmount !== undefined && struct.totalAmount !== null) ? Number(struct.totalAmount) : 12700;
             const isFeeExempt = currentFee === 0;
             const currentDues = isFeeExempt ? 0 : Math.max(0, currentFee - currentPaid);
             const isCurrentPaid = currentDues <= 0;
 
-            // Enrollment Batch / Joining Year
-            const joiningYear = getStudentJoiningYear(s);
-            const isNewAdmission = joiningYear >= 2026;
-
-            // Previous Academic Years / Arrears (2025-2026 and older)
-            const previousYearPayments = sPayments.filter(p => (p.academicYear || '2026-2027') !== '2026-2027');
-            const previousPaid = previousYearPayments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
-            
-            let previousDues = 0;
-            let prevYearFee = 0;
-
-            if (isFeeExempt) {
-                previousDues = 0;
-                prevYearFee = 0;
-            } else if (s.previousYearArrears !== undefined && s.previousYearArrears !== null) {
-                previousDues = Math.max(0, Number(s.previousYearArrears) - previousPaid);
-                prevYearFee = Number(s.previousYearArrears) + previousPaid;
-            } else if (!isNewAdmission) {
-                // For continuing students from 2025 or earlier who haven't explicitly set 0 arrears
-                prevYearFee = Number(s.previousYearFee || 12700);
-                previousDues = Math.max(0, prevYearFee - previousPaid);
-            } else {
-                previousDues = 0;
-                prevYearFee = 0;
-            }
-
-            const isPreviousPaid = !isNewAdmission && previousDues <= 0;
-            const hasPreviousArrears = !isNewAdmission && previousDues > 0;
-
-            const totalPaid = currentPaid + previousPaid;
-            const totalFee = currentFee + prevYearFee;
-            const remainingDues = currentDues + previousDues;
+            const totalPaid = currentPaid;
+            const totalFee = currentFee;
+            const remainingDues = currentDues;
             const isFullyPaid = remainingDues <= 0;
 
             return {
                 student: s,
                 cls,
-                joiningYear,
-                isNewAdmission,
                 totalFee,
                 totalPaid,
                 currentFee,
                 currentPaid,
                 currentDues,
                 isCurrentPaid,
-                prevYearFee,
-                previousPaid,
-                previousDues,
-                isPreviousPaid,
-                hasPreviousArrears,
                 remainingDues,
                 isFullyPaid,
                 status: isFullyPaid ? 'Paid' : 'Payment Pending'
@@ -800,17 +761,9 @@ const OfficeFeeManagement = () => {
             // Filter by Class
             if (selectedDuesClassId !== 'all' && item.student.classId !== selectedDuesClassId) return false;
 
-            // Filter by Academic Year Dues Scope
-            if (duesAcademicYearFilter === '2026-2027' && item.currentDues <= 0 && duesStatusFilter === 'pending') return false;
-            if (duesAcademicYearFilter === 'previous' && item.previousDues <= 0 && duesStatusFilter === 'pending') return false;
-
-            // Filter by Status & Completion Breakdown
+            // Filter by Status
             if (duesStatusFilter === 'pending' && item.isFullyPaid) return false;
             if (duesStatusFilter === 'paid' && !item.isFullyPaid) return false;
-            if (duesStatusFilter === 'paid_current' && !item.isCurrentPaid) return false;
-            if (duesStatusFilter === 'paid_previous' && !item.isPreviousPaid) return false;
-            if (duesStatusFilter === 'pending_current' && item.currentDues <= 0) return false;
-            if (duesStatusFilter === 'pending_previous' && item.previousDues <= 0) return false;
 
             // Search Filter
             if (duesSearchTerm.trim()) {
@@ -822,8 +775,8 @@ const OfficeFeeManagement = () => {
             }
 
             return true;
-        }).sort((a, b) => b.remainingDues - a.remainingDues);
-    }, [studentPool, classes, mentors, feeStructures, feePayments, selectedDuesClassId, selectedDuesMentorId, duesStatusFilter, duesAcademicYearFilter, duesSearchTerm]);
+        });
+    }, [studentPool, classes, mentors, feePayments, feeStructures, selectedDuesMentorId, selectedDuesClassId, duesStatusFilter, duesSearchTerm]);
 
     // Pagination State for Dues & Defaulters Tracker (Max 25 items per page)
     const [duesCurrentPage, setDuesCurrentPage] = useState(1);
@@ -1053,14 +1006,11 @@ const OfficeFeeManagement = () => {
         const data = duesListData.map(item => ({
             'Register No': item.student.registerNo || '',
             'Student Name': item.student.name || '',
-            'Class': item.cls ? `${item.cls.name}-${item.cls.division}` : 'N/A',
+            'Class': item.cls ? `${item.cls.name}-${item.cls.division}`: 'N/A',
             'Parent Phone': item.student.parentPhone || item.student.phone || 'N/A',
-            'Joining Year': item.joiningYear,
-            'Current Fee (INR)': item.currentFee,
-            'Current Paid (INR)': item.currentPaid,
-            'Current Dues (INR)': item.currentDues,
-            'Previous Arrears (INR)': item.previousDues,
-            'Total Remaining Dues (INR)': item.remainingDues,
+            'Total Fee (INR)': item.totalFee,
+            'Paid So Far (INR)': item.totalPaid,
+            'Pending Dues (INR)': item.remainingDues,
             'Payment Status': item.status
         }));
         exportToExcel(data, `Fee_Dues_Report_${format(new Date(), 'yyyy-MM-dd')}`, 'Fee Dues');
@@ -1068,14 +1018,14 @@ const OfficeFeeManagement = () => {
     };
 
     const exportDuesPDF = () => {
-        const headers = ['Reg No', 'Student Name', 'Class', 'Parent Phone', 'Current Dues', 'Arrears', 'Total Dues', 'Status'];
+        const headers = ['Reg No', 'Student Name', 'Class', 'Parent Phone', 'Total Fee', 'Paid So Far', 'Pending Dues', 'Status'];
         const data = duesListData.map(item => [
             item.student.registerNo || '',
             item.student.name || '',
             item.cls ? `${item.cls.name}-${item.cls.division}` : 'N/A',
             item.student.parentPhone || item.student.phone || 'N/A',
-            `INR ${item.currentDues.toLocaleString()}`,
-            `INR ${item.previousDues.toLocaleString()}`,
+            `INR ${item.totalFee.toLocaleString()}`,
+            `INR ${item.totalPaid.toLocaleString()}`,
             `INR ${item.remainingDues.toLocaleString()}`,
             item.status
         ]);
@@ -1566,15 +1516,12 @@ const OfficeFeeManagement = () => {
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-700 mb-1">Academic Year:</label>
-                                            <select
-                                                value={payAcademicYear}
-                                                onChange={(e) => setPayAcademicYear(e.target.value)}
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl focus:bg-white outline-none"
-                                            >
-                                                <option value="2026-2027">2026-2027 (Current Academic Year)</option>
-                                                <option value="2025-2026">2025-2026 (Previous Year Arrears)</option>
-                                                <option value="2024-2025">2024-2025 (Previous Year Arrears)</option>
-                                            </select>
+                                            <input
+                                                type="text"
+                                                value="2026-2027 (Current Academic Year)"
+                                                disabled
+                                                className="w-full p-2.5 bg-gray-100 border border-gray-200 text-xs font-bold rounded-xl text-gray-700 cursor-not-allowed"
+                                            />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-700 mb-1">Amount to Collect (INR):</label>
@@ -2056,18 +2003,7 @@ const OfficeFeeManagement = () => {
                                 />
                             </div>
 
-                            {/* 1. Academic Year Filter (FIRST) */}
-                            <select
-                                value={duesAcademicYearFilter}
-                                onChange={(e) => setDuesAcademicYearFilter(e.target.value)}
-                                className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-gray-800"
-                            >
-                                <option value="all">All Academic Years</option>
-                                <option value="2026-2027">Current Year (2026-2027)</option>
-                                <option value="previous">Previous Arrears (2025-2026 & Older)</option>
-                            </select>
-
-                            {/* 2. Mentor Selector (SECOND) */}
+                            {/* 1. Mentor Selector */}
                             <select
                                 value={selectedDuesMentorId}
                                 onChange={(e) => setSelectedDuesMentorId(e.target.value)}
@@ -2079,7 +2015,7 @@ const OfficeFeeManagement = () => {
                                 ))}
                             </select>
 
-                            {/* 3. Class Selector (THIRD - Cascading based on selected Mentor) */}
+                            {/* 2. Class Selector */}
                             <select
                                 value={selectedDuesClassId}
                                 onChange={(e) => setSelectedDuesClassId(e.target.value)}
@@ -2093,26 +2029,39 @@ const OfficeFeeManagement = () => {
                                 ))}
                             </select>
 
-                            {/* 4. Payment Completion Status Filter */}
-                            <select
-                                value={duesStatusFilter}
-                                onChange={(e) => setDuesStatusFilter(e.target.value)}
-                                className="bg-indigo-50 border border-indigo-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-indigo-900 shadow-xs"
-                            >
-                                <option value="pending">⚠️ Payment Pending (Defaulters)</option>
-                                <option value="paid">🟢 Fully Paid - Both Years (100% Cleared)</option>
-                                <option value="paid_current">❇️ Fully Paid - Current Year (2026-2027)</option>
-                                <option value="paid_previous">🟠 Fully Paid - Previous Year Arrears</option>
-                                <option value="pending_current">🔴 Pending - Current Year Dues</option>
-                                <option value="pending_previous">🟤 Pending - Previous Year Arrears</option>
-                                <option value="all">👥 All Students</option>
-                            </select>
+                            {/* Status Filter Buttons & Export */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <button
+                                    onClick={() => setDuesStatusFilter('pending')}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                        duesStatusFilter === 'pending' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-700'
+                                    }`}
+                                >
+                                    Payment Pending Only
+                                </button>
+                                <button
+                                    onClick={() => setDuesStatusFilter('paid')}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                        duesStatusFilter === 'paid' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700'
+                                    }`}
+                                >
+                                    Fully Paid
+                                </button>
+                                <button
+                                    onClick={() => setDuesStatusFilter('all')}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                        duesStatusFilter === 'all' ? 'bg-gray-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600'
+                                    }`}
+                                >
+                                    All Students
+                                </button>
 
-                            <ExportButtons
-                                onExportExcel={exportDuesExcel}
-                                onExportPDF={exportDuesPDF}
-                                size="sm"
-                            />
+                                <ExportButtons
+                                    onExportExcel={exportDuesExcel}
+                                    onExportPDF={exportDuesPDF}
+                                    size="sm"
+                                />
+                            </div>
                         </div>
                     </Card>
 
@@ -2168,25 +2117,6 @@ const OfficeFeeManagement = () => {
                                                         </span>
 
                                                         {/* Previous Academic Year Status Badge */}
-                                                        {item.isNewAdmission ? (
-                                                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-gray-50 text-gray-500 border-gray-200">
-                                                                ⚪ 2025-2026: N/A (New Student)
-                                                            </span>
-                                                        ) : item.isPreviousPaid ? (
-                                                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200">
-                                                                🟢 2025-2026 Paid
-                                                            </span>
-                                                        ) : (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleOpenArrearsModal(item.student)}
-                                                                className="text-[10px] font-extrabold px-2 py-0.5 rounded-md border bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                                                title="Click to edit/update Previous Year Arrears balance"
-                                                            >
-                                                                <span>🟠 2025-2026 Arrears: ₹{item.previousDues.toLocaleString()}</span>
-                                                                <Pencil className="w-3 h-3 text-amber-600 shrink-0" />
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-3.5 py-3 text-center font-mono font-bold text-gray-800">
@@ -2199,11 +2129,6 @@ const OfficeFeeManagement = () => {
                                                     <div className="font-black text-rose-600 text-sm">
                                                         ₹{item.remainingDues.toLocaleString()}
                                                     </div>
-                                                    {item.previousDues > 0 && (
-                                                        <div className="text-[10px] text-amber-700 font-extrabold mt-0.5">
-                                                            (Incl. Arrears ₹{item.previousDues.toLocaleString()})
-                                                        </div>
-                                                    )}
                                                 </td>
                                                 <td className="px-3.5 py-3 text-right">
                                                     <div className="flex items-center justify-end gap-2">
@@ -2695,81 +2620,7 @@ const OfficeFeeManagement = () => {
                     </div>
                 </div>
             )}
-            {/* Edit Previous Year Arrears Modal */}
-            {editingArrearsStudent && (
-                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5 relative">
-                        <div className="flex justify-between items-center border-b pb-3">
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-2 bg-amber-50 rounded-xl text-amber-600">
-                                    <Pencil className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-extrabold text-gray-900">Manage Previous Year Arrears</h3>
-                                    <p className="text-xs text-gray-500 font-semibold">{editingArrearsStudent.name}</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setEditingArrearsStudent(null)}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
 
-                        <form onSubmit={handleSaveArrearsSubmit} className="space-y-4">
-                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1 text-xs">
-                                <p className="text-gray-500 font-medium">Student Register Number:</p>
-                                <p className="font-extrabold font-mono text-indigo-600">{editingArrearsStudent.registerNo || 'N/A'}</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">Enrollment / Batch Year:</label>
-                                <select
-                                    value={inputJoiningYear}
-                                    onChange={(e) => setInputJoiningYear(e.target.value)}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl focus:bg-white outline-none"
-                                >
-                                    <option value="2026">2026-2027 Batch (New Student)</option>
-                                    <option value="2025">2025-2026 Batch (Enrolled 2025)</option>
-                                    <option value="2024">2024-2025 Batch (Enrolled 2024)</option>
-                                    <option value="2023">2023-2024 Batch (Enrolled 2023)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">Previous Academic Year Arrears Balance (INR):</label>
-                                <Input
-                                    type="number"
-                                    value={inputArrearsAmount}
-                                    onChange={(e) => setInputArrearsAmount(e.target.value)}
-                                    placeholder="e.g. 12700"
-                                    required
-                                />
-                                <p className="text-[11px] text-gray-400 mt-1">Set to 0 if all previous year dues are cleared.</p>
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={() => setEditingArrearsStudent(null)}
-                                    className="text-xs py-2 px-4 font-bold"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    variant="primary"
-                                    className="text-xs py-2 px-4 font-bold bg-amber-600 hover:bg-amber-700 text-white"
-                                >
-                                    Save Arrears
-                                </Button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
             {/* Live Floating Upload Progress Card */}
             {uploadingCSV && (
