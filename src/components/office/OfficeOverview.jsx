@@ -563,10 +563,10 @@ const OfficeOverview = ({ onTabChange }) => {
                 </Card>
             </div>
 
-            {/* Graphs Grid Row 2: Top Classes Leaderboard */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Graphs Grid Row 2: Top Classes & Recent Payment Receipts (50% / 50%) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Class Collection Progress List */}
-                <Card className="lg:col-span-12 p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
+                <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
                     <div>
                         <div className="border-b pb-3 flex justify-between items-center">
                             <div>
@@ -614,64 +614,66 @@ const OfficeOverview = ({ onTabChange }) => {
                         </div>
                     </div>
                 </Card>
-            </div>
 
-            {/* Recent Payments Stream */}
-            <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4">
-                <div className="flex justify-between items-center border-b pb-3">
+                {/* Recent Payments Stream */}
+                <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
                     <div>
-                        <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                            <Receipt className="w-5 h-5 text-indigo-600" /> Recent Payment Receipts Stream
-                        </h3>
-                        <p className="text-xs text-gray-400">Latest fee transactions recorded in system</p>
-                    </div>
-                    <button
-                        onClick={() => onTabChange && onTabChange('fees')}
-                        className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
-                    >
-                        Manage All Receipts <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                </div>
+                        <div className="flex justify-between items-center border-b pb-3">
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                    <Receipt className="w-5 h-5 text-indigo-600" /> Recent Payment Receipts Stream
+                                </h3>
+                                <p className="text-xs text-gray-400">Latest fee transactions recorded in system</p>
+                            </div>
+                            <button
+                                onClick={() => onTabChange && onTabChange('fees')}
+                                className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                            >
+                                Manage All Receipts <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
 
-                <div className="divide-y divide-gray-100">
-                    {recentTransactions.length === 0 ? (
-                        <p className="text-xs text-gray-400 italic py-6 text-center">No fee payments recorded yet.</p>
-                    ) : (
-                        recentTransactions.map(p => (
-                            <div key={p.id} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-gray-50/80 px-2 rounded-xl transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl font-mono text-xs font-bold">
-                                        #{p.receiptId}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-extrabold text-gray-900">{p.studentName}</p>
-                                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                                            <span>Reg: {p.registerNo || 'N/A'}</span>
-                                            <span>•</span>
-                                            <span>{p.className || 'N/A'}</span>
-                                            <span>•</span>
-                                            <span className="text-[11px]">{format(new Date(p.paymentDate || p.createdAt || Date.now()), 'dd MMM yyyy, p')}</span>
+                        <div className="divide-y divide-gray-100 mt-1">
+                            {recentTransactions.length === 0 ? (
+                                <p className="text-xs text-gray-400 italic py-6 text-center">No fee payments recorded yet.</p>
+                            ) : (
+                                recentTransactions.map(p => (
+                                    <div key={p.id} className="py-2.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 hover:bg-gray-50/80 px-2 rounded-xl transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl font-mono text-xs font-bold">
+                                                #{p.receiptId}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-extrabold text-gray-900">{p.studentName}</p>
+                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <span>Reg: {p.registerNo || 'N/A'}</span>
+                                                    <span>•</span>
+                                                    <span>{p.className || 'N/A'}</span>
+                                                    <span>•</span>
+                                                    <span className="text-[11px]">{format(new Date(p.paymentDate || p.createdAt || Date.now()), 'dd MMM yyyy, p')}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 self-end sm:self-center">
+                                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                                p.paymentMode === 'UPI' ? 'bg-indigo-50 text-indigo-700' :
+                                                p.paymentMode === 'Bank Transfer' ? 'bg-amber-50 text-amber-700' :
+                                                'bg-emerald-50 text-emerald-700'
+                                            }`}>
+                                                {p.paymentMode || 'Cash'}
+                                            </span>
+                                            <span className="font-mono font-black text-emerald-600 text-sm">
+                                                +₹{Number(p.amountPaid || 0).toLocaleString()}
+                                            </span>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="flex items-center gap-3 self-end sm:self-center">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                        p.paymentMode === 'UPI' ? 'bg-indigo-50 text-indigo-700' :
-                                        p.paymentMode === 'Bank Transfer' ? 'bg-amber-50 text-amber-700' :
-                                        'bg-emerald-50 text-emerald-700'
-                                    }`}>
-                                        {p.paymentMode || 'Cash'}
-                                    </span>
-                                    <span className="font-mono font-black text-emerald-600 text-sm">
-                                        +₹{Number(p.amountPaid || 0).toLocaleString()}
-                                    </span>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </Card>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </Card>
+            </div>
         </div>
     );
 };
