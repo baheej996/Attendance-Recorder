@@ -576,7 +576,7 @@ const OfficeOverview = ({ onTabChange }) => {
                                 <p className="text-xs text-gray-400">Collection progress by class</p>
                             </div>
                             <button
-                                onClick={() => onTabChange && onTabChange('fees')}
+                                onClick={() => onTabChange && onTabChange('class-revenue')}
                                 className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
                             >
                                 Full List <ChevronRight className="w-3.5 h-3.5" />
