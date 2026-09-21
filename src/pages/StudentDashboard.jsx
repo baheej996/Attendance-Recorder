@@ -27,8 +27,6 @@ import StudentWelcome from '../components/student/StudentWelcome';
 import StudentNotifications from '../components/student/StudentNotifications';
 import FeedbackPortal from '../components/student/FeedbackPortal';
 import StudentProfileModal from '../components/student/StudentProfileModal';
-import { FeeNoticePopupModal } from '../components/student/FeeNoticePopupModal';
-import StudentPayments from '../components/student/StudentPayments';
 
 import Help from './Help';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
@@ -678,7 +676,6 @@ const StudentDashboard = () => {
                             </div>
                         } />
                         <Route path="/subjects" element={<StudentSubjects />} />
-                        <Route path="/payments" element={<StudentPayments onMarkNoticesSeen={handleMarkPaymentNoticesSeen} />} />
                         <Route path="/exams" element={<StudentExamView />} />
                         <Route path="/activities" element={<StudentActivities />} />
                         <Route path="/leave" element={<StudentLeave />} />
@@ -733,15 +730,6 @@ const StudentDashboard = () => {
                     </div>
                 )}
             </main>
-
-            {/* Fee Notice Popup Modal (Pops up when student signs in) */}
-            {activeFeeNoticePopup && (
-                <FeeNoticePopupModal
-                    notice={activeFeeNoticePopup}
-                    student={currentUser}
-                    onClose={() => markNotificationAsDismissed(activeFeeNoticePopup.id, currentUser.id)}
-                />
-            )}
         </div>
     );
 };
