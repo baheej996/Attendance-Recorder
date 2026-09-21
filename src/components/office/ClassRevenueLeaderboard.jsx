@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
     ArrowLeft, 
     CheckCircle, 
@@ -12,7 +12,9 @@ import {
     School, 
     Filter,
     Percent,
-    AlertCircle
+    AlertCircle,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useData } from '../../contexts/DataContext';
@@ -28,6 +30,7 @@ const ClassRevenueLeaderboard = ({ onBack, onTabChange }) => {
         allStudents, 
         students, 
         classes, 
+        mentors,
         feeStructures, 
         feePayments 
     } = useData();
@@ -36,6 +39,24 @@ const ClassRevenueLeaderboard = ({ onBack, onTabChange }) => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('revenue'); // 'revenue' | 'rate' | 'students' | 'pending'
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
+    // Reset page when search or sort changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, sortBy]);
+
+    // O(1) Map of Class ID -> Mentor Name (from mentors collection assignedClassIds)
+    const classMentorMap = useMemo(() => {
+        const map = new Map();
+        (mentors || []).forEach(m => {
+            (m.assignedClassIds || []).forEach(cId => {
+                map.set(cId, m.name);
+            });
+        });
+        return map;
+    }, [mentors]);
 
     // Student Pool (All registered students across system)
     const studentPool = useMemo(() => {
@@ -87,12 +108,13 @@ const ClassRevenueLeaderboard = ({ onBack, onTabChange }) => {
 
         (classes || []).forEach(c => {
             const displayName = `Class ${c.name}-${c.division}`;
+            const resolvedMentorName = classMentorMap.get(c.id) || c.mentorName || 'Unassigned';
             classStatsMap.set(c.id, {
                 id: c.id,
                 name: displayName,
                 className: c.name,
                 division: c.division,
-                mentorName: c.mentorName || 'Unassigned',
+                mentorName: resolvedMentorName,
                 studentCount: 0,
                 expectedFee: 0,
                 collectedFee: 0
@@ -139,7 +161,7 @@ const ClassRevenueLeaderboard = ({ onBack, onTabChange }) => {
                 rate
             };
         });
-    }, [classes, studentPool, feeStructureMap, currentYearPayments, studentClassMap]);
+    }, [classes, studentPool, feeStructureMap, currentYearPayments, studentClassMap, classMentorMap]);
 
     // High Level KPIs across all classes
     const kpis = useMemo(() => {
@@ -185,6 +207,15 @@ const ClassRevenueLeaderboard = ({ onBack, onTabChange }) => {
 
         return list;
     }, [allClassStats, searchTerm, sortBy]);
+
+    // Paginated Classes (10 items per page)
+    const totalItems = processedClasses.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
+    const paginatedClasses = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return processedClasses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [processedClasses, currentPage]);
 
     // Excel Export
     const handleExportExcel = () => {
@@ -365,12 +396,12 @@ const ClassRevenueLeaderboard = ({ onBack, onTabChange }) => {
 
             {/* Leaderboard Table */}
             <Card className="overflow-hidden border border-gray-200/80 shadow-xs rounded-2xl bg-white">
-                <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span className="text-xs font-extrabold uppercase tracking-wider text-gray-700">
-                        Class Revenue Ranking List ({processedClasses.length} Classes)
+                        Class Revenue Ranking List ({totalItems} Classes)
                     </span>
                     <span className="text-xs text-gray-500 font-medium">
-                        Showing all classes sorted by <strong className="text-indigo-600 uppercase font-bold">{sortBy}</strong>
+                        Showing {totalItems > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} - {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of {totalItems} classes sorted by <strong className="text-indigo-600 uppercase font-bold">{sortBy}</strong>
                     </span>
                 </div>
 
@@ -389,15 +420,15 @@ const ClassRevenueLeaderboard = ({ onBack, onTabChange }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {processedClasses.length === 0 ? (
+                            {paginatedClasses.length === 0 ? (
                                 <tr>
                                     <td colSpan="8" className="p-8 text-center text-gray-400 italic">
                                         No classes match the search filter.
                                     </td>
                                 </tr>
                             ) : (
-                                processedClasses.map((cls, idx) => {
-                                    const rank = idx + 1;
+                                paginatedClasses.map((cls, idx) => {
+                                    const rank = (currentPage - 1) * ITEMS_PER_PAGE + idx + 1;
                                     const isTop1 = rank === 1;
                                     const isTop2 = rank === 2;
                                     const isTop3 = rank === 3;
@@ -480,6 +511,65 @@ const ClassRevenueLeaderboard = ({ onBack, onTabChange }) => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Bar */}
+                {totalItems > 0 && (
+                    <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="text-xs text-gray-500 font-medium">
+                            Showing <span className="font-bold text-gray-900">{Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalItems)}</span> to{' '}
+                            <span className="font-bold text-gray-900">{Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}</span> of{' '}
+                            <span className="font-extrabold text-indigo-900">{totalItems.toLocaleString()}</span> classes
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs flex items-center gap-1 text-xs font-bold"
+                                title="Previous Page"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                Previous
+                            </button>
+
+                            <div className="flex items-center gap-1 px-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                    .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                                    .map((page, index, array) => {
+                                        const prevPage = array[index - 1];
+                                        const showEllipsis = prevPage && page - prevPage > 1;
+
+                                        return (
+                                            <React.Fragment key={page}>
+                                                {showEllipsis && <span className="px-1 text-xs text-gray-400 font-bold">...</span>}
+                                                <button
+                                                    onClick={() => setCurrentPage(page)}
+                                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                                        currentPage === page
+                                                            ? 'bg-indigo-600 text-white shadow-xs'
+                                                            : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            </React.Fragment>
+                                        );
+                                    })
+                                }
+                            </div>
+
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages || totalPages === 0}
+                                className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs flex items-center gap-1 text-xs font-bold"
+                                title="Next Page"
+                            >
+                                Next
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </Card>
         </div>
     );
