@@ -298,9 +298,9 @@ const OfficeOverview = ({ onTabChange }) => {
         ].filter(item => item.value > 0);
     }, [studentPool, currentYearPayments, feeStructureMap]);
 
-    // Recent Transactions Stream (8 items)
+    // Recent Transactions Stream (6 items to match 8 class rows height)
     const recentTransactions = useMemo(() => {
-        return currentYearPayments.slice(0, 8);
+        return currentYearPayments.slice(0, 6);
     }, [currentYearPayments]);
 
     // Excel Report Generator
@@ -746,9 +746,9 @@ const OfficeOverview = ({ onTabChange }) => {
             </div>
 
             {/* Graphs Grid Row 2: Top Classes & Recent Payment Receipts (50% / 50%) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 {/* Top Class Collection Progress List */}
-                <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
+                <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between h-full">
                     <div>
                         <div className="border-b pb-3 flex justify-between items-center">
                             <div>
@@ -798,7 +798,7 @@ const OfficeOverview = ({ onTabChange }) => {
                 </Card>
 
                 {/* Recent Payments Stream */}
-                <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between">
+                <Card className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4 flex flex-col justify-between h-full">
                     <div>
                         <div className="flex justify-between items-center border-b pb-3">
                             <div>
