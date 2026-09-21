@@ -259,7 +259,7 @@ const OfficeOverview = ({ onTabChange }) => {
     const batchComparisonBarData = useMemo(() => {
         const batchMap = new Map();
 
-        (allClassStats || []).forEach(cls => {
+        (classCollectionProgress || []).forEach(cls => {
             const rawName = String(cls.className || '').trim();
             const batchLabel = /^\d+$/.test(rawName) ? `Class ${rawName}` : (rawName || 'Other');
             const sortKey = /^\d+$/.test(rawName) ? parseInt(rawName, 10) : 99;
@@ -280,7 +280,7 @@ const OfficeOverview = ({ onTabChange }) => {
         });
 
         return Array.from(batchMap.values()).sort((a, b) => a.sortKey - b.sortKey);
-    }, [allClassStats]);
+    }, [classCollectionProgress]);
 
     // Student Fee Status Distribution Chart Data
     const studentStatusChartData = useMemo(() => {
