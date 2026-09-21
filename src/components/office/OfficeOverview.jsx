@@ -255,15 +255,32 @@ const OfficeOverview = ({ onTabChange }) => {
         return list.sort((a, b) => b.collectedFee - a.collectedFee);
     }, [classes, studentPool, feeStructureMap, currentYearPayments, studentClassMap]);
 
-    // Top Classes Collected vs Pending Bar Chart Data
-    const classComparisonBarData = useMemo(() => {
-        return (classCollectionProgress || []).slice(0, 8).map(cls => ({
-            name: `${cls.className}-${cls.division}`,
-            fullName: cls.name,
-            'Collected Fee': cls.collectedFee,
-            'Pending Dues': cls.pendingFee,
-        }));
-    }, [classCollectionProgress]);
+    // Batch / Grade Level Revenue vs Pending Bar Chart Data (Class 1, Class 2, Class 3...)
+    const batchComparisonBarData = useMemo(() => {
+        const batchMap = new Map();
+
+        (allClassStats || []).forEach(cls => {
+            const rawName = String(cls.className || '').trim();
+            const batchLabel = /^\d+$/.test(rawName) ? `Class ${rawName}` : (rawName || 'Other');
+            const sortKey = /^\d+$/.test(rawName) ? parseInt(rawName, 10) : 99;
+
+            if (!batchMap.has(batchLabel)) {
+                batchMap.set(batchLabel, {
+                    name: batchLabel,
+                    sortKey,
+                    'Collected Fee': 0,
+                    'Pending Dues': 0,
+                    studentCount: 0
+                });
+            }
+            const b = batchMap.get(batchLabel);
+            b['Collected Fee'] += cls.collectedFee;
+            b['Pending Dues'] += cls.pendingFee;
+            b.studentCount += cls.studentCount;
+        });
+
+        return Array.from(batchMap.values()).sort((a, b) => a.sortKey - b.sortKey);
+    }, [allClassStats]);
 
     // Student Fee Status Distribution Chart Data
     const studentStatusChartData = useMemo(() => {
@@ -515,12 +532,12 @@ const OfficeOverview = ({ onTabChange }) => {
                                 {activeChartTab === 'classBar' && <BarChart3 className="w-5 h-5 text-emerald-600" />}
                                 {activeChartTab === 'studentStatus' && <PieChartIcon className="w-5 h-5 text-amber-600" />}
                                 {activeChartTab === 'trend' && 'Revenue Collection Trend Over Time'}
-                                {activeChartTab === 'classBar' && 'Class Revenue vs Pending Dues Comparison'}
+                                {activeChartTab === 'classBar' && 'Batch Revenue vs Pending Dues Comparison'}
                                 {activeChartTab === 'studentStatus' && 'Student Fee Payment Status Breakdown'}
                             </h3>
                             <p className="text-xs text-gray-400">
                                 {activeChartTab === 'trend' && (trendView === 'daily' ? 'Daily collection curve for Academic Year 2026-2027' : 'Monthly breakdown of fee payments collected')}
-                                {activeChartTab === 'classBar' && 'Top classes comparing collected revenue vs remaining pending dues'}
+                                {activeChartTab === 'classBar' && 'Batch comparison (Class 1 to 12) aggregating collected revenue vs remaining pending dues'}
                                 {activeChartTab === 'studentStatus' && 'Proportion of fully paid, partial payment, and unpaid students'}
                             </p>
                         </div>
@@ -541,7 +558,7 @@ const OfficeOverview = ({ onTabChange }) => {
                                     activeChartTab === 'classBar' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             >
-                                <BarChart3 className="w-3.5 h-3.5" /> Class Comparison
+                                <BarChart3 className="w-3.5 h-3.5" /> Batch Comparison
                             </button>
                             <button
                                 onClick={() => setActiveChartTab('studentStatus')}
@@ -602,11 +619,11 @@ const OfficeOverview = ({ onTabChange }) => {
                         </div>
                     )}
 
-                    {/* Chart 2: Top Class Revenue Comparison (Bar Chart) */}
+                    {/* Chart 2: Batch Revenue Comparison (Bar Chart) */}
                     {activeChartTab === 'classBar' && (
                         <div className="w-full h-72 min-w-0">
                             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                                <BarChart data={classComparisonBarData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <BarChart data={batchComparisonBarData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#374151', fontWeight: 700 }} axisLine={false} tickLine={false} />
                                     <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
