@@ -155,7 +155,7 @@ const OfficeFeeManagement = () => {
         const existingStruct = (feeStructures || []).find(f => f.targetId === selectedConfigTargetId || f.id === selectedConfigTargetId);
         if (existingStruct) {
             setTotalFeeAmount(existingStruct.totalAmount !== undefined && existingStruct.totalAmount !== null ? Number(existingStruct.totalAmount) : 12700);
-            if (existingStruct.installments) {
+            if (existingStruct?.installments) {
                 setInstallmentConfig(existingStruct.installments);
             }
         } else {
@@ -368,7 +368,7 @@ const OfficeFeeManagement = () => {
             return;
         }
 
-        const instData = activeFeeStruct.installments?.[selectedInstallmentKey] || { amount: 5000, name: 'Installment' };
+        const instData = activeFeeStruct?.installments?.[selectedInstallmentKey] || { amount: 5000, name: 'Installment' };
         const payAmount = Number(customPayAmount) || Number(instData.amount) || 5000;
 
         if (payAmount <= 0) {
@@ -897,9 +897,9 @@ const OfficeFeeManagement = () => {
         const inst2Paid = studentPayments.filter(p => p.installmentKey === 'inst2').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
         const inst3Paid = studentPayments.filter(p => p.installmentKey === 'inst3').reduce((s, p) => s + Number(p.amountPaid || 0), 0);
 
-        const inst1Due = Math.max(0, (struct.installments?.inst1?.amount || 4233) - inst1Paid);
-        const inst2Due = Math.max(0, (struct.installments?.inst2?.amount || 4233) - inst2Paid);
-        const inst3Due = Math.max(0, (struct.installments?.inst3?.amount || 4234) - inst3Paid);
+        const inst1Due = Math.max(0, (struct?.installments?.inst1?.amount || 4233) - inst1Paid);
+        const inst2Due = Math.max(0, (struct?.installments?.inst2?.amount || 4233) - inst2Paid);
+        const inst3Due = Math.max(0, (struct?.installments?.inst3?.amount || 4234) - inst3Paid);
 
         if (inst1Due > 0) {
             setSelectedInstallmentKey('inst1');
@@ -1136,9 +1136,9 @@ const OfficeFeeManagement = () => {
             'Target Type': f.targetType || 'Class',
             'Target Name/ID': f.targetId || f.className || '',
             'Total Fee (INR)': Number(f.totalAmount || 12700),
-            'Installment 1': f.installments?.inst1?.amount || 4233,
-            'Installment 2': f.installments?.inst2?.amount || 4233,
-            'Installment 3': f.installments?.inst3?.amount || 4234
+            'Installment 1': f?.installments?.inst1?.amount || 4233,
+            'Installment 2': f?.installments?.inst2?.amount || 4233,
+            'Installment 3': f?.installments?.inst3?.amount || 4234
         }));
         exportToExcel(data, `Fee_Structures_Config_${format(new Date(), 'yyyy-MM-dd')}`, 'Structures');
         showAlert('Excel Exported', 'Configured Fee Structures downloaded as Excel!', 'success');
@@ -1150,9 +1150,9 @@ const OfficeFeeManagement = () => {
             f.targetType || 'Class',
             f.targetId || f.className || '',
             `INR ${Number(f.totalAmount || 12700).toLocaleString()}`,
-            `INR ${(f.installments?.inst1?.amount || 4233).toLocaleString()}`,
-            `INR ${(f.installments?.inst2?.amount || 4233).toLocaleString()}`,
-            `INR ${(f.installments?.inst3?.amount || 4234).toLocaleString()}`
+            `INR ${(f?.installments?.inst1?.amount || 4233).toLocaleString()}`,
+            `INR ${(f?.installments?.inst2?.amount || 4233).toLocaleString()}`,
+            `INR ${(f?.installments?.inst3?.amount || 4234).toLocaleString()}`
         ]);
         exportToPDF(data, headers, `Fee_Structures_Config_${format(new Date(), 'yyyy-MM-dd')}`, 'FEE STRUCTURE CONFIGURATIONS REPORT', `Total Configured Structures: ${(feeStructures || []).length}`);
         showAlert('PDF Exported', 'Configured Fee Structures downloaded as PDF!', 'success');
@@ -1521,9 +1521,9 @@ const OfficeFeeManagement = () => {
                                                     </div>
                                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                                         {[
-                                                            { key: 'inst1', label: 'Inst 1 (Admission)', paid: studentTotals.inst1Paid, due: activeFeeStruct.installments?.inst1?.amount || 4233 },
-                                                            { key: 'inst2', label: 'Inst 2 (Mid-Term)', paid: studentTotals.inst2Paid, due: activeFeeStruct.installments?.inst2?.amount || 4233 },
-                                                            { key: 'inst3', label: 'Inst 3 (Final Term)', paid: studentTotals.inst3Paid, due: activeFeeStruct.installments?.inst3?.amount || 4234 }
+                                                            { key: 'inst1', label: 'Inst 1 (Admission)', paid: studentTotals.inst1Paid, due: activeFeeStruct?.installments?.inst1?.amount || 4233 },
+                                                            { key: 'inst2', label: 'Inst 2 (Mid-Term)', paid: studentTotals.inst2Paid, due: activeFeeStruct?.installments?.inst2?.amount || 4233 },
+                                                            { key: 'inst3', label: 'Inst 3 (Final Term)', paid: studentTotals.inst3Paid, due: activeFeeStruct?.installments?.inst3?.amount || 4234 }
                                                         ].map((inst) => {
                                                             const isPaid = inst.paid >= inst.due;
                                                             return (
@@ -1552,9 +1552,9 @@ const OfficeFeeManagement = () => {
                                         <label className="block text-xs font-bold text-gray-700 mb-1">Select Installment / Term:</label>
                                         <div className="grid grid-cols-3 gap-2">
                                             {[
-                                                { key: 'inst1', name: activeFeeStruct.installments?.inst1?.name || 'Inst 1', paid: studentTotals.inst1Paid, due: activeFeeStruct.installments?.inst1?.amount || 5000 },
-                                                { key: 'inst2', name: activeFeeStruct.installments?.inst2?.name || 'Inst 2', paid: studentTotals.inst2Paid, due: activeFeeStruct.installments?.inst2?.amount || 5000 },
-                                                { key: 'inst3', name: activeFeeStruct.installments?.inst3?.name || 'Inst 3', paid: studentTotals.inst3Paid, due: activeFeeStruct.installments?.inst3?.amount || 5000 }
+                                                { key: 'inst1', name: activeFeeStruct?.installments?.inst1?.name || 'Inst 1', paid: studentTotals.inst1Paid, due: activeFeeStruct?.installments?.inst1?.amount || 5000 },
+                                                { key: 'inst2', name: activeFeeStruct?.installments?.inst2?.name || 'Inst 2', paid: studentTotals.inst2Paid, due: activeFeeStruct?.installments?.inst2?.amount || 5000 },
+                                                { key: 'inst3', name: activeFeeStruct?.installments?.inst3?.name || 'Inst 3', paid: studentTotals.inst3Paid, due: activeFeeStruct?.installments?.inst3?.amount || 5000 }
                                             ].map(inst => (
                                                 <button
                                                     type="button"
@@ -1590,7 +1590,7 @@ const OfficeFeeManagement = () => {
                                                 type="number"
                                                 value={customPayAmount}
                                                 onChange={(e) => setCustomPayAmount(e.target.value)}
-                                                placeholder={`e.g. ${activeFeeStruct.installments?.[selectedInstallmentKey]?.amount || 5000}`}
+                                                placeholder={`e.g. ${activeFeeStruct?.installments?.[selectedInstallmentKey]?.amount || 5000}`}
                                                 required
                                             />
                                         </div>
