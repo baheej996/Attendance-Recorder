@@ -7,6 +7,7 @@ import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 // Components
 import OfficeOverview from '../components/office/OfficeOverview';
 import OfficeFeeManagement from '../components/office/OfficeFeeManagement';
+import ClassRevenueLeaderboard from '../components/office/ClassRevenueLeaderboard';
 import StudentManagement from './components/StudentManagement';
 import ClassManagement from './components/ClassManagement';
 
@@ -54,6 +55,8 @@ const OfficeDashboard = () => {
                 return <OfficeOverview onTabChange={setActiveTab} />;
             case 'fees':
                 return <OfficeFeeManagement />;
+            case 'class-revenue':
+                return <ClassRevenueLeaderboard onBack={() => setActiveTab('overview')} onTabChange={setActiveTab} />;
             case 'students':
                 return <StudentManagement />;
             case 'classes':
