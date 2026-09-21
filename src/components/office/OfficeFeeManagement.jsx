@@ -74,10 +74,9 @@ const OfficeFeeManagement = () => {
     // Main Active Sub-Tab: 'dues' | 'payments' | 'configurator' | 'reports'
     const [activeTab, setActiveTab] = useState('dues');
 
-    // Student Pool (Active students across system)
+    // Student Pool (All registered students across system)
     const studentPool = useMemo(() => {
-        const list = (allStudents && allStudents.length > 0) ? allStudents : (students || []);
-        return list.filter(s => s.status === 'Active' || s.status === 'active' || s.status === 'Payment Pending');
+        return (allStudents && allStudents.length > 0) ? allStudents : (students || []);
     }, [allStudents, students]);
 
     // -------------------------------------------------------------
@@ -680,6 +679,7 @@ const OfficeFeeManagement = () => {
     const [duesStatusFilter, setDuesStatusFilter] = useState('pending'); // 'pending' | 'paid' | 'exempt' | 'unconfigured' | 'all'
     const [selectedDuesMentorId, setSelectedDuesMentorId] = useState('all');
     const [selectedDuesClassId, setSelectedDuesClassId] = useState('all');
+    const [duesAccountStatusFilter, setDuesAccountStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
 
     // Quick Set Fee Amount Modal State
     const [editingFeeStudent, setEditingFeeStudent] = useState(null);
@@ -820,6 +820,11 @@ const OfficeFeeManagement = () => {
             // Filter by Class
             if (selectedDuesClassId !== 'all' && item.student.classId !== selectedDuesClassId) return false;
 
+            // Filter by Account Status (Active / Inactive)
+            const isInactiveStudent = ['Inactive', 'inactive', 'Suspended', 'Dismissed'].includes(item.student.status);
+            if (duesAccountStatusFilter === 'active' && isInactiveStudent) return false;
+            if (duesAccountStatusFilter === 'inactive' && !isInactiveStudent) return false;
+
             // Filter by Status
             if (duesStatusFilter === 'pending' && (item.isFullyPaid || !item.isConfigured)) return false;
             if (duesStatusFilter === 'paid' && (!item.isFullyPaid || !item.isConfigured)) return false;
@@ -846,7 +851,7 @@ const OfficeFeeManagement = () => {
     // Reset pagination to Page 1 when search or filters change
     useEffect(() => {
         setDuesCurrentPage(1);
-    }, [duesSearchTerm, duesStatusFilter, selectedDuesMentorId, selectedDuesClassId]);
+    }, [duesSearchTerm, duesStatusFilter, duesAccountStatusFilter, selectedDuesMentorId, selectedDuesClassId]);
 
     const totalDuesItems = duesListData.length;
     const totalDuesPages = Math.ceil(totalDuesItems / DUES_ITEMS_PER_PAGE) || 1;
@@ -2090,6 +2095,17 @@ const OfficeFeeManagement = () => {
                                 ))}
                             </select>
 
+                            {/* 3. Account Status Filter (All / Active / Inactive) */}
+                            <select
+                                value={duesAccountStatusFilter}
+                                onChange={(e) => setDuesAccountStatusFilter(e.target.value)}
+                                className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none text-gray-800"
+                            >
+                                <option value="all">All Account Statuses</option>
+                                <option value="active">Active Only</option>
+                                <option value="inactive">Inactive Only</option>
+                            </select>
+
                             {/* Status Filter Buttons & Export */}
                             <div className="flex items-center gap-2 flex-wrap">
                                 <button
@@ -2173,7 +2189,14 @@ const OfficeFeeManagement = () => {
                                                 </td>
                                                 <td className="px-3.5 py-3 font-bold text-gray-900">
                                                     <div>
-                                                        <div className="font-extrabold text-gray-900 text-sm tracking-tight">{item.student.name}</div>
+                                                        <div className="font-extrabold text-gray-900 text-sm tracking-tight flex items-center gap-1.5 flex-wrap">
+                                                            <span>{item.student.name}</span>
+                                                            {['Inactive', 'inactive', 'Suspended', 'Dismissed'].includes(item.student.status) && (
+                                                                <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-gray-100 text-gray-600 rounded-md border border-gray-200">
+                                                                    {item.student.status || 'Inactive'}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <div className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
                                                             Reg: {item.student.registerNo || 'N/A'}
                                                         </div>
