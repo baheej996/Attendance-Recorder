@@ -298,9 +298,9 @@ const OfficeOverview = ({ onTabChange }) => {
         ].filter(item => item.value > 0);
     }, [studentPool, currentYearPayments, feeStructureMap]);
 
-    // Recent 5 Transactions Stream
+    // Recent Transactions Stream (8 items)
     const recentTransactions = useMemo(() => {
-        return currentYearPayments.slice(0, 6);
+        return currentYearPayments.slice(0, 8);
     }, [currentYearPayments]);
 
     // Excel Report Generator
@@ -769,7 +769,7 @@ const OfficeOverview = ({ onTabChange }) => {
                             {classCollectionProgress.length === 0 ? (
                                 <p className="text-xs text-gray-400 italic py-4 text-center">No class collection data available.</p>
                             ) : (
-                                classCollectionProgress.slice(0, 6).map(cls => (
+                                classCollectionProgress.slice(0, 8).map(cls => (
                                     <div key={cls.id} className="space-y-1">
                                         <div className="flex justify-between items-center text-xs font-bold">
                                             <span className="text-gray-900">{cls.name} <span className="text-gray-400 font-normal">({cls.studentCount} Students)</span></span>
