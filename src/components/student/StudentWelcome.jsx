@@ -200,6 +200,24 @@ const StudentWelcome = () => {
     const unreadLeaveCount = unreadNotificationsList.filter(n => n.type === 'leave').length;
     const unreadStarCount = unreadNotificationsList.filter(n => n.type === 'star').length;
 
+    const [seenPaymentNoticeIds] = useState(() => {
+        if (!currentUser?.id) return [];
+        try {
+            const saved = localStorage.getItem(`seen_payment_notices_${currentUser.id}`);
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+
+    const allStudentFeeNotices = (notifications || []).filter(n => {
+        const isFeeRelated = n.type === 'fee_notice_popup' || n.type === 'fee_notice' || n.type === 'fee' || n.isPopup || (n.title || '').toLowerCase().includes('fee');
+        const isTargeted = n.audience === 'all' || n.audience === 'students' || (n.audience === 'specific_class' && n.classId === currentUser?.classId) || (n.audience === 'specific_student' && n.targetId === currentUser?.id);
+        return isFeeRelated && isTargeted;
+    });
+
+    const unreadPaymentNoticeCount = allStudentFeeNotices.filter(n => !seenPaymentNoticeIds.includes(n.id)).length;
+
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/student/overview', key: 'overview', color: 'bg-indigo-500' },
         { icon: CreditCard, label: 'Tuition Fee', path: '/student/payments', key: 'payments', color: 'bg-emerald-600', badge: unreadPaymentNoticeCount },
