@@ -28,7 +28,8 @@ import {
     ArrowRight,
     MessageCircle,
     Gamepad2,
-    BookHeart
+    BookHeart,
+    CreditCard
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
