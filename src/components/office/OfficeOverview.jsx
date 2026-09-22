@@ -52,7 +52,7 @@ const OfficeOverview = ({ onTabChange }) => {
 
     const { showAlert } = useUI();
 
-    const [activeChartTab, setActiveChartTab] = useState('trend'); // 'trend' | 'classBar' | 'studentStatus'
+    const [activeChartTab, setActiveChartTab] = useState('classBar'); // 'trend' | 'classBar' | 'studentStatus'
     const [trendView, setTrendView] = useState('daily'); // 'daily' | 'monthly'
     const [rightChartTab, setRightChartTab] = useState('mode'); // 'mode' | 'status'
 
