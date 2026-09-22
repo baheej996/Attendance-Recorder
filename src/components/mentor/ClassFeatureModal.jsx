@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, X, Book, CheckCircle, Moon, BookHeart } from 'lucide-react';
+import { Layers, FileText, Calendar, MessageSquare, BookOpen, Clock, Trophy, Star, Info, X, Book, CheckCircle, Moon, BookHeart, CreditCard } from 'lucide-react';
 
 const FeatureToggle = ({ label, description, icon: Icon, isEnabled, isGloballyDisabled, globalDisabledReason, disabledTheme = 'red', onToggle }) => {
     const themeColors = {
@@ -114,6 +114,7 @@ const ClassFeatureModal = ({ classId, isGlobalMode, className, isOpen, onClose }
     };
 
     const features = [
+        { key: 'payments', label: 'Tuition Fee', description: 'View tuition fee dues, installments, and receipts.', icon: CreditCard },
         { key: 'activities', label: 'Activities', description: 'Enable assignments and projects.', icon: Layers },
         { key: 'subjects', label: 'Subjects', description: 'Enable subject viewing.', icon: Book },
         { key: 'exams', label: 'Online Exams', description: 'Enable MCQ based online examinations.', icon: FileText },

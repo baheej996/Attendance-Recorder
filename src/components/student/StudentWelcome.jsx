@@ -192,7 +192,7 @@ const StudentWelcome = () => {
 
     const unreadChatCount = (unreadChats || []).length;
     
-    const unreadNotificationsList = (useData().notifications || []).filter(n => {
+    const unreadNotificationsList = (notifications || []).filter(n => {
         return (n.audience === 'all' || n.audience === 'students' || (n.audience === 'specific_class' && n.classId === currentUser.classId) || (n.audience === 'specific_student' && n.targetId === currentUser.id)) && !(n.readBy || []).includes(currentUser.id);
     });
     const unreadAttendanceCount = unreadNotificationsList.filter(n => n.type === 'attendance').length;
@@ -201,6 +201,7 @@ const StudentWelcome = () => {
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', path: '/student/overview', key: 'overview', color: 'bg-indigo-500' },
+        { icon: CreditCard, label: 'Tuition Fee', path: '/student/payments', key: 'payments', color: 'bg-emerald-600', badge: unreadPaymentNoticeCount },
         { icon: Layers, label: 'Activities', path: '/student/activities', key: 'activities', color: 'bg-purple-500', badge: hasPendingActivities },
         { icon: Book, label: 'Subjects', path: '/student/subjects', key: 'subjects', color: 'bg-emerald-500' },
         { icon: FileText, label: 'Online Exams', path: '/student/exams', key: 'exams', color: 'bg-amber-500', badge: pendingExamsCount },
