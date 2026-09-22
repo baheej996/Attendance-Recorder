@@ -33,7 +33,7 @@ import {
 import { clsx } from 'clsx';
 
 const StudentWelcome = () => {
-    const { currentUser, classes, mentors, liveClasses, substitutionRequests, studentFeatureFlags, classFeatureFlags, activities, activitySubmissions, exams, results, unreadChats, requireFeature, parentFeedbackTemplates, parentFeedbacks } = useData();
+    const { currentUser, classes, mentors, liveClasses, substitutionRequests, studentFeatureFlags, classFeatureFlags, activities, activitySubmissions, exams, results, unreadChats, requireFeature, parentFeedbackTemplates, parentFeedbacks, notifications } = useData();
     const navigate = useNavigate();
     const [currentTime, setCurrentTime] = useState(new Date());
 
