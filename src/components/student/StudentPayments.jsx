@@ -24,7 +24,9 @@ import {
     MessageSquare,
     HelpCircle,
     Building2,
-    Send
+    Send,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -34,6 +36,14 @@ const StudentPayments = ({ onMarkNoticesSeen }) => {
     const { currentUser, feeStructures, feePayments, notifications, institutionSettings, classes } = useData();
     const navigate = useNavigate();
     const [selectedReceipt, setSelectedReceipt] = useState(null);
+    const [expandedInstallments, setExpandedInstallments] = useState({});
+
+    const toggleInstallmentExpand = (key) => {
+        setExpandedInstallments(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
 
     const officePhone = institutionSettings?.phone || institutionSettings?.contactNo || institutionSettings?.whatsappNumber || '+918590518541';
 
@@ -258,71 +268,71 @@ const StudentPayments = ({ onMarkNoticesSeen }) => {
                 </div>
             </div>
 
-            {/* Financial Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                <Card className="p-5 border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Tuition Fee</span>
-                        <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
-                            <Wallet className="w-5 h-5" />
+            {/* Financial Summary Cards - Responsive 2 per line on mobile */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-6">
+                <Card className="p-3 sm:p-5 border-l-4 border-l-indigo-500 shadow-xs hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                        <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Total Fee</span>
+                        <div className="p-1.5 sm:p-2.5 bg-indigo-50 rounded-lg sm:rounded-xl text-indigo-600">
+                            <Wallet className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                         </div>
                     </div>
-                    <h3 className="text-2xl font-black text-gray-900 font-mono">
+                    <h3 className="text-base sm:text-2xl font-black text-gray-900 font-mono">
                         ₹{financialStats.totalFee.toLocaleString()}
                     </h3>
-                    <p className="text-xs text-gray-500 mt-1 font-medium">Academic Year Total Dues</p>
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 font-medium truncate">Academic Year Total</p>
                 </Card>
 
-                <Card className="p-5 border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Amount Paid</span>
-                        <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-600">
-                            <CheckCircle2 className="w-5 h-5" />
+                <Card className="p-3 sm:p-5 border-l-4 border-l-emerald-500 shadow-xs hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                        <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Amount Paid</span>
+                        <div className="p-1.5 sm:p-2.5 bg-emerald-50 rounded-lg sm:rounded-xl text-emerald-600">
+                            <CheckCircle2 className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                         </div>
                     </div>
-                    <h3 className="text-2xl font-black text-emerald-600 font-mono">
+                    <h3 className="text-base sm:text-2xl font-black text-emerald-600 font-mono">
                         ₹{financialStats.totalPaid.toLocaleString()}
                     </h3>
-                    <p className="text-xs text-emerald-700 mt-1 font-medium">Recorded Payments</p>
+                    <p className="text-[10px] sm:text-xs text-emerald-700 mt-0.5 sm:mt-1 font-medium truncate">Recorded Payments</p>
                 </Card>
 
-                <Card className="p-5 border-l-4 border-l-rose-500 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Remaining Balance</span>
-                        <div className="p-2.5 bg-rose-50 rounded-xl text-rose-600">
-                            <AlertCircle className="w-5 h-5" />
+                <Card className="p-3 sm:p-5 border-l-4 border-l-rose-500 shadow-xs hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                        <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Remaining Dues</span>
+                        <div className="p-1.5 sm:p-2.5 bg-rose-50 rounded-lg sm:rounded-xl text-rose-600">
+                            <AlertCircle className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                         </div>
                     </div>
-                    <h3 className="text-2xl font-black text-rose-600 font-mono">
+                    <h3 className="text-base sm:text-2xl font-black text-rose-600 font-mono">
                         ₹{financialStats.remainingBalance.toLocaleString()}
                     </h3>
-                    <p className="text-xs text-gray-500 mt-1 font-medium">Pending Dues to Clear</p>
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 font-medium truncate">Pending to Clear</p>
                 </Card>
 
-                <Card className="p-5 border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Installments Progress</span>
-                        <div className="p-2.5 bg-amber-50 rounded-xl text-amber-600">
-                            <TrendingUp className="w-5 h-5" />
+                <Card className="p-3 sm:p-5 border-l-4 border-l-amber-500 shadow-xs hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                        <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Installments</span>
+                        <div className="p-1.5 sm:p-2.5 bg-amber-50 rounded-lg sm:rounded-xl text-amber-600">
+                            <TrendingUp className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                         </div>
                     </div>
-                    <h3 className="text-2xl font-black text-gray-900">
-                        {financialStats.completedInstallmentsCount} <span className="text-sm font-bold text-gray-400">/ {financialStats.totalInstallmentsCount}</span>
+                    <h3 className="text-base sm:text-2xl font-black text-gray-900">
+                        {financialStats.completedInstallmentsCount} <span className="text-xs sm:text-sm font-bold text-gray-400">/ {financialStats.totalInstallmentsCount}</span>
                     </h3>
-                    <p className="text-xs text-amber-700 font-bold mt-1">
+                    <p className="text-[10px] sm:text-xs text-amber-700 font-bold mt-0.5 sm:mt-1 truncate">
                         {financialStats.pendingInstallmentsCount === 0 
-                            ? 'All Installments Completed!' 
-                            : `${financialStats.pendingInstallmentsCount} Installment${financialStats.pendingInstallmentsCount > 1 ? 's' : ''} Remaining`}
+                            ? 'All Completed!' 
+                            : `${financialStats.pendingInstallmentsCount} Remaining`}
                     </p>
                 </Card>
             </div>
 
             {/* Installments Breakdown Section */}
-            <Card className="p-6 sm:p-8 space-y-6 shadow-sm border border-gray-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+            <Card className="p-4 sm:p-8 space-y-4 sm:space-y-6 shadow-sm border border-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3 sm:pb-4">
                     <div>
-                        <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-                            <Calendar className="w-6 h-6 text-emerald-600" />
+                        <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
                             Installment Breakdown
                         </h2>
                         <p className="text-xs text-gray-500 mt-0.5">
@@ -330,85 +340,148 @@ const StudentPayments = ({ onMarkNoticesSeen }) => {
                         </p>
                     </div>
 
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-black text-emerald-800 self-start sm:self-auto">
-                        <Sparkles className="w-4 h-4 text-emerald-600" />
-                        <span>{financialStats.completedInstallmentsCount} of {financialStats.totalInstallmentsCount} Installments Completed</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-black text-emerald-800">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{financialStats.completedInstallmentsCount} of {financialStats.totalInstallmentsCount} Completed</span>
+                        </div>
+
+                        {/* Mobile Expand / Collapse All Toggle Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const anyExpanded = financialStats.breakdown.some(inst => expandedInstallments[inst.key]);
+                                if (anyExpanded) {
+                                    setExpandedInstallments({});
+                                } else {
+                                    const allExp = {};
+                                    financialStats.breakdown.forEach(inst => { allExp[inst.key] = true; });
+                                    setExpandedInstallments(allExp);
+                                }
+                            }}
+                            className="md:hidden inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all border border-gray-200"
+                        >
+                            {financialStats.breakdown.some(inst => expandedInstallments[inst.key]) ? (
+                                <>
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                    <span>Collapse All</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                    <span>Expand All</span>
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {financialStats.breakdown.map((inst, index) => (
-                        <div 
-                            key={inst.key}
-                            className={`p-5 rounded-2xl border transition-all relative overflow-hidden flex flex-col justify-between ${
-                                inst.isCompleted
-                                    ? 'bg-emerald-50/50 border-emerald-200/80 shadow-xs'
-                                    : inst.isPartial
-                                        ? 'bg-amber-50/50 border-amber-200/80 shadow-xs'
-                                        : 'bg-white border-gray-200 shadow-xs hover:border-gray-300'
-                            }`}
-                        >
-                            {/* Top Badge */}
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                    Term {index + 1}
-                                </span>
-                                <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
+                    {financialStats.breakdown.map((inst, index) => {
+                        const isExpanded = expandedInstallments[inst.key] === true;
+                        return (
+                            <div 
+                                key={inst.key}
+                                className={`rounded-2xl border transition-all relative overflow-hidden flex flex-col justify-between ${
                                     inst.isCompleted
-                                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                        ? 'bg-emerald-50/50 border-emerald-200/80 shadow-xs'
                                         : inst.isPartial
-                                            ? 'bg-amber-100 text-amber-800 border-amber-300'
-                                            : 'bg-rose-50 text-rose-700 border-rose-200'
-                                }`}>
-                                    {inst.isCompleted ? '✓ Completed' : inst.isPartial ? '⚡ Partially Paid' : '⏳ Pending'}
-                                </span>
-                            </div>
-
-                            {/* Title & Amount */}
-                            <div className="space-y-1 mb-4">
-                                <h3 className="font-bold text-gray-900 text-sm">{inst.name}</h3>
-                                {inst.dueDate && (
-                                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                                        Due Date: <span className="font-semibold text-gray-700">{inst.dueDate}</span>
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Financial Details */}
-                            <div className="space-y-3 bg-white/70 p-3 rounded-xl border border-gray-100">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-gray-500 font-medium">Installment Amount:</span>
-                                    <span className="font-bold text-gray-900 font-mono">₹{inst.targetAmount.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-gray-500 font-medium">Amount Paid:</span>
-                                    <span className="font-bold text-emerald-600 font-mono">₹{inst.paidForInst.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between text-xs pt-1 border-t border-gray-100">
-                                    <span className="text-gray-700 font-bold">Balance Dues:</span>
-                                    <span className={`font-black font-mono ${inst.remainingForInst > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                        ₹{inst.remainingForInst.toLocaleString()}
-                                    </span>
-                                </div>
-
-                                {/* Progress Bar */}
-                                <div className="space-y-1 pt-1">
-                                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full transition-all duration-500 rounded-full ${
-                                                inst.isCompleted ? 'bg-emerald-500' : 'bg-amber-500'
-                                            }`}
-                                            style={{ width: `${inst.percent}%` }}
-                                        />
+                                            ? 'bg-amber-50/50 border-amber-200/80 shadow-xs'
+                                            : 'bg-white border-gray-200 shadow-xs hover:border-gray-300'
+                                }`}
+                            >
+                                {/* Clickable Header for Mobile Accordion / Desktop Display */}
+                                <div 
+                                    onClick={() => toggleInstallmentExpand(inst.key)}
+                                    className="p-4 sm:p-5 cursor-pointer md:cursor-default select-none"
+                                >
+                                    {/* Top Badges */}
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                            Term {index + 1}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${
+                                                inst.isCompleted
+                                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                                    : inst.isPartial
+                                                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                                            }`}>
+                                                {inst.isCompleted ? '✓ Completed' : inst.isPartial ? '⚡ Partially Paid' : '⏳ Pending'}
+                                            </span>
+                                            {/* Mobile Chevron Toggle Indicator */}
+                                            <div className="md:hidden p-1 bg-gray-100 rounded-lg text-gray-600">
+                                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-end">
-                                        <span className="text-[10px] font-bold text-gray-500">{inst.percent}% Paid</span>
+
+                                    {/* Title & Amount */}
+                                    <div className="space-y-1">
+                                        <h3 className="font-bold text-gray-900 text-sm">{inst.name}</h3>
+                                        {inst.dueDate && (
+                                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                                Due Date: <span className="font-semibold text-gray-700">{inst.dueDate}</span>
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Compact summary on mobile when collapsed */}
+                                    <div className={`mt-3 pt-2 border-t border-gray-100/80 md:hidden ${isExpanded ? 'hidden' : 'block'}`}>
+                                        <div className="flex justify-between items-center text-xs mb-1">
+                                            <span className="text-gray-500 font-medium">Balance Dues:</span>
+                                            <span className={`font-black font-mono ${inst.remainingForInst > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                ₹{inst.remainingForInst.toLocaleString()}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full rounded-full ${inst.isCompleted ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                                style={{ width: `${inst.percent}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Financial Details (Always shown on desktop md:, collapsible on mobile) */}
+                                <div className={`px-4 pb-4 sm:px-5 sm:pb-5 pt-0 ${isExpanded ? 'block' : 'hidden md:block'}`}>
+                                    <div className="space-y-3 bg-white/70 p-3 rounded-xl border border-gray-100">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-gray-500 font-medium">Installment Amount:</span>
+                                            <span className="font-bold text-gray-900 font-mono">₹{inst.targetAmount.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-gray-500 font-medium">Amount Paid:</span>
+                                            <span className="font-bold text-emerald-600 font-mono">₹{inst.paidForInst.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs pt-1 border-t border-gray-100">
+                                            <span className="text-gray-700 font-bold">Balance Dues:</span>
+                                            <span className={`font-black font-mono ${inst.remainingForInst > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                ₹{inst.remainingForInst.toLocaleString()}
+                                            </span>
+                                        </div>
+
+                                        {/* Progress Bar */}
+                                        <div className="space-y-1 pt-1">
+                                            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                                <div 
+                                                    className={`h-full transition-all duration-500 rounded-full ${
+                                                        inst.isCompleted ? 'bg-emerald-500' : 'bg-amber-500'
+                                                    }`}
+                                                    style={{ width: `${inst.percent}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <span className="text-[10px] font-bold text-gray-500">{inst.percent}% Paid</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </Card>
 
