@@ -535,35 +535,35 @@ const StudentPayments = ({ onMarkNoticesSeen }) => {
             )}
 
             {/* Contact Office & Payment Assistance Section */}
-            <Card className="p-6 sm:p-8 space-y-6 shadow-sm border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-emerald-50/30">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-indigo-100 pb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-md shadow-indigo-500/20">
-                            <HelpCircle className="w-6 h-6" />
+            <Card className="p-4 sm:p-8 space-y-4 sm:space-y-6 shadow-sm border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-emerald-50/30">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-100 pb-3 sm:pb-4">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                        <div className="p-2 sm:p-3 bg-indigo-600 text-white rounded-xl sm:rounded-2xl shadow-md shadow-indigo-500/20 shrink-0">
+                            <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-extrabold text-gray-900">Contact Office for Payment Queries</h2>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                                Have questions about your installments, concessions, or need assistance completing a payment?
+                            <h2 className="text-base sm:text-xl font-extrabold text-gray-900">Contact Office for Queries</h2>
+                            <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
+                                Have questions about installments or need payment assistance?
                             </p>
                         </div>
                     </div>
 
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-black border border-emerald-200 self-start md:self-auto">
+                    <div className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-black border border-emerald-200 self-start sm:self-auto">
                         <Building2 className="w-4 h-4 text-emerald-600" />
                         Accounts & Logistics Desk
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 sm:gap-4">
                     {/* Option 1: WhatsApp Support */}
-                    <div className="p-5 bg-white border border-gray-200 rounded-2xl space-y-3 hover:border-emerald-400 hover:shadow-xs transition-all flex flex-col justify-between">
-                        <div className="space-y-2">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
-                                <MessageSquare className="w-5 h-5" />
+                    <div className="p-3 sm:p-5 bg-white border border-gray-200 rounded-2xl space-y-2 sm:space-y-3 hover:border-emerald-400 hover:shadow-xs transition-all flex flex-col justify-between">
+                        <div className="space-y-1.5 sm:space-y-2">
+                            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
-                            <h4 className="font-bold text-gray-900 text-sm">WhatsApp Accounts Support</h4>
-                            <p className="text-xs text-gray-500 leading-relaxed">
+                            <h4 className="font-bold text-gray-900 text-xs sm:text-sm leading-tight">WhatsApp Support</h4>
+                            <p className="text-xs text-gray-500 leading-relaxed hidden sm:block">
                                 Chat directly with the office accounts desk regarding your fee dues or installments.
                             </p>
                         </div>
@@ -573,30 +573,30 @@ const StudentPayments = ({ onMarkNoticesSeen }) => {
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs"
+                            className="w-full py-2 px-2.5 sm:py-2.5 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] sm:text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                         >
-                            <MessageSquare className="w-4 h-4" />
-                            WhatsApp Office (+91 85905 18541)
+                            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="truncate">WhatsApp Office</span>
                         </a>
                     </div>
 
                     {/* Option 2: Direct Phone Line */}
-                    <div className="p-5 bg-white border border-gray-200 rounded-2xl space-y-3 hover:border-indigo-400 hover:shadow-xs transition-all flex flex-col justify-between">
-                        <div className="space-y-2">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-                                <PhoneCall className="w-5 h-5" />
+                    <div className="p-3 sm:p-5 bg-white border border-gray-200 rounded-2xl space-y-2 sm:space-y-3 hover:border-indigo-400 hover:shadow-xs transition-all flex flex-col justify-between">
+                        <div className="space-y-1.5 sm:space-y-2">
+                            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+                                <PhoneCall className="w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
-                            <h4 className="font-bold text-gray-900 text-sm">Direct Office Helpline</h4>
-                            <p className="text-xs text-gray-500 leading-relaxed">
+                            <h4 className="font-bold text-gray-900 text-xs sm:text-sm leading-tight">Office Helpline</h4>
+                            <p className="text-xs text-gray-500 leading-relaxed hidden sm:block">
                                 Call the accounts desk directly during office hours to complete installments.
                             </p>
                         </div>
                         <a
                             href={`tel:${officePhone || '+918590518541'}`}
-                            className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs"
+                            className="w-full py-2 px-2.5 sm:py-2.5 sm:px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] sm:text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                         >
-                            <PhoneCall className="w-4 h-4" />
-                            Call Office (+91 85905 18541)
+                            <PhoneCall className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="truncate">Call Helpline</span>
                         </a>
                     </div>
                 </div>
