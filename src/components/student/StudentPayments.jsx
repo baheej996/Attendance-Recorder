@@ -626,65 +626,131 @@ const StudentPayments = ({ onMarkNoticesSeen }) => {
                         </p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto rounded-2xl border border-gray-200">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50 text-gray-600 text-xs uppercase font-bold border-b border-gray-200">
-                                    <th className="p-4">Receipt No</th>
-                                    <th className="p-4">Date</th>
-                                    <th className="p-4">Academic Year</th>
-                                    <th className="p-4">Installment</th>
-                                    <th className="p-4">Payment Mode</th>
-                                    <th className="p-4">Amount Paid</th>
-                                    <th className="p-4 text-center">Receipt</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 text-xs">
-                                {studentPayments.map((p) => (
-                                    <tr key={p.id} className="hover:bg-gray-50/80 transition-colors">
-                                        <td className="p-4 font-mono font-bold text-indigo-700">
-                                            {p.receiptNo || `REC-${p.id?.substring(0, 6)}`}
-                                        </td>
-                                        <td className="p-4 text-gray-700 font-medium">
-                                            {p.paymentDate ? format(new Date(p.paymentDate), 'dd MMM yyyy') : 'N/A'}
-                                        </td>
-                                        <td className="p-4">
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
-                                                (p.academicYear || '2026-2027') === '2026-2027'
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                    : 'bg-amber-50 text-amber-700 border-amber-200'
-                                            }`}>
-                                                {(p.academicYear || '2026-2027') === '2026-2027' ? '🟢 2026-2027 (Current)' : `🟠 ${p.academicYear} (Arrears)`}
+                    <>
+                        {/* Mobile View: Clean stacked cards (No horizontal scrolling required!) */}
+                        <div className="md:hidden space-y-3">
+                            {studentPayments.map((p) => (
+                                <div key={p.id} className="p-4 bg-white border border-gray-200 rounded-2xl shadow-xs space-y-3">
+                                    {/* Header: Receipt No & Amount */}
+                                    <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                                        <div>
+                                            <span className="font-mono font-bold text-indigo-700 text-sm block">
+                                                {p.receiptNo || `REC-${p.id?.substring(0, 6)}`}
                                             </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200">
+                                            <span className="text-[11px] text-gray-500 font-medium">
+                                                {p.paymentDate ? format(new Date(p.paymentDate), 'dd MMM yyyy') : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[10px] uppercase font-bold text-gray-400 block">Amount Paid</span>
+                                            <span className="font-mono font-black text-emerald-600 text-lg">
+                                                ₹{Number(p.amountPaid || 0).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Metadata Grid */}
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Installment</span>
+                                            <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-800 font-bold rounded-md border border-emerald-200 text-[11px]">
                                                 {p.installmentName || p.installmentKey || 'Fee Payment'}
                                             </span>
-                                        </td>
-                                        <td className="p-4 font-semibold text-gray-700">
-                                            {p.paymentMode || 'Cash'}
-                                        </td>
-                                        <td className="p-4 font-mono font-black text-emerald-600 text-sm">
-                                            ₹{Number(p.amountPaid || 0).toLocaleString()}
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() => setSelectedReceipt(p)}
-                                                className="px-3 py-1.5 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl border border-indigo-200 flex items-center justify-center gap-1.5 mx-auto"
-                                            >
-                                                <FileText className="w-3.5 h-3.5" />
-                                                View Receipt
-                                            </Button>
-                                        </td>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">Mode</span>
+                                            <span className="font-semibold text-gray-700 text-xs">
+                                                {p.paymentMode || 'Cash'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Year badge & View Receipt Button */}
+                                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                                            (p.academicYear || '2026-2027') === '2026-2027'
+                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                                        }`}>
+                                            {(p.academicYear || '2026-2027') === '2026-2027' ? '🟢 2026-2027' : `🟠 ${p.academicYear}`}
+                                        </span>
+
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => setSelectedReceipt(p)}
+                                            className="px-3.5 py-1.5 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl border border-indigo-200 flex items-center gap-1.5 shrink-0"
+                                        >
+                                            <FileText className="w-3.5 h-3.5" />
+                                            View Receipt
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop View: Full 7-column table */}
+                        <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-600 text-xs uppercase font-bold border-b border-gray-200">
+                                        <th className="p-4">Receipt No</th>
+                                        <th className="p-4">Date</th>
+                                        <th className="p-4">Academic Year</th>
+                                        <th className="p-4">Installment</th>
+                                        <th className="p-4">Payment Mode</th>
+                                        <th className="p-4">Amount Paid</th>
+                                        <th className="p-4 text-center">Receipt</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-xs">
+                                    {studentPayments.map((p) => (
+                                        <tr key={p.id} className="hover:bg-gray-50/80 transition-colors">
+                                            <td className="p-4 font-mono font-bold text-indigo-700">
+                                                {p.receiptNo || `REC-${p.id?.substring(0, 6)}`}
+                                            </td>
+                                            <td className="p-4 text-gray-700 font-medium">
+                                                {p.paymentDate ? format(new Date(p.paymentDate), 'dd MMM yyyy') : 'N/A'}
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                                                    (p.academicYear || '2026-2027') === '2026-2027'
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                }`}>
+                                                    {(p.academicYear || '2026-2027') === '2026-2027' ? '🟢 2026-2027 (Current)' : `🟠 ${p.academicYear} (Arrears)`}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200">
+                                                    {p.installmentName || p.installmentKey || 'Fee Payment'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 font-semibold text-gray-700">
+                                                {p.paymentMode || 'Cash'}
+                                            </td>
+                                            <td className="p-4 font-mono font-black text-emerald-600 text-sm">
+                                                ₹{Number(p.amountPaid || 0).toLocaleString()}
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => setSelectedReceipt(p)}
+                                                    className="px-3 py-1.5 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl border border-indigo-200 flex items-center justify-center gap-1.5 mx-auto"
+                                                >
+                                                    <FileText className="w-3.5 h-3.5" />
+                                                    View Receipt
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </Card>
 
