@@ -269,7 +269,7 @@ const OfficeFeeManagement = () => {
     const [selectedStudentId, setSelectedStudentId] = useState('');
     const [selectedInstallmentKey, setSelectedInstallmentKey] = useState('inst1');
     const [customPayAmount, setCustomPayAmount] = useState('');
-    const [paymentMode, setPaymentMode] = useState('Cash'); // 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque'
+    const [paymentMode, setPaymentMode] = useState('UPI'); // 'UPI' | 'Cash' | 'Bank Transfer' | 'Cheque'
     const [payAcademicYear, setPayAcademicYear] = useState('2026-2027');
     const [remarks, setRemarks] = useState('');
     const [submittingPay, setSubmittingPay] = useState(false);
@@ -1606,8 +1606,8 @@ const OfficeFeeManagement = () => {
                                                 onChange={(e) => setPaymentMode(e.target.value)}
                                                 className="w-full p-2.5 bg-gray-50 border border-gray-200 text-sm font-bold rounded-xl focus:bg-white outline-none"
                                             >
-                                                <option value="Cash">Cash</option>
                                                 <option value="UPI">UPI / GPay / PhonePe</option>
+                                                <option value="Cash">Cash</option>
                                                 <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
                                                 <option value="Cheque">Cheque</option>
                                             </select>
