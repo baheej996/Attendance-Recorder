@@ -432,7 +432,10 @@ const StudentExamView = () => {
                         const totalDays = studentRecords.length;
                         const presentDays = studentRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
                         const studentAttPct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
-                        const isEligibleToTakeExam = reqAttendancePct === 0 || studentAttPct >= reqAttendancePct;
+                        
+                        const exemptionRecord = exam.exemptions?.[currentUser?.id];
+                        const isExempted = !!(exemptionRecord && exemptionRecord.isExempt);
+                        const isEligibleToTakeExam = reqAttendancePct === 0 || studentAttPct >= reqAttendancePct || isExempted;
 
                         return (
                             <Card key={exam.id} className="p-6">
@@ -452,6 +455,23 @@ const StudentExamView = () => {
                                 </div>
                             )}
 
+                            {isExempted && (
+                                <div className="mb-6 bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+                                    <ShieldCheck className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest mb-0.5">Special Exemption Granted</p>
+                                        <p className="text-sm text-indigo-900 font-extrabold leading-snug">
+                                            You have been granted special permission to attempt this exam.
+                                        </p>
+                                        {exemptionRecord.reason && (
+                                            <p className="text-xs text-indigo-700 mt-1 font-medium">
+                                                Exemption Reason: <span className="italic font-bold text-indigo-900">"{exemptionRecord.reason}"</span>
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                              {reqAttendancePct > 0 && !isEligibleToTakeExam && (
                                 <div className="mb-6 bg-rose-50 border border-rose-200 rounded-2xl p-4.5 flex items-start gap-3 shadow-xs">
                                     <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -461,7 +481,7 @@ const StudentExamView = () => {
                                             You are not eligible to attempt this exam due to minimum attendance requirement ({reqAttendancePct}% required).
                                         </p>
                                         <p className="text-xs text-rose-700 mt-1 font-medium">
-                                            Your current attendance is <span className="font-bold">{studentAttPct}%</span> ({presentDays}/{totalDays} Days). Please contact your class mentor or administration.
+                                            Your current attendance is <span className="font-bold">{studentAttPct}%</span> ({presentDays}/{totalDays} Days). Please submit a reason letter to your class mentor or administration.
                                         </p>
                                     </div>
                                 </div>
