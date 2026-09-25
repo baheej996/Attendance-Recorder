@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Upload, FileText, X, Calendar, Info, Lock, ArrowRight } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Eye, XCircle, Image as ImageIcon, Upload, FileText, X, Calendar, Info, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { safeLocalStorage } from '../../utils/safeStorage';
 
