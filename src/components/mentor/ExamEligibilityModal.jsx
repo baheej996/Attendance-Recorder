@@ -9,12 +9,11 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterTab, setFilterTab] = useState('all'); // 'all' | 'eligible' | 'ineligible'
 
-    if (!isOpen || !classObj || !exam) return null;
-
-    const reqPct = Number(exam.minAttendancePercent) || 0;
+    const reqPct = Number(exam?.minAttendancePercent) || 0;
 
     // Filter students for this class
     const classStudents = useMemo(() => {
+        if (!classObj?.id) return [];
         return (students || []).filter(s => s.classId === classObj.id);
     }, [students, classObj]);
 
@@ -65,6 +64,8 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
             return true;
         });
     }, [studentEligibilityList, filterTab, searchTerm]);
+
+    if (!isOpen || !classObj || !exam) return null;
 
     // Export Handlers
     const handleExportExcel = () => {
