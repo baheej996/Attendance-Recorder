@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Trash2, Plus, Calendar, CheckCircle, Eye, EyeOff, Play, PauseCircle, Edit } from 'lucide-react';
+import { Trash2, Plus, Calendar, CheckCircle, Eye, EyeOff, Play, PauseCircle, Edit, ShieldCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
@@ -9,7 +9,7 @@ import { Card } from '../ui/Card';
 const ExamManager = ({ readOnly = false }) => {
     const { exams, addExam, updateExam, deleteExam, subjects } = useData();
     const { showConfirm } = useUI();
-    const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [] });
+    const [newExam, setNewExam] = useState({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [], minAttendancePercent: '' });
     const [editingId, setEditingId] = useState(null);
 
     const uniqueSubjectNames = [...new Set((subjects || []).filter(s => s.isExamSubject !== false).map(s => s.name))].sort();
@@ -17,14 +17,18 @@ const ExamManager = ({ readOnly = false }) => {
     const handleAdd = (e) => {
         e.preventDefault();
         if (!newExam.name || !newExam.date) return;
+        const payload = {
+            ...newExam,
+            minAttendancePercent: newExam.minAttendancePercent !== '' ? Number(newExam.minAttendancePercent) : 0
+        };
         if (editingId) {
-            updateExam(editingId, newExam);
+            updateExam(editingId, payload);
             setEditingId(null);
             showConfirm("Success", "Exam updated successfully.", null, "success"); // Optional: Feedback
         } else {
-            addExam(newExam);
+            addExam(payload);
         }
-        setNewExam({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [] });
+        setNewExam({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [], minAttendancePercent: '' });
     };
 
     const handleEdit = (exam) => {
@@ -34,13 +38,14 @@ const ExamManager = ({ readOnly = false }) => {
             date: exam.date,
             status: exam.status,
             instructions: exam.instructions || '',
-            excludedSubjectNames: exam.excludedSubjectNames || []
+            excludedSubjectNames: exam.excludedSubjectNames || [],
+            minAttendancePercent: exam.minAttendancePercent !== undefined && exam.minAttendancePercent !== null ? exam.minAttendancePercent : ''
         });
     };
 
     const handleCancelEdit = () => {
         setEditingId(null);
-        setNewExam({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [] });
+        setNewExam({ name: '', date: '', status: 'Draft', instructions: '', excludedSubjectNames: [], minAttendancePercent: '' });
     };
 
     const toggleStatus = (exam) => {
@@ -81,8 +86,18 @@ const ExamManager = ({ readOnly = false }) => {
                             <Input
                                 label="Start Date"
                                 type="date"
+                                value={newExam.date || ''}
                                 onChange={e => setNewExam({ ...newExam, date: e.target.value })}
                                 required
+                            />
+                            <Input
+                                label="Minimum Attendance Required (%)"
+                                type="number"
+                                min="0"
+                                max="100"
+                                placeholder="e.g. 75 (Leave 0 or empty for no restriction)"
+                                value={newExam.minAttendancePercent}
+                                onChange={e => setNewExam({ ...newExam, minAttendancePercent: e.target.value })}
                             />
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Instructions (Optional)</label>
@@ -186,6 +201,11 @@ const ExamManager = ({ readOnly = false }) => {
                                                 }`}>
                                                 {exam.isActive ? 'Active' : 'Inactive'}
                                             </span>
+                                            {Number(exam.minAttendancePercent) > 0 && (
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1 shrink-0" title={`Requires at least ${exam.minAttendancePercent}% attendance to take exam`}>
+                                                    <ShieldCheck className="w-3 h-3 text-amber-600" /> Min Att: {exam.minAttendancePercent}%
+                                                </span>
+                                            )}
                                         </div>
 
                                         {exam.instructions && (

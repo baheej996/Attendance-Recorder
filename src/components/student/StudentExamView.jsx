@@ -8,7 +8,7 @@ import { cn } from '../../utils/cn';
 import { safeLocalStorage } from '../../utils/safeStorage';
 
 const StudentExamView = () => {
-    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings, students, updateStudent, requireFeature } = useData();
+    const { exams, questions, currentUser, classes, submitExam, studentResponses, subjects, results, examSettings, students, updateStudent, attendance, requireFeature } = useData();
     const { showAlert, showConfirm } = useUI();
     const [activeExamId, setActiveExamId] = useState(null);
     const [selectedSubjectId, setSelectedSubjectId] = useState(null); // This is Subject NAME (linked to questions)
@@ -21,9 +21,11 @@ const StudentExamView = () => {
     React.useEffect(() => {
         const unsubResults = requireFeature('results');
         const unsubActivities = requireFeature('activities');
+        const unsubAttendance = requireFeature('attendance');
         return () => {
             unsubResults();
             unsubActivities();
+            unsubAttendance();
         };
     }, [requireFeature]);
     
@@ -442,40 +444,73 @@ const StudentExamView = () => {
                                 </div>
                             )}
 
+                            {(() => {
+                                const reqAttendancePct = Number(exam.minAttendancePercent) || 0;
+                                const studentRecords = (attendance || []).filter(a => a.studentId === currentUser?.id);
+                                const totalDays = studentRecords.length;
+                                const presentDays = studentRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                                const studentAttPct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
+                                const isEligibleToTakeExam = reqAttendancePct === 0 || studentAttPct >= reqAttendancePct;
+
+                                if (reqAttendancePct > 0 && !isEligibleToTakeExam) {
+                                    return (
+                                        <div className="mb-6 bg-rose-50 border border-rose-200 rounded-2xl p-4.5 flex items-start gap-3 shadow-xs">
+                                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest mb-0.5">Exam Eligibility Restricted</p>
+                                                <p className="text-sm text-rose-900 font-extrabold leading-snug">
+                                                    You are not eligible to attempt this exam due to minimum attendance requirement ({reqAttendancePct}% required).
+                                                </p>
+                                                <p className="text-xs text-rose-700 mt-1 font-medium">
+                                                    Your current attendance is <span className="font-bold">{studentAttPct}%</span> ({presentDays}/{totalDays} Days). Please contact your class mentor or administration.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+
                             <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">Available Subjects</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                                {subjects.filter(s => s.classId === currentUser.classId && s.isExamSubject !== false).map(subj => {
-                                    const qCount = questions.filter(q => {
-                                        if (q.examId !== exam.id) return false;
-                                        const cidMatch = (q.classId === studentClassName || q.classId === currentUser.classId);
-                                        const sidMatch = (
-                                            q.subjectId?.toString().toLowerCase().trim() === subj.name?.toString().toLowerCase().trim() || 
-                                            q.subjectId?.toString().toLowerCase().trim() === subj.id?.toString().toLowerCase().trim()
-                                        );
-                                        return cidMatch && sidMatch;
-                                    }).length;
+                                {(() => {
+                                    const reqAttendancePct = Number(exam.minAttendancePercent) || 0;
+                                    const studentRecords = (attendance || []).filter(a => a.studentId === currentUser?.id);
+                                    const totalDays = studentRecords.length;
+                                    const presentDays = studentRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                                    const studentAttPct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
+                                    const isEligibleToTakeExam = reqAttendancePct === 0 || studentAttPct >= reqAttendancePct;
 
-                                    const isDone = hasTaken(exam.id, subj.id, subj.name);
-                                    const setting = examSettings.find(s => 
-                                        s.examId === exam.id && 
-                                        s.classId === currentUser.classId && 
-                                        (s.subjectId === subj.id || s.subjectId === subj.name)
-                                    ) || { isActive: false, isPublished: false, duration: 0 };
+                                    return subjects.filter(s => s.classId === currentUser.classId && s.isExamSubject !== false).map(subj => {
+                                        const qCount = questions.filter(q => {
+                                            if (q.examId !== exam.id) return false;
+                                            const cidMatch = (q.classId === studentClassName || q.classId === currentUser.classId);
+                                            const sidMatch = (
+                                                q.subjectId?.toString().toLowerCase().trim() === subj.name?.toString().toLowerCase().trim() || 
+                                                q.subjectId?.toString().toLowerCase().trim() === subj.id?.toString().toLowerCase().trim()
+                                            );
+                                            return cidMatch && sidMatch;
+                                        }).length;
 
-                                    const start = parseFlexDate(setting.startTime);
-                                    const end = parseFlexDate(setting.endTime);
-                                    
-                                    // Automation Logic: 
-                                    // If manually Inactive (setting.isActive === false) AND NO schedule, it's disabled.
-                                    // If schedule exists, schedule determines status regardless of setting.isActive override if not explicitly 'blocked'.
-                                    const hasSchedule = !!start;
-                                    const isCurrentlyActive = setting.isActive || (start && now >= start && (!end || now <= end));
-                                    const isUpcoming = start && now < start;
-                                    const isExpired = end && now > end;
-                                    
-                                    const hasQuestions = qCount > 0;
-                                    const canTake = hasQuestions && isCurrentlyActive;
-                                    const canViewResults = isDone && exam.status === 'Published' && setting.isPublished;
+                                        const isDone = hasTaken(exam.id, subj.id, subj.name);
+                                        const setting = examSettings.find(s => 
+                                            s.examId === exam.id && 
+                                            s.classId === currentUser.classId && 
+                                            (s.subjectId === subj.id || s.subjectId === subj.name)
+                                        ) || { isActive: false, isPublished: false, duration: 0 };
+
+                                        const start = parseFlexDate(setting.startTime);
+                                        const end = parseFlexDate(setting.endTime);
+                                        
+                                        // Automation Logic: 
+                                        const hasSchedule = !!start;
+                                        const isCurrentlyActive = setting.isActive || (start && now >= start && (!end || now <= end));
+                                        const isUpcoming = start && now < start;
+                                        const isExpired = end && now > end;
+                                        
+                                        const hasQuestions = qCount > 0;
+                                        const canTake = hasQuestions && isCurrentlyActive && isEligibleToTakeExam;
+                                        const canViewResults = isDone && exam.status === 'Published' && setting.isPublished;
 
                                     const session = (students || []).find(s => s.id === currentUser.id)?.activeExamSession;
                                     const isLockedByOtherDevice = session && session.deviceId !== deviceId && session.examId === exam.id && (session.subjectId === subj.id || session.subjectName === subj.name);
@@ -566,6 +601,7 @@ const StudentExamView = () => {
                                                         )}
                                                     >
                                                         {canTake ? "Start Exam" : (
+                                                            !isEligibleToTakeExam ? "Not Eligible" :
                                                             !hasQuestions ? "No Questions" :
                                                             isUpcoming ? "Scheduled" : 
                                                             isExpired ? "Expired" : "Disabled"
@@ -579,7 +615,8 @@ const StudentExamView = () => {
                                             </div>
                                         </div>
                                     );
-                                })}
+                                });
+                                })()}
                             </div>
                         </Card>
                     ))
