@@ -1238,12 +1238,14 @@ const MarksEntry = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
                             {classStudents.map(student => {
-                                // Check if student has submitted
-                                // We can check if their score exists in results?
-                                // OR if they have a response in studentResponses (more accurate for "Needs Grading")
-                                // But MarksEntry accesses `results`.
-                                // Let's just provide the button always, or if mark is entered?
-                                // Better: Provide simple "Grade" button.
+                                const selExam = exams.find(e => e.id === selectedExamId);
+                                const reqP = Number(selExam?.minAttendancePercent) || 0;
+                                const sRecs = (attendance || []).filter(a => a.studentId === student.id);
+                                const tD = sRecs.length;
+                                const pD = sRecs.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                                const pPct = tD > 0 ? Math.round((pD / tD) * 100) : 100;
+                                const isEl = pPct >= reqP;
+
                                 return (
                                     <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell font-mono">{student.registerNo}</td>
@@ -1251,16 +1253,8 @@ const MarksEntry = () => {
                                             <div className="flex flex-col">
                                                 <div className="flex items-center gap-1.5 flex-wrap">
                                                     <span className="font-bold text-gray-900 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{student.name}</span>
-                                                    {(() => {
-                                                        const selExam = exams.find(e => e.id === selectedExamId);
-                                                        const reqP = Number(selExam?.minAttendancePercent) || 0;
-                                                        if (reqP <= 0) return null;
-                                                        const sRecs = (attendance || []).filter(a => a.studentId === student.id);
-                                                        const tD = sRecs.length;
-                                                        const pD = sRecs.filter(a => a.status === 'Present' || a.status === 'Late').length;
-                                                        const pPct = tD > 0 ? Math.round((pD / tD) * 100) : 100;
-                                                        const isEl = pPct >= reqP;
-                                                        return isEl ? (
+                                                    {reqP > 0 && (
+                                                        isEl ? (
                                                             <span className="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200" title={`Eligible (Attendance: ${pPct}%, Req: ${reqP}%)`}>
                                                                 {pPct}%
                                                             </span>
@@ -1268,8 +1262,8 @@ const MarksEntry = () => {
                                                             <span className="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200" title={`NOT ELIGIBLE! Attendance: ${pPct}% (Req: ${reqP}%)`}>
                                                                 Ineligible ({pPct}%)
                                                             </span>
-                                                        );
-                                                    })()}
+                                                        )
+                                                    )}
                                                 </div>
                                                 <span className="sm:hidden text-[10px] text-gray-400 font-mono mt-0.5">{student.registerNo}</span>
                                             </div>

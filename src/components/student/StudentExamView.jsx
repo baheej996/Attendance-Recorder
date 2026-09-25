@@ -426,8 +426,16 @@ const StudentExamView = () => {
                         No active exams at the moment.
                     </div>
                 ) : (
-                    activeExams.map(exam => (
-                        <Card key={exam.id} className="p-6">
+                    activeExams.map(exam => {
+                        const reqAttendancePct = Number(exam.minAttendancePercent) || 0;
+                        const studentRecords = (attendance || []).filter(a => a.studentId === currentUser?.id);
+                        const totalDays = studentRecords.length;
+                        const presentDays = studentRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                        const studentAttPct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
+                        const isEligibleToTakeExam = reqAttendancePct === 0 || studentAttPct >= reqAttendancePct;
+
+                        return (
+                            <Card key={exam.id} className="p-6">
                             <h3 className="text-xl font-bold text-gray-900 mb-2">{exam.name}</h3>
                             <p className="text-gray-500 mb-6 flex items-center gap-2">
                                 <Calendar className="w-4 h-4" />
@@ -444,53 +452,33 @@ const StudentExamView = () => {
                                 </div>
                             )}
 
-                            {(() => {
-                                const reqAttendancePct = Number(exam.minAttendancePercent) || 0;
-                                const studentRecords = (attendance || []).filter(a => a.studentId === currentUser?.id);
-                                const totalDays = studentRecords.length;
-                                const presentDays = studentRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
-                                const studentAttPct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
-                                const isEligibleToTakeExam = reqAttendancePct === 0 || studentAttPct >= reqAttendancePct;
-
-                                if (reqAttendancePct > 0 && !isEligibleToTakeExam) {
-                                    return (
-                                        <div className="mb-6 bg-rose-50 border border-rose-200 rounded-2xl p-4.5 flex items-start gap-3 shadow-xs">
-                                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest mb-0.5">Exam Eligibility Restricted</p>
-                                                <p className="text-sm text-rose-900 font-extrabold leading-snug">
-                                                    You are not eligible to attempt this exam due to minimum attendance requirement ({reqAttendancePct}% required).
-                                                </p>
-                                                <p className="text-xs text-rose-700 mt-1 font-medium">
-                                                    Your current attendance is <span className="font-bold">{studentAttPct}%</span> ({presentDays}/{totalDays} Days). Please contact your class mentor or administration.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                }
-                                return null;
-                            })()}
+                             {reqAttendancePct > 0 && !isEligibleToTakeExam && (
+                                <div className="mb-6 bg-rose-50 border border-rose-200 rounded-2xl p-4.5 flex items-start gap-3 shadow-xs">
+                                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest mb-0.5">Exam Eligibility Restricted</p>
+                                        <p className="text-sm text-rose-900 font-extrabold leading-snug">
+                                            You are not eligible to attempt this exam due to minimum attendance requirement ({reqAttendancePct}% required).
+                                        </p>
+                                        <p className="text-xs text-rose-700 mt-1 font-medium">
+                                            Your current attendance is <span className="font-bold">{studentAttPct}%</span> ({presentDays}/{totalDays} Days). Please contact your class mentor or administration.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">Available Subjects</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                                {(() => {
-                                    const reqAttendancePct = Number(exam.minAttendancePercent) || 0;
-                                    const studentRecords = (attendance || []).filter(a => a.studentId === currentUser?.id);
-                                    const totalDays = studentRecords.length;
-                                    const presentDays = studentRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
-                                    const studentAttPct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
-                                    const isEligibleToTakeExam = reqAttendancePct === 0 || studentAttPct >= reqAttendancePct;
-
-                                    return subjects.filter(s => s.classId === currentUser.classId && s.isExamSubject !== false).map(subj => {
-                                        const qCount = questions.filter(q => {
-                                            if (q.examId !== exam.id) return false;
-                                            const cidMatch = (q.classId === studentClassName || q.classId === currentUser.classId);
-                                            const sidMatch = (
-                                                q.subjectId?.toString().toLowerCase().trim() === subj.name?.toString().toLowerCase().trim() || 
-                                                q.subjectId?.toString().toLowerCase().trim() === subj.id?.toString().toLowerCase().trim()
-                                            );
-                                            return cidMatch && sidMatch;
-                                        }).length;
+                                {subjects.filter(s => s.classId === currentUser?.classId && s.isExamSubject !== false).map(subj => {
+                                    const qCount = questions.filter(q => {
+                                        if (q.examId !== exam.id) return false;
+                                        const cidMatch = (q.classId === studentClass?.name || q.classId === currentUser?.classId);
+                                        const sidMatch = (
+                                            q.subjectId?.toString().toLowerCase().trim() === subj.name?.toString().toLowerCase().trim() || 
+                                            q.subjectId?.toString().toLowerCase().trim() === subj.id?.toString().toLowerCase().trim()
+                                        );
+                                        return cidMatch && sidMatch;
+                                    }).length;
 
                                         const isDone = hasTaken(exam.id, subj.id, subj.name);
                                         const setting = examSettings.find(s => 
@@ -614,13 +602,13 @@ const StudentExamView = () => {
                                                 )}
                                             </div>
                                         </div>
-                                    );
-                                });
-                                })()}
-                            </div>
+                                );
+                            })}
+                        </div>
                         </Card>
-                    ))
-                )}
+                    );
+                })
+            )}
             </div>
         );
     }
