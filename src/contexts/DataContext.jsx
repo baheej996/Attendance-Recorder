@@ -2453,7 +2453,10 @@ export const DataProvider = ({ children }) => {
             };
             const docRef = await addDoc(collection(db, 'feePayments'), payload);
             const created = { ...payload, id: docRef.id };
-            setFeePayments(prev => [...prev, created]);
+            setFeePayments(prev => {
+                if (prev.some(p => p.id === docRef.id)) return prev;
+                return [...prev, created];
+            });
             return created;
         },
         deleteFeePayment: async (paymentId) => {
@@ -2681,7 +2684,10 @@ export const DataProvider = ({ children }) => {
                                     const receiptId = payload.receiptId || `REC-${year}-${randomNum}`;
                                     const fullPayload = { ...payload, receiptId, createdAt: new Date().toISOString() };
                                     const docRef = await addDoc(collection(db, 'feePayments'), fullPayload);
-                                    setFeePayments(prev => [...prev, { ...fullPayload, id: docRef.id }]);
+                                    setFeePayments(prev => {
+                                        if (prev.some(p => p.id === docRef.id)) return prev;
+                                        return [...prev, { ...fullPayload, id: docRef.id }];
+                                    });
                                 }
                                 successCount++;
                             } catch (err) {
@@ -2741,7 +2747,10 @@ export const DataProvider = ({ children }) => {
                             const receiptId = payload.receiptId || `REC-${year}-${randomNum}`;
                             const fullPayload = { ...payload, receiptId, createdAt: new Date().toISOString() };
                             const docRef = await addDoc(collection(db, 'feePayments'), fullPayload);
-                            setFeePayments(prev => [...prev, { ...fullPayload, id: docRef.id }]);
+                            setFeePayments(prev => {
+                                if (prev.some(p => p.id === docRef.id)) return prev;
+                                return [...prev, { ...fullPayload, id: docRef.id }];
+                            });
                         }
                         successCount++;
                     } catch (err) {
