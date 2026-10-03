@@ -15,6 +15,7 @@ const StudentExamView = () => {
     const [answers, setAnswers] = useState({});
     const [attachments, setAttachments] = useState({});
     const [viewingMode, setViewingMode] = useState(false); // false = taking, true = viewing result
+    const [showValidationErrors, setShowValidationErrors] = useState(false);
 
     const studentClass = classes.find(c => c.id === currentUser?.classId);
 
@@ -248,6 +249,7 @@ const StudentExamView = () => {
         setTimeLeft(null);
         setAnswers({});
         setAttachments({});
+        setShowValidationErrors(false);
     };
 
     const handleStartExam = async (examId, subjectName) => {
@@ -276,6 +278,7 @@ const StudentExamView = () => {
 
         setActiveExamId(examId);
         setSelectedSubjectId(subjectName);
+        setShowValidationErrors(false);
     };
 
 
@@ -363,18 +366,44 @@ const StudentExamView = () => {
         });
     };
 
-    const handleSubmit = () => {
-        // Validation: Check if all questions are answered
-        const unansweredQuestions = examQuestions.filter(q => !answers[q.id]);
+    const isQuestionAnswered = (qId) => {
+        const ans = answers[qId];
+        return ans !== undefined && ans !== null && String(ans).trim() !== '';
+    };
 
-        // Auto-save logic handles "Time Up", but for manual verify:
-        if (unansweredQuestions.length > 0 && timeLeft > 0) { // Only warn if time remains
-            showConfirm("Unanswered Questions", `You have ${unansweredQuestions.length} unanswered questions. Are you sure you want to submit?`, () => {
-                confirmSubmit();
-            });
-        } else {
-            confirmSubmit();
+    const handleSubmit = () => {
+        const unansweredList = examQuestions.filter(q => !isQuestionAnswered(q.id));
+
+        if (unansweredList.length > 0) {
+            setShowValidationErrors(true);
+            const qNumbers = unansweredList.map(uq => {
+                const idx = examQuestions.findIndex(q => q.id === uq.id);
+                return `Q${idx + 1}`;
+            }).join(', ');
+
+            showAlert(
+                "Submission Blocked",
+                `Every question is mandatory! You have ${unansweredList.length} unanswered question(s): ${qNumbers}. Please answer all questions before submitting.`,
+                "error"
+            );
+
+            // Scroll to the first unanswered question
+            const firstUnansweredId = unansweredList[0].id;
+            const el = document.getElementById(`question-card-${firstUnansweredId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
         }
+
+        // All answered! Prompt for submission confirmation
+        showConfirm(
+            "Confirm Submission",
+            `You have answered all ${examQuestions.length} mandatory questions. Are you sure you want to submit your exam now?`,
+            () => {
+                confirmSubmit();
+            }
+        );
     };
 
     const confirmSubmit = async () => {
@@ -749,6 +778,9 @@ const StudentExamView = () => {
         );
     }
 
+    const unansweredQuestions = examQuestions.filter(q => !isQuestionAnswered(q.id));
+    const answeredCount = examQuestions.length - unansweredQuestions.length;
+
     // View: Taking Exam
     return (
         <div className="max-w-4xl mx-auto pb-12 relative">
@@ -770,30 +802,161 @@ const StudentExamView = () => {
                     )}
                 </div>
                 <div className="text-right">
-                    <p className="text-sm text-gray-500">Subject</p>
+                    <p className="text-sm text-gray-500 font-medium">Subject</p>
                     <div className="flex items-center gap-3">
                         <p className="text-xl font-bold text-indigo-600">{selectedSubjectId}</p>
                     </div>
                 </div>
             </div>
 
+            {/* Question Status Navigator & Progress Bar */}
+            <div className="bg-white border border-gray-200 rounded-3xl p-5 mb-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-gray-700 uppercase tracking-wider">Exam Progress</span>
+                        <span className={cn(
+                            "px-2.5 py-0.5 rounded-full text-xs font-black border",
+                            answeredCount === examQuestions.length 
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                        )}>
+                            {answeredCount} of {examQuestions.length} Answered
+                        </span>
+                    </div>
+                    <div className="text-xs font-bold text-gray-500">
+                        {unansweredQuestions.length === 0 ? (
+                            <span className="text-emerald-600 flex items-center gap-1 font-black">
+                                <CheckCircle className="w-4 h-4" /> All questions completed!
+                            </span>
+                        ) : (
+                            <span className="text-amber-600 font-bold">
+                                {unansweredQuestions.length} remaining • All questions are mandatory
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Question Pills */}
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    {examQuestions.map((q, idx) => {
+                        const isAns = isQuestionAnswered(q.id);
+                        const isErr = !isAns && showValidationErrors;
+
+                        return (
+                            <button
+                                key={q.id}
+                                onClick={() => {
+                                    const el = document.getElementById(`question-card-${q.id}`);
+                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }}
+                                className={cn(
+                                    "w-9 h-9 rounded-xl text-xs font-black flex items-center justify-center transition-all duration-200 shadow-sm border",
+                                    isAns
+                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-emerald-100 hover:bg-emerald-700"
+                                        : isErr
+                                            ? "bg-red-500 text-white border-red-600 shadow-red-100 animate-pulse hover:bg-red-600"
+                                            : "bg-gray-50 text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+                                )}
+                                title={`Question ${idx + 1}: ${isAns ? 'Answered' : 'Unanswered (Required)'}`}
+                            >
+                                Q{idx + 1}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Validation Banner if Unanswered Questions Exist */}
+            {showValidationErrors && unansweredQuestions.length > 0 && (
+                <div className="mb-6 p-5 bg-red-50/90 border-2 border-red-300 rounded-3xl flex items-start gap-4 shadow-md animate-in fade-in slide-in-from-top-2">
+                    <AlertCircle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <h4 className="text-sm font-black text-red-900 uppercase tracking-wide">
+                            Submission Blocked — All Questions Are Mandatory
+                        </h4>
+                        <p className="text-xs text-red-700 font-semibold mt-1">
+                            You cannot submit the exam until every question is answered. You still have <span className="font-black text-red-900 underline">{unansweredQuestions.length} unanswered question(s)</span>:
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                            {unansweredQuestions.map(uq => {
+                                const qIdx = examQuestions.findIndex(q => q.id === uq.id) + 1;
+                                return (
+                                    <button
+                                        key={uq.id}
+                                        onClick={() => {
+                                            const el = document.getElementById(`question-card-${uq.id}`);
+                                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        }}
+                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-sm transition-all hover:scale-105 flex items-center gap-1"
+                                    >
+                                        Go to Q{qIdx} &rarr;
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Card className="p-8">
                 <div className="space-y-8">
                     {examQuestions.map((q, idx) => {
+                        const isAns = isQuestionAnswered(q.id);
+                        const isMissing = !isAns && showValidationErrors;
+
                         return (
-                            <div key={q.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                <div className="flex gap-3 mb-4">
-                                    <span className="font-bold text-gray-500 text-lg">Q{idx + 1}.</span>
-                                    <div className="flex-1">
-                                        <p className="text-lg font-medium text-gray-900">{q.text}</p>
-                                        <p className="text-xs text-gray-400 mt-1">{q.marks} Marks</p>
-                                        {q.image && (
-                                            <div className="mt-3">
-                                                <img src={q.image} alt="Question Reference" className="max-h-64 rounded-lg border border-gray-200" />
+                            <div 
+                                key={q.id} 
+                                id={`question-card-${q.id}`} 
+                                className={cn(
+                                    "p-6 rounded-2xl border transition-all duration-300 relative",
+                                    isMissing 
+                                        ? "bg-red-50/40 border-2 border-red-500 shadow-lg shadow-red-100" 
+                                        : isAns 
+                                            ? "bg-white border-indigo-100 shadow-sm" 
+                                            : "bg-gray-50/80 border-gray-200"
+                                )}
+                            >
+                                <div className="flex items-start justify-between gap-3 mb-4">
+                                    <div className="flex gap-3 flex-1">
+                                        <span className="font-black text-gray-500 text-lg">Q{idx + 1}.</span>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                <p className="text-lg font-bold text-gray-900">{q.text}</p>
+                                                <span className="text-[10px] font-black text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                    * Required
+                                                </span>
                                             </div>
-                                        )}
+                                            <p className="text-xs font-semibold text-gray-400">{q.marks} Marks</p>
+                                            {q.image && (
+                                                <div className="mt-3">
+                                                    <img src={q.image} alt="Question Reference" className="max-h-64 rounded-lg border border-gray-200" />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
+                                    
+                                    {isAns ? (
+                                        <span className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 shrink-0">
+                                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Answered
+                                        </span>
+                                    ) : isMissing ? (
+                                        <span className="flex items-center gap-1 text-xs font-black text-red-700 bg-red-100 px-3 py-1 rounded-full border border-red-300 shrink-0 animate-pulse">
+                                            <AlertCircle className="w-3.5 h-3.5 text-red-600" /> Answer Required
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 shrink-0">
+                                            Pending
+                                        </span>
+                                    )}
                                 </div>
+
+                                {isMissing && (
+                                    <div className="mb-4 p-3 bg-red-100/80 border border-red-200 rounded-xl flex items-center gap-2 text-xs font-black text-red-800">
+                                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                                        <span>This question is mandatory. Please select or type an answer to proceed.</span>
+                                    </div>
+                                )}
 
                                 <div className="pl-8">
                                     {q.type === 'MCQ' ? (
@@ -826,8 +989,13 @@ const StudentExamView = () => {
                                     ) : (
                                         <textarea
                                             rows={4}
-                                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                            placeholder="Type your answer here..."
+                                            className={cn(
+                                                "w-full rounded-xl shadow-sm focus:ring-2 p-3 font-medium transition-all",
+                                                isMissing 
+                                                    ? "border-2 border-red-400 focus:border-red-500 focus:ring-red-200 bg-red-50/20" 
+                                                    : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-100"
+                                            )}
+                                            placeholder="Type your mandatory answer here..."
                                             value={answers[q.id] || ''}
                                             onChange={e => handleAnswerChange(q.id, e.target.value)}
                                         />
@@ -875,13 +1043,44 @@ const StudentExamView = () => {
                     })}
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-100">
-                    <Button onClick={handleSubmit} variant="primary" className="w-full py-3 text-lg font-bold shadow-lg">
+                {/* Bottom Submit Area with Validation Summary */}
+                <div className="mt-8 pt-6 border-t border-gray-100 space-y-4">
+                    {showValidationErrors && unansweredQuestions.length > 0 && (
+                        <div className="p-4 bg-red-50 border-2 border-red-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-red-800 shadow-sm">
+                            <div className="flex items-center gap-2">
+                                <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                                <span className="text-xs font-black">
+                                    Cannot Submit: {unansweredQuestions.length} mandatory question(s) still unanswered.
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const firstUnanswered = unansweredQuestions[0];
+                                    const el = document.getElementById(`question-card-${firstUnanswered.id}`);
+                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }}
+                                className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black whitespace-nowrap transition-colors shadow-sm"
+                            >
+                                Jump to First Unanswered &rarr;
+                            </button>
+                        </div>
+                    )}
+
+                    <Button 
+                        onClick={handleSubmit} 
+                        variant="primary" 
+                        className={cn(
+                            "w-full py-4 text-lg font-bold shadow-lg transition-all rounded-2xl",
+                            showValidationErrors && unansweredQuestions.length > 0
+                                ? "bg-red-600 hover:bg-red-700 text-white shadow-red-200"
+                                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"
+                        )}
+                    >
                         Submit Exam
                     </Button>
                 </div>
             </Card>
-        </div >
+        </div>
     );
 };
 
