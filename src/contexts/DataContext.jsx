@@ -486,7 +486,7 @@ export const DataProvider = ({ children }) => {
                 );
 
                 // On-Demand Heavy Data
-                const currentAttendanceLimit = activeFeatures.has('star') ? Math.max(5000, attendanceLimit) : attendanceLimit;
+                const currentAttendanceLimit = (activeFeatures.has('attendance') || activeFeatures.has('star')) ? Math.max(5000, attendanceLimit) : attendanceLimit;
                 if (activeFeatures.has('attendance')) {
                     unsubs.push(subscribe('attendance', setAttendance, where('classId', 'in', assignedClassIds), orderBy('date', 'desc'), limit(currentAttendanceLimit)));
                 }

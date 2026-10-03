@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Input';
 import { Save, Calendar, CheckCircle, Trash2, Settings, AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
+import { sortStudentsByGender } from '../../utils/studentUtils';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { StudentProfileModal } from '../../components/mentor/StudentProfileModal';
@@ -17,6 +18,7 @@ const AttendanceRecorder = () => {
     const [selectedClassId, setSelectedClassId] = useState('');
     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [records, setRecords] = useState({}); // { studentId: 'Present' | 'Absent' }
+    const [isDateRecorded, setIsDateRecorded] = useState(false); // Track if date has saved records
     const [isDirty, setIsDirty] = useState(false); // Track unsaved edits
     const [showPopup, setShowPopup] = useState(false);
     const [msg, setMsg] = useState('');
@@ -52,17 +54,44 @@ const AttendanceRecorder = () => {
         if (!selectedClassId || !date) return;
         if (isDirty) return; // DO NOT overwrite if user is actively editing
 
-        // Find existing records
-        const existing = attendance.filter(r => r.date === date);
-        // Initialize records for students in this class
-        const classStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active');
+        let isSubscribed = true;
 
-        const initialRecords = {};
-        classStudents.forEach(s => {
-            const found = existing.find(r => r.studentId === s.id);
-            initialRecords[s.id] = found ? found.status : 'Present'; // Default Record as Present
-        });
-        setRecords(initialRecords);
+        const loadClassDateAttendance = async () => {
+            const classStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active');
+            
+            // First try finding in local memory state
+            let existing = attendance.filter(r => r.date === date && (r.classId === selectedClassId || classStudents.some(s => s.id === r.studentId)));
+
+            // If local state doesn't have records for this date/class, query Firestore directly
+            if (existing.length === 0) {
+                try {
+                    const q = query(
+                        collection(db, 'attendance'),
+                        where('classId', '==', selectedClassId),
+                        where('date', '==', date)
+                    );
+                    const snap = await getDocs(q);
+                    existing = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+                } catch (err) {
+                    console.warn("Direct attendance fetch error:", err);
+                }
+            }
+
+            if (!isSubscribed) return;
+
+            setIsDateRecorded(existing.length > 0);
+
+            const initialRecords = {};
+            classStudents.forEach(s => {
+                const found = existing.find(r => r.studentId === s.id);
+                initialRecords[s.id] = found ? found.status : 'Present'; // Default Record as Present
+            });
+            setRecords(initialRecords);
+        };
+
+        loadClassDateAttendance();
+
+        return () => { isSubscribed = false; };
     }, [selectedClassId, date, attendance, students, isDirty]);
 
     const handleStatusChange = (studentId, status) => {
@@ -77,6 +106,7 @@ const AttendanceRecorder = () => {
         try {
             await recordAttendance(attendanceData);
             setIsDirty(false); 
+            setIsDateRecorded(true);
             setMsg('Attendance Saved Successfully!');
             setShowPopup(true);
             setTimeout(() => setShowPopup(false), 3000);
@@ -206,15 +236,9 @@ const AttendanceRecorder = () => {
     };
 
 
-    const classStudents = students
-        .filter(s => s.classId === selectedClassId && s.status === 'Active')
-        .sort((a, b) => {
-            if ((a.gender || 'Male') === (b.gender || 'Male')) {
-                // Secondary sort: Register No (Assuming alphanumeric or numeric)
-                return a.registerNo.localeCompare(b.registerNo, undefined, { numeric: true, sensitivity: 'base' });
-            }
-            return (a.gender || 'Male') === 'Male' ? -1 : 1;
-        });
+    const classStudents = sortStudentsByGender(
+        students.filter(s => s.classId === selectedClassId && s.status === 'Active')
+    );
 
     const selectedClass = classes.find(c => c.id === selectedClassId);
     const className = selectedClass ? `${selectedClass.name}-${selectedClass.division}` : 'this class';
@@ -392,11 +416,29 @@ const AttendanceRecorder = () => {
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] md:text-sm text-gray-500 font-bold uppercase tracking-wider justify-center md:justify-start">
-                        <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Present</span>
-                        <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Absent</span>
-                        <div className="h-4 w-px bg-gray-200 hidden md:block mx-1" />
-                        <span className="flex items-center gap-1.5 opacity-80"><div className="w-2.5 h-2.5 rounded-full border border-gray-200 bg-white"></div> Last 7 Days History</span>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-gray-100">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] md:text-sm text-gray-500 font-bold uppercase tracking-wider justify-center md:justify-start">
+                            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Present</span>
+                            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Absent</span>
+                            <div className="h-4 w-px bg-gray-200 hidden md:block mx-1" />
+                            <span className="flex items-center gap-1.5 opacity-80"><div className="w-2.5 h-2.5 rounded-full border border-gray-200 bg-white"></div> Last 7 Days History</span>
+                        </div>
+
+                        {selectedClassId && (
+                            <div className="shrink-0">
+                                {isDateRecorded ? (
+                                    <div className="bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg flex items-center gap-1.5">
+                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span className="text-xs font-bold text-emerald-800">Attendance Saved</span>
+                                    </div>
+                                ) : (
+                                    <div className="bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg flex items-center gap-1.5">
+                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                        <span className="text-xs font-bold text-amber-800">Not Recorded Yet (Defaulting to Present)</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

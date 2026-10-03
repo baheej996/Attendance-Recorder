@@ -6,6 +6,7 @@ import { Select } from '../../components/ui/Input';
 import { Printer, FileText, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { clsx } from 'clsx';
+import { sortStudentsByGender, isFemaleStudent } from '../../utils/studentUtils';
 
 const getExamAttendanceStats = (classId, className, year, month, examSettings, results, classStudents, subjects) => {
     const examDays = new Set();
@@ -102,13 +103,9 @@ const PrintAttendance = () => {
             const classesToExport = selectedClassId === 'all' ? availableClasses : [classes.find(c => c.id === selectedClassId)].filter(Boolean);
 
             for (const cls of classesToExport) {
-                const classStudents = students.filter(s => s.classId === cls.id && s.status === 'Active')
-                    .sort((a, b) => {
-                        if ((a.gender || 'Male') === (b.gender || 'Male')) {
-                            return a.registerNo.localeCompare(b.registerNo, undefined, { numeric: true, sensitivity: 'base' });
-                        }
-                        return (a.gender || 'Male') === 'Male' ? -1 : 1;
-                    });
+                const classStudents = sortStudentsByGender(
+                    students.filter(s => s.classId === cls.id && s.status === 'Active')
+                );
 
                 const stats = await getHistoricalAttendanceStats(cls.id, selectedYear, selectedMonth);
                 const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -535,13 +532,9 @@ export const AttendanceRegister = ({
     const daysInMonth = getDaysInMonth(selectedMonth, selectedYear);
     const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-    const classStudents = students.filter(s => s.classId === classId && s.status === 'Active')
-        .sort((a, b) => {
-            if ((a.gender || 'Male') === (b.gender || 'Male')) {
-                return a.registerNo.localeCompare(b.registerNo, undefined, { numeric: true, sensitivity: 'base' });
-            }
-            return (a.gender || 'Male') === 'Male' ? -1 : 1;
-        });
+    const classStudents = sortStudentsByGender(
+        students.filter(s => s.classId === classId && s.status === 'Active')
+    );
 
     const examStats = importExamAttendance ? getExamAttendanceStats(classId, selectedClass.name, selectedYear, selectedMonth, examSettings, results, classStudents, subjects) : { examDays: new Set(), studentExamDays: {} };
 
@@ -712,7 +705,7 @@ export const AttendanceRegister = ({
                                         <td className="border border-black text-center text-[9px]">{index + 1}</td>
                                         <td className="border border-black px-1 text-center font-mono text-[9px]">{student.registerNo}</td>
                                         <td className="border border-black px-1 text-center font-mono text-[8px]">{student.uid || ''}</td>
-                                        <td className={clsx("border border-black px-2 font-normal uppercase truncate max-w-[180px] text-left text-[9px]", student.gender === 'Female' ? "text-red-600" : "text-black")}>{student.name}</td>
+                                        <td className={clsx("border border-black px-2 font-normal uppercase truncate max-w-[180px] text-left text-[9px]", isFemaleStudent(student) ? "text-red-600" : "text-black")}>{student.name}</td>
                                         {daysArray.map(day => {
                                             const status = stats.currentMonth.days[day];
                                             const { isSunday } = getDayLetter(day);

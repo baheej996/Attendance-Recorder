@@ -227,7 +227,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
     const attendanceStats = useMemo(() => {
         if (!student) return { present: 0, absent: 0, total: 0, percentage: 0, records: [] };
-        const present = studentAttendance.filter(a => a.status === 'Present').length;
+        const present = studentAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
         const absent = studentAttendance.filter(a => a.status === 'Absent').length;
         const total = studentAttendance.length;
         const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
