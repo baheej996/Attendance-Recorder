@@ -432,6 +432,10 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                         <div>
+                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Admission Date (Join Date)</p>
+                                            <p className="text-indigo-600 font-bold">{student.admissionDate || 'Not specified'}</p>
+                                        </div>
+                                        <div>
                                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date of Birth</p>
                                             <p className="text-gray-900 font-medium">{student.dob || 'Not provided'}</p>
                                         </div>

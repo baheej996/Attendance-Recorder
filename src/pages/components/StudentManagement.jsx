@@ -17,11 +17,24 @@ import { ExportButtons } from '../../components/ui/ExportButtons';
 import { generateCSVTemplate, parseCSV } from '../../utils/csvHelpers';
 
 const StudentManagement = ({ readOnly = false }) => {
-    const { students, addStudent, deleteStudent, deleteStudents, classes, mentors, updateStudent, deleteAllStudents, institutionSettings, studentStatuses, updateStudentStatuses } = useData();
+    const { students, addStudent, deleteStudent, deleteStudents, classes, mentors, updateStudent, deleteAllStudents, institutionSettings, studentStatuses, updateStudentStatuses, autoDetectStudentAdmissionDates } = useData();
     const { showAlert } = useUI();
 
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+    const [isDetectingDates, setIsDetectingDates] = useState(false);
     const fileInputRef = useRef(null);
+
+    const handleAutoDetectDates = async () => {
+        setIsDetectingDates(true);
+        try {
+            const updated = await autoDetectStudentAdmissionDates();
+            showAlert('Auto-Detect Complete', `Successfully populated join dates for ${updated} existing student(s) based on attendance history.`, 'success');
+        } catch (err) {
+            showAlert('Auto-Detect Error', 'Failed to auto-detect admission dates: ' + err.message, 'error');
+        } finally {
+            setIsDetectingDates(false);
+        }
+    };
 
     const handleFileUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -41,7 +54,8 @@ const StudentManagement = ({ readOnly = false }) => {
         uid: '',
         gender: 'Male',
         classId: '',
-        status: 'Active'
+        status: 'Active',
+        admissionDate: new Date().toISOString().split('T')[0]
     });
     const [filterStandard, setFilterStandard] = useState('');
     const [filterDivision, setFilterDivision] = useState('');
@@ -140,7 +154,8 @@ const StudentManagement = ({ readOnly = false }) => {
                     uid: rowUid,
                     gender: row.gender || 'Male',
                     status: row.status || 'Active',
-                    classId: targetClass.id
+                    classId: targetClass.id,
+                    admissionDate: row.admissiondate || row.admission_date || row.joindate || new Date().toISOString().split('T')[0]
                 });
                 count++;
             } else {
@@ -167,7 +182,8 @@ const StudentManagement = ({ readOnly = false }) => {
             uid: '',
             gender: 'Male',
             classId: '',
-            status: 'Active'
+            status: 'Active',
+            admissionDate: new Date().toISOString().split('T')[0]
         });
         setEditingId(null);
         setError('');
@@ -249,7 +265,8 @@ const StudentManagement = ({ readOnly = false }) => {
             uid: student.uid || '',
             gender: student.gender || 'Male',
             classId: student.classId || '',
-            status: student.status || 'Active'
+            status: student.status || 'Active',
+            admissionDate: student.admissionDate || new Date().toISOString().split('T')[0]
         });
         setEditingId(student.id);
         setError('');
@@ -573,6 +590,13 @@ const StudentManagement = ({ readOnly = false }) => {
                             </Select>
                         </div>
 
+                        <Input
+                            type="date"
+                            label="Admission Date (Join Date)"
+                            value={formData.admissionDate || ''}
+                            onChange={(e) => setFormData(p => ({ ...p, admissionDate: e.target.value }))}
+                        />
+
                         <SearchableSelect
                             label="Assign Class"
                             placeholder="Search and select class..."
@@ -746,6 +770,19 @@ const StudentManagement = ({ readOnly = false }) => {
                                             >
                                                 <Upload className="w-4 h-4 text-indigo-600" />
                                                 <span>Bulk Upload CSV</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                disabled={isDetectingDates}
+                                                onClick={() => {
+                                                    setIsSettingsMenuOpen(false);
+                                                    handleAutoDetectDates();
+                                                }}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-xl transition-colors text-left"
+                                            >
+                                                <Calendar className="w-4 h-4 text-emerald-600" />
+                                                <span>{isDetectingDates ? "Detecting Dates..." : "Auto-Detect Join Dates"}</span>
                                             </button>
                                         </>
                                     )}
@@ -998,6 +1035,7 @@ const StudentManagement = ({ readOnly = false }) => {
                                 <th className="px-4 py-3">Name</th>
                                 <th className="px-4 py-3">Reg No</th>
                                 <th className="px-4 py-3">UID</th>
+                                <th className="px-4 py-3">Join Date</th>
                                 <th className="px-4 py-3">Class</th>
                                 <th className="px-4 py-3">Mentor</th>
                                 <th className="px-4 py-3">Status</th>
@@ -1022,6 +1060,7 @@ const StudentManagement = ({ readOnly = false }) => {
                                         <td className="px-4 py-3 font-medium text-gray-900">{student.name}</td>
                                         <td className="px-4 py-3">{student.registerNo}</td>
                                         <td className="px-4 py-3 font-medium text-gray-900">{student.uid || 'N/A'}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 font-medium">{student.admissionDate || 'N/A'}</td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <span className="px-2 py-0.5 bg-gray-100 rounded text-xs leading-none font-medium text-gray-600">
                                                 {studentClass ? `${studentClass.name}-${studentClass.division}` : 'N/A'}

@@ -50,7 +50,11 @@ const AttendanceHistory = () => {
     const studentAttendance = useMemo(() => {
         if (!currentUser?.id) return [];
         return (attendance || [])
-            .filter(r => r.studentId === currentUser.id)
+            .filter(r => {
+                if (r.studentId !== currentUser.id) return false;
+                if (currentUser.admissionDate && r.date < currentUser.admissionDate) return false;
+                return true;
+            })
             .sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [attendance, currentUser]);
 

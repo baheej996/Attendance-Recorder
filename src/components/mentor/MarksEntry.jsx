@@ -210,10 +210,18 @@ const MarksEntry = () => {
         };
     }, [subjects, selectedExamId, selectedClassId, results, exams]);
 
-    // Step 4: Students & Marks Loading
-    const classStudents = useMemo(() =>
-        students.filter(s => s.classId === selectedClassId && s.status === 'Active'),
-        [students, selectedClassId]);
+    // Step 4: Students & Marks Loading (Excluding students admitted after exam date)
+    const classStudents = useMemo(() => {
+        const selectedExam = exams.find(e => e.id === selectedExamId);
+        const examDateStr = (selectedExam?.endDate || selectedExam?.date || '').slice(0, 10);
+        return students.filter(s => {
+            if (s.classId !== selectedClassId || s.status !== 'Active') return false;
+            if (s.admissionDate && examDateStr) {
+                if (s.admissionDate > examDateStr) return false;
+            }
+            return true;
+        });
+    }, [students, selectedClassId, selectedExamId, exams]);
 
     useEffect(() => {
         if (selectedExamId && selectedClassId && selectedSubjectId) {

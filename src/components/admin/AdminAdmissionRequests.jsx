@@ -123,6 +123,7 @@ const AdminAdmissionRequests = () => {
                         gender: request.gender,
                         status: request.status,
                         classId: request.classId,
+                        admissionDate: request.admissionDate || request.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0]
                     });
                 }
                 
