@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
-import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown, Eye, Download, Upload, FileSpreadsheet, FileText } from 'lucide-react';
+import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown, Eye, Download, Upload, FileSpreadsheet, FileText, Sparkles, CheckCircle } from 'lucide-react';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
@@ -15,6 +15,7 @@ import { StudentProfileModal } from '../../components/mentor/StudentProfileModal
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { ExportButtons } from '../../components/ui/ExportButtons';
 import { generateCSVTemplate, parseCSV } from '../../utils/csvHelpers';
+import { generateNextRegisterNo } from '../../utils/studentUtils';
 
 const StudentManagement = ({ readOnly = false }) => {
     const { students, addStudent, deleteStudent, deleteStudents, classes, mentors, updateStudent, deleteAllStudents, institutionSettings, studentStatuses, updateStudentStatuses, autoDetectStudentAdmissionDates } = useData();
@@ -22,6 +23,7 @@ const StudentManagement = ({ readOnly = false }) => {
 
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
     const [isDetectingDates, setIsDetectingDates] = useState(false);
+    const [regNoFeedback, setRegNoFeedback] = useState('');
     const fileInputRef = useRef(null);
 
     const handleAutoDetectDates = async () => {
@@ -187,6 +189,7 @@ const StudentManagement = ({ readOnly = false }) => {
         });
         setEditingId(null);
         setError('');
+        setRegNoFeedback('');
         setIsModalOpen(true);
     };
 
@@ -194,6 +197,37 @@ const StudentManagement = ({ readOnly = false }) => {
         setIsModalOpen(false);
         setEditingId(null);
         setError('');
+        setRegNoFeedback('');
+    };
+
+    const handleAutoGenerateRegNo = () => {
+        if (!formData.classId) {
+            setError('Please select a class first to auto-generate the Register Number.');
+            return;
+        }
+        const targetClass = classes.find(c => c.id === formData.classId);
+        if (!targetClass) {
+            setError('Selected class was not found.');
+            return;
+        }
+
+        try {
+            // Exclude current student if editing so their own reg no doesn't block re-generation
+            const existingStudents = editingId ? (students || []).filter(s => s.id !== editingId) : (students || []);
+            const nextRegNo = generateNextRegisterNo({
+                classObj: targetClass,
+                gender: formData.gender,
+                admissionDate: formData.admissionDate,
+                students: existingStudents
+            });
+
+            setFormData(p => ({ ...p, registerNo: nextRegNo }));
+            setError('');
+            setRegNoFeedback(`Generated: ${nextRegNo}`);
+            setTimeout(() => setRegNoFeedback(''), 4000);
+        } catch (err) {
+            setError(err.message || 'Failed to generate register number.');
+        }
     };
 
     const handleSubmit = (e) => {
@@ -555,12 +589,36 @@ const StudentManagement = ({ readOnly = false }) => {
                             error={error}
                         />
                         <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Register No"
-                                placeholder="e.g. A001"
-                                value={formData.registerNo}
-                                onChange={(e) => setFormData(p => ({ ...p, registerNo: e.target.value }))}
-                            />
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block text-sm font-medium text-gray-700">Register No</label>
+                                    <button
+                                        type="button"
+                                        onClick={handleAutoGenerateRegNo}
+                                        className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer group"
+                                        title="Auto-generate Register Number (Format: YY + M + Std + Gender + Sequence)"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
+                                        <span>Auto Generate</span>
+                                    </button>
+                                </div>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow outline-none font-mono tracking-wide text-gray-900"
+                                    placeholder="e.g. 26M08B006"
+                                    value={formData.registerNo}
+                                    onChange={(e) => {
+                                        setFormData(p => ({ ...p, registerNo: e.target.value }));
+                                        if (regNoFeedback) setRegNoFeedback('');
+                                    }}
+                                />
+                                {regNoFeedback && (
+                                    <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-200">
+                                        <CheckCircle className="w-3 h-3 text-emerald-500 inline shrink-0" />
+                                        <span>{regNoFeedback}</span>
+                                    </p>
+                                )}
+                            </div>
                             <Input
                                 label="UID"
                                 placeholder="Optional"

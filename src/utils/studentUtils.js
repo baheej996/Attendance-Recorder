@@ -58,3 +58,79 @@ export const sortStudentsByGender = (studentsList) => {
         return regA.localeCompare(regB, undefined, { numeric: true, sensitivity: 'base' });
     });
 };
+
+/**
+ * Generates the next sequential unique Register Number for a student.
+ * Format: [YY]M[Standard][Gender][Sequence]
+ * Example: 26M08B006
+ *
+ * @param {Object} params
+ * @param {Object} params.classObj - The class object (must have name)
+ * @param {string} params.gender - 'Male', 'Female', etc.
+ * @param {string} [params.admissionDate] - 'YYYY-MM-DD'
+ * @param {Array} params.students - List of existing students to determine sequence & ensure uniqueness
+ * @returns {string} The generated unique Register Number
+ */
+export const generateNextRegisterNo = ({ classObj, gender, admissionDate, students = [] }) => {
+    if (!classObj || !classObj.name) {
+        throw new Error('Please select a class first.');
+    }
+
+    // 1. Determine Year Prefix (YY)
+    let year = new Date().getFullYear();
+    if (admissionDate) {
+        const parsedYear = new Date(admissionDate).getFullYear();
+        if (!isNaN(parsedYear)) {
+            year = parsedYear;
+        }
+    }
+    const yearPrefix = String(year).slice(-2);
+
+    // 2. Determine Standard Code (2 digits, e.g. 08, 10)
+    const match = String(classObj.name).match(/\d+/);
+    let standardCode = '00';
+    if (match) {
+        standardCode = match[0].padStart(2, '0');
+    } else {
+        standardCode = String(classObj.name).trim().slice(0, 2).toUpperCase().padEnd(2, '0');
+    }
+
+    // 3. Determine Gender Code (B for Boys/Male, G for Girls/Female)
+    const normalizedGender = (gender || '').toString().trim().toLowerCase();
+    const genderCode = (normalizedGender === 'female' || normalizedGender === 'girl' || normalizedGender === 'f') ? 'G' : 'B';
+
+    // 4. Form prefix: e.g. "26M08B"
+    const prefix = `${yearPrefix}M${standardCode}${genderCode}`;
+
+    // 5. Scan all existing students to find the highest sequence number matching this prefix
+    const regex = new RegExp(`^${prefix}(\\d+)$`, 'i');
+    let maxSequence = 0;
+    const existingRegNos = new Set();
+
+    (students || []).forEach(s => {
+        const reg = (s.registerNo || s.regNo || '').toString().trim();
+        if (reg) {
+            existingRegNos.add(reg.toUpperCase());
+            const m = reg.match(regex);
+            if (m) {
+                const seq = parseInt(m[1], 10);
+                if (!isNaN(seq) && seq > maxSequence) {
+                    maxSequence = seq;
+                }
+            }
+        }
+    });
+
+    // 6. Next sequence number (e.g. maxSequence + 1)
+    let nextSeq = maxSequence + 1;
+    let candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+
+    // Safety loop to ensure 100% uniqueness against all existing register numbers
+    while (existingRegNos.has(candidate.toUpperCase())) {
+        nextSeq++;
+        candidate = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+    }
+
+    return candidate;
+};
+
