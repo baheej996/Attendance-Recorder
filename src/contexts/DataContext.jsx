@@ -486,7 +486,7 @@ export const DataProvider = ({ children }) => {
                 );
 
                 // On-Demand Heavy Data
-                const currentAttendanceLimit = activeFeatures.has('star') ? Math.max(5000, attendanceLimit) : attendanceLimit;
+                const currentAttendanceLimit = (activeFeatures.has('attendance') || activeFeatures.has('star')) ? Math.max(5000, attendanceLimit) : attendanceLimit;
                 if (activeFeatures.has('attendance')) {
                     unsubs.push(subscribe('attendance', setAttendance, where('classId', 'in', assignedClassIds), orderBy('date', 'desc'), limit(currentAttendanceLimit)));
                 }
@@ -1062,12 +1062,50 @@ export const DataProvider = ({ children }) => {
 
     // Students
     const addStudent = async (student) => {
+        const today = new Date().toISOString().split('T')[0];
         const normalized = { 
             ...student, 
             registerNo: student.registerNo?.trim().toUpperCase(),
+            admissionDate: student.admissionDate || today,
             status: student.status || 'Active' 
         };
         return await addDoc(collection(db, 'students'), normalized);
+    };
+
+    const autoDetectStudentAdmissionDates = async () => {
+        try {
+            const attendanceSnap = await getDocs(collection(db, 'attendance'));
+            const allAttendance = attendanceSnap.docs.map(d => d.data());
+            
+            const earliestDates = {};
+            allAttendance.forEach(att => {
+                if (!att.studentId || !att.date) return;
+                const dStr = String(att.date).slice(0, 10);
+                if (!earliestDates[att.studentId] || dStr < earliestDates[att.studentId]) {
+                    earliestDates[att.studentId] = dStr;
+                }
+            });
+
+            const today = new Date().toISOString().split('T')[0];
+            const batch = writeBatch(db);
+            let updatedCount = 0;
+
+            students.forEach(student => {
+                if (!student.admissionDate) {
+                    const detectedDate = earliestDates[student.id] || today;
+                    batch.update(doc(db, 'students', student.id), { admissionDate: detectedDate });
+                    updatedCount++;
+                }
+            });
+
+            if (updatedCount > 0) {
+                await batch.commit();
+            }
+            return updatedCount;
+        } catch (err) {
+            console.error("Auto-detect admission dates error:", err);
+            throw err;
+        }
     };
     const updateStudent = async (id, data) => {
         const normalized = { ...data };
@@ -2086,7 +2124,7 @@ export const DataProvider = ({ children }) => {
 
     const value = {
         classes, addClass, updateClass, deleteClass, deleteClasses, transferStudentsAndBulkDeleteClass,
-        students, addStudent, updateStudent, deleteStudent, deleteStudents, deleteAllStudents,
+        students, addStudent, updateStudent, deleteStudent, deleteStudents, deleteAllStudents, autoDetectStudentAdmissionDates,
         allStudents, 
         
         mentors, addMentor, updateMentor, deleteMentor, deleteMentors,
@@ -2453,7 +2491,10 @@ export const DataProvider = ({ children }) => {
             };
             const docRef = await addDoc(collection(db, 'feePayments'), payload);
             const created = { ...payload, id: docRef.id };
-            setFeePayments(prev => [...prev, created]);
+            setFeePayments(prev => {
+                if (prev.some(p => p.id === docRef.id)) return prev;
+                return [...prev, created];
+            });
             return created;
         },
         deleteFeePayment: async (paymentId) => {
@@ -2681,7 +2722,10 @@ export const DataProvider = ({ children }) => {
                                     const receiptId = payload.receiptId || `REC-${year}-${randomNum}`;
                                     const fullPayload = { ...payload, receiptId, createdAt: new Date().toISOString() };
                                     const docRef = await addDoc(collection(db, 'feePayments'), fullPayload);
-                                    setFeePayments(prev => [...prev, { ...fullPayload, id: docRef.id }]);
+                                    setFeePayments(prev => {
+                                        if (prev.some(p => p.id === docRef.id)) return prev;
+                                        return [...prev, { ...fullPayload, id: docRef.id }];
+                                    });
                                 }
                                 successCount++;
                             } catch (err) {
@@ -2741,7 +2785,10 @@ export const DataProvider = ({ children }) => {
                             const receiptId = payload.receiptId || `REC-${year}-${randomNum}`;
                             const fullPayload = { ...payload, receiptId, createdAt: new Date().toISOString() };
                             const docRef = await addDoc(collection(db, 'feePayments'), fullPayload);
-                            setFeePayments(prev => [...prev, { ...fullPayload, id: docRef.id }]);
+                            setFeePayments(prev => {
+                                if (prev.some(p => p.id === docRef.id)) return prev;
+                                return [...prev, { ...fullPayload, id: docRef.id }];
+                            });
                         }
                         successCount++;
                     } catch (err) {

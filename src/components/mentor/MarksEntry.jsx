@@ -1,28 +1,31 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar, RotateCcw, Upload, Download, Unlock, Lock } from 'lucide-react';
+import { Save, Search, Filter, Trash2, ChevronRight, ArrowLeft, CheckCircle, AlertCircle, Clock, Play, PauseCircle, Eye, EyeOff, Calendar, RotateCcw, Upload, Download, Unlock, Lock, UserCheck, ShieldCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
 import ExamGradingModal from './ExamGradingModal';
+import ExamEligibilityModal from './ExamEligibilityModal';
 
 // MarksEntry Component v2.1 - Smart Config Dashboard Update
 const MarksEntry = () => {
     const {
-        subjects, exams, students, results,
+        subjects, exams, students, results, attendance,
         recordResult, deleteResultBatch, deleteExamResultsForClass, classes, currentUser,
         examSettings, updateExamSetting, deleteStudentResponse, questions, requireFeature, updateStudent, studentResponses
     } = useData();
     const { showAlert, showConfirm } = useUI();
 
-    // Activate live subscriptions for results and studentResponses
+    // Activate live subscriptions for results, studentResponses, and attendance
     useEffect(() => {
         const unsubResults = requireFeature('results');
         const unsubActivities = requireFeature('activities');
+        const unsubAttendance = requireFeature('attendance');
         return () => {
             unsubResults();
             unsubActivities();
+            unsubAttendance();
         };
     }, [requireFeature]);
 
@@ -34,6 +37,10 @@ const MarksEntry = () => {
     const [selectedExamId, setSelectedExamId] = useState('');
     const [selectedClassId, setSelectedClassId] = useState('');
     const [selectedSubjectId, setSelectedSubjectId] = useState('');
+
+    // Eligibility Modal State
+    const [eligibilityModalOpen, setEligibilityModalOpen] = useState(false);
+    const [eligibilityClass, setEligibilityClass] = useState(null);
 
     // Marks State
     const [marksData, setMarksData] = useState({});
@@ -203,10 +210,18 @@ const MarksEntry = () => {
         };
     }, [subjects, selectedExamId, selectedClassId, results, exams]);
 
-    // Step 4: Students & Marks Loading
-    const classStudents = useMemo(() =>
-        students.filter(s => s.classId === selectedClassId && s.status === 'Active'),
-        [students, selectedClassId]);
+    // Step 4: Students & Marks Loading (Excluding students admitted after exam date)
+    const classStudents = useMemo(() => {
+        const selectedExam = exams.find(e => e.id === selectedExamId);
+        const examDateStr = (selectedExam?.endDate || selectedExam?.date || '').slice(0, 10);
+        return students.filter(s => {
+            if (s.classId !== selectedClassId || s.status !== 'Active') return false;
+            if (s.admissionDate && examDateStr) {
+                if (s.admissionDate > examDateStr) return false;
+            }
+            return true;
+        });
+    }, [students, selectedClassId, selectedExamId, exams]);
 
     useEffect(() => {
         if (selectedExamId && selectedClassId && selectedSubjectId) {
@@ -763,6 +778,19 @@ const MarksEntry = () => {
                                 </div>
                                 <div className="flex items-center gap-2 sm:gap-4 shrink-0 flex-wrap justify-end">
                                     <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEligibilityClass(cls);
+                                            setEligibilityModalOpen(true);
+                                        }}
+                                        className="flex items-center gap-1.5 sm:gap-2 font-bold px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs uppercase tracking-wider border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 transition-colors shadow-2xs shrink-0"
+                                        title="Check minimum attendance exam eligibility for this class"
+                                    >
+                                        <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                                        <span className="hidden sm:inline">Eligible Students</span>
+                                        <span className="sm:hidden">Eligible</span>
+                                    </button>
+                                    <button
                                         onClick={handleToggleAnswersClass}
                                         className={clsx(
                                             "flex items-center gap-1.5 sm:gap-2 font-bold px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs uppercase tracking-widest border transition-colors",
@@ -787,6 +815,15 @@ const MarksEntry = () => {
                         );
                     })}
                 </div>
+
+                <ExamEligibilityModal
+                    isOpen={eligibilityModalOpen}
+                    onClose={() => { setEligibilityModalOpen(false); setEligibilityClass(null); }}
+                    classObj={eligibilityClass}
+                    exam={exams.find(e => e.id === selectedExamId)}
+                    students={students}
+                    attendance={attendance}
+                />
             </div>
         );
     }
@@ -1209,18 +1246,33 @@ const MarksEntry = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
                             {classStudents.map(student => {
-                                // Check if student has submitted
-                                // We can check if their score exists in results?
-                                // OR if they have a response in studentResponses (more accurate for "Needs Grading")
-                                // But MarksEntry accesses `results`.
-                                // Let's just provide the button always, or if mark is entered?
-                                // Better: Provide simple "Grade" button.
+                                const selExam = exams.find(e => e.id === selectedExamId);
+                                const reqP = Number(selExam?.minAttendancePercent) || 0;
+                                const sRecs = (attendance || []).filter(a => a.studentId === student.id);
+                                const tD = sRecs.length;
+                                const pD = sRecs.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                                const pPct = tD > 0 ? Math.round((pD / tD) * 100) : 100;
+                                const isEl = pPct >= reqP;
+
                                 return (
                                     <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell font-mono">{student.registerNo}</td>
                                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-gray-900 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{student.name}</span>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-bold text-gray-900 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{student.name}</span>
+                                                    {reqP > 0 && (
+                                                        isEl ? (
+                                                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200" title={`Eligible (Attendance: ${pPct}%, Req: ${reqP}%)`}>
+                                                                {pPct}%
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200" title={`NOT ELIGIBLE! Attendance: ${pPct}% (Req: ${reqP}%)`}>
+                                                                Ineligible ({pPct}%)
+                                                            </span>
+                                                        )
+                                                    )}
+                                                </div>
                                                 <span className="sm:hidden text-[10px] text-gray-400 font-mono mt-0.5">{student.registerNo}</span>
                                             </div>
                                         </td>

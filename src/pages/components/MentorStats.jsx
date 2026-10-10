@@ -5,12 +5,15 @@ import { Select } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
-import { X, Download, AlertTriangle, FileText, GraduationCap, CheckCircle, Loader2 } from 'lucide-react';
+import { X, Download, AlertTriangle, FileText, GraduationCap, CheckCircle, Loader2, FileSpreadsheet } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as htmlToImage from 'html-to-image';
 import { ReportCardPDFTemplate } from '../../components/ui/ReportCardPDFTemplate';
 import { ToppersPosterTemplate } from '../../components/ui/ToppersPosterTemplate';
+import FullClassResultModal from '../../components/mentor/FullClassResultModal';
+import { where } from 'firebase/firestore';
+
 
 
 const COLORS = ['#10B981', '#EF4444']; // Green, Red
@@ -294,6 +297,7 @@ const MentorStats = () => {
     const toppersPrintRef = React.useRef(null);
     const [selectedStudent, setSelectedStudent] = useState(null); // For Attendance Modal
     const [resultModalData, setResultModalData] = useState(null); // { student, exam }
+    const [fullClassResultModalOpen, setFullClassResultModalOpen] = useState(false);
     const [trueStats, setTrueStats] = useState({}); // { studentId: { total, present } }
     const [isCounting, setIsCounting] = useState(false);
 
@@ -574,6 +578,15 @@ const MentorStats = () => {
                         {activeTab === 'results' && selectedClassId && selectedExamId && examStats && (
                             <>
                                 <Button
+                                    onClick={() => setFullClassResultModalOpen(true)}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold whitespace-nowrap flex items-center justify-center gap-2 text-sm shadow-sm transition-all"
+                                    title="View and download full class exam result with subject breakdown & attendance"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Full Class Result Sheet</span>
+                                    <span className="sm:hidden">Full Result</span>
+                                </Button>
+                                <Button
                                     onClick={generateToppersPoster}
                                     disabled={isGeneratingPoster || examStats.studentPerformances.length === 0}
                                     variant="secondary"
@@ -801,6 +814,19 @@ const MentorStats = () => {
                     subjects={examStats?.examSubjects || []}
                     results={results}
                     onClose={() => setResultModalData(null)}
+                />
+            )}
+
+            {fullClassResultModalOpen && selectedClassId && selectedExamId && (
+                <FullClassResultModal
+                    isOpen={fullClassResultModalOpen}
+                    onClose={() => setFullClassResultModalOpen(false)}
+                    classObj={classes.find(c => c.id === selectedClassId)}
+                    exam={exams.find(e => e.id === selectedExamId)}
+                    students={students}
+                    subjects={subjects}
+                    results={results}
+                    attendance={attendance}
                 />
             )}
             {/* Hidden Output for Toppers Poster Capture */}

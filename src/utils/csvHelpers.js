@@ -109,8 +109,8 @@ export const generateCSVTemplate = async (type) => {
             ];
             break;
         case 'student':
-            headers = 'Name,RegisterNo,UID,Gender,Status,ClassName,Division';
-            rows = ['Alice Name,REG001,UID123,Female,Active,10,A', 'Bob Name,REG002,,Male,Active,10,B'];
+            headers = 'Name,RegisterNo,UID,Gender,Status,ClassName,Division,AdmissionDate';
+            rows = ['Alice Name,REG001,UID123,Female,Active,10,A,2026-06-01', 'Bob Name,REG002,,Male,Active,10,B,2026-06-01'];
             break;
         default:
             return null;

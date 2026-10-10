@@ -91,7 +91,7 @@ const StudentDashboard = () => {
     // 1. Attendance Calculation
     const studentAttendance = (attendance || []).filter(r => r.studentId === currentUser.id);
     const totalDays = studentAttendance.length;
-    const presentDays = studentAttendance.filter(r => r.status === 'Present').length;
+    const presentDays = studentAttendance.filter(r => r.status === 'Present' || r.status === 'Late').length;
     const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
     const absentPercentage = totalDays > 0 ? 100 - attendancePercentage : 0; // If 0 days, 0 absent.
 

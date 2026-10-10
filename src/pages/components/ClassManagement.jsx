@@ -294,7 +294,7 @@ const ClassCard = ({ cls, isAttention, selectedIds, toggleSelection, openStudent
 };
 
 const ClassManagement = ({ readOnly = false }) => {
-    const { classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses, updateMentor, mentors, students, updateStudent, deleteStudent, institutionSettings, updateInstitutionSettings } = useData();
+    const { classes, addClass, updateClass, deleteClass, deleteClasses, deleteAllClasses, updateMentor, mentors, students, updateStudent, deleteStudent, institutionSettings, updateInstitutionSettings, transferStudentsAndBulkDeleteClass } = useData();
     const { showAlert } = useUI();
     const [formData, setFormData] = useState({ name: '', division: '', startTime: '', endTime: '', days: [] });
     const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
