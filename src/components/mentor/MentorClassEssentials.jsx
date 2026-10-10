@@ -99,43 +99,45 @@ const MentorClassEssentials = () => {
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Header Hero */}
-            <div className="bg-gradient-to-br from-purple-900 via-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="bg-white border border-gray-200/80 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-purple-50/60 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-indigo-50/60 rounded-full blur-3xl pointer-events-none" />
 
                 <div className="relative z-10">
-                    <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider mb-2">
-                        <FolderOpen className="w-4 h-4 text-purple-400" />
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 border border-purple-100 text-purple-700 text-xs font-bold uppercase tracking-wider rounded-full mb-3">
+                        <FolderOpen className="w-3.5 h-3.5 text-purple-600" />
                         <span>Teacher Resource & Media Hub</span>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Class Essentials</h1>
-                    <p className="text-purple-200 text-sm mt-1 max-w-2xl leading-relaxed">
+                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">Class Essentials</h1>
+                    <p className="text-gray-500 text-sm mt-1.5 max-w-2xl leading-relaxed">
                         Access audio recordings (MP3), video tutorials (MP4), morning assembly duas, charts, and teaching aids curated by the administration for your classes.
                     </p>
 
                     {/* Quick Stats Pill Strip */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-purple-700/50">
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                            <p className="text-xs text-purple-200 font-medium">Available Resources</p>
-                            <p className="text-xl sm:text-2xl font-bold mt-0.5">{metrics.total}</p>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                            <p className="text-xs text-purple-200 font-medium flex items-center gap-1">
-                                <Film className="w-3.5 h-3.5 text-rose-300" /> Video Guides
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-gray-100">
+                        <div className="bg-gray-50/80 hover:bg-gray-100/70 rounded-2xl p-4 border border-gray-100 transition-colors">
+                            <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">
+                                <FolderOpen className="w-3.5 h-3.5 text-purple-500" /> Available Resources
                             </p>
-                            <p className="text-xl sm:text-2xl font-bold mt-0.5 text-rose-200">{metrics.videos}</p>
+                            <p className="text-xl sm:text-2xl font-black text-gray-900 mt-1">{metrics.total}</p>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                            <p className="text-xs text-purple-200 font-medium flex items-center gap-1">
-                                <FileAudio className="w-3.5 h-3.5 text-amber-300" /> Audio Duas & Clips
+                        <div className="bg-gray-50/80 hover:bg-gray-100/70 rounded-2xl p-4 border border-gray-100 transition-colors">
+                            <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">
+                                <Film className="w-3.5 h-3.5 text-rose-500" /> Video Guides
                             </p>
-                            <p className="text-xl sm:text-2xl font-bold mt-0.5 text-amber-200">{metrics.audios}</p>
+                            <p className="text-xl sm:text-2xl font-black text-rose-600 mt-1">{metrics.videos}</p>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                            <p className="text-xs text-purple-200 font-medium flex items-center gap-1">
-                                <FileImage className="w-3.5 h-3.5 text-emerald-300" /> Posters & Docs
+                        <div className="bg-gray-50/80 hover:bg-gray-100/70 rounded-2xl p-4 border border-gray-100 transition-colors">
+                            <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">
+                                <FileAudio className="w-3.5 h-3.5 text-amber-500" /> Audio Duas & Clips
                             </p>
-                            <p className="text-xl sm:text-2xl font-bold mt-0.5 text-emerald-200">{metrics.images + metrics.documents}</p>
+                            <p className="text-xl sm:text-2xl font-black text-amber-600 mt-1">{metrics.audios}</p>
+                        </div>
+                        <div className="bg-gray-50/80 hover:bg-gray-100/70 rounded-2xl p-4 border border-gray-100 transition-colors">
+                            <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">
+                                <FileImage className="w-3.5 h-3.5 text-emerald-500" /> Posters & Docs
+                            </p>
+                            <p className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">{metrics.images + metrics.documents}</p>
                         </div>
                     </div>
                 </div>

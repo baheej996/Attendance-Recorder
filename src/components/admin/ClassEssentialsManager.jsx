@@ -283,18 +283,18 @@ const ClassEssentialsManager = () => {
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
             {/* Top Header Card */}
-            <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="bg-white border border-gray-200/80 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-indigo-50/60 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-purple-50/60 rounded-full blur-3xl pointer-events-none" />
 
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <div className="flex items-center gap-2.5 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-2">
-                            <FolderOpen className="w-4 h-4 text-indigo-400" />
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-wider rounded-full mb-3">
+                            <FolderOpen className="w-3.5 h-3.5 text-indigo-600" />
                             <span>Central Media & Resource Library</span>
                         </div>
-                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Class Essentials</h1>
-                        <p className="text-indigo-200 text-sm mt-1 max-w-xl">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">Class Essentials</h1>
+                        <p className="text-gray-500 text-sm mt-1.5 max-w-xl leading-relaxed">
                             Upload and manage audio clips (MP3), video lessons (MP4), posters, and teaching aids. All materials are instantly accessible to mentors in their panel.
                         </p>
                     </div>
@@ -304,36 +304,38 @@ const ClassEssentialsManager = () => {
                             resetUploadForm();
                             setIsUploadModalOpen(true);
                         }}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white text-indigo-900 hover:bg-indigo-50 font-bold rounded-2xl shadow-lg shadow-indigo-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all whitespace-nowrap self-start md:self-auto cursor-pointer"
+                        className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold rounded-2xl shadow-md shadow-indigo-200 hover:shadow-indigo-300 transition-all whitespace-nowrap self-start md:self-auto cursor-pointer"
                     >
-                        <Plus className="w-5 h-5 text-indigo-600" />
+                        <Plus className="w-5 h-5 text-white" />
                         <span>Upload Essential File</span>
                     </button>
                 </div>
 
                 {/* Metrics Bar */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-indigo-700/50">
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                        <p className="text-xs text-indigo-200 font-medium">Total Files</p>
-                        <p className="text-xl sm:text-2xl font-bold mt-0.5">{metrics.total}</p>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                        <p className="text-xs text-indigo-200 font-medium flex items-center gap-1">
-                            <Film className="w-3.5 h-3.5 text-rose-300" /> Videos (MP4)
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-gray-100 relative z-10">
+                    <div className="bg-gray-50/80 hover:bg-gray-100/70 rounded-2xl p-4 border border-gray-100 transition-colors">
+                        <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">
+                            <FolderOpen className="w-3.5 h-3.5 text-indigo-500" /> Total Files
                         </p>
-                        <p className="text-xl sm:text-2xl font-bold mt-0.5 text-rose-200">{metrics.videos}</p>
+                        <p className="text-xl sm:text-2xl font-black text-gray-900 mt-1">{metrics.total}</p>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                        <p className="text-xs text-indigo-200 font-medium flex items-center gap-1">
-                            <FileAudio className="w-3.5 h-3.5 text-amber-300" /> Audios (MP3)
+                    <div className="bg-gray-50/80 hover:bg-gray-100/70 rounded-2xl p-4 border border-gray-100 transition-colors">
+                        <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">
+                            <Film className="w-3.5 h-3.5 text-rose-500" /> Videos (MP4)
                         </p>
-                        <p className="text-xl sm:text-2xl font-bold mt-0.5 text-amber-200">{metrics.audios}</p>
+                        <p className="text-xl sm:text-2xl font-black text-rose-600 mt-1">{metrics.videos}</p>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                        <p className="text-xs text-indigo-200 font-medium flex items-center gap-1">
-                            <FileImage className="w-3.5 h-3.5 text-emerald-300" /> Images & Docs
+                    <div className="bg-gray-50/80 hover:bg-gray-100/70 rounded-2xl p-4 border border-gray-100 transition-colors">
+                        <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">
+                            <FileAudio className="w-3.5 h-3.5 text-amber-500" /> Audios (MP3)
                         </p>
-                        <p className="text-xl sm:text-2xl font-bold mt-0.5 text-emerald-200">{metrics.images + metrics.documents}</p>
+                        <p className="text-xl sm:text-2xl font-black text-amber-600 mt-1">{metrics.audios}</p>
+                    </div>
+                    <div className="bg-gray-50/80 hover:bg-gray-100/70 rounded-2xl p-4 border border-gray-100 transition-colors">
+                        <p className="text-xs text-gray-500 font-semibold flex items-center gap-1.5">
+                            <FileImage className="w-3.5 h-3.5 text-emerald-500" /> Images & Docs
+                        </p>
+                        <p className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">{metrics.images + metrics.documents}</p>
                     </div>
                 </div>
             </div>
