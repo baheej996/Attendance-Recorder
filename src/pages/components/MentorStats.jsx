@@ -12,6 +12,7 @@ import * as htmlToImage from 'html-to-image';
 import { ReportCardPDFTemplate } from '../../components/ui/ReportCardPDFTemplate';
 import { ToppersPosterTemplate } from '../../components/ui/ToppersPosterTemplate';
 import FullClassResultModal from '../../components/mentor/FullClassResultModal';
+import { where } from 'firebase/firestore';
 
 
 

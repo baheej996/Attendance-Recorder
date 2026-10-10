@@ -54,6 +54,17 @@ const FullClassResultModal = ({ isOpen, onClose, classObj, exam, students = [], 
     // Use fetched attendance if available, otherwise fall back to passed attendance prop
     const effectiveAttendance = fetchedAttendance !== null ? fetchedAttendance : (attendance || []);
 
+    // Cutoff date for exam attendance
+    const examCutoffDateStr = exam?.endDate || exam?.date || '';
+    const cutoffIso = useMemo(() => {
+        if (!examCutoffDateStr) return '';
+        try {
+            return new Date(examCutoffDateStr).toISOString().slice(0, 10);
+        } catch (e) {
+            return examCutoffDateStr.slice(0, 10);
+        }
+    }, [examCutoffDateStr]);
+
     // Filter active students for this class who were admitted on or before the exam cutoff date
     const classStudents = useMemo(() => {
         if (!classObj?.id) return [];
@@ -75,17 +86,6 @@ const FullClassResultModal = ({ isOpen, onClose, classObj, exam, students = [], 
             !exam?.excludedSubjectNames?.includes(s.name)
         );
     }, [subjects, classObj, exam]);
-
-    // Cutoff date for exam attendance
-    const examCutoffDateStr = exam?.endDate || exam?.date || '';
-    const cutoffIso = useMemo(() => {
-        if (!examCutoffDateStr) return '';
-        try {
-            return new Date(examCutoffDateStr).toISOString().slice(0, 10);
-        } catch (e) {
-            return examCutoffDateStr.slice(0, 10);
-        }
-    }, [examCutoffDateStr]);
 
     // Attendance records strictly up to exam cutoff date
     const attendanceUpToExam = useMemo(() => {
