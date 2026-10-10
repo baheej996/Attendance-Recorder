@@ -26,7 +26,8 @@ import {
     CheckCircle,
     Gamepad2,
     FileQuestion,
-    AlertTriangle
+    AlertTriangle,
+    FolderOpen
 } from 'lucide-react';
 
 export const MENTOR_NAV_ITEMS = [
@@ -35,6 +36,7 @@ export const MENTOR_NAV_ITEMS = [
     { id: 'tasks', icon: ClipboardList, label: 'Professional Tasks', path: '/mentor/tasks' },
     { id: 'assessment', icon: CheckCircle, label: 'Student Assessment', path: '/mentor/assessment' },
     { id: 'evaluations', icon: FileBarChart, label: 'Mentor Self-Evaluation', path: '/mentor/evaluations' },
+    { id: 'class-essentials', icon: FolderOpen, label: 'Class Essentials', path: '/mentor/class-essentials' },
     { id: 'notifications', icon: Bell, label: 'Notifications', path: '/mentor/notifications' },
     { id: 'admissions', icon: UserPlus, label: 'Admission Request', path: '/mentor/admissions' },
     { id: 'leaves', icon: UserCheck, label: 'Leave Requests', path: '/mentor/leaves' },

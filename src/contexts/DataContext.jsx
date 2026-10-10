@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { parseCSV } from '../utils/csvHelpers';
 import { safeLocalStorage } from '../utils/safeStorage';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import {
     collection,
     addDoc,
@@ -43,6 +43,7 @@ export const DataProvider = ({ children }) => {
     const [studentResponses, setStudentResponses] = useState([]);
     const [leaveRequests, setLeaveRequests] = useState([]);
     const [chatMessages, setChatMessages] = useState([]);
+    const [classEssentials, setClassEssentials] = useState([]);
     const [unreadChats, setUnreadChats] = useState([]);
     const [activities, setActivities] = useState([]);
     const [activitySubmissions, setActivitySubmissions] = useState([]);
@@ -287,6 +288,7 @@ export const DataProvider = ({ children }) => {
             subscribe('parentFeedbackTemplates', setParentFeedbackTemplates),
             subscribe('feeStructures', setFeeStructures),
             subscribe('feePayments', setFeePayments),
+            subscribe('classEssentials', setClassEssentials),
         ];
 
         // Reference data — rarely changes, real-time sync is wasteful for 2k users.
@@ -1163,6 +1165,36 @@ export const DataProvider = ({ children }) => {
         const batch = writeBatch(db);
         ids.forEach(id => batch.delete(doc(db, 'subjects', id)));
         await batch.commit();
+    };
+
+    // Class Essentials
+    const addClassEssential = async (item) => {
+        const payload = {
+            ...item,
+            createdAt: item.createdAt || new Date().toISOString()
+        };
+        const docRef = await addDoc(collection(db, 'classEssentials'), payload);
+        return docRef;
+    };
+
+    const updateClassEssential = async (id, updated) => {
+        await updateDoc(doc(db, 'classEssentials', id), {
+            ...updated,
+            updatedAt: new Date().toISOString()
+        });
+    };
+
+    const deleteClassEssential = async (id, storagePath) => {
+        await deleteDoc(doc(db, 'classEssentials', id));
+        if (storagePath) {
+            try {
+                const { ref, deleteObject } = await import('firebase/storage');
+                const fileRef = ref(storage, storagePath);
+                await deleteObject(fileRef);
+            } catch (err) {
+                console.warn('[DataContext] Failed to delete file from storage:', err);
+            }
+        }
     };
 
     // Exams
@@ -2131,6 +2163,7 @@ export const DataProvider = ({ children }) => {
         attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds, deleteAttendanceRecord,
         subjects, addSubject, updateSubject, deleteSubject, deleteSubjects,
         exams, addExam, updateExam, deleteExam,
+        classEssentials, addClassEssential, updateClassEssential, deleteClassEssential,
         results: uniqueResults, recordResult, deleteResultBatch, deleteExamResultsForClass,
         questions, addQuestion, updateQuestion, deleteQuestion,
         studentResponses, submitExam, deleteStudentResponse: async (e, s, stuk) => {

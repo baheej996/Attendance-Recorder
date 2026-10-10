@@ -32,6 +32,7 @@ import MentorAdmissionRequest from '../components/mentor/MentorAdmissionRequest'
 import MentorNotifications from '../components/mentor/MentorNotifications';
 import MentorEvaluations from '../components/mentor/MentorEvaluations';
 import StudentAssessment from '../components/mentor/StudentAssessment';
+import MentorClassEssentials from '../components/mentor/MentorClassEssentials';
 import MentorProfile from '../components/mentor/MentorProfile';
 import ExamQuestionTracker from '../components/common/ExamQuestionTracker';
 import AttendanceAnomalies from '../components/mentor/AttendanceAnomalies';
@@ -630,6 +631,7 @@ const MentorDashboard = () => {
                         <Route path="/tasks" element={<MentorTasks />} />
                         <Route path="/assessment" element={<StudentAssessment />} />
                         <Route path="/evaluations" element={<MentorEvaluations />} />
+                        <Route path="/class-essentials" element={<MentorClassEssentials />} />
                         <Route path="/leaves" element={<MentorLeaveRequests />} />
                         <Route path="/chat" element={<MentorChat />} />
                         <Route path="/activities" element={<ActivitiesManager />} />

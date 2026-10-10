@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, MessageCircle, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2, Trophy, FileQuestion, BookHeart } from 'lucide-react';
+import { LayoutDashboard, Users, GraduationCap, School, Trash2, AlertTriangle, LogOut, UserCheck, Laptop, BookOpen, FileText, Settings, Info, ArrowRightLeft, Bell, X, Menu, Replace, ClipboardList, MessageSquare, MessageCircle, ChevronDown, ChevronRight, Megaphone, UserPlus, FileBarChart, Video, BarChart2, Trophy, FileQuestion, BookHeart, FolderOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 import ClassManagement from './components/ClassManagement';
 import AdminLiveClasses from './components/AdminLiveClasses';
@@ -34,6 +34,7 @@ import { Card, CardHeader } from '../components/ui/Card';
 import CountryStatsChart from '../components/admin/CountryStatsChart';
 
 import ParentFeedbackManager from '../components/admin/ParentFeedbackManager';
+import ClassEssentialsManager from '../components/admin/ClassEssentialsManager';
 import DashboardHome from './components/DashboardHome';
 const AdminDashboard = () => {
     const location = useLocation();
@@ -86,6 +87,7 @@ const AdminDashboard = () => {
             case 'syllabus-tracker': return <SyllabusTracker />; // New
             case 'exams': return <ExamManager />;
             case 'question-tracker': return <ExamQuestionTracker />;
+            case 'class-essentials': return <ClassEssentialsManager />;
 
             case 'bulk-transfer': return <BulkTransfer />;
             case 'admissions': return <AdminAdmissionRequests />;
@@ -211,6 +213,7 @@ const AdminDashboard = () => {
                                     <SidebarItem icon={ClipboardList} label="Syllabus Tracker" active={activeTab === 'syllabus-tracker'} onClick={() => handleTabChange('syllabus-tracker')} isMobile />
                                     <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => handleTabChange('exams')} isMobile />
                                     <SidebarItem icon={FileQuestion} label="Question Tracking" active={activeTab === 'question-tracker'} onClick={() => handleTabChange('question-tracker')} isMobile />
+                                    <SidebarItem icon={FolderOpen} label="Class Essentials" active={activeTab === 'class-essentials'} onClick={() => handleTabChange('class-essentials')} isMobile />
                                 </nav>
                             </div>
 
@@ -267,6 +270,7 @@ const AdminDashboard = () => {
                                 <SidebarItem icon={ClipboardList} label="Syllabus Tracker" active={activeTab === 'syllabus-tracker'} onClick={() => setActiveTab('syllabus-tracker')} />
                                 <SidebarItem icon={FileText} label="Exams" active={activeTab === 'exams'} onClick={() => setActiveTab('exams')} />
                                 <SidebarItem icon={FileQuestion} label="Question Tracking" active={activeTab === 'question-tracker'} onClick={() => setActiveTab('question-tracker')} />
+                                <SidebarItem icon={FolderOpen} label="Class Essentials" active={activeTab === 'class-essentials'} onClick={() => setActiveTab('class-essentials')} />
                             </nav>
                         </div>
 
