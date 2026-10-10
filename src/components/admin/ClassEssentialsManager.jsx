@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
 import { storage } from '../../firebase';
@@ -32,7 +32,9 @@ import {
     FileImage,
     Sparkles,
     Calendar,
-    Users
+    Users,
+    Maximize2,
+    ExternalLink
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -66,6 +68,23 @@ export const getFileType = (file) => {
 const ClassEssentialsManager = () => {
     const { classEssentials = [], addClassEssential, updateClassEssential, deleteClassEssential, classes = [], currentUser } = useData();
     const { showAlert } = useUI();
+    const videoRef = useRef(null);
+
+    const handleFullScreen = () => {
+        const el = videoRef.current;
+        if (!el) return;
+        if (el.requestFullscreen) {
+            el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        } else if (el.mozRequestFullScreen) {
+            el.mozRequestFullScreen();
+        } else if (el.msRequestFullscreen) {
+            el.msRequestFullscreen();
+        } else if (el.webkitEnterFullscreen) {
+            el.webkitEnterFullscreen();
+        }
+    };
 
     // Filters
     const [searchQuery, setSearchQuery] = useState('');
@@ -776,7 +795,7 @@ const ClassEssentialsManager = () => {
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                         {/* Header */}
-                        <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                        <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
                             <div>
                                 <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">
                                     {previewModal.item.category} • {previewModal.item.fileType.toUpperCase()}
@@ -785,24 +804,74 @@ const ClassEssentialsManager = () => {
                                     {previewModal.item.title}
                                 </h3>
                             </div>
-                            <button
-                                onClick={() => setPreviewModal({ isOpen: false, item: null })}
-                                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                                {previewModal.item.fileType === 'video' && (
+                                    <button
+                                        type="button"
+                                        onClick={handleFullScreen}
+                                        title="Expand Video to Full Screen"
+                                        className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                                    >
+                                        <Maximize2 className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Full Screen</span>
+                                    </button>
+                                )}
+                                <a
+                                    href={previewModal.item.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Open in New Tab"
+                                    className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Open in New Tab</span>
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewModal({ isOpen: false, item: null })}
+                                    className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors cursor-pointer ml-1"
+                                    title="Close"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Media Player / Viewer Body */}
                         <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-slate-950/5">
                             {previewModal.item.fileType === 'video' ? (
-                                <div className="w-full rounded-2xl overflow-hidden bg-black shadow-lg">
+                                <div className="w-full rounded-2xl overflow-hidden bg-black shadow-lg relative group">
                                     <video
+                                        ref={videoRef}
                                         src={previewModal.item.fileUrl}
                                         controls
                                         autoPlay
+                                        playsInline
                                         className="w-full max-h-[60vh] object-contain mx-auto"
                                     />
+                                    {/* Overlay Action Bar on Hover */}
+                                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 z-10 flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleFullScreen}
+                                            className="text-white hover:text-indigo-300 transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+                                            title="Expand to Full Screen"
+                                        >
+                                            <Maximize2 className="w-3.5 h-3.5" />
+                                            <span>Full Screen</span>
+                                        </button>
+                                        <div className="w-px h-3 bg-white/30" />
+                                        <a
+                                            href={previewModal.item.fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-white hover:text-indigo-300 transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+                                            title="Open in New Tab"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                            <span>New Tab</span>
+                                        </a>
+                                    </div>
                                 </div>
                             ) : previewModal.item.fileType === 'audio' ? (
                                 <div className="w-full max-w-lg p-6 bg-gradient-to-br from-indigo-900 to-purple-900 rounded-3xl text-white shadow-xl flex flex-col items-center text-center">
@@ -850,20 +919,41 @@ const ClassEssentialsManager = () => {
                         </div>
 
                         {/* Footer */}
-                        <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50">
-                            <span className="text-xs text-gray-500 font-medium">
+                        <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50">
+                            <span className="text-xs text-gray-500 font-medium self-start sm:self-auto">
                                 File Size: {formatFileSize(previewModal.item.fileSize)}
                             </span>
-                            <a
-                                href={previewModal.item.fileUrl}
-                                download={previewModal.item.fileName}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs rounded-xl shadow-sm transition-all"
-                            >
-                                <Download className="w-4 h-4" />
-                                <span>Download File</span>
-                            </a>
+                            <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                                {previewModal.item.fileType === 'video' && (
+                                    <button
+                                        type="button"
+                                        onClick={handleFullScreen}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer active:scale-95"
+                                    >
+                                        <Maximize2 className="w-4 h-4 text-indigo-600" />
+                                        <span>Full Screen</span>
+                                    </button>
+                                )}
+                                <a
+                                    href={previewModal.item.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer active:scale-95"
+                                >
+                                    <ExternalLink className="w-4 h-4 text-indigo-600" />
+                                    <span>Open in New Tab</span>
+                                </a>
+                                <a
+                                    href={previewModal.item.fileUrl}
+                                    download={previewModal.item.fileName}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    <span>Download File</span>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
