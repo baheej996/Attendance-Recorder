@@ -227,12 +227,21 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
     const attendanceStats = useMemo(() => {
         if (!student) return { present: 0, absent: 0, total: 0, percentage: 0, records: [] };
-        const present = studentAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
-        const absent = studentAttendance.filter(a => a.status === 'Absent').length;
-        const total = studentAttendance.length;
-        const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+        
+        // Exclude any records prior to student's admission date
+        const eligibleRecords = studentAttendance.filter(a => {
+            if (student.admissionDate && a.date && a.date < student.admissionDate) return false;
+            return true;
+        });
 
-        return { present, absent, total, percentage, records: studentAttendance };
+        // Only count Present/Absent/Late towards rate; ignore Not Applicable
+        const countableRecords = eligibleRecords.filter(a => a.status !== 'Not Applicable' && a.status !== 'Not Enrolled Yet');
+        const present = countableRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
+        const absent = countableRecords.filter(a => a.status === 'Absent').length;
+        const total = present + absent;
+        const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : '100.0';
+
+        return { present, absent, total, percentage, records: eligibleRecords };
     }, [studentAttendance, student]);
 
     const downloadAttendancePDF = () => {
@@ -708,7 +717,9 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                                             <span className="text-sm font-medium text-gray-700">{format(new Date(record.date), 'MMMM d, yyyy')}</span>
                                             <span className={clsx(
                                                 "px-3 py-1 rounded-full text-xs font-bold",
-                                                record.status === 'Present' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                                record.status === 'Present' ? "bg-green-100 text-green-700" :
+                                                record.status === 'Absent' ? "bg-red-100 text-red-700" :
+                                                "bg-slate-100 text-slate-700"
                                             )}>
                                                 {record.status}
                                             </span>

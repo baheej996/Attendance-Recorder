@@ -4,7 +4,7 @@ import { useUI } from '../../contexts/UIContext';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
-import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown, Eye, Download, Upload, FileSpreadsheet, FileText, Sparkles, CheckCircle } from 'lucide-react';
+import { UserPlus, Search, ArrowRightLeft, Users, Trash2, Edit, X, ChevronLeft, ChevronRight, AlertTriangle, Settings, Plus, ChevronDown, Eye, Download, Upload, FileSpreadsheet, FileText, Sparkles, CheckCircle, Calendar } from 'lucide-react';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { BulkUploadButton } from '../../components/ui/BulkUploadButton';
@@ -589,6 +589,43 @@ const StudentManagement = ({ readOnly = false }) => {
                             error={error}
                         />
                         <div className="grid grid-cols-2 gap-4">
+                            <Select
+                                label="Gender"
+                                value={formData.gender}
+                                onChange={(e) => setFormData(p => ({ ...p, gender: e.target.value }))}
+                            >
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </Select>
+                            <Select
+                                label="Status"
+                                value={formData.status}
+                                onChange={(e) => setFormData(p => ({ ...p, status: e.target.value }))}
+                            >
+                                {studentStatuses.map(status => (
+                                    <option key={status} value={status}>{status}</option>
+                                ))}
+                            </Select>
+                        </div>
+
+                        <Input
+                            type="date"
+                            label="Admission Date (Join Date)"
+                            value={formData.admissionDate || ''}
+                            onChange={(e) => setFormData(p => ({ ...p, admissionDate: e.target.value }))}
+                        />
+
+                        <SearchableSelect
+                            label="Assign Class"
+                            placeholder="Search and select class..."
+                            options={classOptions}
+                            value={formData.classId}
+                            onChange={(val) => setFormData(p => ({ ...p, classId: val }))}
+                            error={!formData.classId && error ? "Class is required" : ""}
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <div className="flex items-center justify-between mb-1">
                                     <label className="block text-sm font-medium text-gray-700">Register No</label>
@@ -626,43 +663,6 @@ const StudentManagement = ({ readOnly = false }) => {
                                 onChange={(e) => setFormData(p => ({ ...p, uid: e.target.value }))}
                             />
                         </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <Select
-                                label="Gender"
-                                value={formData.gender}
-                                onChange={(e) => setFormData(p => ({ ...p, gender: e.target.value }))}
-                            >
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                            </Select>
-                            <Select
-                                label="Status"
-                                value={formData.status}
-                                onChange={(e) => setFormData(p => ({ ...p, status: e.target.value }))}
-                            >
-                                {studentStatuses.map(status => (
-                                    <option key={status} value={status}>{status}</option>
-                                ))}
-                            </Select>
-                        </div>
-
-                        <Input
-                            type="date"
-                            label="Admission Date (Join Date)"
-                            value={formData.admissionDate || ''}
-                            onChange={(e) => setFormData(p => ({ ...p, admissionDate: e.target.value }))}
-                        />
-
-                        <SearchableSelect
-                            label="Assign Class"
-                            placeholder="Search and select class..."
-                            options={classOptions}
-                            value={formData.classId}
-                            onChange={(val) => setFormData(p => ({ ...p, classId: val }))}
-                            error={!formData.classId && error ? "Class is required" : ""}
-                        />
 
                         <div className="flex gap-2 pt-2">
                             <Button type="button" onClick={handleCloseModal} className="flex-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200">

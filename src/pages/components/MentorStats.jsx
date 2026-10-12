@@ -28,11 +28,13 @@ const StudentStatsModal = ({ student, records, onClose }) => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     const monthRecords = records.filter(r => {
+        if (student?.admissionDate && r.date && r.date < student.admissionDate) return false;
+        if (r.status === 'Not Applicable' || r.status === 'Not Enrolled Yet') return false;
         const d = new Date(r.date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
     const monthTotal = monthRecords.length;
-    const monthPresent = monthRecords.filter(r => r.status === 'Present').length;
+    const monthPresent = monthRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
 
     const data = [
         { name: 'Present', value: present },
@@ -48,13 +50,15 @@ const StudentStatsModal = ({ student, records, onClose }) => {
         doc.text(`Register No: ${student.registerNo}`, 14, 37);
         doc.text(`Date Generated: ${new Date().toLocaleDateString()}`, 14, 44);
 
-        const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : "0.0";
+        const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : (student?.admissionDate ? "100.0" : "0.0");
         doc.text(`Total Days: ${total}`, 14, 55);
         doc.text(`Days Present: ${present}`, 80, 55);
         doc.text(`Days Absent: ${absent}`, 140, 55);
         doc.text(`Attendance: ${percentage}%`, 14, 62);
 
-        const tableData = records.map(r => [new Date(r.date).toLocaleDateString(), r.status]);
+        const tableData = records
+            .filter(r => (!student?.admissionDate || r.date >= student.admissionDate) && r.status !== 'Not Applicable' && r.status !== 'Not Enrolled Yet')
+            .map(r => [new Date(r.date).toLocaleDateString(), r.status]);
         autoTable(doc, {
             startY: 70, head: [['Date', 'Status']], body: tableData, theme: 'grid', headStyles: { fillColor: [79, 70, 229] },
         });
@@ -341,11 +345,22 @@ const MentorStats = () => {
 
     // --- ATTENDANCE STATS ---
     const getAttendanceStats = (studentId) => {
+        const student = students.find(s => s.id === studentId);
+        const studentRecords = attendance.filter(r => {
+            if (r.studentId !== studentId) return false;
+            if (student?.admissionDate && r.date && r.date < student.admissionDate) return false;
+            const status = String(r.status || '').trim();
+            return status !== 'Not Applicable' && status !== 'Not Enrolled Yet';
+        });
+
+        const localPresent = studentRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
+        const localAbsent = studentRecords.filter(r => r.status === 'Absent').length;
+        const localTotal = localPresent + localAbsent;
+
         const trueS = trueStats[studentId] || { total: 0, present: 0 };
-        const studentRecords = attendance.filter(r => r.studentId === studentId);
-        const total = trueS.total;
-        const present = trueS.present;
-        const percentage = total > 0 ? (present / total) * 100 : 0;
+        const total = localTotal > 0 || student?.admissionDate ? localTotal : trueS.total;
+        const present = localTotal > 0 || student?.admissionDate ? localPresent : trueS.present;
+        const percentage = total > 0 ? (present / total) * 100 : (student?.admissionDate ? 100 : 0);
         return { total, present, percentage, records: studentRecords };
     };
 

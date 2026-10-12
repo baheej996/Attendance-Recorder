@@ -151,7 +151,10 @@ const PrintAttendance = () => {
                             parseInt(parts[0], 10) === selectedYear && 
                             parseInt(parts[1], 10) === selectedMonth + 1) {
                             const day = parseInt(parts[2], 10);
-                            if (record.status === 'Present') {
+                            const isEnrolled = !student.admissionDate || record.date >= student.admissionDate;
+                            if (!isEnrolled || record.status === 'Not Applicable' || record.status === 'Not Enrolled Yet') {
+                                currentMonthAttendance[day] = '-';
+                            } else if (record.status === 'Present') {
                                 currentMonthAttendance[day] = 'X';
                                 studentThisMonth++;
                             } else {
@@ -545,6 +548,7 @@ export const AttendanceRegister = ({
         // Use true historical totals from server instead of client-side buffer
         const previousTotal = historicalData.studentTotals[studentId] || 0;
 
+        const student = students.find(s => s.id === studentId);
         studentRecords.forEach(record => {
             if (!record.date) return;
             const parts = record.date.split('-');
@@ -553,10 +557,12 @@ export const AttendanceRegister = ({
             const rMonth = parseInt(parts[1], 10) - 1;
             const rDay = parseInt(parts[2], 10);
             const isPresent = record.status === 'Present';
+            const isEnrolled = !student?.admissionDate || record.date >= student.admissionDate;
+            const isNotApplicable = !isEnrolled || record.status === 'Not Applicable' || record.status === 'Not Enrolled Yet';
 
             if (rMonth === selectedMonth && rYear === selectedYear) {
-                currentMonthStats.days[rDay] = isPresent ? 'X' : 'A';
-                if (isPresent) currentMonthStats.total++;
+                currentMonthStats.days[rDay] = isNotApplicable ? '-' : (isPresent ? 'X' : 'A');
+                if (isPresent && !isNotApplicable) currentMonthStats.total++;
             }
         });
 

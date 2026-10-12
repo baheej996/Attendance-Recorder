@@ -146,11 +146,26 @@ const FullClassResultModal = ({ isOpen, onClose, classObj, exam, students = [], 
             const pct = max > 0 ? (obtained / max) * 100 : 0;
             const isPassed = examSubjects.length > 0 && clearedCount === examSubjects.length;
 
-            // Attendance calculation up to exam date
-            const studentAttRecords = attendanceUpToExam.filter(r => r.studentId === student.id);
+            // Attendance calculation up to exam date (honoring admission date and ignoring Not Applicable)
+            const studentAttRecords = attendanceUpToExam.filter(r => 
+                r.studentId === student.id &&
+                (!student.admissionDate || (r.date && r.date >= student.admissionDate)) &&
+                r.status !== 'Not Applicable' &&
+                r.status !== 'Not Enrolled Yet'
+            );
             const presentCount = studentAttRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
-            const classesTakenForStudent = Math.max(totalClassTakenCount, studentAttRecords.length);
-            const attPct = classesTakenForStudent > 0 ? (presentCount / classesTakenForStudent) * 100 : 0;
+
+            const studentEnrolledClassDates = new Set();
+            attendanceUpToExam.forEach(r => {
+                const d = r.date ? r.date.slice(0, 10) : '';
+                if (d && (!student.admissionDate || d >= student.admissionDate)) {
+                    studentEnrolledClassDates.add(d);
+                }
+            });
+            const classesTakenForStudent = Math.max(studentEnrolledClassDates.size, studentAttRecords.length);
+            const attPct = classesTakenForStudent > 0 
+                ? (presentCount / classesTakenForStudent) * 100 
+                : (student.admissionDate ? 100 : 0);
 
             return {
                 student,

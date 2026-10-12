@@ -1248,9 +1248,15 @@ const MarksEntry = () => {
                             {classStudents.map(student => {
                                 const selExam = exams.find(e => e.id === selectedExamId);
                                 const reqP = Number(selExam?.minAttendancePercent) || 0;
-                                const sRecs = (attendance || []).filter(a => a.studentId === student.id);
-                                const tD = sRecs.length;
+                                const sRecs = (attendance || []).filter(a => 
+                                    a.studentId === student.id &&
+                                    (!student.admissionDate || a.date >= student.admissionDate) &&
+                                    a.status !== 'Not Applicable' &&
+                                    a.status !== 'Not Enrolled Yet'
+                                );
                                 const pD = sRecs.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                                const aD = sRecs.filter(a => a.status === 'Absent').length;
+                                const tD = pD + aD;
                                 const pPct = tD > 0 ? Math.round((pD / tD) * 100) : 100;
                                 const isEl = pPct >= reqP;
 

@@ -457,9 +457,15 @@ const StudentExamView = () => {
                 ) : (
                     activeExams.map(exam => {
                         const reqAttendancePct = Number(exam.minAttendancePercent) || 0;
-                        const studentRecords = (attendance || []).filter(a => a.studentId === currentUser?.id);
-                        const totalDays = studentRecords.length;
+                        const studentRecords = (attendance || []).filter(a => 
+                            a.studentId === currentUser?.id &&
+                            (!currentUser?.admissionDate || a.date >= currentUser.admissionDate) &&
+                            a.status !== 'Not Applicable' &&
+                            a.status !== 'Not Enrolled Yet'
+                        );
                         const presentDays = studentRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                        const absentDays = studentRecords.filter(a => a.status === 'Absent').length;
+                        const totalDays = presentDays + absentDays;
                         const studentAttPct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
                         
                         const exemptionRecord = exam.exemptions?.[currentUser?.id];

@@ -88,12 +88,18 @@ const StudentDashboard = () => {
 
     // --- Dynamic Calculations ---
 
-    // 1. Attendance Calculation
-    const studentAttendance = (attendance || []).filter(r => r.studentId === currentUser.id);
-    const totalDays = studentAttendance.length;
+    // 1. Attendance Calculation (Strictly respecting Admission Date and ignoring Not Applicable)
+    const studentAttendance = (attendance || []).filter(r => 
+        r.studentId === currentUser.id &&
+        (!currentUser.admissionDate || r.date >= currentUser.admissionDate) &&
+        r.status !== 'Not Applicable' &&
+        r.status !== 'Not Enrolled Yet'
+    );
     const presentDays = studentAttendance.filter(r => r.status === 'Present' || r.status === 'Late').length;
-    const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
-    const absentPercentage = totalDays > 0 ? 100 - attendancePercentage : 0; // If 0 days, 0 absent.
+    const absentDays = studentAttendance.filter(r => r.status === 'Absent').length;
+    const totalDays = presentDays + absentDays;
+    const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
+    const absentPercentage = totalDays > 0 ? 100 - attendancePercentage : 0;
 
     // 2. Pending Exams Calculation
     const classExams = (exams || []).filter(e =>

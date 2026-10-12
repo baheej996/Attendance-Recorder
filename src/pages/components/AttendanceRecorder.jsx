@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { db } from '../../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Input';
-import { Save, Calendar, CheckCircle, Trash2, Settings, AlertTriangle } from 'lucide-react';
+import { Save, Calendar, CheckCircle, Trash2, Settings, AlertTriangle, Eye, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import { sortStudentsByGender } from '../../utils/studentUtils';
+import { isStudentEnrolledOnDate } from '../../utils/attendanceUtils';
 
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { StudentProfileModal } from '../../components/mentor/StudentProfileModal';
-import { Eye } from 'lucide-react';
 
 const AttendanceRecorder = () => {
     const { classes, students, attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds, currentUser, requireFeature } = useData();
@@ -38,11 +38,33 @@ const AttendanceRecorder = () => {
 
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [currentPreviewStudentId, setCurrentPreviewStudentId] = useState(null);
+    const [showExcludedList, setShowExcludedList] = useState(false);
 
     // Filter classes for Mentors
     const availableClasses = (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
         ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))
         : classes;
+
+    // All active students for this class
+    const allActiveStudents = useMemo(() => {
+        return students.filter(s => s.classId === selectedClassId && s.status === 'Active');
+    }, [students, selectedClassId]);
+
+    // Partition into enrolled (on or before selected date, or no admission date set) and excluded (joined after selected date)
+    const { enrolledStudents, excludedStudents } = useMemo(() => {
+        const enrolled = [];
+        const excluded = [];
+        allActiveStudents.forEach(s => {
+            if (isStudentEnrolledOnDate(s, date)) {
+                enrolled.push(s);
+            } else {
+                excluded.push(s);
+            }
+        });
+        return { enrolledStudents: enrolled, excludedStudents: excluded };
+    }, [allActiveStudents, date]);
+
+    const classStudents = useMemo(() => sortStudentsByGender(enrolledStudents), [enrolledStudents]);
 
     // Reset dirty state when active context changes
     useEffect(() => {
@@ -57,10 +79,8 @@ const AttendanceRecorder = () => {
         let isSubscribed = true;
 
         const loadClassDateAttendance = async () => {
-            const classStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active');
-            
-            // First try finding in local memory state
-            let existing = attendance.filter(r => r.date === date && (r.classId === selectedClassId || classStudents.some(s => s.id === r.studentId)));
+            // First try finding in local memory state for enrolled students
+            let existing = attendance.filter(r => r.date === date && (r.classId === selectedClassId || enrolledStudents.some(s => s.id === r.studentId)));
 
             // If local state doesn't have records for this date/class, query Firestore directly
             if (existing.length === 0) {
@@ -82,9 +102,10 @@ const AttendanceRecorder = () => {
             setIsDateRecorded(existing.length > 0);
 
             const initialRecords = {};
-            classStudents.forEach(s => {
+            enrolledStudents.forEach(s => {
                 const found = existing.find(r => r.studentId === s.id);
-                initialRecords[s.id] = found ? found.status : 'Present'; // Default Record as Present
+                // If a record exists, restore its status; otherwise default enrolled students to Present
+                initialRecords[s.id] = found ? found.status : 'Present';
             });
             setRecords(initialRecords);
         };
@@ -92,7 +113,7 @@ const AttendanceRecorder = () => {
         loadClassDateAttendance();
 
         return () => { isSubscribed = false; };
-    }, [selectedClassId, date, attendance, students, isDirty]);
+    }, [selectedClassId, date, attendance, enrolledStudents, isDirty]);
 
     const handleStatusChange = (studentId, status) => {
         setIsDirty(true);
@@ -120,18 +141,31 @@ const AttendanceRecorder = () => {
     };
 
     const handleSave = async () => {
-        // Prepare data
+        // Prepare data - only process currently enrolled students
+        const recordsToSave = [];
+        const unmarkedIds = [];
+
+        enrolledStudents.forEach(s => {
+            const status = records[s.id];
+            if (status === 'Present' || status === 'Absent' || status === 'Not Applicable' || status === 'Late') {
+                recordsToSave.push({
+                    studentId: s.id,
+                    status
+                });
+            } else {
+                unmarkedIds.push(s.id);
+            }
+        });
+
         const attendanceData = {
             date,
             classId: selectedClassId,
             mentorId: currentUser?.id || 'admin',
-            records: Object.entries(records).map(([sid, status]) => ({
-                studentId: sid,
-                status
-            }))
+            records: recordsToSave,
+            unmarkedStudentIds: unmarkedIds
         };
 
-        // Check for anomalies (consecutive days)
+        // Check for anomalies (consecutive days) - only check Present and Absent
         const relevantRecords = attendanceData.records.filter(r => r.status === 'Present' || r.status === 'Absent');
         if (relevantRecords.length > 0) {
             const d = new Date(date);
@@ -179,9 +213,7 @@ const AttendanceRecorder = () => {
 
     const executeDelete = async () => {
         if (confirmConfig.type === 'single') {
-            const classStudentIds = students
-                .filter(s => s.classId === selectedClassId && s.status === 'Active')
-                .map(s => s.id);
+            const classStudentIds = enrolledStudents.map(s => s.id);
 
             try {
                 await deleteAttendanceBatch(date, classStudentIds);
@@ -210,9 +242,7 @@ const AttendanceRecorder = () => {
             }
 
             // Execute Step 2
-            const classStudentIds = students
-                .filter(s => s.classId === selectedClassId && s.status === 'Active')
-                .map(s => s.id);
+            const classStudentIds = allActiveStudents.map(s => s.id);
 
             try {
                 await deleteAllAttendanceForStudentIds(classStudentIds);
@@ -234,11 +264,6 @@ const AttendanceRecorder = () => {
             setConfirmConfig({ isOpen: false, type: null, step: 1 });
         }
     };
-
-
-    const classStudents = sortStudentsByGender(
-        students.filter(s => s.classId === selectedClassId && s.status === 'Active')
-    );
 
     const selectedClass = classes.find(c => c.id === selectedClassId);
     const className = selectedClass ? `${selectedClass.name}-${selectedClass.division}` : 'this class';
@@ -273,6 +298,7 @@ const AttendanceRecorder = () => {
                                     "w-2.5 h-2.5 rounded-full border border-gray-100 shadow-sm transition-all hover:scale-125",
                                     status === 'Present' ? "bg-green-500" :
                                     status === 'Absent' ? "bg-red-500" :
+                                    status === 'Not Applicable' ? "bg-slate-300" :
                                     "bg-gray-100"
                                 )}
                             />
@@ -284,7 +310,7 @@ const AttendanceRecorder = () => {
     };
 
     return (
-        <div className="p-2 md:p-6 max-w-5xl mx-auto space-y-6 relative">
+        <div className="p-2 md:p-6 max-w-6xl mx-auto space-y-6 relative">
             <ConfirmationModal
                 isOpen={confirmConfig.isOpen}
                 onClose={() => setConfirmConfig({ isOpen: false, type: null, step: 1 })}
@@ -420,6 +446,7 @@ const AttendanceRecorder = () => {
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] md:text-sm text-gray-500 font-bold uppercase tracking-wider justify-center md:justify-start">
                             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Present</span>
                             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Absent</span>
+                            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-400"></div> N/A (Not Enrolled)</span>
                             <div className="h-4 w-px bg-gray-200 hidden md:block mx-1" />
                             <span className="flex items-center gap-1.5 opacity-80"><div className="w-2.5 h-2.5 rounded-full border border-gray-200 bg-white"></div> Last 7 Days History</span>
                         </div>
@@ -440,6 +467,42 @@ const AttendanceRecorder = () => {
                             </div>
                         )}
                     </div>
+
+                    {selectedClassId && excludedStudents.length > 0 && (
+                        <div className="mt-2 p-3 bg-indigo-50/80 border border-indigo-100 rounded-xl text-xs text-indigo-900 animate-in fade-in duration-200">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold bg-indigo-200/80 text-indigo-800 px-2 py-0.5 rounded-full text-[11px] shrink-0">
+                                        {excludedStudents.length} Excluded
+                                    </span>
+                                    <span>
+                                        {excludedStudents.length === 1 ? 'student was' : 'students were'} admitted after {date} and automatically excluded from this register.
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowExcludedList(!showExcludedList)}
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline self-start sm:self-auto cursor-pointer flex items-center gap-1"
+                                >
+                                    {showExcludedList ? (
+                                        <>Hide Excluded <ChevronUp className="w-3.5 h-3.5" /></>
+                                    ) : (
+                                        <>View Excluded ({excludedStudents.length}) <ChevronDown className="w-3.5 h-3.5" /></>
+                                    )}
+                                </button>
+                            </div>
+                            {showExcludedList && (
+                                <div className="mt-2.5 pt-2.5 border-t border-indigo-200/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    {excludedStudents.map(s => (
+                                        <div key={s.id} className="bg-white p-2 rounded-lg border border-indigo-100 text-[11px]">
+                                            <p className="font-bold text-gray-900 truncate">{s.name}</p>
+                                            <p className="text-gray-500 font-mono text-[10px]">Reg: {s.registerNo} • Joined: <span className="font-semibold text-indigo-600 font-sans">{s.admissionDate || 'N/A'}</span></p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {!selectedClassId ? (
@@ -450,69 +513,102 @@ const AttendanceRecorder = () => {
                     </div>
                 ) : classStudents.length === 0 ? (
                     <div className="p-12 text-center text-gray-400">
-                        No students active in this class.
+                        {allActiveStudents.length > 0 && excludedStudents.length > 0
+                            ? `All active students in this class were admitted after ${date}. No students were enrolled on this date.`
+                            : "No students active in this class."}
                     </div>
                 ) : (
                     <div className="p-0">
                         <div className="max-h-[600px] overflow-auto">
                             {/* Desktop Table View */}
                             <table className="w-full text-left hidden md:table">
-                                <thead className="bg-white sticky top-0 shadow-sm z-10">
+                                <thead className="bg-white sticky top-0 shadow-sm z-10 text-xs text-gray-500 uppercase tracking-wider">
                                      <tr>
-                                         <th className="pl-4 pr-2 py-4 font-semibold text-gray-600 whitespace-nowrap w-4">Sl No</th>
-                                         <th className="px-6 py-4 font-semibold text-gray-600">Reg No</th>
-                                         <th className="px-6 py-4 font-semibold text-gray-600">Student Name</th>
-                                         <th className="px-6 py-4 font-semibold text-gray-600">History (7d)</th>
-                                         <th className="px-6 py-4 font-semibold text-gray-600 text-center">Details</th>
-                                         <th className="px-6 py-4 font-semibold text-gray-600 text-center">Mark Attendance</th>
+                                         <th className="px-3 py-3 font-semibold text-center w-12 whitespace-nowrap">Sl No</th>
+                                         <th className="px-3 py-3 font-semibold w-28 whitespace-nowrap">Reg No</th>
+                                         <th className="px-3 py-3 font-semibold">Student Name</th>
+                                         <th className="px-2 py-3 font-semibold text-center w-28 whitespace-nowrap">History (7d)</th>
+                                         <th className="px-2 py-3 font-semibold text-center w-14 whitespace-nowrap">Details</th>
+                                         <th className="px-3 py-3 font-semibold text-center w-52 whitespace-nowrap">Mark Attendance</th>
                                      </tr>
                                  </thead>
-                                 <tbody className="divide-y divide-gray-50">
+                                 <tbody className="divide-y divide-gray-50 text-sm">
                                      {classStudents.map((student, index) => (
                                          <tr key={student.id} className="hover:bg-gray-50/80 transition-colors">
-                                             <td className="pl-4 pr-2 py-4 text-gray-500 font-medium text-sm">{index + 1}</td>
-                                             <td className="px-6 py-4 text-gray-500 font-mono text-sm">{student.registerNo}</td>
-                                             <td className="px-6 py-4 font-medium text-gray-900">{student.name}</td>
-                                             <td className="px-6 py-4">
-                                                 {renderAttendanceSummaryDots(student.id)}
+                                             <td className="px-3 py-2 text-gray-500 font-medium text-center whitespace-nowrap">{index + 1}</td>
+                                             <td className="px-3 py-2 text-gray-600 font-mono text-xs whitespace-nowrap">{student.registerNo}</td>
+                                             <td className="px-3 py-2">
+                                                 <div className="flex items-center gap-2">
+                                                     <span className="font-semibold text-gray-900 whitespace-nowrap">{student.name}</span>
+                                                     {!student.admissionDate && (
+                                                         <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shrink-0 whitespace-nowrap" title="Admission date not recorded in system">
+                                                             No Join Date
+                                                         </span>
+                                                     )}
+                                                 </div>
                                              </td>
-                                             <td className="px-6 py-4 text-center">
+                                             <td className="px-2 py-2 text-center whitespace-nowrap">
+                                                 <div className="inline-flex justify-center">
+                                                     {renderAttendanceSummaryDots(student.id)}
+                                                 </div>
+                                             </td>
+                                             <td className="px-2 py-2 text-center whitespace-nowrap">
                                                  <button
                                                      onClick={() => {
                                                          setCurrentPreviewStudentId(student.id);
                                                          setIsProfileModalOpen(true);
                                                      }}
-                                                     className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+                                                     className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors inline-flex items-center justify-center"
                                                      title="View Detailed Profile"
                                                  >
                                                      <Eye className="w-4 h-4" />
                                                  </button>
                                              </td>
-                                             <td className="px-6 py-4 text-center">
-                                                 <div className="inline-flex bg-gray-100 p-1 rounded-lg">
+                                             <td className="px-3 py-2 text-center whitespace-nowrap">
+                                                 <div className="inline-flex items-center bg-gray-100 p-0.5 rounded-lg gap-0.5">
                                                      <button
-                                                         onClick={() => handleStatusChange(student.id, 'Present')}
+                                                         type="button"
+                                                         onClick={() => handleStatusChange(student.id, records[student.id] === 'Present' ? null : 'Present')}
                                                          className={clsx(
-                                                             "px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+                                                             "px-2.5 py-1 rounded-md text-xs font-semibold transition-all duration-200",
                                                              records[student.id] === 'Present'
                                                                  ? "bg-white text-green-700 shadow-sm ring-1 ring-black/5"
                                                                  : "text-gray-500 hover:text-gray-700"
                                                          )}
+                                                         title={records[student.id] === 'Present' ? "Click to unmark" : "Mark Present"}
                                                      >
                                                          Present
                                                      </button>
                                                      <button
-                                                         onClick={() => handleStatusChange(student.id, 'Absent')}
+                                                         type="button"
+                                                         onClick={() => handleStatusChange(student.id, records[student.id] === 'Absent' ? null : 'Absent')}
                                                          className={clsx(
-                                                             "px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+                                                             "px-2.5 py-1 rounded-md text-xs font-semibold transition-all duration-200",
                                                              records[student.id] === 'Absent'
                                                                  ? "bg-white text-red-700 shadow-sm ring-1 ring-black/5"
                                                                  : "text-gray-500 hover:text-gray-700"
                                                          )}
+                                                         title={records[student.id] === 'Absent' ? "Click to unmark" : "Mark Absent"}
                                                      >
                                                          Absent
                                                      </button>
+                                                     <button
+                                                         type="button"
+                                                         onClick={() => handleStatusChange(student.id, records[student.id] === 'Not Applicable' ? null : 'Not Applicable')}
+                                                         className={clsx(
+                                                             "px-2.5 py-1 rounded-md text-xs font-semibold transition-all duration-200",
+                                                             records[student.id] === 'Not Applicable'
+                                                                 ? "bg-white text-slate-700 shadow-sm ring-1 ring-black/5 font-bold"
+                                                                 : "text-gray-400 hover:text-gray-600"
+                                                         )}
+                                                         title="Not enrolled on this date / Not applicable (Click again to unmark)"
+                                                     >
+                                                         N/A
+                                                     </button>
                                                  </div>
+                                                 {!records[student.id] && (
+                                                     <span className="block text-[10px] text-gray-400 italic">Unmarked</span>
+                                                 )}
                                              </td>
                                          </tr>
                                      ))}
@@ -527,7 +623,19 @@ const AttendanceRecorder = () => {
                                              <div className="min-w-0 pr-2 flex items-start gap-3">
                                                  <span className="bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-md text-xs mt-0.5 shrink-0">{index + 1}</span>
                                                  <div className="min-w-0">
-                                                     <h3 className="font-bold text-gray-900 truncate text-sm">{student.name}</h3>
+                                                     <div className="flex items-center gap-1.5 flex-wrap">
+                                                         <h3 className="font-bold text-gray-900 truncate text-sm">{student.name}</h3>
+                                                         {!student.admissionDate && (
+                                                             <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                                                 No Join Date
+                                                             </span>
+                                                         )}
+                                                         {!records[student.id] && (
+                                                             <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-gray-100 text-gray-500">
+                                                                 Unmarked
+                                                             </span>
+                                                         )}
+                                                     </div>
                                                      <div className="flex items-center gap-3 mt-1">
                                                         <p className="text-[10px] text-gray-500 font-mono italic">{student.registerNo}</p>
                                                         {renderAttendanceSummaryDots(student.id)}
@@ -545,11 +653,12 @@ const AttendanceRecorder = () => {
                                              </button>
                                          </div>
 
-                                         <div className="grid grid-cols-2 gap-2">
+                                         <div className="grid grid-cols-3 gap-1.5">
                                              <button
-                                                 onClick={() => handleStatusChange(student.id, 'Present')}
+                                                 type="button"
+                                                 onClick={() => handleStatusChange(student.id, records[student.id] === 'Present' ? null : 'Present')}
                                                  className={clsx(
-                                                     "py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all",
+                                                     "py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all",
                                                      records[student.id] === 'Present'
                                                          ? "bg-green-100 text-green-700 ring-2 ring-green-500 ring-offset-1"
                                                          : "bg-gray-50 text-gray-500 hover:bg-gray-100"
@@ -559,9 +668,10 @@ const AttendanceRecorder = () => {
                                                  Present
                                              </button>
                                              <button
-                                                 onClick={() => handleStatusChange(student.id, 'Absent')}
+                                                 type="button"
+                                                 onClick={() => handleStatusChange(student.id, records[student.id] === 'Absent' ? null : 'Absent')}
                                                  className={clsx(
-                                                     "py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all",
+                                                     "py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all",
                                                      records[student.id] === 'Absent'
                                                          ? "bg-red-100 text-red-700 ring-2 ring-red-500 shadow-sm"
                                                          : "bg-gray-50 text-gray-500 hover:bg-gray-100"
@@ -569,6 +679,19 @@ const AttendanceRecorder = () => {
                                              >
                                                  <div className={clsx("w-2 h-2 rounded-full", records[student.id] === 'Absent' ? "bg-red-500" : "bg-gray-400")} />
                                                  Absent
+                                             </button>
+                                             <button
+                                                 type="button"
+                                                 onClick={() => handleStatusChange(student.id, records[student.id] === 'Not Applicable' ? null : 'Not Applicable')}
+                                                 className={clsx(
+                                                     "py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all",
+                                                     records[student.id] === 'Not Applicable'
+                                                         ? "bg-slate-100 text-slate-800 ring-2 ring-slate-400 shadow-sm"
+                                                         : "bg-gray-50 text-gray-400 hover:bg-gray-100"
+                                                 )}
+                                             >
+                                                 <div className={clsx("w-2 h-2 rounded-full", records[student.id] === 'Not Applicable' ? "bg-slate-600" : "bg-gray-300")} />
+                                                 N/A
                                              </button>
                                          </div>
                                      </div>

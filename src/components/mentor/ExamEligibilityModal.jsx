@@ -32,9 +32,15 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
         const exemptions = exam?.exemptions || {};
 
         return classStudents.map(student => {
-            const studentRecords = (attendance || []).filter(a => a.studentId === student.id);
-            const totalDays = studentRecords.length;
+            const studentRecords = (attendance || []).filter(a => 
+                a.studentId === student.id &&
+                (!student.admissionDate || a.date >= student.admissionDate) &&
+                a.status !== 'Not Applicable' &&
+                a.status !== 'Not Enrolled Yet'
+            );
             const presentDays = studentRecords.filter(a => a.status === 'Present' || a.status === 'Late').length;
+            const absentDays = studentRecords.filter(a => a.status === 'Absent').length;
+            const totalDays = presentDays + absentDays;
             const pct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
             
             const exemptionRecord = exemptions[student.id];

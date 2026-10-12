@@ -4,6 +4,7 @@ import { Calendar, CheckCircle, XCircle, Clock, ChevronRight, TrendingUp, AlertC
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
 import { where } from 'firebase/firestore';
+import { calculateStudentAttendanceStats } from '../../utils/attendanceUtils';
 
 const AttendanceHistory = () => {
     const { 
@@ -53,6 +54,7 @@ const AttendanceHistory = () => {
             .filter(r => {
                 if (r.studentId !== currentUser.id) return false;
                 if (currentUser.admissionDate && r.date < currentUser.admissionDate) return false;
+                if (r.status === 'Not Applicable' || r.status === 'Not Enrolled Yet') return false;
                 return true;
             })
             .sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -63,30 +65,10 @@ const AttendanceHistory = () => {
         return studentAttendance.slice(0, displayLimit);
     }, [studentAttendance, displayLimit]);
 
-    // 2. Summary stats (Using true totals from Firestore with robust fallback)
+    // Summary stats calculated strictly from eligible, countable records on or after admissionDate
     const stats = useMemo(() => {
-        let total = trueStats.total;
-        let present = trueStats.present;
-
-        // Fallback: If Firestore getCount failed (e.g. missing composite index) but we have local data
-        if (total === 0 && studentAttendance.length > 0) {
-            total = studentAttendance.length;
-            present = studentAttendance.filter(r => r.status === 'Present').length;
-        } else if (present === 0 && studentAttendance.some(r => r.status === 'Present')) {
-            // If only the composite query failed (present count is 0 but we locally see presents)
-            // We use local data. If there's unloaded data, it's an estimation until the index is created.
-            present = studentAttendance.filter(r => r.status === 'Present').length;
-            // Adjust total to local if we are forced to use local present to keep percentages sane
-            if (total > studentAttendance.length) {
-                total = studentAttendance.length;
-            }
-        }
-
-        const absent = total - present;
-        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-        
-        return { total, present, absent, percentage };
-    }, [trueStats, studentAttendance]);
+        return calculateStudentAttendanceStats(studentAttendance, currentUser);
+    }, [studentAttendance, currentUser]);
 
     const groupedAttendance = useMemo(() => {
         const groups = {};

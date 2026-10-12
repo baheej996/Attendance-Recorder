@@ -1371,7 +1371,7 @@ export const DataProvider = ({ children }) => {
     // Attendance
     const recordAttendance = async (record) => {
         const batch = writeBatch(db);
-        record.records.forEach(r => {
+        (record.records || []).forEach(r => {
             // Composite ID: `${date}_${studentId}`
             const docId = `${record.date}_${r.studentId}`;
             const ref = doc(db, 'attendance', docId);
@@ -1384,6 +1384,16 @@ export const DataProvider = ({ children }) => {
                 recordedAt: serverTimestamp()
             });
         });
+
+        // If any students were left unmarked, delete their records for this date if previously saved
+        if (record.unmarkedStudentIds && record.unmarkedStudentIds.length > 0) {
+            record.unmarkedStudentIds.forEach(studentId => {
+                const docId = `${record.date}_${studentId}`;
+                const ref = doc(db, 'attendance', docId);
+                batch.delete(ref);
+            });
+        }
+
         await batch.commit();
 
         // Send a notification to the class

@@ -1,4 +1,5 @@
 import { isSameMonth, isSameYear, startOfMonth, getDaysInMonth } from 'date-fns';
+import { isStudentEnrolledOnDate, isCountableAttendanceRecord } from './attendanceUtils';
 
 export const calculateStudentStarScores = ({
     students,
@@ -75,12 +76,28 @@ export const calculateStudentStarScores = ({
         const activeSpecialPrayers = activeSpecialPrayersList.length || 1;
         const activeSpecialPrayerIds = activeSpecialPrayersList.map(p => p.id);
 
-        classStats[classId] = { workingDays, activeActivities, activeActivityIds, allMonthActivityIds, activeSpecialPrayers, activeSpecialPrayerIds };
+        classStats[classId] = { 
+            workingDays, 
+            classAttendanceDates: Array.from(classAttendanceDates), 
+            activeActivities, 
+            activeActivityIds, 
+            allMonthActivityIds, 
+            activeSpecialPrayers, 
+            activeSpecialPrayerIds 
+        };
     });
 
     const processed = classStudents.map(student => {
         const classId = student.classId;
-        const stats = classStats[classId] || { workingDays: 1, activeActivities: 1, activeActivityIds: [], allMonthActivityIds: [], activeSpecialPrayers: 1, activeSpecialPrayerIds: [] };
+        const stats = classStats[classId] || { 
+            workingDays: 1, 
+            classAttendanceDates: [], 
+            activeActivities: 1, 
+            activeActivityIds: [], 
+            allMonthActivityIds: [], 
+            activeSpecialPrayers: 1, 
+            activeSpecialPrayerIds: [] 
+        };
 
         // --- Attendance Score ---
         let attendanceScore = 0;
@@ -89,10 +106,25 @@ export const calculateStudentStarScores = ({
             const studentAttendance = attendance.filter(a =>
                 a.studentId === student.id &&
                 isSameMonth(new Date(a.date), startDate) &&
-                isSameYear(new Date(a.date), startDate)
+                isSameYear(new Date(a.date), startDate) &&
+                isCountableAttendanceRecord(a, student)
             );
-            presentCount = studentAttendance.filter(a => a.status === 'Present').length;
-            attendanceScore = (presentCount / (stats.workingDays || 1)) * 100;
+            presentCount = studentAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+
+            const totalClassDays = stats.classAttendanceDates?.length || 0;
+            if (totalClassDays === 0) {
+                attendanceScore = 0;
+            } else {
+                const enrolledWorkingDays = stats.classAttendanceDates.filter(dateStr => 
+                    isStudentEnrolledOnDate(student, dateStr)
+                ).length;
+
+                if (enrolledWorkingDays === 0) {
+                    attendanceScore = 100;
+                } else {
+                    attendanceScore = Math.min((presentCount / enrolledWorkingDays) * 100, 100);
+                }
+            }
         }
 
         // --- Activities Score ---
