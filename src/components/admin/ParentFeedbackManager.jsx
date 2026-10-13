@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -25,13 +25,17 @@ import {
     AlertTriangle,
     FileBarChart,
     Sparkles,
-    TrendingUp
+    TrendingUp,
+    FileSpreadsheet,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import EvaluationFormBuilder from './EvaluationFormBuilder';
 import ParentFeedbackReportGenerator from './ParentFeedbackReportGenerator';
 import ParentFeedbackTracker from './ParentFeedbackTracker';
 import { clsx } from 'clsx';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { exportToExcel } from '../../utils/exportUtils';
 
 const ParentFeedbackManager = () => {
     const { 
@@ -337,6 +341,120 @@ const ParentFeedbackManager = () => {
         }
     };
 
+    // Submissions List Pagination
+    const [subPage, setSubPage] = useState(1);
+    const [subPageSize, setSubPageSize] = useState('25');
+
+    const totalSubPages = Math.ceil(processedSubmissions.length / (subPageSize === 'all' ? (processedSubmissions.length || 1) : Number(subPageSize)));
+    const paginatedSubmissions = useMemo(() => {
+        if (subPageSize === 'all') return processedSubmissions;
+        const start = (subPage - 1) * Number(subPageSize);
+        return processedSubmissions.slice(start, start + Number(subPageSize));
+    }, [processedSubmissions, subPage, subPageSize]);
+
+    // Reset pagination when filter criteria changes
+    useEffect(() => {
+        setSubPage(1);
+    }, [searchTerm, selectedMentorId, selectedClassName, selectedDivision, selectedTemplateId, selectedStatus, subPageSize]);
+
+    // Export submissions to Excel (.xlsx)
+    const handleExportSubmissionsExcel = () => {
+        if (processedSubmissions.length === 0) {
+            alert("No submissions to export.");
+            return;
+        }
+
+        const data = processedSubmissions.map((sub, idx) => {
+            const mName = getMentorName(sub);
+            const tmpl = (parentFeedbackTemplates || []).find(t => t.id === sub.templateId);
+            const formTitle = tmpl?.title || (sub.templateId ? 'Custom Form' : 'Direct Submission');
+            const isReviewed = sub.status === 'reviewed' && sub.readByAdmin;
+
+            const row = {
+                '#': idx + 1,
+                'Student Name': sub.studentName || 'Student',
+                'Class': sub.className || 'N/A',
+                'Division': sub.division || '',
+                'Parent Name': sub.parentName || 'Parent / Guardian',
+                'Mentor Name': mName,
+                'Form / Template': formTitle,
+                'Status': isReviewed ? 'Reviewed' : 'Pending Review',
+                'Admin Note': sub.adminComment || '',
+                'Submitted Date': sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : ''
+            };
+
+            const resp = sub.responses || sub.answers || sub.data || {};
+            const summaryParts = [];
+            Object.entries(resp).forEach(([k, v]) => {
+                const valStr = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v || '');
+                if (valStr.trim()) {
+                    summaryParts.push(`${k}: ${valStr}`);
+                }
+            });
+            row['Responses Summary'] = summaryParts.join(' | ');
+
+            return row;
+        });
+
+        exportToExcel(data, `Parent_Submissions_${new Date().toISOString().slice(0, 10)}`, 'Submissions');
+    };
+
+    // Export submissions to CSV (.csv)
+    const handleExportSubmissionsCsv = () => {
+        if (processedSubmissions.length === 0) {
+            alert("No submissions to export.");
+            return;
+        }
+
+        const headers = ["#", "Student Name", "Class", "Division", "Parent Name", "Mentor Name", "Form / Template", "Status", "Admin Note", "Submitted Date", "Responses Summary"];
+        const escapeCsv = (val) => {
+            if (val === undefined || val === null) return '""';
+            const str = String(val).replace(/"/g, '""');
+            return `"${str}"`;
+        };
+
+        const rows = processedSubmissions.map((sub, idx) => {
+            const mName = getMentorName(sub);
+            const tmpl = (parentFeedbackTemplates || []).find(t => t.id === sub.templateId);
+            const formTitle = tmpl?.title || (sub.templateId ? 'Custom Form' : 'Direct Submission');
+            const isReviewed = sub.status === 'reviewed' && sub.readByAdmin;
+
+            const resp = sub.responses || sub.answers || sub.data || {};
+            const summaryParts = [];
+            Object.entries(resp).forEach(([k, v]) => {
+                const valStr = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v || '');
+                if (valStr.trim()) {
+                    summaryParts.push(`${k}: ${valStr}`);
+                }
+            });
+
+            return [
+                idx + 1,
+                sub.studentName || 'Student',
+                sub.className || 'N/A',
+                sub.division || '',
+                sub.parentName || 'Parent / Guardian',
+                mName,
+                formTitle,
+                isReviewed ? 'Reviewed' : 'Pending Review',
+                sub.adminComment || '',
+                sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : '',
+                summaryParts.join(' | ')
+            ].map(escapeCsv).join(',');
+        });
+
+        const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `Parent_Submissions_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     if (view === 'builder') {
         return (
             <EvaluationFormBuilder 
@@ -565,6 +683,35 @@ const ParentFeedbackManager = () => {
                                 <option value="reviewed">Reviewed ({parentFeedbacks.length - unreviewedCount})</option>
                             </select>
                         </div>
+
+                        {/* Export & Results Summary Bar */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-100">
+                            <div className="text-xs text-gray-500 font-medium">
+                                Showing <span className="font-bold text-gray-900">{processedSubmissions.length}</span> matching submissions
+                                {selectedStatus !== 'all' || selectedMentorId !== 'all' || selectedClassName !== 'all' || selectedTemplateId !== 'all' || selectedDivision !== 'all' ? ' (Filtered)' : ''}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={handleExportSubmissionsExcel}
+                                    className="gap-1.5 text-xs py-1.5 px-3 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
+                                    title="Export all matching submissions to Excel (.xlsx)"
+                                >
+                                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                                    Export Excel
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleExportSubmissionsCsv}
+                                    className="gap-1.5 text-xs py-1.5 px-3"
+                                    title="Export all matching submissions to CSV (.csv)"
+                                >
+                                    <Download className="w-3.5 h-3.5 text-gray-600" />
+                                    Export CSV
+                                </Button>
+                            </div>
+                        </div>
                     </Card>
 
                     {/* Submissions Cards */}
@@ -576,7 +723,7 @@ const ParentFeedbackManager = () => {
                         </Card>
                     ) : (
                         <div className="space-y-4">
-                            {processedSubmissions.map((sub) => {
+                            {paginatedSubmissions.map((sub) => {
                                 const isPending = !sub.status || sub.status === 'pending' || !sub.readByAdmin;
                                 const template = (parentFeedbackTemplates || []).find(t => t.id === sub.templateId);
 
@@ -753,6 +900,60 @@ const ParentFeedbackManager = () => {
                                     </Card>
                                 );
                             })}
+
+                            {/* Submissions Pagination Footer Controls */}
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-xs">
+                                <div className="flex items-center gap-3 text-xs text-gray-500 font-medium">
+                                    <span>
+                                        {subPageSize === 'all' ? (
+                                            `Showing all ${processedSubmissions.length} submissions`
+                                        ) : (
+                                            `Showing ${processedSubmissions.length === 0 ? 0 : (subPage - 1) * Number(subPageSize) + 1} to ${Math.min(subPage * Number(subPageSize), processedSubmissions.length)} of ${processedSubmissions.length} submissions`
+                                        )}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                        <span className="text-gray-400">Cards per page:</span>
+                                        <select
+                                            value={subPageSize}
+                                            onChange={e => {
+                                                setSubPageSize(e.target.value);
+                                                setSubPage(1);
+                                            }}
+                                            className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold text-gray-700 outline-none focus:ring-1 focus:ring-indigo-500"
+                                        >
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="250">250</option>
+                                            <option value="all">All ({processedSubmissions.length})</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {subPageSize !== 'all' && totalSubPages > 1 && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setSubPage(p => Math.max(1, p - 1))}
+                                            disabled={subPage === 1}
+                                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                                        >
+                                            <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                                        </button>
+
+                                        <span className="text-xs font-bold text-gray-700 px-2">
+                                            Page {subPage} of {totalSubPages}
+                                        </span>
+
+                                        <button
+                                            onClick={() => setSubPage(p => Math.min(totalSubPages, p + 1))}
+                                            disabled={subPage >= totalSubPages}
+                                            className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                                        >
+                                            Next <ChevronRight className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

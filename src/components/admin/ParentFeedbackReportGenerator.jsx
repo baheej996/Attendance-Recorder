@@ -19,12 +19,16 @@ import {
     AlertCircle,
     FileText,
     ListFilter,
-    ChevronDown
+    ChevronDown,
+    FileSpreadsheet,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { exportToExcel } from '../../utils/exportUtils';
 
 const AI_MODELS = [
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Recommended)', provider: 'Google AI', badge: 'Fast & Smart' },
@@ -42,19 +46,26 @@ const ParentFeedbackReportGenerator = () => {
         allStudents 
     } = useData();
 
+    // Clean string helper for case/punctuation-insensitive question matching
+    const cleanLabel = (s) => (s || '').toLowerCase().replace(/[:?.,!_\-]/g, '').trim();
+
     // Selection Controls
     const [selectedMentorId, setSelectedMentorId] = useState('all');
-    const [selectedTemplateId, setSelectedTemplateId] = useState(() => {
-        return (parentFeedbackTemplates && parentFeedbackTemplates.length > 0) ? parentFeedbackTemplates[0].id : 'all';
-    });
+    // Default to 'all' so that all 500+ feedbacks across forms & legacy submissions are accessible
+    const [selectedTemplateId, setSelectedTemplateId] = useState('all');
     const [selectedQuestionId, setSelectedQuestionId] = useState('');
     const [selectedClassName, setSelectedClassName] = useState('all');
     const [selectedDivision, setSelectedDivision] = useState('all');
+    const [includeAllFormsForQuestion, setIncludeAllFormsForQuestion] = useState(true);
 
     // Report Display Controls
     const [reportMode, setReportMode] = useState('short'); // 'short' | 'detailed'
     const [searchTerm, setSearchTerm] = useState('');
     const [showExportDropdown, setShowExportDropdown] = useState(false);
+
+    // Pagination for detailed view
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
 
     // AI Configuration State
     const [selectedAiModel, setSelectedAiModel] = useState('gemini-2.0-flash');
@@ -65,39 +76,197 @@ const ParentFeedbackReportGenerator = () => {
     const [aiAnalysis, setAiAnalysis] = useState(null);
     const [aiError, setAiError] = useState(null);
 
-    // Sync template selection if empty initially
-    useEffect(() => {
-        if (selectedTemplateId === 'all' && parentFeedbackTemplates && parentFeedbackTemplates.length > 0) {
-            setSelectedTemplateId(parentFeedbackTemplates[0].id);
-        }
-    }, [parentFeedbackTemplates]);
-
     // Active Template Object
     const activeTemplate = useMemo(() => {
+        if (selectedTemplateId === 'all') {
+            const published = (parentFeedbackTemplates || []).find(t => t.status === 'Published');
+            return published || parentFeedbackTemplates?.[0] || null;
+        }
         return (parentFeedbackTemplates || []).find(t => t.id === selectedTemplateId) || parentFeedbackTemplates?.[0] || null;
     }, [parentFeedbackTemplates, selectedTemplateId]);
 
-    // Available Questions from Active Template
+    // Helper to extract an answer for a specific question across all schema variations & legacy responses
+    const getAnswerForQuestion = (sub, question) => {
+        if (!sub || !question) return undefined;
+        const resp = sub.responses || sub.answers || sub.data || {};
+
+        // 1. Direct match on question.id or associatedIds
+        const ids = [question.id, ...(question.associatedIds || [])].filter(Boolean);
+        for (const id of ids) {
+            if (resp[id] !== undefined && resp[id] !== null && resp[id] !== '') {
+                return resp[id];
+            }
+        }
+
+        // 2. Direct match on question label
+        if (question.label && resp[question.label] !== undefined && resp[question.label] !== null && resp[question.label] !== '') {
+            return resp[question.label];
+        }
+
+        // 3. Cleaned label match (case-insensitive, trimmed, punctuation-insensitive)
+        const targetClean = cleanLabel(question.label);
+        if (targetClean) {
+            for (const [k, v] of Object.entries(resp)) {
+                if (v !== undefined && v !== null && v !== '') {
+                    if (cleanLabel(k) === targetClean) {
+                        return v;
+                    }
+                }
+            }
+        }
+
+        // 4. Schema lookup in template associated with this submission
+        if (targetClean && parentFeedbackTemplates) {
+            const subTmpl = parentFeedbackTemplates.find(t => t.id === sub.templateId);
+            if (subTmpl?.sections) {
+                for (const sec of subTmpl.sections) {
+                    for (const q of (sec.questions || [])) {
+                        if (cleanLabel(q.label) === targetClean) {
+                            if (resp[q.id] !== undefined && resp[q.id] !== null && resp[q.id] !== '') {
+                                return resp[q.id];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Cross-template schema fallback
+        if (targetClean && parentFeedbackTemplates) {
+            for (const tmpl of parentFeedbackTemplates) {
+                for (const sec of (tmpl.sections || [])) {
+                    for (const q of (sec.questions || [])) {
+                        if (cleanLabel(q.label) === targetClean) {
+                            if (resp[q.id] !== undefined && resp[q.id] !== null && resp[q.id] !== '') {
+                                return resp[q.id];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return undefined;
+    };
+
+    // Available Questions: When selectedTemplateId === 'all', collect and merge all questions across all templates and submissions.
+    // When a specific template is selected, list questions for that template first (and link associated IDs for cross-form matching).
     const availableQuestions = useMemo(() => {
-        if (!activeTemplate || !activeTemplate.sections) return [];
-        const qList = [];
-        activeTemplate.sections.forEach(sec => {
-            (sec.questions || []).forEach(q => {
-                qList.push({
-                    ...q,
-                    sectionTitle: sec.title
+        const questionsMap = new Map();
+
+        // 1. If a specific template is selected and NOT 'all', load its questions first
+        if (selectedTemplateId !== 'all') {
+            const targetTmpl = (parentFeedbackTemplates || []).find(t => t.id === selectedTemplateId);
+            if (targetTmpl && targetTmpl.sections) {
+                targetTmpl.sections.forEach(sec => {
+                    (sec.questions || []).forEach(q => {
+                        const cKey = cleanLabel(q.label) || q.id;
+                        if (!questionsMap.has(cKey)) {
+                            questionsMap.set(cKey, {
+                                ...q,
+                                sectionTitle: sec.title || 'General',
+                                associatedIds: new Set([q.id]),
+                                templateIds: new Set([targetTmpl.id]),
+                                formTitles: new Set([targetTmpl.title])
+                            });
+                        } else {
+                            questionsMap.get(cKey).associatedIds.add(q.id);
+                            questionsMap.get(cKey).templateIds.add(targetTmpl.id);
+                        }
+                    });
                 });
+            }
+        }
+
+        // 2. Also harvest questions from ALL templates in parentFeedbackTemplates to enrich associatedIds (or populate if 'all' is selected)
+        (parentFeedbackTemplates || []).forEach(tmpl => {
+            if (selectedTemplateId !== 'all' && tmpl.id !== selectedTemplateId) {
+                // If specific template is selected, enrich associatedIds for matching questions
+                (tmpl.sections || []).forEach(sec => {
+                    (sec.questions || []).forEach(q => {
+                        const cKey = cleanLabel(q.label) || q.id;
+                        if (questionsMap.has(cKey)) {
+                            questionsMap.get(cKey).associatedIds.add(q.id);
+                            questionsMap.get(cKey).templateIds.add(tmpl.id);
+                            questionsMap.get(cKey).formTitles.add(tmpl.title);
+                        }
+                    });
+                });
+            } else if (selectedTemplateId === 'all') {
+                // If 'all' is selected, include all questions
+                (tmpl.sections || []).forEach(sec => {
+                    (sec.questions || []).forEach(q => {
+                        const cKey = cleanLabel(q.label) || q.id;
+                        if (!questionsMap.has(cKey)) {
+                            questionsMap.set(cKey, {
+                                ...q,
+                                sectionTitle: sec.title || 'General',
+                                associatedIds: new Set([q.id]),
+                                templateIds: new Set([tmpl.id]),
+                                formTitles: new Set([tmpl.title])
+                            });
+                        } else {
+                            questionsMap.get(cKey).associatedIds.add(q.id);
+                            questionsMap.get(cKey).templateIds.add(tmpl.id);
+                            questionsMap.get(cKey).formTitles.add(tmpl.title);
+                        }
+                    });
+                });
+            }
+        });
+
+        // 3. Scan submissions in parentFeedbacks for any legacy/custom question labels that might not be in template schemas
+        (parentFeedbacks || []).forEach(sub => {
+            const resp = sub.responses || sub.answers || sub.data || {};
+            Object.keys(resp).forEach(k => {
+                const cKey = cleanLabel(k);
+                if (cKey && !questionsMap.has(cKey) && !k.startsWith('q_') && !k.startsWith('sec_') && k.length > 3) {
+                    questionsMap.set(cKey, {
+                        id: k,
+                        label: k,
+                        type: 'text',
+                        sectionTitle: 'Custom / Legacy Form',
+                        associatedIds: new Set([k]),
+                        templateIds: new Set(),
+                        formTitles: new Set(['Legacy / Direct Submission'])
+                    });
+                }
             });
         });
-        return qList;
-    }, [activeTemplate]);
+
+        // Convert to array and calculate totalAnswerCount
+        const list = Array.from(questionsMap.values()).map(q => {
+            const associatedIds = Array.from(q.associatedIds);
+            const templateIds = Array.from(q.templateIds);
+            const formTitles = Array.from(q.formTitles).join(', ');
+            
+            // Count total answers across all parentFeedbacks
+            let count = 0;
+            (parentFeedbacks || []).forEach(sub => {
+                const ans = getAnswerForQuestion(sub, { ...q, associatedIds });
+                if (ans !== undefined && ans !== null && ans !== '') count++;
+            });
+
+            return {
+                ...q,
+                associatedIds,
+                templateIds,
+                formTitles,
+                totalAnswerCount: count
+            };
+        });
+
+        return list;
+    }, [parentFeedbackTemplates, selectedTemplateId, parentFeedbacks]);
 
     // Default question selection when template changes
     useEffect(() => {
         if (availableQuestions.length > 0) {
-            const exists = availableQuestions.some(q => q.id === selectedQuestionId);
+            const exists = availableQuestions.some(q => q.id === selectedQuestionId || cleanLabel(q.label) === cleanLabel(selectedQuestionId));
             if (!exists) {
-                setSelectedQuestionId(availableQuestions[0].id);
+                // Pick question with the highest answer count, or first
+                const sortedByAnswers = [...availableQuestions].sort((a, b) => (b.totalAnswerCount || 0) - (a.totalAnswerCount || 0));
+                setSelectedQuestionId(sortedByAnswers[0].id);
             }
         } else {
             setSelectedQuestionId('');
@@ -107,7 +276,11 @@ const ParentFeedbackReportGenerator = () => {
 
     // Active Selected Question Object
     const activeQuestion = useMemo(() => {
-        return availableQuestions.find(q => q.id === selectedQuestionId) || availableQuestions[0] || null;
+        if (availableQuestions.length === 0) return null;
+        return availableQuestions.find(q => q.id === selectedQuestionId) 
+            || availableQuestions.find(q => cleanLabel(q.label) === cleanLabel(selectedQuestionId))
+            || availableQuestions[0] 
+            || null;
     }, [availableQuestions, selectedQuestionId]);
 
     // Helper to derive mentor name dynamically for each feedback submission
@@ -189,13 +362,24 @@ const ParentFeedbackReportGenerator = () => {
 
     // Filtered Submissions matching Form + Mentor + Class + Division
     const filteredSubmissions = useMemo(() => {
-        let list = (parentFeedbacks || []).filter(sub => {
-            if (selectedTemplateId !== 'all' && sub.templateId !== selectedTemplateId) {
-                return false;
-            }
-            return true;
-        });
+        let list = [...(parentFeedbacks || [])];
 
+        // Template Filter:
+        // If a specific template is selected and includeAllFormsForQuestion is false, strictly filter by templateId.
+        // If includeAllFormsForQuestion is true (or selectedTemplateId === 'all'), include submissions from any template that answered this question or matches the template.
+        if (selectedTemplateId !== 'all') {
+            if (!includeAllFormsForQuestion) {
+                list = list.filter(sub => sub.templateId === selectedTemplateId);
+            } else if (activeQuestion) {
+                list = list.filter(sub => {
+                    if (sub.templateId === selectedTemplateId) return true;
+                    const ans = getAnswerForQuestion(sub, activeQuestion);
+                    return ans !== undefined && ans !== null && ans !== '';
+                });
+            }
+        }
+
+        // Mentor Filter
         if (selectedMentorId !== 'all') {
             list = list.filter(s => {
                 const mName = getMentorName(s);
@@ -205,6 +389,7 @@ const ParentFeedbackReportGenerator = () => {
             });
         }
 
+        // Class Name Filter
         if (selectedClassName !== 'all') {
             list = list.filter(s => {
                 const cls = (classes || []).find(c => c.id === s.classId);
@@ -213,6 +398,7 @@ const ParentFeedbackReportGenerator = () => {
             });
         }
 
+        // Division Filter
         if (selectedDivision !== 'all') {
             list = list.filter(s => {
                 const cls = (classes || []).find(c => c.id === s.classId);
@@ -222,31 +408,34 @@ const ParentFeedbackReportGenerator = () => {
         }
 
         return list;
-    }, [parentFeedbacks, selectedTemplateId, selectedMentorId, selectedClassName, selectedDivision, mentorOptions, classes]);
+    }, [parentFeedbacks, selectedTemplateId, includeAllFormsForQuestion, activeQuestion, selectedMentorId, selectedClassName, selectedDivision, mentorOptions, classes]);
 
     // Answer Extraction & Analytics
     const questionAnalytics = useMemo(() => {
         if (!activeQuestion) return { totalSubmissions: 0, answeredCount: 0, responseRate: 0, answers: [], stats: null };
 
-        const qId = activeQuestion.id;
         const qType = activeQuestion.type;
 
         let answeredCount = 0;
         const answerEntries = [];
 
         filteredSubmissions.forEach(sub => {
-            const rawAnswer = sub.responses?.[qId];
+            const rawAnswer = getAnswerForQuestion(sub, activeQuestion);
             const hasAns = rawAnswer !== undefined && rawAnswer !== null && rawAnswer !== '';
             if (hasAns) {
                 answeredCount++;
+                const tmpl = (parentFeedbackTemplates || []).find(t => t.id === sub.templateId);
+                const formTitle = tmpl?.title || (sub.templateId ? 'Custom Form' : 'Direct Feedback');
                 answerEntries.push({
                     submissionId: sub.id,
+                    studentId: sub.studentId || '',
                     studentName: sub.studentName || 'Student',
                     parentName: sub.parentName || 'Parent / Guardian',
                     className: sub.className || 'N/A',
                     division: sub.division || '',
                     mentorName: getMentorName(sub),
-                    submittedAt: sub.submittedAt || sub.createdAt,
+                    formTitle,
+                    submittedAt: sub.submittedAt || sub.createdAt || new Date().toISOString(),
                     adminComment: sub.adminComment || '',
                     answer: rawAnswer
                 });
@@ -776,10 +965,18 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
             }
         });
 
-        doc.save(`Parent_Feedback_Report_${activeTemplate?.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
+        const safeFormTitle = (activeTemplate?.title || 'All_Feedback_Forms').replace(/[^a-z0-9]/gi, '_');
+        doc.save(`Parent_Feedback_Report_${safeFormTitle}_${new Date().toISOString().slice(0, 10)}.pdf`);
     };
 
-    // Export CSV Helper
+    // Safe escape helper for standard RFC-4180 CSV
+    const escapeCsv = (val) => {
+        if (val === undefined || val === null) return '""';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+    };
+
+    // Export CSV Helper (Robust UTF-8 BOM + Blob to support 500+ items and Excel Arabic/Unicode)
     const handleExportCsv = () => {
         if (questionAnalytics.answers.length === 0) {
             alert("No responses available to export.");
@@ -787,46 +984,142 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
         }
 
         const showMentor = selectedMentorId === 'all';
-        const headers = showMentor 
-            ? ["Student Name", "Class", "Division", "Parent Name", "Mentor Name", "Question", "Parent Answer", "Date Submitted"]
-            : ["Student Name", "Class", "Division", "Parent Name", "Question", "Parent Answer", "Date Submitted"];
-        
         const qLabel = activeQuestion ? activeQuestion.label : "Question";
+        const qSection = activeQuestion ? activeQuestion.sectionTitle : "General";
 
-        const rows = questionAnalytics.answers.map(a => {
+        const headers = [
+            "#",
+            "Student Name",
+            "Class",
+            "Division",
+            "Parent Name",
+            ...(showMentor ? ["Mentor Name"] : []),
+            "Form / Session",
+            "Section",
+            "Question",
+            "Parent Answer / Rating",
+            "Raw Score",
+            "Admin Note",
+            "Date Submitted"
+        ];
+
+        const rows = questionAnalytics.answers.map((a, idx) => {
             const ansStr = formatAnswerForPdf(a.answer, activeQuestion?.type);
-            if (showMentor) {
-                return [
-                    `"${a.studentName.replace(/"/g, '""')}"`,
-                    `"${a.className}"`,
-                    `"${a.division}"`,
-                    `"${a.parentName.replace(/"/g, '""')}"`,
-                    `"${a.mentorName.replace(/"/g, '""')}"`,
-                    `"${qLabel.replace(/"/g, '""')}"`,
-                    `"${ansStr.replace(/\n/g, ' | ').replace(/"/g, '""')}"`,
-                    `"${new Date(a.submittedAt).toLocaleString()}"`
-                ];
-            } else {
-                return [
-                    `"${a.studentName.replace(/"/g, '""')}"`,
-                    `"${a.className}"`,
-                    `"${a.division}"`,
-                    `"${a.parentName.replace(/"/g, '""')}"`,
-                    `"${qLabel.replace(/"/g, '""')}"`,
-                    `"${ansStr.replace(/\n/g, ' | ').replace(/"/g, '""')}"`,
-                    `"${new Date(a.submittedAt).toLocaleString()}"`
-                ];
-            }
+            const scoreVal = (activeQuestion?.type === 'star_rating' || activeQuestion?.type === 'rating') && !isNaN(Number(a.answer))
+                ? Number(a.answer)
+                : '';
+
+            const row = [
+                idx + 1,
+                a.studentName || 'Student',
+                a.className || 'N/A',
+                a.division || '',
+                a.parentName || 'Parent / Guardian',
+                ...(showMentor ? [a.mentorName || 'Not Assigned'] : []),
+                a.formTitle || 'General Form',
+                qSection,
+                qLabel,
+                ansStr.replace(/\n/g, ' | '),
+                scoreVal,
+                a.adminComment || '',
+                a.submittedAt ? new Date(a.submittedAt).toLocaleString() : ''
+            ];
+            return row.map(escapeCsv).join(',');
         });
 
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-        const encodedUri = encodeURI(csvContent);
+        // Prefix \uFEFF BOM for Microsoft Excel on Windows to preserve UTF-8
+        const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Parent_Feedback_Report_${activeTemplate?.title || 'Form'}_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.href = url;
+        const safeTitle = (activeQuestion?.label || 'Question').slice(0, 30).replace(/[^a-z0-9]/gi, '_');
+        link.download = `Parent_Feedback_${safeTitle}_${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    // Export Excel (.xlsx) Helper (Direct Excel workbook format)
+    const handleExportExcel = () => {
+        if (questionAnalytics.answers.length === 0) {
+            alert("No responses available to export.");
+            return;
+        }
+
+        const showMentor = selectedMentorId === 'all';
+        const qLabel = activeQuestion ? activeQuestion.label : "Question";
+        const qSection = activeQuestion ? activeQuestion.sectionTitle : "General";
+
+        const data = questionAnalytics.answers.map((a, idx) => {
+            const ansStr = formatAnswerForPdf(a.answer, activeQuestion?.type);
+            const row = {
+                '#': idx + 1,
+                'Student Name': a.studentName || 'Student',
+                'Class': a.className || 'N/A',
+                'Division': a.division || '',
+                'Parent Name': a.parentName || 'Parent / Guardian',
+            };
+            if (showMentor) {
+                row['Mentor Name'] = a.mentorName || 'Not Assigned';
+            }
+            row['Form / Session'] = a.formTitle || 'General Form';
+            row['Section'] = qSection;
+            row['Question'] = qLabel;
+            row['Parent Answer / Rating'] = ansStr.replace(/\n/g, ' | ');
+            if (activeQuestion?.type === 'star_rating' || activeQuestion?.type === 'rating') {
+                row['Score (1-5)'] = !isNaN(Number(a.answer)) ? Number(a.answer) : '';
+            }
+            row['Admin Note'] = a.adminComment || '';
+            row['Date Submitted'] = a.submittedAt ? new Date(a.submittedAt).toLocaleString() : '';
+            return row;
+        });
+
+        const safeTitle = (activeQuestion?.label || 'Question').slice(0, 30).replace(/[^a-z0-9]/gi, '_');
+        exportToExcel(data, `Parent_Feedback_${safeTitle}_${new Date().toISOString().slice(0, 10)}`, 'Question Responses');
+    };
+
+    // Export Master Spreadsheet (All Questions & Responses Across Submissions)
+    const handleExportAllQuestionsExcel = () => {
+        if (filteredSubmissions.length === 0) {
+            alert("No submissions available to export.");
+            return;
+        }
+
+        const allQs = availableQuestions.length > 0 ? availableQuestions : [];
+        const data = filteredSubmissions.map((sub, idx) => {
+            const mName = getMentorName(sub);
+            const tmpl = (parentFeedbackTemplates || []).find(t => t.id === sub.templateId);
+            const formTitle = tmpl?.title || (sub.templateId ? 'Custom Form' : 'Direct Submission');
+
+            const row = {
+                '#': idx + 1,
+                'Student Name': sub.studentName || 'Student',
+                'Class': sub.className || 'N/A',
+                'Division': sub.division || '',
+                'Parent Name': sub.parentName || 'Parent / Guardian',
+                'Mentor Name': mName,
+                'Form / Template': formTitle,
+                'Date Submitted': sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : '',
+                'Admin Note': sub.adminComment || ''
+            };
+
+            // Include an answer column for each question
+            allQs.forEach(q => {
+                const ans = getAnswerForQuestion(sub, q);
+                const colKey = `[${q.sectionTitle || 'General'}] ${q.label}`;
+                if (ans !== undefined && ans !== null && ans !== '') {
+                    row[colKey] = formatAnswerForPdf(ans, q.type).replace(/\n/g, ' | ');
+                } else {
+                    row[colKey] = '-';
+                }
+            });
+
+            return row;
+        });
+
+        exportToExcel(data, `All_Parent_Feedbacks_${new Date().toISOString().slice(0, 10)}`, 'All Feedback Data');
     };
 
     // Copy Summary to Clipboard
@@ -871,12 +1164,26 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
         if (!searchTerm.trim()) return questionAnalytics.answers;
         const term = searchTerm.toLowerCase();
         return questionAnalytics.answers.filter(a => 
-            a.studentName.toLowerCase().includes(term) ||
-            a.parentName.toLowerCase().includes(term) ||
-            a.mentorName.toLowerCase().includes(term) ||
+            (a.studentName && a.studentName.toLowerCase().includes(term)) ||
+            (a.parentName && a.parentName.toLowerCase().includes(term)) ||
+            (a.mentorName && a.mentorName.toLowerCase().includes(term)) ||
+            (a.className && a.className.toLowerCase().includes(term)) ||
             String(a.answer).toLowerCase().includes(term)
         );
     }, [questionAnalytics.answers, searchTerm]);
+
+    // Pagination calculations
+    const totalPages = Math.ceil(detailedAnswers.length / (pageSize === 'all' ? (detailedAnswers.length || 1) : Number(pageSize)));
+    const paginatedAnswers = useMemo(() => {
+        if (pageSize === 'all') return detailedAnswers;
+        const start = (currentPage - 1) * Number(pageSize);
+        return detailedAnswers.slice(start, start + Number(pageSize));
+    }, [detailedAnswers, currentPage, pageSize]);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedQuestionId, selectedTemplateId, selectedMentorId, selectedClassName, selectedDivision, pageSize]);
 
     const showMentorColumnInUi = selectedMentorId === 'all';
 
@@ -956,35 +1263,73 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
                                 </button>
 
                                 {showExportDropdown && (
-                                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl p-1.5 z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                                    <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-30 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                                        <div className="px-3 py-1 text-[10px] font-black uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
+                                            Question Export ({questionAnalytics.answeredCount} Responses)
+                                        </div>
                                         <button
-                                            onClick={() => { setShowExportDropdown(false); handleGeneratePdf(); }}
-                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2 transition-colors"
+                                            onClick={() => { setShowExportDropdown(false); handleExportExcel(); }}
+                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2.5 transition-colors"
                                         >
-                                            <FileText className="w-4 h-4 text-indigo-600" /> Download PDF
+                                            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                                            <div>
+                                                <span className="block font-black">Export Excel (.xlsx)</span>
+                                                <span className="text-[10px] text-gray-400 font-normal">Formatted Excel workbook</span>
+                                            </div>
                                         </button>
                                         <button
                                             onClick={() => { setShowExportDropdown(false); handleExportCsv(); }}
-                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 flex items-center gap-2 transition-colors"
+                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2.5 transition-colors"
                                         >
-                                            <Download className="w-4 h-4 text-emerald-600" /> Export CSV
+                                            <Download className="w-4 h-4 text-emerald-600" />
+                                            <div>
+                                                <span className="block font-black">Export CSV (.csv)</span>
+                                                <span className="text-[10px] text-gray-400 font-normal">UTF-8 Excel-ready CSV</span>
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={() => { setShowExportDropdown(false); handleGeneratePdf(); }}
+                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors"
+                                        >
+                                            <FileText className="w-4 h-4 text-indigo-600" />
+                                            <div>
+                                                <span className="block font-black">Download PDF</span>
+                                                <span className="text-[10px] text-gray-400 font-normal">Printable letterhead report</span>
+                                            </div>
                                         </button>
                                         <button
                                             onClick={() => { setShowExportDropdown(false); handleCopySummary(); }}
-                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-2 transition-colors"
+                                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-2.5 transition-colors"
                                         >
-                                            <Copy className="w-4 h-4 text-purple-600" /> Copy Report Text
+                                            <Copy className="w-4 h-4 text-purple-600" />
+                                            <div>
+                                                <span className="block font-black">Copy Report Text</span>
+                                                <span className="text-[10px] text-gray-400 font-normal">Clipboard text summary</span>
+                                            </div>
                                         </button>
+
+                                        <div className="pt-1 border-t border-gray-100 mt-1">
+                                            <button
+                                                onClick={() => { setShowExportDropdown(false); handleExportAllQuestionsExcel(); }}
+                                                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-50 flex items-center gap-2 transition-colors"
+                                            >
+                                                <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                                                <div>
+                                                    <span className="block font-black">Export Master (All Questions)</span>
+                                                    <span className="text-[10px] text-gray-400 font-normal">All submissions & questions in Excel</span>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3 print:hidden">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 print:hidden">
                         {/* Mentor Selector */}
                         <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">1. Select Mentor</label>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">1. Mentor</label>
                             <select 
                                 value={selectedMentorId} 
                                 onChange={e => setSelectedMentorId(e.target.value)}
@@ -999,20 +1344,26 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
 
                         {/* Feedback Form Selector */}
                         <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">2. Select Form Template</label>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">2. Form Template</label>
                             <select 
                                 value={selectedTemplateId} 
                                 onChange={e => setSelectedTemplateId(e.target.value)}
                                 className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
                             >
-                                {(parentFeedbackTemplates || []).map(t => (
-                                    <option key={t.id} value={t.id}>{t.title} ({t.month} {t.year})</option>
-                                ))}
+                                <option value="all">All Form Templates & Legacy ({parentFeedbacks?.length || 0})</option>
+                                {(parentFeedbackTemplates || []).map(t => {
+                                    const count = (parentFeedbacks || []).filter(f => f.templateId === t.id).length;
+                                    return (
+                                        <option key={t.id} value={t.id}>
+                                            {t.title} ({t.month} {t.year}) • {count} feedbacks
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
 
                         {/* Question Selector */}
-                        <div className="md:col-span-2">
+                        <div className="sm:col-span-2 md:col-span-2 lg:col-span-2">
                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">3. Select Question</label>
                             <select 
                                 value={selectedQuestionId} 
@@ -1024,7 +1375,7 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
                                 ) : (
                                     availableQuestions.map(q => (
                                         <option key={q.id} value={q.id}>
-                                            [{q.sectionTitle}] {q.label}
+                                            [{q.sectionTitle}] {q.label} ({q.totalAnswerCount || 0} responses)
                                         </option>
                                     ))
                                 )}
@@ -1045,7 +1396,46 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
                                 ))}
                             </select>
                         </div>
+
+                        {/* Division Filter (Optional) */}
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Filter Division</label>
+                            <select 
+                                value={selectedDivision} 
+                                onChange={e => setSelectedDivision(e.target.value)}
+                                className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
+                            >
+                                <option value="all">All Divisions</option>
+                                {uniqueDivisions.map(div => (
+                                    <option key={div} value={div}>Division {div}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
+
+                    {/* Notice & Cross-Form Toggle banner when a specific template is active */}
+                    {selectedTemplateId !== 'all' && (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-indigo-50/70 border border-indigo-100 p-3 rounded-xl text-xs print:hidden animate-in fade-in">
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox"
+                                    id="crossFormToggle"
+                                    checked={includeAllFormsForQuestion}
+                                    onChange={e => setIncludeAllFormsForQuestion(e.target.checked)}
+                                    className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                />
+                                <label htmlFor="crossFormToggle" className="font-bold text-indigo-900 cursor-pointer">
+                                    Include answers from all form templates & legacy submissions for this question ({activeQuestion?.totalAnswerCount || questionAnalytics.answeredCount} total found across all forms)
+                                </label>
+                            </div>
+                            <button
+                                onClick={() => setSelectedTemplateId('all')}
+                                className="text-[11px] font-black text-indigo-700 hover:text-indigo-900 hover:underline bg-white px-3 py-1 rounded-lg border border-indigo-200 shrink-0 shadow-xs"
+                            >
+                                Switch to All Forms Scope
+                            </button>
+                        </div>
+                    )}
                 </Card>
 
                 {/* SMOOTH BLUE GRADIENT TREND CHART CARD (ADAPTS TO SELECTED QUESTION & REVIEWS) */}
@@ -1509,63 +1899,136 @@ Provide a clean JSON response with keys: executiveSummary, sentiment, strengths,
                                 <p className="text-sm font-bold text-gray-600">No matching responses found.</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs border-collapse">
-                                    <thead>
-                                        <tr className="bg-gray-50 text-gray-500 uppercase text-[10px] font-black tracking-wider border-b border-gray-200">
-                                            <th className="py-3 px-4 w-12 text-center">#</th>
-                                            <th className="py-3 px-4 w-48">Student & Class</th>
-                                            <th className="py-3 px-4 w-40">Parent Name</th>
-                                            {showMentorColumnInUi && <th className="py-3 px-4 w-40">Mentor Name</th>}
-                                            <th className="py-3 px-4">Answer / Rating</th>
-                                            <th className="py-3 px-4 w-28 text-right">Submitted</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
-                                        {detailedAnswers.map((item, idx) => {
-                                            return (
-                                                <tr key={item.submissionId} className="hover:bg-gray-50/80 transition-colors break-inside-avoid">
-                                                    <td className="py-3 px-4 text-gray-400 font-bold text-center">{idx + 1}</td>
-                                                    <td className="py-3 px-4">
-                                                        <span className="font-bold text-gray-900 block">{item.studentName}</span>
-                                                        <span className="text-[10px] text-indigo-600 font-bold">Class {item.className} {item.division && `(${item.division})`}</span>
-                                                    </td>
-                                                    <td className="py-3 px-4 font-bold text-gray-700">{item.parentName}</td>
-                                                    {showMentorColumnInUi && <td className="py-3 px-4 font-bold text-purple-700">{item.mentorName}</td>}
-                                                    <td className="py-3 px-4">
-                                                        {activeQuestion?.type === 'star_rating' ? (
-                                                            <span className="font-black text-amber-500 bg-amber-50 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
-                                                                {item.answer} ⭐
-                                                            </span>
-                                                        ) : typeof item.answer === 'object' && item.answer !== null ? (
-                                                            <div className="space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs">
-                                                                {Object.entries(item.answer).map(([aspect, score]) => (
-                                                                    <div key={aspect} className="flex justify-between items-center py-0.5 border-b border-gray-100 last:border-0">
-                                                                        <span className="font-semibold text-gray-700 pr-4">{aspect}:</span>
-                                                                        <span className="font-black text-amber-500 shrink-0">{score} ⭐</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ) : Array.isArray(item.answer) ? (
-                                                            <div className="space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                                                {item.answer.map((ans, i) => (
-                                                                    <div key={i} className="font-semibold text-gray-800">• {ans}</div>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 font-semibold text-gray-900 whitespace-pre-wrap leading-relaxed">
-                                                                {String(item.answer)}
-                                                            </div>
+                            <div className="space-y-4">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs border-collapse">
+                                        <thead>
+                                            <tr className="bg-gray-50 text-gray-500 uppercase text-[10px] font-black tracking-wider border-b border-gray-200">
+                                                <th className="py-3 px-4 w-12 text-center">#</th>
+                                                <th className="py-3 px-4 w-48">Student & Class</th>
+                                                <th className="py-3 px-4 w-40">Parent Name</th>
+                                                {showMentorColumnInUi && <th className="py-3 px-4 w-40">Mentor Name</th>}
+                                                {selectedTemplateId === 'all' && <th className="py-3 px-4 w-36">Form / Session</th>}
+                                                <th className="py-3 px-4">Answer / Rating</th>
+                                                <th className="py-3 px-4 w-28 text-right">Submitted</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
+                                            {paginatedAnswers.map((item, idx) => {
+                                                const rowNum = pageSize === 'all' 
+                                                    ? idx + 1 
+                                                    : (currentPage - 1) * Number(pageSize) + idx + 1;
+
+                                                return (
+                                                    <tr key={item.submissionId} className="hover:bg-gray-50/80 transition-colors break-inside-avoid">
+                                                        <td className="py-3 px-4 text-gray-400 font-bold text-center">{rowNum}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className="font-bold text-gray-900 block">{item.studentName}</span>
+                                                            <span className="text-[10px] text-indigo-600 font-bold">Class {item.className} {item.division && `(${item.division})`}</span>
+                                                        </td>
+                                                        <td className="py-3 px-4 font-bold text-gray-700">{item.parentName}</td>
+                                                        {showMentorColumnInUi && <td className="py-3 px-4 font-bold text-purple-700">{item.mentorName}</td>}
+                                                        {selectedTemplateId === 'all' && (
+                                                            <td className="py-3 px-4">
+                                                                <span className="text-[10px] font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md inline-block max-w-[140px] truncate" title={item.formTitle}>
+                                                                    {item.formTitle}
+                                                                </span>
+                                                            </td>
                                                         )}
-                                                    </td>
-                                                    <td className="py-3 px-4 text-[10px] text-gray-400 text-right whitespace-nowrap">
-                                                        {new Date(item.submittedAt).toLocaleDateString()}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                                        <td className="py-3 px-4">
+                                                            {activeQuestion?.type === 'star_rating' ? (
+                                                                <span className="font-black text-amber-500 bg-amber-50 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                                                                    {item.answer} ⭐
+                                                                </span>
+                                                            ) : typeof item.answer === 'object' && item.answer !== null ? (
+                                                                <div className="space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs">
+                                                                    {Object.entries(item.answer).map(([aspect, score]) => (
+                                                                        <div key={aspect} className="flex justify-between items-center py-0.5 border-b border-gray-100 last:border-0">
+                                                                            <span className="font-semibold text-gray-700 pr-4">{aspect}:</span>
+                                                                            <span className="font-black text-amber-500 shrink-0">{score} ⭐</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : Array.isArray(item.answer) ? (
+                                                                <div className="space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                                                    {item.answer.map((ans, i) => (
+                                                                        <div key={i} className="font-semibold text-gray-800">• {ans}</div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 font-semibold text-gray-900 whitespace-pre-wrap leading-relaxed">
+                                                                    {String(item.answer)}
+                                                                </div>
+                                                            )}
+                                                            {item.adminComment && (
+                                                                <div className="mt-1 text-[10px] text-amber-700 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/60 inline-flex items-center gap-1">
+                                                                    <span className="font-bold">Admin Note:</span> {item.adminComment}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-[10px] text-gray-400 text-right whitespace-nowrap">
+                                                            {new Date(item.submittedAt).toLocaleDateString()}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Pagination Footer Controls */}
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-100 print:hidden">
+                                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                                        <span>
+                                            {pageSize === 'all' ? (
+                                                `Showing all ${detailedAnswers.length} responses`
+                                            ) : (
+                                                `Showing ${detailedAnswers.length === 0 ? 0 : (currentPage - 1) * Number(pageSize) + 1} to ${Math.min(currentPage * Number(pageSize), detailedAnswers.length)} of ${detailedAnswers.length} responses`
+                                            )}
+                                        </span>
+                                        <div className="flex items-center gap-1.5 ml-2">
+                                            <span className="text-gray-400">Rows per page:</span>
+                                            <select
+                                                value={pageSize}
+                                                onChange={e => {
+                                                    setPageSize(e.target.value);
+                                                    setCurrentPage(1);
+                                                }}
+                                                className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold text-gray-700 outline-none focus:ring-1 focus:ring-indigo-500"
+                                            >
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                                <option value="100">100</option>
+                                                <option value="250">250</option>
+                                                <option value="all">All ({detailedAnswers.length})</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {pageSize !== 'all' && totalPages > 1 && (
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                disabled={currentPage === 1}
+                                                className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                                            >
+                                                <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                                            </button>
+
+                                            <span className="text-xs font-bold text-gray-700 px-2">
+                                                Page {currentPage} of {totalPages}
+                                            </span>
+
+                                            <button
+                                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                disabled={currentPage >= totalPages}
+                                                className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                                            >
+                                                Next <ChevronRight className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </Card>
