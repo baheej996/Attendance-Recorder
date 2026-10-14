@@ -430,44 +430,44 @@ const StudentDashboard = () => {
 
             {/* Content Area */}
             <main className={cn(
-                "flex-1 p-4 md:p-8 overflow-y-auto transition-all duration-300",
+                "flex-1 p-4 md:p-8 transition-all duration-300 min-w-0",
                 isExamActive ? "md:ml-0" : "md:ml-64"
             )}>
                 {/* Mobile Header (App Style) */}
-                <div className="md:hidden flex items-center justify-between mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-2">
-                        {( !isExamActive && !location.pathname.endsWith('/student') && !location.pathname.endsWith('/student/')) ? (
-                            <button 
-                                onClick={() => navigate('/student')} 
-                                className="p-2 -ml-2 text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center gap-1 font-bold text-sm"
-                            >
-                                <ChevronLeft className="w-5 h-5" />
-                                Back
-                            </button>
-                        ) : (
-                            <button 
-                                onClick={() => setIsProfileModalOpen(true)}
-                                className="flex items-center gap-2 hover:bg-gray-50 p-1.5 -ml-1.5 rounded-lg transition-colors text-left"
-                            >
-                                <div className="p-2 bg-indigo-600 rounded-lg relative">
-                                    <GraduationCap className="w-5 h-5 text-white" />
-                                    {isProfileIncomplete && (
-                                        <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center bg-white rounded-full">
-                                            <span className="h-2.5 w-2.5 bg-red-500 rounded-full flex shadow-sm animate-pulse"></span>
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <span className="font-bold text-gray-900 truncate max-w-[120px]">{currentUser.name}</span>
-                                    {isProfileIncomplete && (
-                                        <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
-                                    )}
-                                </div>
-                            </button>
-                        )}
-                    </div>
-                    
-                    {!isExamActive && (
+                {!isExamActive && (
+                    <div className="md:hidden flex items-center justify-between mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-2">
+                            {( !isExamActive && !location.pathname.endsWith('/student') && !location.pathname.endsWith('/student/')) ? (
+                                <button 
+                                    onClick={() => navigate('/student')} 
+                                    className="p-2 -ml-2 text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center gap-1 font-bold text-sm"
+                                >
+                                    <ChevronLeft className="w-5 h-5" />
+                                    Back
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={() => setIsProfileModalOpen(true)}
+                                    className="flex items-center gap-2 hover:bg-gray-50 p-1.5 -ml-1.5 rounded-lg transition-colors text-left"
+                                >
+                                    <div className="p-2 bg-indigo-600 rounded-lg relative">
+                                        <GraduationCap className="w-5 h-5 text-white" />
+                                        {isProfileIncomplete && (
+                                            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center bg-white rounded-full">
+                                                <span className="h-2.5 w-2.5 bg-red-500 rounded-full flex shadow-sm animate-pulse"></span>
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <span className="font-bold text-gray-900 truncate max-w-[120px]">{currentUser.name}</span>
+                                        {isProfileIncomplete && (
+                                            <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
+                                        )}
+                                    </div>
+                                </button>
+                            )}
+                        </div>
+                        
                         <button 
                             onClick={() => setShowLogoutModal(true)} 
                             className="p-2.5 text-red-500 hover:bg-red-100 rounded-lg transition-all active:scale-95 border border-red-50"
@@ -475,8 +475,8 @@ const StudentDashboard = () => {
                         >
                             <LogOut className="w-5 h-5" />
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
 
 
 

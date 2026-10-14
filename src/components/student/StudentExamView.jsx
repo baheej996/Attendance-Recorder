@@ -790,85 +790,89 @@ const StudentExamView = () => {
     // View: Taking Exam
     return (
         <div className="max-w-4xl mx-auto pb-12 relative">
-            <div className="sticky top-0 z-30 bg-white/95 backdrop-blur pt-4 pb-4 mb-6 border-b border-gray-100 flex items-center justify-between shadow-sm -mx-4 px-6 rounded-b-xl">
-                <div className="flex items-center gap-6">
-                    {viewingMode && (
-                        <button
-                            onClick={handleBack}
-                            className="text-gray-500 hover:text-gray-900 font-medium"
-                        >
-                            &larr; Back to Exams
-                        </button>
-                    )}
-                    {timeLeft !== null && !viewingMode && (
-                        <div className={`flex items-center gap-2 px-6 py-3 rounded-full text-2xl font-bold border shadow-sm ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
-                            <Clock className="w-6 h-6" />
-                            <span>{formatTime(timeLeft)}</span>
-                        </div>
-                    )}
-                </div>
-                <div className="text-right">
-                    <p className="text-sm text-gray-500 font-medium">Subject</p>
-                    <div className="flex items-center gap-3">
-                        <p className="text-xl font-bold text-indigo-600">{selectedSubjectId}</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Question Status Navigator & Progress Bar */}
-            <div className="bg-white border border-gray-200 rounded-3xl p-5 mb-6 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-gray-700 uppercase tracking-wider">Exam Progress</span>
-                        <span className={cn(
-                            "px-2.5 py-0.5 rounded-full text-xs font-black border",
-                            answeredCount === examQuestions.length 
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                                : "bg-indigo-50 text-indigo-700 border-indigo-200"
-                        )}>
-                            {answeredCount} of {examQuestions.length} Answered
-                        </span>
-                    </div>
-                    <div className="text-xs font-bold text-gray-500">
-                        {unansweredQuestions.length === 0 ? (
-                            <span className="text-emerald-600 flex items-center gap-1 font-black">
-                                <CheckCircle className="w-4 h-4" /> All questions completed!
-                            </span>
-                        ) : (
-                            <span className="text-amber-600 font-bold">
-                                {unansweredQuestions.length} remaining • All questions are mandatory
-                            </span>
+            {/* Frozen Header Section: Timer, Subject, Exam Progress & Question Pills */}
+            <div className="sticky top-0 z-40 bg-gray-50/95 backdrop-blur-md pt-2 pb-3 mb-6 -mx-2 sm:-mx-4 px-2 sm:px-4 space-y-2.5 sm:space-y-3 transition-all">
+                {/* Timer & Subject Card */}
+                <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-3 sm:gap-6">
+                        {viewingMode && (
+                            <button
+                                onClick={handleBack}
+                                className="text-xs sm:text-sm text-gray-500 hover:text-gray-900 font-bold flex items-center gap-1"
+                            >
+                                &larr; Back to Exams
+                            </button>
+                        )}
+                        {timeLeft !== null && !viewingMode && (
+                            <div className={`flex items-center gap-1.5 sm:gap-2 px-3.5 py-1.5 sm:px-6 sm:py-2.5 rounded-full text-base sm:text-2xl font-bold border shadow-xs sm:shadow-sm ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+                                <Clock className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" />
+                                <span>{formatTime(timeLeft)}</span>
+                            </div>
                         )}
                     </div>
+                    <div className="text-right">
+                        <p className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-wider">Subject</p>
+                        <div className="flex items-center justify-end gap-2 sm:gap-3">
+                            <p className="text-sm sm:text-xl font-bold text-indigo-600 truncate max-w-[140px] sm:max-w-xs">{selectedSubjectId}</p>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Question Pills */}
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                    {examQuestions.map((q, idx) => {
-                        const isAns = isQuestionAnswered(q.id);
-                        const isErr = !isAns && showValidationErrors;
+                {/* Question Status Navigator & Progress Bar Card */}
+                <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 mb-2.5 sm:mb-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] sm:text-xs font-black text-gray-700 uppercase tracking-wider">Exam Progress</span>
+                            <span className={cn(
+                                "px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-black border",
+                                answeredCount === examQuestions.length 
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                    : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                            )}>
+                                {answeredCount} of {examQuestions.length} Answered
+                            </span>
+                        </div>
+                        <div className="text-[10px] sm:text-xs font-bold text-gray-500">
+                            {unansweredQuestions.length === 0 ? (
+                                <span className="text-emerald-600 flex items-center gap-1 font-black">
+                                    <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> All questions completed!
+                                </span>
+                            ) : (
+                                <span className="text-amber-600 font-bold">
+                                    {unansweredQuestions.length} remaining • All questions are mandatory
+                                </span>
+                            )}
+                        </div>
+                    </div>
 
-                        return (
-                            <button
-                                key={q.id}
-                                onClick={() => {
-                                    const el = document.getElementById(`question-card-${q.id}`);
-                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }}
-                                className={cn(
-                                    "w-9 h-9 rounded-xl text-xs font-black flex items-center justify-center transition-all duration-200 shadow-sm border",
-                                    isAns
-                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-emerald-100 hover:bg-emerald-700"
-                                        : isErr
-                                            ? "bg-red-500 text-white border-red-600 shadow-red-100 animate-pulse hover:bg-red-600"
-                                            : "bg-gray-50 text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
-                                )}
-                                title={`Question ${idx + 1}: ${isAns ? 'Answered' : 'Unanswered (Required)'}`}
-                            >
-                                Q{idx + 1}
-                            </button>
-                        );
-                    })}
+                    {/* Question Pills */}
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-2 border-t border-gray-100 max-h-24 sm:max-h-36 overflow-y-auto custom-scrollbar">
+                        {examQuestions.map((q, idx) => {
+                            const isAns = isQuestionAnswered(q.id);
+                            const isErr = !isAns && showValidationErrors;
+
+                            return (
+                                <button
+                                    key={q.id}
+                                    onClick={() => {
+                                        const el = document.getElementById(`question-card-${q.id}`);
+                                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }}
+                                    className={cn(
+                                        "w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black shrink-0 flex items-center justify-center transition-all duration-200 shadow-xs border",
+                                        isAns
+                                            ? "bg-emerald-600 text-white border-emerald-600 shadow-emerald-100 hover:bg-emerald-700"
+                                            : isErr
+                                                ? "bg-red-500 text-white border-red-600 shadow-red-100 animate-pulse hover:bg-red-600"
+                                                : "bg-gray-50 text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+                                    )}
+                                    title={`Question ${idx + 1}: ${isAns ? 'Answered' : 'Unanswered (Required)'}`}
+                                >
+                                    Q{idx + 1}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
@@ -915,7 +919,7 @@ const StudentExamView = () => {
                                 key={q.id} 
                                 id={`question-card-${q.id}`} 
                                 className={cn(
-                                    "p-6 rounded-2xl border transition-all duration-300 relative",
+                                    "p-6 rounded-2xl border transition-all duration-300 relative scroll-mt-64",
                                     isMissing 
                                         ? "bg-red-50/40 border-2 border-red-500 shadow-lg shadow-red-100" 
                                         : isAns 
