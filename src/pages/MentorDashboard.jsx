@@ -643,7 +643,6 @@ const MentorDashboard = () => {
                         <Route path="/ramadan" element={<MentorRamadan />} />
                         <Route path="/notifications" element={<MentorNotifications />} />
                         <Route path="/admissions" element={<MentorAdmissionRequest />} />
-                        <Route path="/prayer-chart" element={<SpecialPrayerManager />} />
                         <Route path="/print" element={<PrintAttendance />} />
                         <Route path="/questions" element={<QuestionBank />} />
                         <Route path="/exam-tracker" element={<ExamQuestionTracker />} />

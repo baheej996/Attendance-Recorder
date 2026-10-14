@@ -1867,7 +1867,21 @@ export const DataProvider = ({ children }) => {
         // classId is required so the mentor's subscription (filtered by classId) can find these records
         const student = students.find(s => s.id === record.studentId) || allStudents.find(s => s.id === record.studentId);
         const classId = record.classId || student?.classId || (currentUser?.id === record.studentId ? currentUser.classId : null);
-        await setDoc(doc(db, 'prayerRecords', docId), { ...record, classId, timestamp: new Date().toISOString() });
+        await setDoc(doc(db, 'prayerRecords', docId), { ...record, classId, timestamp: new Date().toISOString() }, { merge: true });
+    };
+
+    const batchAddPrayerRecords = async (recordsList) => {
+        if (!recordsList || recordsList.length === 0) return;
+        const batch = writeBatch(db);
+        const ts = new Date().toISOString();
+        recordsList.forEach(record => {
+            const docId = `${record.date}_${record.studentId}`;
+            const student = students.find(s => s.id === record.studentId) || allStudents.find(s => s.id === record.studentId);
+            const classId = record.classId || student?.classId || (currentUser?.id === record.studentId ? currentUser.classId : null);
+            const ref = doc(db, 'prayerRecords', docId);
+            batch.set(ref, { ...record, classId, timestamp: ts }, { merge: true });
+        });
+        await batch.commit();
     };
     const getPrayerRecordsByStudent = (studentId) => prayerRecords.filter(r => r.studentId === studentId); // Local filter is fine as we sync all
 
@@ -2257,7 +2271,7 @@ export const DataProvider = ({ children }) => {
                 return [];
             }
         },
-        prayerRecords, addPrayerRecord, getPrayerRecordsByStudent, deletePrayerRecordsForStudents,
+        prayerRecords, addPrayerRecord, batchAddPrayerRecords, getPrayerRecordsByStudent, deletePrayerRecordsForStudents,
         leaveRequests, addLeaveRequest, updateLeaveRequest, deleteLeaveRequest, deleteLeaveRequests,
 
         // New / Misc

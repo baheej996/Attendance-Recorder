@@ -1,13 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../ui/Card';
-import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
-import { Calendar, ChevronLeft, ChevronRight, Check, X, Copy, ChevronDown } from 'lucide-react';
+import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isAfter, startOfToday } from 'date-fns';
+import { Calendar, ChevronLeft, ChevronRight, Check, X, Copy, ChevronDown, Pencil, Loader2 } from 'lucide-react';
+import { EditPrayerModal } from './EditPrayerModal';
+import { clsx } from 'clsx';
 
 const MentorPrayerStats = () => {
-    const { students, prayerRecords, specialPrayers, currentUser, classes } = useData();
+    const { students, prayerRecords, specialPrayers, currentUser, classes, addPrayerRecord } = useData();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false);
+    const [editingStudent, setEditingStudent] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [savingPrayerKey, setSavingPrayerKey] = useState(null);
 
     // Filter classes for mentor
     const availableClasses = useMemo(() => {
@@ -38,6 +43,8 @@ const MentorPrayerStats = () => {
     }, [specialPrayers, currentUser]);
 
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const today = startOfToday();
+    const isFutureDate = isAfter(selectedDate, today);
 
     const stats = useMemo(() => {
         return activeStudents.map(student => {
@@ -50,6 +57,44 @@ const MentorPrayerStats = () => {
             };
         });
     }, [activeStudents, prayerRecords, dateStr]);
+
+    const handleToggleSpecialPrayer = async (student, prayerId) => {
+        if (isFutureDate) {
+            alert("Cannot mark prayers for future dates.");
+            return;
+        }
+
+        const record = prayerRecords.find(r => r.studentId === student.id && r.date === dateStr);
+        const currentPrayers = { ...(record?.prayers || {}) };
+        currentPrayers[prayerId] = !currentPrayers[prayerId];
+
+        const key = `${student.id}_${prayerId}`;
+        setSavingPrayerKey(key);
+
+        try {
+            await addPrayerRecord({
+                studentId: student.id,
+                classId: student.classId,
+                date: dateStr,
+                prayers: currentPrayers,
+                updatedBy: currentUser?.id,
+                updatedByRole: currentUser?.role || 'mentor'
+            });
+        } catch (err) {
+            console.error("Failed to toggle special prayer:", err);
+            alert("Failed to update special prayer.");
+        } finally {
+            setSavingPrayerKey(null);
+        }
+    };
+
+    const handleSaveFromModal = async (recordData) => {
+        await addPrayerRecord({
+            ...recordData,
+            updatedBy: currentUser?.id,
+            updatedByRole: currentUser?.role || 'mentor'
+        });
+    };
 
     const generateSpecialPrayerReport = async (type) => {
         if (!selectedClassId || activeSpecialPrayers.length === 0) {
@@ -68,7 +113,7 @@ const MentorPrayerStats = () => {
         });
 
         const studentIds = sortedStudents.map(s => s.id);
-        const baseDate = new Date(selectedDate); // Re-use the existing selectedDate state
+        const baseDate = new Date(selectedDate);
 
         let startDate, endDate, titlePrefix, displayDate;
         let isInterval = false;
@@ -104,7 +149,6 @@ const MentorPrayerStats = () => {
                 let statusText = '';
 
                 if (!isInterval) {
-                    // Daily View - Match the current date
                     const record = relevantRecords.find(r => r.studentId === student.id);
                     const prayersDone = record && record.prayers ? record.prayers : {};
                     const completedSpecial = activeSpecialPrayers.filter(p => prayersDone[p.id]);
@@ -117,10 +161,7 @@ const MentorPrayerStats = () => {
                         statusText = `(${completedSpecial.map(p => p.name).join(', ')})`;
                     }
                 } else {
-                    // Weekly/Monthly Aggregation
                     const studentRecords = relevantRecords.filter(r => r.studentId === student.id);
-
-                    // Sum up only active special prayers
                     const totalSpecialPrayers = studentRecords.reduce((sum, r) => {
                         const prayersDone = r.prayers || {};
                         const completedCount = activeSpecialPrayers.filter(p => prayersDone[p.id]).length;
@@ -147,14 +188,31 @@ const MentorPrayerStats = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-200">
+            {isEditModalOpen && editingStudent && (
+                <EditPrayerModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => {
+                        setIsEditModalOpen(false);
+                        setEditingStudent(null);
+                    }}
+                    student={editingStudent}
+                    date={dateStr}
+                    onDateChange={(newDateStr) => setSelectedDate(new Date(newDateStr))}
+                    prayerRecords={prayerRecords}
+                    specialPrayers={specialPrayers}
+                    classes={classes}
+                    onSave={handleSaveFromModal}
+                />
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">Special Prayer Stats</h2>
-                    <p className="text-sm text-gray-500">Track daily special prayer performance</p>
+                    <h2 className="text-xl font-bold text-gray-900">Special Prayer Register</h2>
+                    <p className="text-sm text-gray-500">Track and mark daily special prayers (Tahajjud, Duha, etc.)</p>
                 </div>
 
-                <div className="flex flex-row items-center justify-between gap-1.5 sm:gap-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm w-full">
+                <div className="flex flex-row items-center justify-between gap-1.5 sm:gap-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm w-full md:w-auto">
                     {/* Class Selector */}
                     <div className="flex bg-gray-100 px-2 py-1.5 rounded-lg items-center gap-1.5 flex-1 min-w-0">
                         <select
@@ -172,7 +230,7 @@ const MentorPrayerStats = () => {
                     <div className="flex items-center gap-0.5 sm:gap-1 bg-white px-0.5 py-0.5 sm:p-1 rounded-lg border border-gray-200 shrink-0">
                         <button
                             onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() - 1)))}
-                            className="p-1 hover:bg-gray-100 rounded-md text-gray-600"
+                            className="p-1 hover:bg-gray-100 rounded-md text-gray-600 cursor-pointer"
                         >
                             <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
@@ -182,7 +240,7 @@ const MentorPrayerStats = () => {
                         </div>
                         <button
                             onClick={() => setSelectedDate(curr => new Date(curr.setDate(curr.getDate() + 1)))}
-                            className="p-1 hover:bg-gray-100 rounded-md text-gray-600 disabled:opacity-50"
+                            className="p-1 hover:bg-gray-100 rounded-md text-gray-600 disabled:opacity-50 cursor-pointer"
                             disabled={isSameDay(selectedDate, new Date())}
                         >
                             <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -193,7 +251,7 @@ const MentorPrayerStats = () => {
                     <div className="relative shrink-0 flex">
                         <button
                             onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
-                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2 sm:px-4 py-1.5 rounded-lg text-[11px] sm:text-sm font-semibold flex items-center gap-1 transition-colors border border-indigo-100 h-full whitespace-nowrap"
+                            className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2 sm:px-4 py-1.5 rounded-lg text-[11px] sm:text-sm font-semibold flex items-center gap-1 transition-colors border border-indigo-100 h-full whitespace-nowrap cursor-pointer"
                         >
                             Report <ChevronDown className="w-3.5 h-3.5" />
                         </button>
@@ -230,7 +288,7 @@ const MentorPrayerStats = () => {
                 </div>
             </div>
 
-            <Card className="overflow-hidden">
+            <Card className="overflow-hidden rounded-2xl shadow-sm border-gray-100">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
@@ -242,49 +300,88 @@ const MentorPrayerStats = () => {
                                         {!p.isEnabled && <span className="ml-1 text-[10px] text-red-500">(Disabled)</span>}
                                     </th>
                                 ))}
+                                <th className="px-6 py-4 text-center font-bold">Actions</th>
                             </tr>
                         </thead>
 
                         <tbody className="divide-y divide-gray-100">
                             {stats.length === 0 ? (
                                 <tr>
-                                    <td colSpan={activeSpecialPrayers.length + 1} className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan={activeSpecialPrayers.length + 2} className="px-6 py-8 text-center text-gray-500">
                                         No students found.
                                     </td>
                                 </tr>
                             ) : (
                                 stats.map(student => (
-                                    <tr key={student.id} className="bg-white hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 font-medium text-gray-900">
-                                            {student.name}
+                                    <tr key={student.id} className="bg-white hover:bg-indigo-50/20 transition-colors">
+                                        <td
+                                            className="px-6 py-4 font-medium text-gray-900 cursor-pointer"
+                                            onClick={() => {
+                                                setEditingStudent(student);
+                                                setIsEditModalOpen(true);
+                                            }}
+                                            title="Click to edit student prayers"
+                                        >
+                                            <div className="font-bold flex items-center gap-1.5 group">
+                                                <span className="group-hover:text-indigo-600 transition-colors">{student.name}</span>
+                                                <Pencil className="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </div>
                                             <div className="text-xs text-gray-500 font-normal">{student.registerNo}</div>
                                         </td>
                                         {activeSpecialPrayers.map(p => {
                                             const isDone = !!student.prayersDone[p.id];
+                                            const isSavingThis = savingPrayerKey === `${student.id}_${p.id}`;
+
                                             return (
                                                 <td key={p.id} className="px-6 py-4 text-center">
                                                     <div className="flex justify-center">
-                                                        {isDone ? (
-                                                            <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                                                        <button
+                                                            type="button"
+                                                            disabled={isFutureDate || isSavingThis}
+                                                            onClick={() => handleToggleSpecialPrayer(student, p.id)}
+                                                            title={isDone ? `Mark ${p.name} as pending` : `Mark ${p.name} as completed`}
+                                                            className={clsx(
+                                                                "w-7 h-7 rounded-full flex items-center justify-center transition-all transform active:scale-90 cursor-pointer shadow-xs",
+                                                                isDone
+                                                                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 ring-2 ring-emerald-500/20"
+                                                                    : "bg-gray-100 text-gray-300 hover:bg-gray-200 hover:text-gray-500",
+                                                                isFutureDate && "opacity-40 cursor-not-allowed"
+                                                            )}
+                                                        >
+                                                            {isSavingThis ? (
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                                                            ) : isDone ? (
                                                                 <Check className="w-4 h-4" />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="w-6 h-6 bg-gray-100 text-gray-300 rounded-full flex items-center justify-center">
-                                                                <X className="w-3 h-3" />
-                                                            </div>
-                                                        )}
+                                                            ) : (
+                                                                <X className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
                                                     </div>
                                                 </td>
                                             );
                                         })}
+                                        <td className="px-6 py-4 text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEditingStudent(student);
+                                                    setIsEditModalOpen(true);
+                                                }}
+                                                className="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                                title={`Edit all prayer records for ${student.name}`}
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                                Edit
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))
                             )}
                         </tbody>
                     </table>
                 </div>
-            </Card >
-        </div >
+            </Card>
+        </div>
     );
 };
 
