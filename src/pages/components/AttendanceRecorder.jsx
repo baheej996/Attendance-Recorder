@@ -38,6 +38,7 @@ const AttendanceRecorder = () => {
 
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [currentPreviewStudentId, setCurrentPreviewStudentId] = useState(null);
+    const [profileModalTab, setProfileModalTab] = useState('overview');
     const [showExcludedList, setShowExcludedList] = useState(false);
 
     // Filter classes for Mentors
@@ -541,9 +542,20 @@ const AttendanceRecorder = () => {
                                                  <div className="flex items-center gap-2">
                                                      <span className="font-semibold text-gray-900 whitespace-nowrap">{student.name}</span>
                                                      {!student.admissionDate && (
-                                                         <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shrink-0 whitespace-nowrap" title="Admission date not recorded in system">
-                                                             No Join Date
-                                                         </span>
+                                                         <button
+                                                             type="button"
+                                                             onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 setCurrentPreviewStudentId(student.id);
+                                                                 setProfileModalTab('profile');
+                                                                 setIsProfileModalOpen(true);
+                                                             }}
+                                                             className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 shrink-0 whitespace-nowrap transition-colors cursor-pointer inline-flex items-center gap-1 group"
+                                                             title="Admission date not recorded. Click to set join date."
+                                                         >
+                                                             <span>No Join Date</span>
+                                                             <span className="text-[9px] text-amber-600 underline font-normal group-hover:text-amber-800">+ Set</span>
+                                                         </button>
                                                      )}
                                                  </div>
                                              </td>
@@ -626,9 +638,20 @@ const AttendanceRecorder = () => {
                                                      <div className="flex items-center gap-1.5 flex-wrap">
                                                          <h3 className="font-bold text-gray-900 truncate text-sm">{student.name}</h3>
                                                          {!student.admissionDate && (
-                                                             <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                                                 No Join Date
-                                                             </span>
+                                                             <button
+                                                                 type="button"
+                                                                 onClick={(e) => {
+                                                                     e.stopPropagation();
+                                                                     setCurrentPreviewStudentId(student.id);
+                                                                     setProfileModalTab('profile');
+                                                                     setIsProfileModalOpen(true);
+                                                                 }}
+                                                                 className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 cursor-pointer inline-flex items-center gap-1"
+                                                                 title="Admission date not recorded. Click to set join date."
+                                                             >
+                                                                 <span>No Join Date</span>
+                                                                 <span className="text-[8px] text-amber-600 underline">+ Set</span>
+                                                             </button>
                                                          )}
                                                          {!records[student.id] && (
                                                              <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-gray-100 text-gray-500">
@@ -707,7 +730,11 @@ const AttendanceRecorder = () => {
             <StudentProfileModal
                 studentId={currentPreviewStudentId}
                 isOpen={isProfileModalOpen}
-                onClose={() => setIsProfileModalOpen(false)}
+                initialTab={profileModalTab}
+                onClose={() => {
+                    setIsProfileModalOpen(false);
+                    setProfileModalTab('overview');
+                }}
             />
         </div>
     );

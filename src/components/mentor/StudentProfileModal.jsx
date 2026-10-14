@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock, Loader2, Download, FileText, MapPin, Phone, MonitorSmartphone } from 'lucide-react';
+import { useUI } from '../../contexts/UIContext';
+import { X, User, BookOpen, Activity, Calendar as CalendarIcon, Award, Clock, Loader2, Download, FileText, MapPin, Phone, MonitorSmartphone, Pencil, Check } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { clsx } from 'clsx';
 import { Card } from '../ui/Card';
@@ -10,7 +11,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { ReportCardPDFTemplate } from '../ui/ReportCardPDFTemplate';
 
-export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
+export const StudentProfileModal = ({ studentId, isOpen, onClose, initialTab = 'overview' }) => {
     const {
         students,
         classes,
@@ -23,13 +24,27 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
         prayerRecords,
         attendance,
         institutionSettings,
-        requireFeature
+        requireFeature,
+        updateStudent
     } = useData();
 
-    const [activeTab, setActiveTab] = useState('overview');
+    const { showAlert } = useUI();
+
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [generatingExams, setGeneratingExams] = useState({});
     const [activePdfExam, setActivePdfExam] = useState(null);
     const pdfRef = useRef(null);
+
+    // Join Date editing states for mentors
+    const [isEditingJoinDate, setIsEditingJoinDate] = useState(false);
+    const [joinDateValue, setJoinDateValue] = useState('');
+    const [isSavingJoinDate, setIsSavingJoinDate] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setActiveTab(initialTab);
+        }
+    }, [isOpen, initialTab]);
 
     // Moved these state variables to the top to prevent ReferenceError during minified production builds
     const [studentAttendance, setStudentAttendance] = useState([]);
@@ -53,6 +68,32 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
 
     const student = useMemo(() => students.find(s => s.id === studentId), [students, studentId]);
     const studentClass = useMemo(() => classes.find(c => c.id === student?.classId), [classes, student]);
+
+    // Sync Join Date state whenever the student changes or updates
+    useEffect(() => {
+        if (student) {
+            setJoinDateValue(student.admissionDate || '');
+            setIsEditingJoinDate(false);
+        }
+    }, [student?.id, student?.admissionDate]);
+
+    // Handle saving Join Date by mentor
+    const handleSaveJoinDate = async () => {
+        if (!student?.id) return;
+        try {
+            setIsSavingJoinDate(true);
+            await updateStudent(student.id, {
+                admissionDate: joinDateValue ? joinDateValue.trim() : null
+            });
+            setIsEditingJoinDate(false);
+            showAlert("Updated", "Student Join Date updated successfully.", "success");
+        } catch (err) {
+            console.error("Error updating student join date:", err);
+            showAlert("Error", "Failed to update Join Date. Please try again.", "error");
+        } finally {
+            setIsSavingJoinDate(false);
+        }
+    };
 
     // --- Data Helpers ---
 
@@ -340,13 +381,31 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                             <p className="text-gray-500">
                                 Class {studentClass?.name}-{studentClass?.division} • {student.registerNo}
                             </p>
-                            <div className="flex gap-2 mt-2">
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     Status: {student.status}
                                 </span>
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                     Gender: {student.gender}
                                 </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveTab('profile');
+                                        setIsEditingJoinDate(true);
+                                    }}
+                                    className={clsx(
+                                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                                        student.admissionDate
+                                            ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                                            : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                                    )}
+                                    title="Click to edit student's Join Date"
+                                >
+                                    <CalendarIcon className="w-3 h-3" />
+                                    <span>Joined: {student.admissionDate || 'Not set'}</span>
+                                    <Pencil className="w-2.5 h-2.5 opacity-60" />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -440,9 +499,88 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose }) => {
                                         Personal Details
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                        <div>
-                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Admission Date (Join Date)</p>
-                                            <p className="text-indigo-600 font-bold">{student.admissionDate || 'Not specified'}</p>
+                                        <div className="bg-white p-3.5 rounded-xl border border-indigo-100 shadow-sm col-span-1 md:col-span-2">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-xs font-semibold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <CalendarIcon className="w-3.5 h-3.5 text-indigo-600" />
+                                                    Admission Date (Join Date)
+                                                    <span className="text-[10px] font-normal text-indigo-600/80 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                                                        Mentor Editable
+                                                    </span>
+                                                </p>
+                                                {!isEditingJoinDate && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsEditingJoinDate(true)}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200/60 transition-colors cursor-pointer"
+                                                    >
+                                                        <Pencil className="w-3 h-3" />
+                                                        {student.admissionDate ? 'Edit Date' : 'Set Date'}
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {isEditingJoinDate ? (
+                                                <div className="flex flex-wrap items-center gap-2 pt-1">
+                                                    <input
+                                                        type="date"
+                                                        value={joinDateValue}
+                                                        onChange={(e) => setJoinDateValue(e.target.value)}
+                                                        disabled={isSavingJoinDate}
+                                                        className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-800"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleSaveJoinDate}
+                                                        disabled={isSavingJoinDate}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
+                                                    >
+                                                        {isSavingJoinDate ? (
+                                                            <>
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                Saving...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Check className="w-3.5 h-3.5" />
+                                                                Save
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setJoinDateValue(student.admissionDate || '');
+                                                            setIsEditingJoinDate(false);
+                                                        }}
+                                                        disabled={isSavingJoinDate}
+                                                        className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded-lg transition-colors cursor-pointer"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    {student.admissionDate && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setJoinDateValue('')}
+                                                            disabled={isSavingJoinDate}
+                                                            className="px-2 py-1.5 text-xs text-red-600 hover:text-red-700 hover:underline ml-auto cursor-pointer"
+                                                            title="Clear admission date"
+                                                        >
+                                                            Clear Date
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="text-base font-bold text-indigo-700">
+                                                    {student.admissionDate ? (
+                                                        student.admissionDate
+                                                    ) : (
+                                                        <span className="text-amber-600 font-normal italic text-sm">
+                                                            Not specified — click 'Set Date' to record when this student joined.
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            )}
                                         </div>
                                         <div>
                                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date of Birth</p>
