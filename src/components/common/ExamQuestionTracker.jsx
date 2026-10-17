@@ -18,10 +18,10 @@ const ExamQuestionTracker = () => {
     }));
 
     // Filter out subjects not used for exams
-    const examSubjects = subjects.filter(s => s.isExamSubject !== false);
+    const examSubjects = useMemo(() => (subjects || []).filter(s => s.isExamSubject !== false), [subjects]);
 
     // Get unique class names
-    const uniqueClassNames = [...new Set(classes.map(c => c.name))].sort();
+    const uniqueClassNames = useMemo(() => [...new Set((classes || []).map(c => c.name))].sort(), [classes]);
 
     const getSetting = (examId, className, subjectName) => {
         return examSettings.find(s => s.examId === examId && s.classId === className && s.subjectId === subjectName) || { isActive: false, isPublished: false };
@@ -30,9 +30,14 @@ const ExamQuestionTracker = () => {
     const trackerData = useMemo(() => {
         if (!selectedExamId) return [];
 
+        const selectedExam = exams.find(e => e.id === selectedExamId);
+
         return uniqueClassNames.map(className => {
             const classIdsForName = classes.filter(c => c.name === className).map(c => c.id);
-            const relevantSubjects = examSubjects.filter(s => classIdsForName.includes(s.classId));
+            const relevantSubjects = examSubjects.filter(s => 
+                classIdsForName.includes(s.classId) &&
+                !selectedExam?.excludedSubjectNames?.includes(s.name)
+            );
             const uniqueSubjectNames = [...new Set(relevantSubjects.map(s => s.name))];
 
             const subjectData = uniqueSubjectNames.map(subjectName => {
@@ -80,7 +85,7 @@ const ExamQuestionTracker = () => {
             };
         }).filter(c => c.subjects.length > 0); // Only show classes that have exam subjects
 
-    }, [selectedExamId, uniqueClassNames, classes, examSubjects, questions, examSettings]);
+    }, [selectedExamId, uniqueClassNames, classes, examSubjects, questions, examSettings, exams]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
