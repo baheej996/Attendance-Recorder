@@ -7,6 +7,8 @@ import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
 import ExamGradingModal from './ExamGradingModal';
 import ExamEligibilityModal from './ExamEligibilityModal';
+import { db } from '../../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 // MarksEntry Component v2.1 - Smart Config Dashboard Update
 const MarksEntry = () => {
@@ -222,6 +224,43 @@ const MarksEntry = () => {
             return true;
         });
     }, [students, selectedClassId, selectedExamId, exams]);
+
+    // Live Class-Scoped & Transfer-Aware Attendance Subscription for Marks Entry
+    // Avoids 5000-document truncation and includes past attendance for transferred students
+    const [classScopedAttendance, setClassScopedAttendance] = useState(null);
+
+    useEffect(() => {
+        if (!selectedClassId || classStudents.length === 0) {
+            setClassScopedAttendance(null);
+            return;
+        }
+
+        const studentIds = classStudents.map(s => s.id);
+        const unsubs = [];
+        const batchMap = new Map();
+
+        for (let i = 0; i < studentIds.length; i += 30) {
+            const batchIndex = Math.floor(i / 30);
+            const batchIds = studentIds.slice(i, i + 30);
+            const q = query(collection(db, 'attendance'), where('studentId', 'in', batchIds));
+
+            const unsub = onSnapshot(q, (snap) => {
+                batchMap.set(batchIndex, snap.docs.map(d => ({ ...d.data(), id: d.id })));
+                const combined = [];
+                batchMap.forEach(records => combined.push(...records));
+                setClassScopedAttendance(combined);
+            }, (err) => {
+                console.error("[MarksEntry] Error subscribing to class-scoped attendance:", err);
+            });
+            unsubs.push(unsub);
+        }
+
+        return () => {
+            unsubs.forEach(u => u());
+        };
+    }, [selectedClassId, classStudents]);
+
+    const effectiveAttendance = classScopedAttendance !== null ? classScopedAttendance : attendance;
 
     useEffect(() => {
         if (selectedExamId && selectedClassId && selectedSubjectId) {
@@ -822,7 +861,7 @@ const MarksEntry = () => {
                     classObj={eligibilityClass}
                     exam={exams.find(e => e.id === selectedExamId)}
                     students={students}
-                    attendance={attendance}
+                    attendance={effectiveAttendance}
                 />
             </div>
         );
@@ -1248,7 +1287,7 @@ const MarksEntry = () => {
                             {classStudents.map(student => {
                                 const selExam = exams.find(e => e.id === selectedExamId);
                                 const reqP = Number(selExam?.minAttendancePercent) || 0;
-                                const sRecs = (attendance || []).filter(a => 
+                                const sRecs = (effectiveAttendance || []).filter(a => 
                                     a.studentId === student.id &&
                                     (!student.admissionDate || a.date >= student.admissionDate) &&
                                     a.status !== 'Not Applicable' &&
@@ -1258,7 +1297,8 @@ const MarksEntry = () => {
                                 const aD = sRecs.filter(a => a.status === 'Absent').length;
                                 const tD = pD + aD;
                                 const pPct = tD > 0 ? Math.round((pD / tD) * 100) : 100;
-                                const isEl = pPct >= reqP;
+                                const isExempted = !!selExam?.exemptions?.[student.id]?.isExempt;
+                                const isEl = (reqP === 0 || pPct >= reqP) || isExempted;
 
                                 return (
                                     <tr key={student.id} className="hover:bg-gray-50 transition-colors">

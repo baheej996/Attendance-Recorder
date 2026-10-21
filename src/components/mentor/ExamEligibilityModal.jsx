@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from 'react';
-import { X, Search, UserCheck, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Download, Printer, FileSpreadsheet, Users, UserPlus, Check, RotateCcw, FileText } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, Search, UserCheck, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Download, Printer, FileSpreadsheet, Users, UserPlus, Check, RotateCcw, FileText, Loader2 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { format } from 'date-fns';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
+import { db } from '../../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], attendance = [] }) => {
     const { updateExam, currentUser } = useData();
@@ -27,12 +29,57 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
         return (students || []).filter(s => s.classId === classObj.id);
     }, [students, classObj]);
 
+    // Live, Class-Scoped & Transfer-Aware Attendance Subscription
+    // Directly queries attendance by the student IDs of this class, avoiding global truncation
+    // and correctly carrying over attendance from previous classes if students transferred.
+    const [classScopedAttendance, setClassScopedAttendance] = useState(null);
+    const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen || !classObj?.id || classStudents.length === 0) {
+            setClassScopedAttendance(null);
+            setIsLoadingAttendance(false);
+            return;
+        }
+
+        setIsLoadingAttendance(true);
+        const studentIds = classStudents.map(s => s.id);
+        const unsubs = [];
+        const batchMap = new Map();
+
+        // Process in chunks of 30 (Firestore 'in' limit)
+        for (let i = 0; i < studentIds.length; i += 30) {
+            const batchIndex = Math.floor(i / 30);
+            const batchIds = studentIds.slice(i, i + 30);
+            const q = query(collection(db, 'attendance'), where('studentId', 'in', batchIds));
+            
+            const unsub = onSnapshot(q, (snap) => {
+                batchMap.set(batchIndex, snap.docs.map(d => ({ ...d.data(), id: d.id })));
+                const combined = [];
+                batchMap.forEach(records => combined.push(...records));
+                setClassScopedAttendance(combined);
+                setIsLoadingAttendance(false);
+            }, (err) => {
+                console.error("[ExamEligibilityModal] Error subscribing to student attendance:", err);
+                setIsLoadingAttendance(false);
+            });
+            unsubs.push(unsub);
+        }
+
+        return () => {
+            unsubs.forEach(u => u());
+        };
+    }, [isOpen, classObj?.id, classStudents]);
+
+    // Use classScopedAttendance if loaded; gracefully fall back to props attendance while loading
+    const effectiveAttendance = classScopedAttendance !== null ? classScopedAttendance : attendance;
+
     // Calculate detailed attendance & eligibility for each student
     const studentEligibilityList = useMemo(() => {
         const exemptions = exam?.exemptions || {};
 
         return classStudents.map(student => {
-            const studentRecords = (attendance || []).filter(a => 
+            const studentRecords = (effectiveAttendance || []).filter(a => 
                 a.studentId === student.id &&
                 (!student.admissionDate || a.date >= student.admissionDate) &&
                 a.status !== 'Not Applicable' &&
@@ -62,7 +109,7 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
                 shortfall
             };
         });
-    }, [classStudents, attendance, reqPct, exam]);
+    }, [classStudents, effectiveAttendance, reqPct, exam]);
 
     // Summary Statistics
     const stats = useMemo(() => {
@@ -194,7 +241,7 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
                 {/* Header */}
                 <div className="p-5 sm:p-6 bg-linear-to-r from-indigo-900 via-indigo-800 to-indigo-900 text-white flex justify-between items-start shrink-0 relative">
                     <div className="pr-8">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/15 text-indigo-100 border border-white/20">
                                 Exam Eligibility Audit
                             </span>
@@ -205,6 +252,11 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
                             ) : (
                                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-200 border border-emerald-300/30">
                                     No Min Restriction
+                                </span>
+                            )}
+                            {isLoadingAttendance && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-indigo-100 flex items-center gap-1">
+                                    <Loader2 className="w-3 h-3 animate-spin text-indigo-300" /> Syncing Attendance...
                                 </span>
                             )}
                         </div>
