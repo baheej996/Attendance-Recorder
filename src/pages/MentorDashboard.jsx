@@ -1,8 +1,14 @@
 import React from 'react';
 import InstitutionDirectory from '../components/mentor/InstitutionDirectory';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, BookOpen, Calendar, UserCheck, MessageSquare, Users, Video, ShieldCheck, ExternalLink, Trophy, Search, X } from 'lucide-react';
+import { 
+    ClipboardCheck, BarChart2, CalendarDays, FileEdit, Info, Printer, Layers, 
+    BookOpen, Calendar, UserCheck, MessageSquare, Users, Video, ShieldCheck, 
+    ExternalLink, Trophy, Search, X, Bell, Repeat, ClipboardList, FileBarChart, 
+    AlertTriangle, CheckCircle, ChevronRight, Sparkles 
+} from 'lucide-react';
 import { clsx } from 'clsx';
+import { format } from 'date-fns';
 import { Card } from '../components/ui/Card';
 import AttendanceRecorder from './components/AttendanceRecorder';
 import MentorStats from './components/MentorStats';
@@ -260,10 +266,34 @@ const DashboardHome = () => {
 
 const MentorDashboard = () => {
     const location = useLocation();
-    const { logout, currentUser, attendance, leaveRequests, unreadChats, stopImpersonating, classes, students, notifications, mentorSettings, mentorTasks, substitutionRequests, evaluationForms, evaluationSubmissions, mentorFeatureFlags, requireFeature } = useData();
+    const { 
+        logout, currentUser, attendance, leaveRequests, unreadChats, stopImpersonating, 
+        classes, students, notifications, mentorSettings, mentorTasks, substitutionRequests, 
+        evaluationForms, evaluationSubmissions, mentorFeatureFlags, requireFeature, questionSuggestions 
+    } = useData();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [showLogoutModal, setShowLogoutModal] = React.useState(false);
     const [sidebarSearchQuery, setSidebarSearchQuery] = React.useState('');
+    const [isUpdatesHubOpen, setIsUpdatesHubOpen] = React.useState(false);
+    const desktopUpdatesHubRef = React.useRef(null);
+    const mobileUpdatesHubRef = React.useRef(null);
+
+    // Click outside to close updates hub popover
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            const inDesktop = desktopUpdatesHubRef.current && desktopUpdatesHubRef.current.contains(event.target);
+            const inMobile = mobileUpdatesHubRef.current && mobileUpdatesHubRef.current.contains(event.target);
+            if (!inDesktop && !inMobile) {
+                setIsUpdatesHubOpen(false);
+            }
+        };
+        if (isUpdatesHubOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isUpdatesHubOpen]);
 
     const handleReturn = () => {
         const role = currentUser?.originalUser?.role;
@@ -279,39 +309,72 @@ const MentorDashboard = () => {
         return requireFeature('leave');
     }, [requireFeature]);
 
-    const pendingLeaves = (leaveRequests || []).filter(r =>
-        r.status === 'Pending' && currentUser?.assignedClassIds?.includes(r.classId)
-    ).length;
+    // Assigned Class IDs
+    const mentorAssignedClassIds = React.useMemo(() => {
+        const ids = currentUser?.assignedClassIds || (currentUser?.classId ? [currentUser.classId] : []);
+        return Array.isArray(ids) ? ids : [];
+    }, [currentUser]);
 
+    // 1. Leave Requests
+    const pendingLeaves = React.useMemo(() => {
+        return (leaveRequests || []).filter(r =>
+            r.status === 'Pending' && mentorAssignedClassIds.includes(r.classId)
+        ).length;
+    }, [leaveRequests, mentorAssignedClassIds]);
+
+    // 2. Class Substitution (incoming requests waiting for this mentor's approval)
+    const incomingSubReqsCount = React.useMemo(() => {
+        return (substitutionRequests || []).filter(req => 
+            (req.substituteId === currentUser?.id || req.substituteMentorId === currentUser?.id) && 
+            req.status === 'Pending Substitute Approval'
+        ).length;
+    }, [substitutionRequests, currentUser?.id]);
+
+    // 3. Unread Chats
     const unreadChatCount = (unreadChats || []).length;
-    
 
-    const pendingTasksCount = (mentorTasks || []).filter(task => 
-        (task.assignedTo?.includes('all') || task.assignedTo?.includes(currentUser.id)) && 
-        !task.submissions?.[currentUser.id]?.completed
-    ).length;
+    // 4. Tasks
+    const pendingTasksCount = React.useMemo(() => {
+        return (mentorTasks || []).filter(task => 
+            (task.assignedTo?.includes('all') || task.assignedTo?.includes(currentUser?.id)) && 
+            !task.submissions?.[currentUser?.id]?.completed
+        ).length;
+    }, [mentorTasks, currentUser?.id]);
 
-    const incomingSubReqsCount = (substitutionRequests || []).filter(req => 
-        req.substituteMentorId === currentUser.id && 
-        req.status === 'Pending Substitute Approval'
-    ).length;
+    // 5. Notifications
+    const mentorClasses = React.useMemo(() => 
+        classes.filter(c => mentorAssignedClassIds.includes(c.id)),
+        [classes, mentorAssignedClassIds]
+    );
 
-    const mentorClasses = classes.filter(c => (currentUser?.assignedClassIds || []).includes(c.id));
-    const unreadNotificationsCount = (notifications || []).filter(n => {
-        const isTarget = n.audience === 'all' || n.audience === 'mentors' || 
-                        (n.audience === 'specific_class' && mentorClasses.some(c => c.id === n.classId)) ||
-                        (n.audience === 'specific_mentor' && n.targetId === currentUser.id);
-        return isTarget && n.senderId !== currentUser.id && !(n.readBy || []).includes(currentUser.id);
-    }).length;
+    const unreadNotificationsCount = React.useMemo(() => {
+        return (notifications || []).filter(n => {
+            const isTarget = n.audience === 'all' || n.audience === 'mentors' || 
+                            (n.audience === 'specific_class' && mentorClasses.some(c => c.id === n.classId)) ||
+                            (n.audience === 'specific_mentor' && n.targetId === currentUser?.id);
+            return isTarget && n.senderId !== currentUser?.id && !(n.readBy || []).includes(currentUser?.id);
+        }).length;
+    }, [notifications, mentorClasses, currentUser?.id]);
 
-    const pendingEvaluationsCount = (evaluationForms || []).filter(f => 
-        f.status === 'Published' && 
-        !(evaluationSubmissions || []).some(s => s.formId === f.id && s.mentorId === currentUser?.id)
-    ).length;
+    // 6. Evaluations
+    const pendingEvaluationsCount = React.useMemo(() => {
+        return (evaluationForms || []).filter(f => 
+            f.status === 'Published' && 
+            !(evaluationSubmissions || []).some(s => s.formId === f.id && s.mentorId === currentUser?.id)
+        ).length;
+    }, [evaluationForms, evaluationSubmissions, currentUser?.id]);
 
+    // 7. Question Bank Suggestions
+    const pendingQuestionsCount = React.useMemo(() => {
+        return (questionSuggestions || []).filter(s => 
+            s.receiverId === currentUser?.id && s.status === 'Pending'
+        ).length;
+    }, [questionSuggestions, currentUser?.id]);
+
+    // 8. Anomalies
     const anomaliesBadgeCount = React.useMemo(() => {
         let count = 0;
-        const myStudents = new Set((students || []).filter(s => currentUser?.assignedClassIds?.includes(s.classId)).map(s => s.id));
+        const myStudents = new Set((students || []).filter(s => mentorAssignedClassIds.includes(s.classId)).map(s => s.id));
         const recentRecordsByStudent = {};
         (attendance || []).forEach(r => {
             if (myStudents.has(r.studentId) && (r.status === 'Present' || r.status === 'Absent')) {
@@ -331,7 +394,105 @@ const MentorDashboard = () => {
             }
         });
         return count;
-    }, [attendance, students, currentUser]);
+    }, [attendance, students, mentorAssignedClassIds]);
+
+    // Aggregated list of all active pending updates for non-scrolling quick notifications
+    const pendingUpdatesList = React.useMemo(() => {
+        const list = [];
+        if (pendingLeaves > 0) {
+            list.push({
+                id: 'leaves',
+                title: 'Leave Requests',
+                count: pendingLeaves,
+                path: '/mentor/leaves',
+                icon: UserCheck,
+                color: 'text-amber-700 bg-amber-50 border-amber-200',
+                desc: `${pendingLeaves} student leave request${pendingLeaves > 1 ? 's' : ''} awaiting review`
+            });
+        }
+        if (incomingSubReqsCount > 0) {
+            list.push({
+                id: 'substitution',
+                title: 'Class Substitution',
+                count: incomingSubReqsCount,
+                path: '/mentor/substitution',
+                icon: Repeat,
+                color: 'text-indigo-700 bg-indigo-50 border-indigo-200',
+                desc: `${incomingSubReqsCount} substitution request${incomingSubReqsCount > 1 ? 's' : ''} pending your response`
+            });
+        }
+        if (pendingTasksCount > 0) {
+            list.push({
+                id: 'tasks',
+                title: 'Professional Tasks',
+                count: pendingTasksCount,
+                path: '/mentor/tasks',
+                icon: ClipboardList,
+                color: 'text-purple-700 bg-purple-50 border-purple-200',
+                desc: `${pendingTasksCount} professional task${pendingTasksCount > 1 ? 's' : ''} pending completion`
+            });
+        }
+        if (unreadChatCount > 0) {
+            list.push({
+                id: 'chat',
+                title: 'Chat Messages',
+                count: unreadChatCount,
+                path: '/mentor/chat',
+                icon: MessageSquare,
+                color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+                desc: `${unreadChatCount} unread message${unreadChatCount > 1 ? 's' : ''}`
+            });
+        }
+        if (pendingEvaluationsCount > 0) {
+            list.push({
+                id: 'evaluations',
+                title: 'Self-Evaluation',
+                count: pendingEvaluationsCount,
+                path: '/mentor/evaluations',
+                icon: FileBarChart,
+                color: 'text-blue-700 bg-blue-50 border-blue-200',
+                desc: `${pendingEvaluationsCount} self-evaluation form${pendingEvaluationsCount > 1 ? 's' : ''} to fill`
+            });
+        }
+        if (pendingQuestionsCount > 0) {
+            list.push({
+                id: 'questions',
+                title: 'Question Bank',
+                count: pendingQuestionsCount,
+                path: '/mentor/questions',
+                icon: FileEdit,
+                color: 'text-rose-700 bg-rose-50 border-rose-200',
+                desc: `${pendingQuestionsCount} question suggestion${pendingQuestionsCount > 1 ? 's' : ''} to review`
+            });
+        }
+        if (unreadNotificationsCount > 0) {
+            list.push({
+                id: 'notifications',
+                title: 'Notifications',
+                count: unreadNotificationsCount,
+                path: '/mentor/notifications',
+                icon: Bell,
+                color: 'text-yellow-800 bg-yellow-50 border-yellow-200',
+                desc: `${unreadNotificationsCount} unread notification${unreadNotificationsCount > 1 ? 's' : ''}`
+            });
+        }
+        if (anomaliesBadgeCount > 0) {
+            list.push({
+                id: 'anomalies',
+                title: 'Attendance Anomalies',
+                count: anomaliesBadgeCount,
+                path: '/mentor/anomalies',
+                icon: AlertTriangle,
+                color: 'text-orange-700 bg-orange-50 border-orange-200',
+                desc: `${anomaliesBadgeCount} attendance anomal${anomaliesBadgeCount > 1 ? 'ies' : 'y'} detected`
+            });
+        }
+        return list;
+    }, [pendingLeaves, incomingSubReqsCount, pendingTasksCount, unreadChatCount, pendingEvaluationsCount, pendingQuestionsCount, unreadNotificationsCount, anomaliesBadgeCount]);
+
+    const totalPendingCount = React.useMemo(() => {
+        return pendingUpdatesList.reduce((sum, item) => sum + item.count, 0);
+    }, [pendingUpdatesList]);
 
     const [navItems, setNavItems] = React.useState(MENTOR_NAV_ITEMS);
 
@@ -386,11 +547,12 @@ const MentorDashboard = () => {
     const itemsWithBadges = filteredNavItems.map(item => {
         let badge = 0;
         if (item.id === 'leaves') badge = pendingLeaves;
+        if (item.id === 'substitution') badge = incomingSubReqsCount;
         if (item.id === 'chat') badge = unreadChatCount;
         if (item.id === 'tasks') badge = pendingTasksCount;
-        if (item.id === 'substitution') badge = incomingSubReqsCount;
         if (item.id === 'notifications') badge = unreadNotificationsCount;
         if (item.id === 'evaluations') badge = pendingEvaluationsCount;
+        if (item.id === 'questions') badge = pendingQuestionsCount;
         if (item.id === 'anomalies') badge = anomaliesBadgeCount;
         return { ...item, badge };
     });
@@ -413,7 +575,43 @@ const MentorDashboard = () => {
                     )}
                 </div>
 
-                <div className="px-4 pb-2">
+                {/* Active Updates Quick-Jump Bar (Visible without scrolling down the sidebar) */}
+                {totalPendingCount > 0 && (
+                    <div className="px-3 pt-3 pb-1">
+                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-50 via-indigo-50 to-amber-50 border border-purple-200/70 shadow-2xs">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                    </span>
+                                    Active Updates ({totalPendingCount})
+                                </span>
+                                <span className="text-[9px] font-bold text-purple-600 bg-white px-1.5 py-0.5 rounded shadow-2xs">
+                                    Quick Jump
+                                </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar">
+                                {pendingUpdatesList.map(u => (
+                                    <Link
+                                        key={u.id}
+                                        to={u.path}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold bg-white/95 border border-purple-100 hover:border-purple-300 hover:bg-purple-100/50 text-gray-700 hover:text-purple-900 shadow-2xs transition-all"
+                                        title={u.desc}
+                                    >
+                                        <u.icon className="w-3 h-3 text-purple-600 shrink-0" />
+                                        <span className="truncate max-w-[80px]">{u.title}</span>
+                                        <span className="px-1 py-0.2 rounded-full bg-red-600 text-white text-[8px] font-black leading-none">
+                                            {u.count}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="px-4 pb-2 pt-2">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
@@ -508,6 +706,43 @@ const MentorDashboard = () => {
                                 <Users className="w-5 h-5" />
                             </button>
                         </div>
+                        {/* Mobile Active Updates Quick-Jump Bar */}
+                        {totalPendingCount > 0 && (
+                            <div className="px-3 pt-3 pb-2 border-b border-gray-100">
+                                <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-50 via-indigo-50 to-amber-50 border border-purple-200/70 shadow-2xs">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                                            <span className="relative flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                            </span>
+                                            Active Updates ({totalPendingCount})
+                                        </span>
+                                        <span className="text-[9px] font-bold text-purple-600 bg-white px-1.5 py-0.5 rounded shadow-2xs">
+                                            Quick Jump
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar">
+                                        {pendingUpdatesList.map(u => (
+                                            <Link
+                                                key={u.id}
+                                                to={u.path}
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold bg-white/95 border border-purple-100 hover:border-purple-300 hover:bg-purple-100/50 text-gray-700 hover:text-purple-900 shadow-2xs transition-all"
+                                                title={u.desc}
+                                            >
+                                                <u.icon className="w-3 h-3 text-purple-600 shrink-0" />
+                                                <span className="truncate max-w-[80px]">{u.title}</span>
+                                                <span className="px-1 py-0.2 rounded-full bg-red-600 text-white text-[8px] font-black leading-none">
+                                                    {u.count}
+                                                </span>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="px-4 py-2 border-b border-gray-100">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -550,7 +785,7 @@ const MentorDashboard = () => {
                                             {item.label}
                                         </div>
                                         {item.badge > 0 && (
-                                            <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                            <span className="flex h-5 min-w-[20px] items-center justify-center px-1.5 rounded-full bg-red-600 text-[10px] font-black text-white shadow-sm border-2 border-white animate-in zoom-in duration-300">
                                                 {item.badge}
                                             </span>
                                         )}
@@ -571,9 +806,121 @@ const MentorDashboard = () => {
             )}
 
             {/* Main Content */}
-            <div className="flex-1 overflow-auto print:overflow-visible flex flex-col h-full">
+            <div className="flex-1 overflow-auto print:overflow-visible flex flex-col h-full relative">
+                {/* Desktop Top Header Bar (Action Center & Notifications) */}
+                <div className="hidden md:flex items-center justify-between px-6 py-2.5 bg-white border-b border-gray-100 shrink-0 print:hidden z-30">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-gray-500">
+                            {format(new Date(), 'EEEE, dd MMMM yyyy')}
+                        </span>
+                        {currentUser?.name && (
+                            <span className="text-xs text-gray-400">
+                                • Logged in as <span className="font-semibold text-gray-700">{currentUser.name}</span>
+                            </span>
+                        )}
+                    </div>
+                    
+                    {/* Action Center Dropdown Hub (Desktop) */}
+                    <div className="relative" ref={desktopUpdatesHubRef}>
+                        <button
+                            type="button"
+                            onClick={() => setIsUpdatesHubOpen(prev => !prev)}
+                            className={clsx(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs border cursor-pointer",
+                                totalPendingCount > 0
+                                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-500 shadow-purple-500/20 hover:shadow-md hover:from-purple-700 hover:to-indigo-700"
+                                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-900"
+                            )}
+                            title="Pending Updates & Notifications"
+                        >
+                            <div className="relative flex items-center justify-center">
+                                <Bell className={clsx("w-4 h-4", totalPendingCount > 0 && "animate-bounce")} />
+                                {totalPendingCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                    </span>
+                                )}
+                            </div>
+                            <span>
+                                {totalPendingCount > 0 ? `${totalPendingCount} Action${totalPendingCount > 1 ? 's' : ''} Required` : 'All Updates Caught Up'}
+                            </span>
+                            <span className={clsx(
+                                "px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none",
+                                totalPendingCount > 0 ? "bg-white text-purple-700" : "bg-gray-200 text-gray-600"
+                            )}>
+                                {totalPendingCount}
+                            </span>
+                        </button>
+
+                        {/* Dropdown Popover (Desktop) */}
+                        {isUpdatesHubOpen && (
+                            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 p-3 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-gray-100">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg">
+                                            <Sparkles className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-gray-900 leading-tight">Action Center</h4>
+                                            <p className="text-[10px] text-gray-400">Pages with pending updates</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full">
+                                        {totalPendingCount} Action{totalPendingCount !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+
+                                {pendingUpdatesList.length > 0 ? (
+                                    <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                                        {pendingUpdatesList.map((update) => {
+                                            const Icon = update.icon;
+                                            return (
+                                                <Link
+                                                    key={update.id}
+                                                    to={update.path}
+                                                    onClick={() => setIsUpdatesHubOpen(false)}
+                                                    className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 hover:border-purple-200 hover:bg-purple-50/50 transition-all group"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={clsx("p-2 rounded-xl flex items-center justify-center shrink-0", update.color)}>
+                                                            <Icon className="w-4 h-4" />
+                                                        </div>
+                                                        <div className="text-left">
+                                                            <div className="text-xs font-bold text-gray-900 group-hover:text-purple-700 transition-colors">
+                                                                {update.title}
+                                                            </div>
+                                                            <div className="text-[10px] text-gray-500 line-clamp-1">
+                                                                {update.desc}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 pl-2 shrink-0">
+                                                        <span className="flex h-5 min-w-[20px] items-center justify-center px-1.5 rounded-full bg-red-600 text-[10px] font-black text-white shadow-2xs">
+                                                            {update.count}
+                                                        </span>
+                                                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all" />
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="py-6 text-center">
+                                        <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                            <CheckCircle className="w-5 h-5" />
+                                        </div>
+                                        <p className="text-xs font-bold text-gray-800">You're all caught up!</p>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">No pending leaves, substitutions, tasks, or messages.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* Mobile Header */}
-                <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 shrink-0 print:hidden">
+                <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 shrink-0 print:hidden relative" ref={mobileUpdatesHubRef}>
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                             <CalendarDays className="w-6 h-6 text-purple-600" />
@@ -587,9 +934,107 @@ const MentorDashboard = () => {
                             </Link>
                         )}
                     </div>
-                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg">
-                        <Layers className="w-6 h-6" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                        <button 
+                            type="button"
+                            onClick={() => setIsUpdatesHubOpen(prev => !prev)} 
+                            className={clsx(
+                                "relative p-2 rounded-lg transition-all cursor-pointer",
+                                totalPendingCount > 0 
+                                    ? "text-purple-600 bg-purple-50 hover:bg-purple-100" 
+                                    : "text-gray-500 hover:bg-gray-50"
+                            )}
+                            title="Active Updates"
+                        >
+                            <Bell className="w-5 h-5" />
+                            {totalPendingCount > 0 && (
+                                <span className="absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center px-1 rounded-full bg-red-600 text-[9px] font-black text-white shadow-sm ring-2 ring-white animate-pulse">
+                                    {totalPendingCount}
+                                </span>
+                            )}
+                        </button>
+                        <button 
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+                            className="relative p-2 text-gray-500 hover:bg-gray-50 rounded-lg cursor-pointer"
+                        >
+                            <Layers className="w-6 h-6" />
+                            {totalPendingCount > 0 && (
+                                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Mobile Action Center Popover */}
+                    {isUpdatesHubOpen && (
+                        <div className="absolute top-full left-0 right-0 m-3 bg-white rounded-2xl shadow-2xl border border-gray-200 p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg">
+                                        <Sparkles className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-gray-900 leading-tight">Action Center</h4>
+                                        <p className="text-[10px] text-gray-400">Pages with pending updates</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full">
+                                        {totalPendingCount} Action{totalPendingCount !== 1 ? 's' : ''}
+                                    </span>
+                                    <button 
+                                        onClick={() => setIsUpdatesHubOpen(false)}
+                                        className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {pendingUpdatesList.length > 0 ? (
+                                <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                                    {pendingUpdatesList.map((update) => {
+                                        const Icon = update.icon;
+                                        return (
+                                            <Link
+                                                key={update.id}
+                                                to={update.path}
+                                                onClick={() => setIsUpdatesHubOpen(false)}
+                                                className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 hover:border-purple-200 hover:bg-purple-50/50 transition-all group"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={clsx("p-2 rounded-xl flex items-center justify-center shrink-0", update.color)}>
+                                                        <Icon className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <div className="text-xs font-bold text-gray-900 group-hover:text-purple-700 transition-colors">
+                                                            {update.title}
+                                                        </div>
+                                                        <div className="text-[10px] text-gray-500 line-clamp-1">
+                                                            {update.desc}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 pl-2 shrink-0">
+                                                    <span className="flex h-5 min-w-[20px] items-center justify-center px-1.5 rounded-full bg-red-600 text-[10px] font-black text-white shadow-2xs">
+                                                        {update.count}
+                                                    </span>
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all" />
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="py-6 text-center">
+                                    <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                        <CheckCircle className="w-5 h-5" />
+                                    </div>
+                                    <p className="text-xs font-bold text-gray-800">You're all caught up!</p>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">No pending leaves, substitutions, tasks, or messages.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
                 
                 {currentUser?.isImpersonating && (

@@ -422,7 +422,7 @@ export const DataProvider = ({ children }) => {
                 subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : [''])),
                 subscribe('studentResponses', setStudentResponses, where('studentId', '==', uid), limit(resultsLimit))
             );
-            if (activeFeatures.has('leave')) unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('studentId', '==', uid)));
+            unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('studentId', '==', uid)));
             if (activeFeatures.has('ramadan')) unsubs.push(subscribe('ramadanLogs', setRamadanLogs, where('classId', '==', cid)));
 
             // Separate listener: direct messages TO this student (mentor→student DMs stored without classId)
@@ -511,7 +511,7 @@ export const DataProvider = ({ children }) => {
                     subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', [...assignedClassIds, ''])),
                     subscribe('studentResponses', setStudentResponses, where('classId', 'in', assignedClassIds), limit(resultsLimit))
                 );
-                if (activeFeatures.has('leave')) unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds)));
+                unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds.slice(0, 30))));
                 if (activeFeatures.has('ramadan')) unsubs.push(subscribe('ramadanLogs', setRamadanLogs, where('classId', 'in', assignedClassIds)));
                 
                 unsubs.push(

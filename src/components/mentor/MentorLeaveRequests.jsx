@@ -16,7 +16,7 @@ const MentorLeaveRequests = () => {
     const [bulkComment, setBulkComment] = useState(''); // New: Bulk Comment
 
     // Filter requests for mentor's assigned classes
-    const assignedClassIds = currentUser?.assignedClassIds || [];
+    const assignedClassIds = currentUser?.assignedClassIds || (currentUser?.classId ? [currentUser.classId] : []);
 
     const filteredRequests = leaveRequests
         .filter(r => assignedClassIds.includes(r.classId))
