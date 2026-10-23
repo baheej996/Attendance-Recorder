@@ -23,11 +23,18 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
 
     const reqPct = Number(exam?.minAttendancePercent) || 0;
 
-    // Filter students for this class
+    // Filter active students for this class (excluding students admitted after exam date)
     const classStudents = useMemo(() => {
         if (!classObj?.id) return [];
-        return (students || []).filter(s => s.classId === classObj.id);
-    }, [students, classObj]);
+        const examDateStr = (exam?.endDate || exam?.date || '').slice(0, 10);
+        return (students || []).filter(s => {
+            if (s.classId !== classObj.id) return false;
+            const isActive = s.status === 'Active' || s.status === 'active';
+            if (!isActive) return false;
+            if (s.admissionDate && examDateStr && s.admissionDate > examDateStr) return false;
+            return true;
+        });
+    }, [students, classObj, exam]);
 
     // Live, Class-Scoped & Transfer-Aware Attendance Subscription
     // Directly queries attendance by the student IDs of this class, avoiding global truncation

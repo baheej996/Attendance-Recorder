@@ -217,7 +217,7 @@ const MarksEntry = () => {
         const selectedExam = exams.find(e => e.id === selectedExamId);
         const examDateStr = (selectedExam?.endDate || selectedExam?.date || '').slice(0, 10);
         return students.filter(s => {
-            if (s.classId !== selectedClassId || s.status !== 'Active') return false;
+            if (s.classId !== selectedClassId || (s.status !== 'Active' && s.status !== 'active')) return false;
             if (s.admissionDate && examDateStr) {
                 if (s.admissionDate > examDateStr) return false;
             }
