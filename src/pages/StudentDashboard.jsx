@@ -31,6 +31,7 @@ import StudentProfileModal from '../components/student/StudentProfileModal';
 import Help from './Help';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { STUDENT_NAV_ITEMS } from '../config/studentNavItems';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const COLORS = ['#10B981', '#EF4444'];
 
@@ -682,7 +683,7 @@ const StudentDashboard = () => {
                             </div>
                         } />
                         <Route path="/subjects" element={<StudentSubjects />} />
-                        <Route path="/exams" element={<StudentExamView />} />
+                        <Route path="/exams" element={<ErrorBoundary inline><StudentExamView /></ErrorBoundary>} />
                         <Route path="/activities" element={<StudentActivities />} />
                         <Route path="/leave" element={<StudentLeave />} />
                         <Route path="/chat" element={<StudentChat />} />
