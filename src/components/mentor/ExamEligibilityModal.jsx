@@ -6,11 +6,10 @@ import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { format } from 'date-fns';
 import { useData } from '../../contexts/DataContext';
 import { useUI } from '../../contexts/UIContext';
-import { db } from '../../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { subscribeAttendanceForStudents } from '../../utils/attendanceLogs';
 
 const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], attendance = [] }) => {
-    const { updateExam, currentUser } = useData();
+    const { updateExam, currentUser, attendanceLogsReady } = useData();
     const { showAlert, showConfirm } = useUI();
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -42,41 +41,31 @@ const ExamEligibilityModal = ({ isOpen, onClose, classObj, exam, students = [], 
     const [classScopedAttendance, setClassScopedAttendance] = useState(null);
     const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
 
+    // Keyed on the student ID list (not the array reference) to avoid re-reading on unrelated updates
+    const classStudentIdsKey = useMemo(() => classStudents.map(s => s.id).sort().join(','), [classStudents]);
+
     useEffect(() => {
-        if (!isOpen || !classObj?.id || classStudents.length === 0) {
+        if (!isOpen || !classObj?.id || !classStudentIdsKey) {
             setClassScopedAttendance(null);
             setIsLoadingAttendance(false);
             return;
         }
 
         setIsLoadingAttendance(true);
-        const studentIds = classStudents.map(s => s.id);
-        const unsubs = [];
-        const batchMap = new Map();
-
-        // Process in chunks of 30 (Firestore 'in' limit)
-        for (let i = 0; i < studentIds.length; i += 30) {
-            const batchIndex = Math.floor(i / 30);
-            const batchIds = studentIds.slice(i, i + 30);
-            const q = query(collection(db, 'attendance'), where('studentId', 'in', batchIds));
-            
-            const unsub = onSnapshot(q, (snap) => {
-                batchMap.set(batchIndex, snap.docs.map(d => ({ ...d.data(), id: d.id })));
-                const combined = [];
-                batchMap.forEach(records => combined.push(...records));
-                setClassScopedAttendance(combined);
+        // Chunks of 30 (Firestore 'in' limit) handled by the helper
+        return subscribeAttendanceForStudents(
+            classStudentIdsKey.split(','),
+            attendanceLogsReady,
+            (records) => {
+                setClassScopedAttendance(records);
                 setIsLoadingAttendance(false);
-            }, (err) => {
+            },
+            (err) => {
                 console.error("[ExamEligibilityModal] Error subscribing to student attendance:", err);
                 setIsLoadingAttendance(false);
-            });
-            unsubs.push(unsub);
-        }
-
-        return () => {
-            unsubs.forEach(u => u());
-        };
-    }, [isOpen, classObj?.id, classStudents]);
+            }
+        );
+    }, [isOpen, classObj?.id, classStudentIdsKey, attendanceLogsReady]);
 
     // Use classScopedAttendance if loaded; gracefully fall back to props attendance while loading
     const effectiveAttendance = classScopedAttendance !== null ? classScopedAttendance : attendance;

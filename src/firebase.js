@@ -1,5 +1,12 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import {
+    initializeFirestore,
+    getFirestore,
+    connectFirestoreEmulator,
+    persistentLocalCache,
+    persistentMultipleTabManager,
+    memoryLocalCache
+} from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getMessaging } from 'firebase/messaging';
 
@@ -14,7 +21,26 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+// Persistent (IndexedDB) cache: when a listener re-attaches or the app is reopened,
+// Firestore resumes from the cached snapshot and only bills documents that changed,
+// instead of re-reading the full result set. Falls back to the in-memory cache when
+// IndexedDB is unavailable (private mode, some WebViews).
+const createDb = () => {
+    try {
+        return initializeFirestore(app, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
+    } catch (e) {
+        console.warn('Persistent Firestore cache unavailable, using memory cache:', e);
+        try {
+            return initializeFirestore(app, { localCache: memoryLocalCache() });
+        } catch {
+            return getFirestore(app);
+        }
+    }
+};
+
+export const db = createDb();
 export const storage = getStorage(app);
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 

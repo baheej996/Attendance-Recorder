@@ -12,7 +12,13 @@ const StudentResultView = () => {
     const pdfRef = useRef(null);
 
     React.useEffect(() => {
-        return requireFeature('results');
+        const unsubResults = requireFeature('results');
+        // Class ranks need every batch-mate's results
+        const unsubBatch = requireFeature('resultsBatch');
+        return () => {
+            unsubResults();
+            unsubBatch();
+        };
     }, [requireFeature]);
 
     // Filter published exams only

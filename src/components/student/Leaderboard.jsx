@@ -72,7 +72,13 @@ const Leaderboard = () => {
     const [showConfetti, setShowConfetti] = useState(true);
 
     React.useEffect(() => {
-        return requireFeature('results');
+        const unsubResults = requireFeature('results');
+        // Class ranks need every batch-mate's results
+        const unsubBatch = requireFeature('resultsBatch');
+        return () => {
+            unsubResults();
+            unsubBatch();
+        };
     }, [requireFeature]);
 
     const publishedExams = exams.filter(e => e.status === 'Published');

@@ -2,15 +2,37 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { DataProvider } from './contexts/DataContext';
 import Landing from './pages/Landing';
-import PublicHome from './pages/PublicHome';
 import LoginPage from './pages/LoginPage';
-import AdminDashboard from './pages/AdminDashboard';
-import SuperAdminDashboard from './pages/SuperAdminDashboard';
-import MentorDashboard from './pages/MentorDashboard';
-import StudentDashboard from './pages/StudentDashboard';
-import OfficeDashboard from './pages/OfficeDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import StudentLoginPage from './pages/StudentLoginPage'; // Import StudentLoginPage
+
+// Each dashboard is a separate chunk, so a student downloads only the student dashboard
+// instead of the admin/office/mentor code (and their PDF/Excel/3D libraries).
+// If a chunk from a previous deploy no longer exists, reload once to pick up the new build.
+const lazyWithReload = (factory) => React.lazy(() => factory().catch((error) => {
+  const key = 'chunk_reload_at';
+  let last = 0;
+  try { last = Number(sessionStorage.getItem(key) || 0); } catch { /* storage blocked */ }
+  if (Date.now() - last > 60000) {
+    try { sessionStorage.setItem(key, String(Date.now())); } catch { /* storage blocked */ }
+    window.location.reload();
+    return new Promise(() => {});
+  }
+  throw error;
+}));
+
+const PublicHome = lazyWithReload(() => import('./pages/PublicHome'));
+const AdminDashboard = lazyWithReload(() => import('./pages/AdminDashboard'));
+const SuperAdminDashboard = lazyWithReload(() => import('./pages/SuperAdminDashboard'));
+const MentorDashboard = lazyWithReload(() => import('./pages/MentorDashboard'));
+const StudentDashboard = lazyWithReload(() => import('./pages/StudentDashboard'));
+const OfficeDashboard = lazyWithReload(() => import('./pages/OfficeDashboard'));
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+  </div>
+);
 
 import ErrorBoundary from './components/ErrorBoundary';
 import DebugPanel from './components/ui/DebugPanel';
@@ -79,6 +101,7 @@ const AppContent = () => {
       <InstallPrompt />
       <NotificationPrompt />
       <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+        <React.Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Dedicated Student Login - Moved to top for priority */}
           <Route path="/student-login" element={<StudentLoginPage />} />
@@ -135,6 +158,7 @@ const AppContent = () => {
             </div>
           } />
         </Routes>
+        </React.Suspense>
       </div>
     </Router>
   );

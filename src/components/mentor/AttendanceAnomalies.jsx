@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { db } from '../../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { fetchAttendanceForStudents } from '../../utils/attendanceLogs';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { AlertTriangle, CheckCircle, Trash2, CalendarDays, Loader2 } from 'lucide-react';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 
 const AttendanceAnomalies = () => {
-    const { classes, students, currentUser, deleteAttendanceRecord, deleteAttendanceBatch } = useData();
+    const { classes, students, currentUser, deleteAttendanceRecord, deleteAttendanceBatch, attendanceLogsReady } = useData();
+    // Records deleted in this session ("studentId|date"). Attendance logs sync a moment after a
+    // delete, so these are excluded locally to keep the list correct on the immediate re-fetch.
+    const deletedKeysRef = useRef(new Set());
     const [anomalies, setAnomalies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedAnomaly, setSelectedAnomaly] = useState(null);
@@ -32,14 +34,9 @@ const AttendanceAnomalies = () => {
                 return;
             }
 
-            const allRecords = [];
-            for (let i = 0; i < myStudentIds.length; i += 30) {
-                const batchIds = myStudentIds.slice(i, i + 30);
-                const qBatch = query(collection(db, 'attendance'), where('studentId', 'in', batchIds));
-                const snap = await getDocs(qBatch);
-                const validRecords = snap.docs.map(d => d.data()).filter(r => r.status === 'Present' || r.status === 'Absent');
-                allRecords.push(...validRecords);
-            }
+            const allRecords = (await fetchAttendanceForStudents(myStudentIds, attendanceLogsReady))
+                .filter(r => r.status === 'Present' || r.status === 'Absent')
+                .filter(r => !attendanceLogsReady || !deletedKeysRef.current.has(`${r.studentId}|${r.date}`));
 
             // Group by student
             const recordsByStudent = {};
@@ -90,9 +87,16 @@ const AttendanceAnomalies = () => {
         setLoading(false);
     };
 
+    // Re-run only when the set of this mentor's students changes (not on every student-doc update)
+    const myStudentIdsKey = students
+        .filter(s => availableClasses.some(c => c.id === s.classId))
+        .map(s => s.id)
+        .sort()
+        .join(',');
+
     useEffect(() => {
         fetchAnomalies();
-    }, [students]);
+    }, [myStudentIdsKey, attendanceLogsReady]);
 
     const handleResolve = (anomaly) => {
         setSelectedAnomaly(anomaly);
@@ -118,9 +122,11 @@ const AttendanceAnomalies = () => {
                 const anomaly = anomalies.find(a => a.studentId === studentId);
                 const classStudentIds = students.filter(s => s.classId === anomaly?.classId).map(s => s.id);
                 await deleteAttendanceBatch(date, classStudentIds);
+                classStudentIds.forEach(id => deletedKeysRef.current.add(`${id}|${date}`));
                 setMsg(`Deleted ${date} attendance globally for the class.`);
             } else {
                 await deleteAttendanceRecord(date, studentId);
+                deletedKeysRef.current.add(`${studentId}|${date}`);
                 setMsg(`Deleted ${date} attendance just for this student.`);
             }
             

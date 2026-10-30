@@ -3,13 +3,13 @@ import { useData } from '../../contexts/DataContext';
 import { Calendar, CheckCircle, XCircle, Clock, ChevronRight, TrendingUp, AlertCircle } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
-import { where } from 'firebase/firestore';
 import { calculateStudentAttendanceStats } from '../../utils/attendanceUtils';
+import { fetchAttendanceCounts } from '../../utils/attendanceLogs';
 
 const AttendanceHistory = () => {
     const { 
         currentUser, attendance, notifications, markNotificationAsRead, 
-        requireFeature, getCount, attendanceLimit, loadMoreAttendance 
+        requireFeature, getCount, attendanceLimit, loadMoreAttendance, attendanceLogsReady
     } = useData();
     
     const [trueStats, setTrueStats] = useState({ total: 0, present: 0, loading: true });
@@ -25,8 +25,8 @@ const AttendanceHistory = () => {
         const fetchTrueStats = async () => {
             if (!currentUser?.id) return;
             try {
-                const total = await getCount('attendance', where('studentId', '==', currentUser.id));
-                const present = await getCount('attendance', where('studentId', '==', currentUser.id), where('status', '==', 'Present'));
+                const counts = await fetchAttendanceCounts([currentUser.id], attendanceLogsReady, getCount);
+                const { total, present } = counts[currentUser.id] || { total: 0, present: 0 };
                 setTrueStats({ total, present, loading: false });
             } catch (err) {
                 console.error("Failed to fetch true stats:", err);
@@ -34,7 +34,7 @@ const AttendanceHistory = () => {
             }
         };
         fetchTrueStats();
-    }, [currentUser, getCount]);
+    }, [currentUser?.id, getCount, attendanceLogsReady]);
 
     // Auto-mark notifications as read when viewing this page
     useEffect(() => {

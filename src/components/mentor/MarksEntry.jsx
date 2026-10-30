@@ -7,15 +7,15 @@ import { Card } from '../ui/Card';
 import { clsx } from 'clsx';
 import ExamGradingModal from './ExamGradingModal';
 import ExamEligibilityModal from './ExamEligibilityModal';
-import { db } from '../../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { subscribeAttendanceForStudents } from '../../utils/attendanceLogs';
 
 // MarksEntry Component v2.1 - Smart Config Dashboard Update
 const MarksEntry = () => {
     const {
         subjects, exams, students, results, attendance,
         recordResult, deleteResultBatch, deleteExamResultsForClass, classes, currentUser,
-        examSettings, updateExamSetting, deleteStudentResponse, questions, requireFeature, updateStudent, studentResponses
+        examSettings, updateExamSetting, deleteStudentResponse, questions, requireFeature, updateStudent, studentResponses,
+        attendanceLogsReady
     } = useData();
     const { showAlert, showConfirm } = useUI();
 
@@ -229,36 +229,23 @@ const MarksEntry = () => {
     // Avoids 5000-document truncation and includes past attendance for transferred students
     const [classScopedAttendance, setClassScopedAttendance] = useState(null);
 
+    // Keyed on the student ID list (not the array reference) so unrelated student-doc updates
+    // don't re-subscribe and re-read the whole class's attendance.
+    const classStudentIdsKey = useMemo(() => classStudents.map(s => s.id).sort().join(','), [classStudents]);
+
     useEffect(() => {
-        if (!selectedClassId || classStudents.length === 0) {
+        if (!selectedClassId || !classStudentIdsKey) {
             setClassScopedAttendance(null);
             return;
         }
 
-        const studentIds = classStudents.map(s => s.id);
-        const unsubs = [];
-        const batchMap = new Map();
-
-        for (let i = 0; i < studentIds.length; i += 30) {
-            const batchIndex = Math.floor(i / 30);
-            const batchIds = studentIds.slice(i, i + 30);
-            const q = query(collection(db, 'attendance'), where('studentId', 'in', batchIds));
-
-            const unsub = onSnapshot(q, (snap) => {
-                batchMap.set(batchIndex, snap.docs.map(d => ({ ...d.data(), id: d.id })));
-                const combined = [];
-                batchMap.forEach(records => combined.push(...records));
-                setClassScopedAttendance(combined);
-            }, (err) => {
-                console.error("[MarksEntry] Error subscribing to class-scoped attendance:", err);
-            });
-            unsubs.push(unsub);
-        }
-
-        return () => {
-            unsubs.forEach(u => u());
-        };
-    }, [selectedClassId, classStudents]);
+        return subscribeAttendanceForStudents(
+            classStudentIdsKey.split(','),
+            attendanceLogsReady,
+            setClassScopedAttendance,
+            (err) => console.error("[MarksEntry] Error subscribing to class-scoped attendance:", err)
+        );
+    }, [selectedClassId, classStudentIdsKey, attendanceLogsReady]);
 
     const effectiveAttendance = classScopedAttendance !== null ? classScopedAttendance : attendance;
 

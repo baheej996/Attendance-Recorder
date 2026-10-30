@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { subscribeAttendanceForStudents } from '../../utils/attendanceLogs';
 import { ReportCardPDFTemplate } from '../ui/ReportCardPDFTemplate';
 
 export const StudentProfileModal = ({ studentId, isOpen, onClose, initialTab = 'overview' }) => {
@@ -25,6 +26,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose, initialTab = '
         attendance,
         institutionSettings,
         requireFeature,
+        attendanceLogsReady,
         updateStudent
     } = useData();
 
@@ -247,9 +249,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose, initialTab = '
     useEffect(() => {
         if (!isOpen || !studentId) return;
         
-        const unsubAttendance = onSnapshot(query(collection(db, 'attendance'), where('studentId', '==', studentId)), (snap) => {
-            setStudentAttendance(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-        });
+        const unsubAttendance = subscribeAttendanceForStudents([studentId], attendanceLogsReady, setStudentAttendance);
 
         const unsubResults = onSnapshot(query(collection(db, 'results'), where('studentId', '==', studentId)), (snap) => {
             setStudentResults(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
@@ -264,7 +264,7 @@ export const StudentProfileModal = ({ studentId, isOpen, onClose, initialTab = '
             unsubResults();
             unsubPrayer();
         };
-    }, [isOpen, studentId]);
+    }, [isOpen, studentId, attendanceLogsReady]);
 
     const attendanceStats = useMemo(() => {
         if (!student) return { present: 0, absent: 0, total: 0, percentage: 0, records: [] };

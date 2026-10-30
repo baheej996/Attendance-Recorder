@@ -12,7 +12,7 @@ import * as htmlToImage from 'html-to-image';
 import { ReportCardPDFTemplate } from '../../components/ui/ReportCardPDFTemplate';
 import { ToppersPosterTemplate } from '../../components/ui/ToppersPosterTemplate';
 import FullClassResultModal from '../../components/mentor/FullClassResultModal';
-import { where } from 'firebase/firestore';
+import { fetchAttendanceCounts } from '../../utils/attendanceLogs';
 
 
 
@@ -291,7 +291,7 @@ const StudentResultModal = ({ student, exam, rank, subjects, results, onClose })
 const MentorStats = () => {
     const { 
         classes, students, attendance, currentUser, results, exams, subjects, 
-        institutionSettings, requireFeature, getCount, attendanceLimit, loadMoreAttendance,
+        institutionSettings, requireFeature, getCount, attendanceLimit, loadMoreAttendance, attendanceLogsReady,
         loadMoreResults, resultsLimit
     } = useData();
     const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'results'
@@ -310,21 +310,23 @@ const MentorStats = () => {
     }, [activeTab, requireFeature]);
 
     // --- TRUE STATS FETCHING (Firestore Counting) ---
+    // Keyed on the active student ID list so unrelated student-doc updates don't re-count the class
+    const activeStudentIdsKey = useMemo(() => students
+        .filter(s => s.classId === selectedClassId && s.status === 'Active')
+        .map(s => s.id)
+        .sort()
+        .join(','), [students, selectedClassId]);
+
     React.useEffect(() => {
         const fetchTrueStats = async () => {
             if (!selectedClassId || activeTab !== 'attendance') return;
             
             setIsCounting(true);
-            const activeStudents = students.filter(s => s.classId === selectedClassId && s.status === 'Active');
-            const statsMap = {};
-            
             try {
-                // Parallel fetch for class efficiency
-                await Promise.all(activeStudents.map(async (student) => {
-                    const total = await getCount('attendance', where('studentId', '==', student.id));
-                    const present = await getCount('attendance', where('studentId', '==', student.id), where('status', '==', 'Present'));
-                    statsMap[student.id] = { total, present };
-                }));
+                // One log read per student once attendance logs are ready; otherwise 2 counts per student
+                const statsMap = activeStudentIdsKey
+                    ? await fetchAttendanceCounts(activeStudentIdsKey.split(','), attendanceLogsReady, getCount)
+                    : {};
                 setTrueStats(statsMap);
             } catch (err) {
                 console.error("Failed to fetch class attendance counts:", err);
@@ -333,7 +335,7 @@ const MentorStats = () => {
             }
         };
         fetchTrueStats();
-    }, [selectedClassId, activeTab, getCount, students]);
+    }, [selectedClassId, activeTab, getCount, activeStudentIdsKey, attendanceLogsReady]);
 
     const availableClasses = useMemo(() => (currentUser?.role === 'mentor' || currentUser?.assignedClassIds)
         ? classes.filter(c => currentUser.assignedClassIds?.includes(c.id))

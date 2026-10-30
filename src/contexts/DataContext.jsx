@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { parseCSV } from '../utils/csvHelpers';
 import { safeLocalStorage } from '../utils/safeStorage';
+import { flattenAttendanceLog, fetchAttendanceForStudents } from '../utils/attendanceLogs';
+import { persistInlineImages } from '../utils/storageUpload';
 import { db, storage } from '../firebase';
 import {
     collection,
@@ -19,10 +21,33 @@ import {
     orderBy,
     serverTimestamp,
     getCountFromServer,
-    arrayUnion
+    arrayUnion,
+    documentId
 } from 'firebase/firestore';
 
 const DataContext = createContext();
+
+// Attaches a realtime listener while `key` is truthy and re-attaches ONLY when `key` changes.
+// `key` must encode every input the query depends on. One failing query (e.g. a missing
+// index) only affects its own listener, never the others.
+const useLiveQuery = (key, buildQuery, onData) => {
+    useEffect(() => {
+        if (!key) return undefined;
+        let q;
+        try {
+            q = buildQuery();
+        } catch (error) {
+            console.error(`[DataContext] Invalid query for '${key}':`, error.message);
+            return undefined;
+        }
+        return onSnapshot(q,
+            (snapshot) => onData(snapshot.docs.map(d => ({ ...d.data(), id: d.id }))),
+            (error) => console.error(`[DataContext] Subscription failed for '${key}':`, error.message)
+        );
+        // buildQuery/onData are recreated every render; `key` captures their inputs.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key]);
+};
 
 export const useData = () => useContext(DataContext);
 
@@ -35,14 +60,22 @@ export const DataProvider = ({ children }) => {
     const [allMentors, setAllMentors] = useState([]);
     const [classes, setClasses] = useState([]);
     const [allClasses, setAllClasses] = useState([]);
-    const [attendance, setAttendance] = useState([]);
+    const [rawAttendance, setAttendance] = useState([]);
+    // attendanceLogs mode (see utils/attendanceLogs.js): log docs + optimistic local writes
+    const [attendanceLogsReady, setAttendanceLogsReady] = useState(false);
+    const [attendanceLogDocs, setAttendanceLogDocs] = useState([]);
+    const [attendanceOverlay, setAttendanceOverlay] = useState({}); // { [attendanceDocId]: record | null (deleted) }
     const [subjects, setSubjects] = useState([]);
     const [exams, setExams] = useState([]);
     const [results, setResults] = useState([]);
-    const [questions, setQuestions] = useState([]);
+    const [allQuestions, setQuestions] = useState([]);
+    const [studentClassQuestions, setStudentClassQuestions] = useState([]);
+    const [studentTargetedQuestions, setStudentTargetedQuestions] = useState([]);
     const [studentResponses, setStudentResponses] = useState([]);
     const [leaveRequests, setLeaveRequests] = useState([]);
-    const [chatMessages, setChatMessages] = useState([]);
+    const [chatClassMessages, setChatClassMessages] = useState([]);
+    const [chatDirectMessages, setChatDirectMessages] = useState([]);
+    const [chatSentMessages, setChatSentMessages] = useState([]);
     const [classEssentials, setClassEssentials] = useState([]);
     const [unreadChats, setUnreadChats] = useState([]);
     const [activities, setActivities] = useState([]);
@@ -62,7 +95,11 @@ export const DataProvider = ({ children }) => {
     const [syllabusStatuses, setSyllabusStatuses] = useState([]);
     
     // Notifications
-    const [notifications, setNotifications] = useState([]);
+    const [notifMain, setNotifMain] = useState([]);
+    const [notifClass, setNotifClass] = useState([]);
+    const [notifSpecific, setNotifSpecific] = useState([]);
+    // Optimistic read/dismiss marks: { [notificationId]: { readBy: [uid], dismissedBy?: [uid] } }
+    const [notifOverlay, setNotifOverlay] = useState({});
     // Class Substitution
     const [substitutionRequests, setSubstitutionRequests] = useState([]);
     
@@ -100,7 +137,6 @@ export const DataProvider = ({ children }) => {
     const [leaderboardRules, setLeaderboardRules] = useState([]);
     const [leaderboardCompletions, setLeaderboardCompletions] = useState([]);
     const [leaderboardSettings, setLeaderboardSettings] = useState({ isVisibleToMentors: false });
-    const [allMentorSettings, setAllMentorSettings] = useState([]); // Buffer for all settings if needed
     const [examSettings, setExamSettings] = useState([]);
     const [studentStatuses, setStudentStatuses] = useState(['Active', 'Inactive', 'Viva pending', 'Exam pending', 'Payment Pending', 'Suspended', 'Dismissed']);
     const [logLimit, setLogLimit] = useState(10);
@@ -207,15 +243,33 @@ export const DataProvider = ({ children }) => {
     // IMPORTANT: Must be wrapped in useCallback so it has a stable reference.
     // Without this, any useEffect that lists [requireFeature] as a dependency will re-run
     // on every render, causing an infinite loop (React error #185).
+    // Reference-counted: several mounted components can request the same feature
+    // (e.g. StudentDashboard + StudentWelcome both need 'results'). The feature stays
+    // active until the LAST requester releases it, instead of being dropped by the first.
+    const featureRefCounts = React.useRef(new Map());
     const requireFeature = React.useCallback((feature) => {
-        setActiveFeatures(prev => {
-            if (prev.has(feature)) return prev;
-            const next = new Set(prev);
-            next.add(feature);
-            return next;
-        });
-        
+        const counts = featureRefCounts.current;
+        const nextCount = (counts.get(feature) || 0) + 1;
+        counts.set(feature, nextCount);
+        if (nextCount === 1) {
+            setActiveFeatures(prev => {
+                if (prev.has(feature)) return prev;
+                const next = new Set(prev);
+                next.add(feature);
+                return next;
+            });
+        }
+
+        let released = false;
         return () => {
+            if (released) return;
+            released = true;
+            const remaining = (counts.get(feature) || 0) - 1;
+            if (remaining > 0) {
+                counts.set(feature, remaining);
+                return;
+            }
+            counts.delete(feature);
             setActiveFeatures(prev => {
                 if (!prev.has(feature)) return prev;
                 const next = new Set(prev);
@@ -242,19 +296,6 @@ export const DataProvider = ({ children }) => {
         }
     }, [db]);
 
-    const subscribe = (collectionName, setState, ...constraints) => {
-        const q = query(collection(db, collectionName), ...constraints);
-        return onSnapshot(q,
-            (snapshot) => {
-                const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                setState(data);
-            },
-            (error) => {
-                console.error(`[DataContext] Subscription failed for '${collectionName}':`, error.message);
-            }
-        );
-    };
-
     // One-time fetch: use for admin-managed reference data (settings, templates) that
     // rarely changes. Avoids paying re-read costs whenever any user writes to the collection.
     // Mutations to these collections must keep local state in sync (optimistic update).
@@ -270,27 +311,123 @@ export const DataProvider = ({ children }) => {
         }
     };
 
-    // 1. Global / Lightweight Subscriptions (Always needed)
-    useEffect(() => {
-        const unsubs = [
-            subscribe('classes', setClasses),
-            subscribe('subjects', setSubjects),
-            subscribe('mentors', (data) => { setMentors(data); setAllMentors(data); }),
-            subscribe('classFeatureFlags', setClassFeatureFlags),
-            subscribe('mentorSettings', setAllMentorSettings),
-            subscribe('liveClasses', setLiveClasses),
-            subscribe('syllabi', setSyllabi),
-            subscribe('syllabusStatus', setSyllabusStatuses),
-            subscribe('substitutionRequests', setSubstitutionRequests),
-            subscribe('questions', setQuestions),
-            subscribe('starConfigs', setStarConfigs),
-            subscribe('studentEvaluationTemplates', setStudentEvaluationTemplates),
-            subscribe('parentFeedbackTemplates', setParentFeedbackTemplates),
-            subscribe('feeStructures', setFeeStructures),
-            subscribe('feePayments', setFeePayments),
-            subscribe('classEssentials', setClassEssentials),
-        ];
+    // --- Session primitives ---
+    // Listeners key on these plain values, never on the `currentUser` object. Previously the
+    // whole listener effect depended on `currentUser` + `activeFeatures`, so any page that
+    // called requireFeature(), or any write to the user's own doc (e.g. activeExamSession),
+    // tore down and re-created ~20 listeners and re-billed a full read of every collection.
+    const uid = currentUser?.id || null;
+    const role = currentUser?.role || null;
+    const cid = currentUser?.classId || null;
+    const isStudent = role === 'student' && !!uid;
+    const isMentor = role === 'mentor' && !!uid;
+    const isStaff = role === 'admin' || role === 'superadmin' || role === 'office';
+    const isAdminRole = role === 'admin' || role === 'superadmin';
 
+    const rawAssigned = isMentor ? (currentUser.assignedClassIds || (cid ? [cid] : [])) : [];
+    const assignedKey = (Array.isArray(rawAssigned) ? rawAssigned : [rawAssigned]).filter(Boolean).join(',');
+    const assignedClassIds = React.useMemo(() => (assignedKey ? assignedKey.split(',') : []), [assignedKey]);
+    const hasAssigned = isMentor && assignedClassIds.length > 0;
+
+    // Stable signature of the classes collection (id + name only). Used to derive a student's
+    // batch class IDs (classes that share the same name) without re-subscribing on every
+    // classes snapshot (a new array reference arrives on every emission).
+    const classesKey = React.useMemo(
+        () => classes.map(c => `${c.id}:${c.name}`).sort().join('|'),
+        [classes]
+    );
+
+    const batchKey = React.useMemo(() => {
+        if (!isStudent || !cid) return '';
+        const myClassDoc = classes.find(c => c.id === cid);
+        const ids = myClassDoc ? classes.filter(c => c.name === myClassDoc.name).map(c => c.id).slice(0, 30) : [cid];
+        return ids.join(',');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isStudent, cid, classesKey]);
+    const batchClassIds = React.useMemo(() => (batchKey ? batchKey.split(',') : []), [batchKey]);
+
+    const studentClassName = React.useMemo(
+        () => (isStudent ? classes.find(c => c.id === cid)?.name || '' : ''),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [isStudent, cid, classesKey]
+    );
+
+    const has = (feature) => activeFeatures.has(feature);
+    const col = (name) => collection(db, name);
+
+    // 1. Global / Lightweight Subscriptions (scoped by role)
+    useLiveQuery('classes', () => col('classes'), setClasses);
+    useLiveQuery('subjects', () => col('subjects'), setSubjects);
+    // Mentors are needed on the login page (mentor credential check) and by every role.
+    useLiveQuery('mentors', () => col('mentors'), (data) => { setMentors(data); setAllMentors(data); });
+    useLiveQuery('classFeatureFlags', () => col('classFeatureFlags'), setClassFeatureFlags);
+    useLiveQuery(
+        isStudent ? (cid ? `liveClasses|s|${cid}` : null) : 'liveClasses',
+        () => (isStudent ? query(col('liveClasses'), where('classId', '==', cid)) : col('liveClasses')),
+        setLiveClasses
+    );
+    // Syllabus data is only used by mentor LogBook and admin syllabus screens.
+    useLiveQuery(isStudent ? null : 'syllabi', () => col('syllabi'), setSyllabi);
+    useLiveQuery(isStudent ? null : 'syllabusStatus', () => col('syllabusStatus'), setSyllabusStatuses);
+    useLiveQuery(
+        isStudent ? (cid ? `substitutionRequests|s|${cid}` : null) : 'substitutionRequests',
+        () => (isStudent ? query(col('substitutionRequests'), where('classId', '==', cid)) : col('substitutionRequests')),
+        setSubstitutionRequests
+    );
+    useLiveQuery(
+        isStudent ? (cid ? `starConfigs|s|${cid}` : null) : 'starConfigs',
+        () => (isStudent ? query(col('starConfigs'), where('classId', '==', cid)) : col('starConfigs')),
+        setStarConfigs
+    );
+    useLiveQuery(uid ? 'studentEvaluationTemplates' : null, () => col('studentEvaluationTemplates'), setStudentEvaluationTemplates);
+    useLiveQuery(uid ? 'parentFeedbackTemplates' : null, () => col('parentFeedbackTemplates'), setParentFeedbackTemplates);
+    // Fees: office/admin see everything; a student only needs their own structure + payments.
+    useLiveQuery(
+        isStaff ? 'feeStructures' : (isStudent ? `feeStructures|s|${uid}|${cid || ''}` : null),
+        () => (isStaff
+            ? col('feeStructures')
+            : query(col('feeStructures'), where(documentId(), 'in', [uid, cid].filter(Boolean)))),
+        setFeeStructures
+    );
+    useLiveQuery(
+        isStaff ? 'feePayments' : (isStudent ? `feePayments|s|${uid}` : null),
+        () => (isStaff ? col('feePayments') : query(col('feePayments'), where('studentId', '==', uid))),
+        setFeePayments
+    );
+    useLiveQuery(isMentor || isStaff ? 'classEssentials' : null, () => col('classEssentials'), setClassEssentials);
+    // Students load exam questions only while an exam screen is open, and only for their own class
+    // (plain/Batch questions are keyed by class name or id; 'Specific' ones list target divisions).
+    useLiveQuery(
+        isStudent
+            ? (cid && has('questions') ? `questions|s|${cid}|${studentClassName}` : null)
+            : (uid ? 'questions' : null),
+        () => (isStudent
+            ? query(col('questions'), where('classId', 'in', [cid, studentClassName].filter(Boolean)))
+            : col('questions')),
+        isStudent ? setStudentClassQuestions : setQuestions
+    );
+    useLiveQuery(
+        isStudent && cid && has('questions') ? `questions|s|targeted|${cid}` : null,
+        () => query(col('questions'), where('targetDivisions', 'array-contains', cid)),
+        setStudentTargetedQuestions
+    );
+
+    // Personal mentor settings: only the mentor's own document.
+    useEffect(() => {
+        if (!isMentor) {
+            setMentorSettings({ sidebarOrder: [] });
+            return undefined;
+        }
+        return onSnapshot(doc(db, 'mentorSettings', uid),
+            (snap) => {
+                const personal = snap.exists() ? { ...snap.data(), id: snap.id } : null;
+                setMentorSettings(personal || { sidebarOrder: [] });
+            },
+            (error) => console.error("[DataContext] Subscription failed for 'mentorSettings':", error.message)
+        );
+    }, [isMentor, uid]);
+
+    useEffect(() => {
         // Reference data — rarely changes, real-time sync is wasteful for 2k users.
         // Mutations on these collections refresh local state via their action functions below.
         loadOnce('chatSettings', setChatSettings);
@@ -314,6 +451,9 @@ export const DataProvider = ({ children }) => {
                     const list = doc.data().list || [];
                     setStudentStatuses(list.includes('Inactive') ? list : (list.length > 0 ? [...list, 'Inactive'] : ['Active', 'Inactive', 'Viva pending', 'Exam pending', 'Payment Pending', 'Suspended', 'Dismissed']));
                 }
+                if (doc.id === 'attendanceLogs') {
+                    setAttendanceLogsReady(doc.data().ready === true);
+                }
                 if (doc.id === 'leaderboard') {
                     setLeaderboardSettings(prev => ({ ...prev, ...doc.data() }));
                 }
@@ -322,12 +462,15 @@ export const DataProvider = ({ children }) => {
 
         setIsDataLoaded(true);
         return () => {
-            unsubs.forEach(u => u());
             settingsUnsub();
         };
     }, []);
 
     useEffect(() => {
+        // Totals are only displayed on staff screens (InstitutionDirectory / admin dashboards).
+        // Skipping them for students and the login page avoids ~3 aggregation queries per app open.
+        if (!role || role === 'student') return;
+
         // High-efficiency one-time count fetch (Costs 1 read per 1,000 docs)
         const fetchCounts = async () => {
             try {
@@ -346,23 +489,10 @@ export const DataProvider = ({ children }) => {
         };
 
         fetchCounts();
-    }, []);
-
-    // Stable signature of the classes collection (id + name only). The heavy-subscription
-    // effect below needs `classes` ONLY to compute a student's batch class IDs (classes that
-    // share the same name). Depending on the raw `classes` array is dangerous: the realtime
-    // listener emits a NEW array reference on every snapshot, which would tear down and
-    // re-create ALL ~20 Firestore listeners (re-billing a full read of every collection) on
-    // each emission — and for admins it created an infinite re-subscribe loop (the effect
-    // itself calls setClasses), which is what blew Firestore reads up from ~3M to ~300M.
-    // Keying on a content signature makes the effect re-run only when class identity/name
-    // actually changes, not on every new array reference.
-    const classesKey = React.useMemo(
-        () => classes.map(c => `${c.id}:${c.name}`).sort().join('|'),
-        [classes]
-    );
+    }, [role]);
 
     // 2. User-Specific / Heavy Subscriptions (Filtered for Performance)
+    // Each listener re-attaches only when its own inputs change (see useLiveQuery).
     useEffect(() => {
         if (!currentUser) {
             // Clear specific data on logout
@@ -373,281 +503,436 @@ export const DataProvider = ({ children }) => {
             setPrayerRecords([]);
             setQuranRecitations([]);
             setSunnahRecitations([]);
-            setChatMessages([]);
+            setChatClassMessages([]);
+            setChatDirectMessages([]);
+            setChatSentMessages([]);
             setUnreadChats([]);
             setGameProgress([]);
-            return;
         }
+    }, [currentUser]);
 
-        const unsubs = [];
+    // Per-role key helper: returns the key for the current role, or null (listener off).
+    const roleKey = (name, { student, mentor, staff } = {}) => {
+        if (isStudent && student) return `${name}|s|${uid}|${student === true ? '' : student}`;
+        if (hasAssigned && mentor) return `${name}|m|${uid}|${assignedKey}|${mentor === true ? '' : mentor}`;
+        if (isStaff && staff) return `${name}|a|${staff === true ? '' : staff}`;
+        return null;
+    };
+    const byRole = (forStudent, forMentor, forStaff) => () => (
+        isStudent ? forStudent() : (isMentor ? forMentor() : forStaff())
+    );
 
-        if (currentUser.role === 'student') {
-            const uid = currentUser.id;
-            const cid = currentUser.classId;
-            const myClassDoc = classes.find(c => c.id === cid);
-            const batchClassIds = myClassDoc ? classes.filter(c => c.name === myClassDoc.name).map(c => c.id).slice(0, 30) : [cid];
+    useLiveQuery(
+        roleKey('exams', { student: true, mentor: true, staff: true }),
+        () => col('exams'),
+        setExams
+    );
+    useLiveQuery(
+        roleKey('activities', { student: cid || false, mentor: true, staff: true }),
+        byRole(
+            () => query(col('activities'), where('classId', '==', cid)),
+            () => query(col('activities'), where('classId', 'in', assignedClassIds)),
+            () => col('activities')
+        ),
+        setActivities
+    );
+    useLiveQuery(
+        roleKey('chatMessages', { student: cid || false, mentor: true, staff: true }),
+        byRole(
+            () => query(col('chatMessages'), where('classId', '==', cid), limit(150)),
+            () => query(col('chatMessages'), where('classId', 'in', assignedClassIds), limit(200)),
+            () => query(col('chatMessages'), orderBy('timestamp', 'desc'), limit(200))
+        ),
+        setChatClassMessages
+    );
+    // Direct messages TO / FROM a student (mentor→student DMs are stored without classId)
+    useLiveQuery(
+        isStudent ? `chatDirect|${uid}` : null,
+        () => query(col('chatMessages'), where('receiverId', '==', uid), limit(150)),
+        setChatDirectMessages
+    );
+    useLiveQuery(
+        isStudent ? `chatSent|${uid}` : null,
+        () => query(col('chatMessages'), where('senderId', '==', uid), limit(150)),
+        setChatSentMessages
+    );
+    useLiveQuery(
+        isStudent || isMentor ? `unreadChats|${uid}` : (isStaff ? 'unreadChats|admin' : null),
+        () => query(col('chatMessages'), where('receiverId', '==', isStaff ? 'admin' : uid), where('isRead', '==', false)),
+        setUnreadChats
+    );
 
-            unsubs.push(
-                subscribe('exams', setExams),
-                subscribe('activities', setActivities, where('classId', '==', cid)),
-                subscribe('chatMessages', setChatMessages, where('classId', '==', cid), limit(150)),
-                subscribe('chatMessages', setUnreadChats, where('receiverId', '==', uid), where('isRead', '==', false)),
-                subscribe('notifications', setNotifications, where('audience', 'in', ['students', 'all', 'specific_class']), limit(100)),
-                subscribe('starDeclarations', setStarDeclarations, where('classId', '==', cid)),
-                subscribe('classPerformances', setClassPerformances, where('classId', '==', cid)),
-                subscribe('starConfigs', setStarConfigs, where('classId', '==', cid)),
-                subscribe('students', setStudents, where('classId', 'in', batchClassIds)),
-                subscribe('studentEvaluations', setStudentEvaluations, where('studentId', '==', uid), where('status', '==', 'Published')),
-                subscribe('parentFeedbacks', setParentFeedbacks, where('studentId', '==', uid)),
-                subscribe('feedbackSettings', setFeedbackSettings, where('classId', '==', cid)),
-                subscribe('gameProgress', setGameProgress, where('classId', '==', cid))
-            );
+    // Notifications. Students used to receive every class's 'specific_class' notification
+    // (e.g. each class's daily "Attendance Recorded"), and every readBy update on those docs
+    // was re-billed to every online student. Students now only listen to broadcast
+    // notifications, their own class's notifications, and ones addressed to them.
+    useLiveQuery(
+        isStudent ? `notif|broadcast|${uid}` : (isMentor ? `notif|mentor|${uid}` : (isStaff ? 'notif|admin' : null)),
+        () => (isStudent
+            ? query(col('notifications'), where('audience', 'in', ['students', 'all']), limit(100))
+            : query(col('notifications'), orderBy('createdAt', 'desc'), limit(isStaff ? 200 : 100))),
+        setNotifMain
+    );
+    useLiveQuery(
+        isStudent && cid ? `notif|class|${cid}` : null,
+        () => query(col('notifications'), where('audience', '==', 'specific_class'), where('classId', '==', cid), limit(100)),
+        setNotifClass
+    );
+    useLiveQuery(
+        isStudent ? `notif|specific|${uid}` : null,
+        () => query(col('notifications'), where('audience', '==', 'specific_student'), where('targetId', '==', uid), limit(50)),
+        setNotifSpecific
+    );
 
-            // On-Demand Heavy Data
-            const currentAttendanceLimit = activeFeatures.has('star') ? Math.max(5000, attendanceLimit) : attendanceLimit;
-            if (activeFeatures.has('attendance')) {
-                unsubs.push(subscribe('attendance', setAttendance, where('studentId', '==', uid), orderBy('date', 'desc'), limit(currentAttendanceLimit)));
-            }
-            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('classId', 'in', batchClassIds), limit(resultsLimit)));
-            if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('studentId', '==', uid)));
-            if (activeFeatures.has('quran')) unsubs.push(
-                subscribe('quranRecitations', setQuranRecitations, where('studentId', '==', uid)),
-                subscribe('quranProgress', setQuranProgress, where('studentId', '==', uid))
-            );
-            if (activeFeatures.has('sunnah')) unsubs.push(
-                subscribe('sunnahRecitations', setSunnahRecitations, where('studentId', '==', uid)),
-                subscribe('sunnahSettings', setSunnahSettings, where('id', '==', cid))
-            );
-            if (activeFeatures.has('activities')) unsubs.push(
-                subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', cid ? [cid, ''] : [''])),
-                subscribe('studentResponses', setStudentResponses, where('studentId', '==', uid), limit(resultsLimit))
-            );
-            unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('studentId', '==', uid)));
-            if (activeFeatures.has('ramadan')) unsubs.push(subscribe('ramadanLogs', setRamadanLogs, where('classId', '==', cid)));
+    useLiveQuery(
+        roleKey('starDeclarations', { student: cid || false, mentor: true }),
+        byRole(
+            () => query(col('starDeclarations'), where('classId', '==', cid)),
+            () => query(col('starDeclarations'), where('classId', 'in', assignedClassIds)),
+            () => col('starDeclarations')
+        ),
+        setStarDeclarations
+    );
+    useLiveQuery(
+        roleKey('classPerformances', { student: cid || false, mentor: true }),
+        byRole(
+            () => query(col('classPerformances'), where('classId', '==', cid)),
+            () => query(col('classPerformances'), where('classId', 'in', assignedClassIds)),
+            () => col('classPerformances')
+        ),
+        setClassPerformances
+    );
+    useLiveQuery(
+        roleKey('gameProgress', { student: cid || false, mentor: true, staff: true }),
+        byRole(
+            () => query(col('gameProgress'), where('classId', '==', cid)),
+            () => query(col('gameProgress'), where('classId', 'in', assignedClassIds)),
+            () => col('gameProgress')
+        ),
+        setGameProgress
+    );
+    useLiveQuery(
+        roleKey('students', { student: batchKey || false, mentor: true, staff: true }),
+        byRole(
+            () => query(col('students'), where('classId', 'in', batchClassIds)),
+            () => query(col('students'), where('classId', 'in', assignedClassIds)),
+            () => col('students')
+        ),
+        isStaff ? (data) => { setStudents(data); setAllStudents(data); } : setStudents
+    );
+    // Mentor directory buffers (paginated)
+    useLiveQuery(
+        isMentor ? `allStudents|${allStudentsLimit}` : null,
+        () => query(col('students'), orderBy('name'), limit(allStudentsLimit)),
+        setAllStudents
+    );
+    useLiveQuery(
+        isMentor ? `allClasses|${allClassesLimit}` : (isStaff ? 'allClasses|admin' : null),
+        () => (isMentor ? query(col('classes'), orderBy('name'), limit(allClassesLimit)) : col('classes')),
+        setAllClasses
+    );
+    useLiveQuery(
+        roleKey('studentEvaluations', { student: true, mentor: true, staff: true }),
+        byRole(
+            () => query(col('studentEvaluations'), where('studentId', '==', uid), where('status', '==', 'Published')),
+            () => query(col('studentEvaluations'), where('classId', 'in', assignedClassIds)),
+            () => col('studentEvaluations')
+        ),
+        setStudentEvaluations
+    );
+    useLiveQuery(
+        roleKey('parentFeedbacks', { student: true, staff: true }),
+        () => (isStudent ? query(col('parentFeedbacks'), where('studentId', '==', uid)) : col('parentFeedbacks')),
+        setParentFeedbacks
+    );
+    useLiveQuery(
+        roleKey('feedbackSettings', { student: cid || false, mentor: true, staff: true }),
+        byRole(
+            () => query(col('feedbackSettings'), where('classId', '==', cid)),
+            () => query(col('feedbackSettings'), where('classId', 'in', assignedClassIds)),
+            () => col('feedbackSettings')
+        ),
+        setFeedbackSettings
+    );
+    useLiveQuery(
+        roleKey('leaveRequests', { student: true, mentor: true }),
+        byRole(
+            () => query(col('leaveRequests'), where('studentId', '==', uid)),
+            () => query(col('leaveRequests'), where('classId', 'in', assignedClassIds.slice(0, 30))),
+            () => col('leaveRequests')
+        ),
+        setLeaveRequests
+    );
 
-            // Separate listener: direct messages TO this student (mentor→student DMs stored without classId)
-            // These must be MERGED into chatMessages, not replace them
-            const directMsgQ = query(collection(db, 'chatMessages'), where('receiverId', '==', uid), limit(150));
-            const directMsgUnsub = onSnapshot(directMsgQ, (snap) => {
-                const directMsgs = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                setChatMessages(prev => {
-                    const existingIds = new Set(prev.map(m => m.id));
-                    const newMsgs = directMsgs.filter(m => !existingIds.has(m.id));
-                    return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
+    // --- On-Demand Heavy Data (only while a screen has called requireFeature) ---
+    const studentAttendanceLimit = has('star') ? Math.max(5000, attendanceLimit) : attendanceLimit;
+    const mentorAttendanceLimit = (has('attendance') || has('star')) ? Math.max(5000, attendanceLimit) : attendanceLimit;
+    const staffAttendanceLimit = (has('evaluation') || has('star')) ? Math.max(5000, attendanceLimit) : attendanceLimit;
+    // Students and mentors read per-student attendance logs once they are ready (1 read per
+    // student instead of 1 per record); admins keep the raw query.
+    const useAttendanceLogs = attendanceLogsReady && (isStudent || hasAssigned);
+    useLiveQuery(
+        has('attendance') && !useAttendanceLogs
+            ? roleKey('attendance', { student: studentAttendanceLimit, mentor: mentorAttendanceLimit, staff: staffAttendanceLimit })
+            : null,
+        byRole(
+            () => query(col('attendance'), where('studentId', '==', uid), orderBy('date', 'desc'), limit(studentAttendanceLimit)),
+            () => query(col('attendance'), where('classId', 'in', assignedClassIds), orderBy('date', 'desc'), limit(mentorAttendanceLimit)),
+            () => query(col('attendance'), orderBy('date', 'desc'), limit(staffAttendanceLimit))
+        ),
+        setAttendance
+    );
+    useLiveQuery(
+        has('attendance') && useAttendanceLogs ? roleKey('attendanceLogs', { student: true, mentor: true }) : null,
+        () => (isStudent
+            ? query(col('attendanceLogs'), where(documentId(), '==', uid))
+            : query(col('attendanceLogs'), where('classIds', 'array-contains-any', assignedClassIds))),
+        setAttendanceLogDocs
+    );
+
+    // Same records, filter, order (date desc) and limit as the raw attendance queries above.
+    const attendanceFromLogs = React.useMemo(() => {
+        if (!useAttendanceLogs) return null;
+        const inScope = isStudent
+            ? (r) => r.studentId === uid
+            : (r) => assignedClassIds.includes(r.classId);
+        const byId = new Map();
+        attendanceLogDocs.forEach(logDoc => flattenAttendanceLog(logDoc).forEach(r => {
+            if (inScope(r)) byId.set(r.id, r);
+        }));
+        Object.entries(attendanceOverlay).forEach(([id, r]) => {
+            if (r === null) byId.delete(id);
+            else if (inScope(r)) byId.set(id, r);
+        });
+        const lim = isStudent ? studentAttendanceLimit : mentorAttendanceLimit;
+        return Array.from(byId.values())
+            .filter(r => r.date !== undefined)
+            .sort((a, b) => {
+                if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+                return a.id < b.id ? 1 : -1;
+            })
+            .slice(0, lim);
+    }, [useAttendanceLogs, isStudent, uid, assignedClassIds, attendanceLogDocs, attendanceOverlay, studentAttendanceLimit, mentorAttendanceLimit]);
+    const attendance = attendanceFromLogs || rawAttendance;
+
+    // Drop optimistic entries once the synced logs reflect them
+    useEffect(() => {
+        const ids = Object.keys(attendanceOverlay);
+        if (ids.length === 0) return;
+        const logged = new Map();
+        attendanceLogDocs.forEach(logDoc => Object.entries(logDoc.records || {}).forEach(([id, r]) => logged.set(id, r)));
+        const settled = ids.filter(id => {
+            const o = attendanceOverlay[id];
+            const l = logged.get(id);
+            return o === null ? !l : (l && l.status === o.status && l.classId === o.classId && l.date === o.date);
+        });
+        if (settled.length === 0) return;
+        setAttendanceOverlay(prev => {
+            const next = { ...prev };
+            settled.forEach(id => { delete next[id]; });
+            return next;
+        });
+    }, [attendanceLogDocs, attendanceOverlay]);
+    const overlayAttendanceWrites = (entries) => {
+        if (!useAttendanceLogs || Object.keys(entries).length === 0) return;
+        setAttendanceOverlay(prev => ({ ...prev, ...entries }));
+        // Safety net: never mask the synced data for long (e.g. if another user edits the same record)
+        setTimeout(() => {
+            setAttendanceOverlay(prev => {
+                let changed = false;
+                const next = { ...prev };
+                Object.keys(entries).forEach(id => {
+                    if (id in next && next[id] === entries[id]) {
+                        delete next[id];
+                        changed = true;
+                    }
                 });
+                return changed ? next : prev;
             });
-            unsubs.push(directMsgUnsub);
+        }, 120000);
+    };
+    // Students: dashboard/home/exam screens only use their OWN results; the whole batch is
+    // loaded only while Report Card / Leaderboard (which compute class ranks) are open.
+    const studentBatchResults = has('resultsBatch') && !!batchKey;
+    useLiveQuery(
+        has('results') || (isStudent && has('resultsBatch'))
+            ? roleKey('results', {
+                student: studentBatchResults ? `batch|${batchKey}|${resultsLimit}` : `own|${resultsLimit}`,
+                mentor: resultsLimit,
+                staff: resultsLimit
+            })
+            : null,
+        byRole(
+            () => (studentBatchResults
+                ? query(col('results'), where('classId', 'in', batchClassIds), limit(resultsLimit))
+                : query(col('results'), where('studentId', '==', uid), limit(resultsLimit))),
+            () => query(col('results'), where('classId', 'in', assignedClassIds), limit(resultsLimit)),
+            () => query(col('results'), limit(resultsLimit))
+        ),
+        setResults
+    );
+    useLiveQuery(
+        has('prayer') ? roleKey('prayerRecords', { student: true, mentor: true }) : null,
+        byRole(
+            () => query(col('prayerRecords'), where('studentId', '==', uid)),
+            () => query(col('prayerRecords'), where('classId', 'in', assignedClassIds)),
+            () => col('prayerRecords')
+        ),
+        setPrayerRecords
+    );
+    useLiveQuery(
+        has('quran') ? roleKey('quranRecitations', { student: true, mentor: true, staff: true }) : null,
+        byRole(
+            () => query(col('quranRecitations'), where('studentId', '==', uid)),
+            () => query(col('quranRecitations'), where('classId', 'in', assignedClassIds)),
+            () => query(col('quranRecitations'), limit(5000))
+        ),
+        setQuranRecitations
+    );
+    useLiveQuery(
+        has('quran') ? roleKey('quranProgress', { student: true, mentor: true }) : null,
+        byRole(
+            () => query(col('quranProgress'), where('studentId', '==', uid)),
+            () => query(col('quranProgress'), where('classId', 'in', assignedClassIds)),
+            () => col('quranProgress')
+        ),
+        setQuranProgress
+    );
+    useLiveQuery(
+        has('sunnah') ? roleKey('sunnahRecitations', { student: true, mentor: true, staff: true }) : null,
+        byRole(
+            () => query(col('sunnahRecitations'), where('studentId', '==', uid)),
+            () => query(col('sunnahRecitations'), where('classId', 'in', assignedClassIds)),
+            () => query(col('sunnahRecitations'), limit(5000))
+        ),
+        setSunnahRecitations
+    );
+    useLiveQuery(
+        has('sunnah') ? roleKey('sunnahSettings', { student: cid || false, mentor: true, staff: true }) : null,
+        () => (isStudent ? query(col('sunnahSettings'), where('id', '==', cid)) : col('sunnahSettings')),
+        setSunnahSettings
+    );
+    useLiveQuery(
+        has('activities') ? roleKey('activitySubmissions', { student: cid || 'none', mentor: true, staff: true }) : null,
+        byRole(
+            // Include '' to catch legacy submissions whose classId was written as empty.
+            () => query(col('activitySubmissions'), where('classId', 'in', cid ? [cid, ''] : [''])),
+            () => query(col('activitySubmissions'), where('classId', 'in', [...assignedClassIds, ''])),
+            () => col('activitySubmissions')
+        ),
+        setActivitySubmissions
+    );
+    useLiveQuery(
+        has('activities') ? roleKey('studentResponses', { student: resultsLimit, mentor: resultsLimit }) : null,
+        byRole(
+            () => query(col('studentResponses'), where('studentId', '==', uid), limit(resultsLimit)),
+            () => query(col('studentResponses'), where('classId', 'in', assignedClassIds), limit(resultsLimit)),
+            () => col('studentResponses')
+        ),
+        setStudentResponses
+    );
+    useLiveQuery(
+        has('ramadan') ? roleKey('ramadanLogs', { student: cid || false, mentor: true }) : null,
+        byRole(
+            () => query(col('ramadanLogs'), where('classId', '==', cid)),
+            () => query(col('ramadanLogs'), where('classId', 'in', assignedClassIds)),
+            () => col('ramadanLogs')
+        ),
+        setRamadanLogs
+    );
 
-            // Separate listener: messages SENT by this student (so sent messages appear immediately)
-            const sentMsgQ = query(collection(db, 'chatMessages'), where('senderId', '==', uid), limit(150));
-            const sentMsgUnsub = onSnapshot(sentMsgQ, (snap) => {
-                const sentMsgs = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                setChatMessages(prev => {
-                    const existingIds = new Set(prev.map(m => m.id));
-                    const newMsgs = sentMsgs.filter(m => !existingIds.has(m.id));
-                    return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
-                });
-            });
-            unsubs.push(sentMsgUnsub);
+    // --- Mentor-only ---
+    useLiveQuery(isMentor ? `mentorTasks|${uid}` : null, () => query(col('mentorTasks'), where('mentorId', '==', uid)), setMentorTasks);
+    useLiveQuery(
+        isMentor ? `evaluationForms|m|${uid}` : (isStaff ? 'evaluationForms' : null),
+        () => col('evaluationForms'),
+        isMentor
+            // Show if (global visibility) OR (specifically shared) OR (created by current user)
+            ? (data) => setEvaluationForms(data.filter(form => {
+                if (form.sharingType === 'all') return true;
+                if (form.creatorId === uid) return true;
+                if (form.sharedMentorIds?.includes(uid)) return true;
+                return false;
+            }))
+            : setEvaluationForms
+    );
+    useLiveQuery(
+        isMentor ? `evaluationSubmissions|${uid}` : (isStaff ? 'evaluationSubmissions' : null),
+        () => (isMentor ? query(col('evaluationSubmissions'), where('mentorId', '==', uid)) : col('evaluationSubmissions')),
+        setEvaluationSubmissions
+    );
+    useLiveQuery(isMentor ? `questionSuggestions|${uid}` : null, () => query(col('questionSuggestions'), where('receiverId', '==', uid)), setQuestionSuggestions);
+    // Mentor needs to see their own admission requests for the request history panel
+    useLiveQuery(
+        isMentor ? `admissionRequests|${uid}` : (isStaff ? 'admissionRequests' : null),
+        () => (isMentor ? query(col('admissionRequests'), where('mentorId', '==', uid)) : col('admissionRequests')),
+        setAdmissionRequests
+    );
+    useLiveQuery(isMentor || isStaff ? 'leaderboardRules' : null, () => col('leaderboardRules'), setLeaderboardRules);
+    useLiveQuery(isMentor || isStaff ? 'leaderboardCompletions' : null, () => col('leaderboardCompletions'), setLeaderboardCompletions);
+    useLiveQuery(isStaff ? 'adminRequests' : null, () => col('adminRequests'), setAdminRequests);
 
-            // Separate listener: notifications sent specifically to THIS student (audience == 'specific_student')
-            // Cannot be combined with the audience 'in' query above (different field filter),
-            // so we merge them client-side like we do for direct chat messages.
-            const specificNotifQ = query(
-                collection(db, 'notifications'),
-                where('audience', '==', 'specific_student'),
-                where('targetId', '==', uid),
-                limit(50)
-            );
-            const specificNotifUnsub = onSnapshot(specificNotifQ, (snap) => {
-                const specificNotifs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-                setNotifications(prev => {
-                    const map = new Map(prev.map(n => [n.id, n]));
-                    specificNotifs.forEach(n => map.set(n.id, n));
-                    return Array.from(map.values());
-                });
-            });
-            unsubs.push(specificNotifUnsub);
-        } else if (currentUser.role === 'mentor') {
-            const assignedClassIds = currentUser.assignedClassIds || (currentUser.classId ? [currentUser.classId] : []);
-
-            unsubs.push(
-                subscribe('students', setAllStudents, orderBy('name'), limit(allStudentsLimit)),
-                subscribe('classes', setAllClasses, orderBy('name'), limit(allClassesLimit))
-            );
-
-            if (assignedClassIds.length > 0) {
-                unsubs.push(
-                    subscribe('students', setStudents, where('classId', 'in', assignedClassIds)),
-                    subscribe('exams', setExams),
-                    subscribe('chatMessages', setChatMessages, where('classId', 'in', assignedClassIds), limit(200)),
-                    subscribe('activities', setActivities, where('classId', 'in', assignedClassIds)),
-                    subscribe('starDeclarations', setStarDeclarations, where('classId', 'in', assignedClassIds)),
-                    subscribe('classPerformances', setClassPerformances, where('classId', 'in', assignedClassIds)),
-                    subscribe('gameProgress', setGameProgress, where('classId', 'in', assignedClassIds))
-                );
-
-                // On-Demand Heavy Data
-                const currentAttendanceLimit = (activeFeatures.has('attendance') || activeFeatures.has('star')) ? Math.max(5000, attendanceLimit) : attendanceLimit;
-                if (activeFeatures.has('attendance')) {
-                    unsubs.push(subscribe('attendance', setAttendance, where('classId', 'in', assignedClassIds), orderBy('date', 'desc'), limit(currentAttendanceLimit)));
-                }
-                if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, where('classId', 'in', assignedClassIds), limit(resultsLimit)));
-                if (activeFeatures.has('prayer')) unsubs.push(subscribe('prayerRecords', setPrayerRecords, where('classId', 'in', assignedClassIds)));
-                if (activeFeatures.has('quran')) unsubs.push(
-                    subscribe('quranRecitations', setQuranRecitations, where('classId', 'in', assignedClassIds)),
-                    subscribe('quranProgress', setQuranProgress, where('classId', 'in', assignedClassIds))
-                );
-                if (activeFeatures.has('sunnah')) unsubs.push(
-                    subscribe('sunnahRecitations', setSunnahRecitations, where('classId', 'in', assignedClassIds)),
-                    subscribe('sunnahSettings', setSunnahSettings)
-                );
-                if (activeFeatures.has('activities')) unsubs.push(
-                    // Scope to the mentor's assigned classes so the 500-doc cap can't hide a freshly
-                    // written submission (especially for older activities whose deterministic doc ID
-                    // would otherwise land outside the unscoped window).
-                    // Include '' to catch legacy submissions whose classId was written as empty
-                    // (mirrors the same pattern the student listener uses at line 344).
-                    subscribe('activitySubmissions', setActivitySubmissions, where('classId', 'in', [...assignedClassIds, ''])),
-                    subscribe('studentResponses', setStudentResponses, where('classId', 'in', assignedClassIds), limit(resultsLimit))
-                );
-                unsubs.push(subscribe('leaveRequests', setLeaveRequests, where('classId', 'in', assignedClassIds.slice(0, 30))));
-                if (activeFeatures.has('ramadan')) unsubs.push(subscribe('ramadanLogs', setRamadanLogs, where('classId', 'in', assignedClassIds)));
-                
-                unsubs.push(
-                    subscribe('studentEvaluations', setStudentEvaluations, where('classId', 'in', assignedClassIds)),
-                    subscribe('feedbackSettings', setFeedbackSettings, where('classId', 'in', assignedClassIds))
-                );
-            }
-
-            unsubs.push(
-                subscribe('chatMessages', setUnreadChats, where('receiverId', '==', currentUser.id), where('isRead', '==', false)),
-                subscribe('mentorTasks', setMentorTasks, where('mentorId', '==', currentUser.id)),
-                // Filter evaluation forms: Show if (global visibility) OR (specifically shared) OR (created by current user)
-                subscribe('evaluationForms', (data) => {
-                    const filtered = data.filter(form => {
-                        if (form.sharingType === 'all') return true;
-                        if (form.creatorId === currentUser.id) return true;
-                        if (form.sharedMentorIds?.includes(currentUser.id)) return true;
-                        return false;
-                    });
-                    setEvaluationForms(filtered);
-                }),
-                subscribe('evaluationSubmissions', setEvaluationSubmissions, where('mentorId', '==', currentUser.id)),
-                subscribe('questionSuggestions', setQuestionSuggestions, where('receiverId', '==', currentUser.id)),
-                subscribe('notifications', setNotifications, orderBy('createdAt', 'desc'), limit(100)),
-                // Mentor needs to see their own admission requests for the request history panel
-                subscribe('admissionRequests', setAdmissionRequests, where('mentorId', '==', currentUser.id)),
-                subscribe('leaderboardRules', setLeaderboardRules),
-                subscribe('leaderboardCompletions', setLeaderboardCompletions)
-            );
-        } else if (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.role === 'office') {
-            unsubs.push(
-                subscribe('students', (data) => { setStudents(data); setAllStudents(data); }),
-                // NOTE: do NOT setClasses here. `classes` is already maintained by the global
-                // listener (section 1). Writing it from inside this effect would feed the
-                // effect's own `classesKey` dependency and re-trigger a full re-subscribe of
-                // every collection. We only need the admin-scoped `allClasses` buffer here.
-                subscribe('classes', setAllClasses),
-                subscribe('exams', setExams),
-                subscribe('activities', setActivities),
-                subscribe('chatMessages', setChatMessages, orderBy('timestamp', 'desc'), limit(200)),
-                subscribe('chatMessages', setUnreadChats, where('receiverId', '==', 'admin'), where('isRead', '==', false)),
-                subscribe('notifications', setNotifications, orderBy('createdAt', 'desc'), limit(200)),
-                subscribe('admissionRequests', setAdmissionRequests),
-                subscribe('evaluationForms', setEvaluationForms),
-                subscribe('evaluationSubmissions', setEvaluationSubmissions),
-                subscribe('adminRequests', setAdminRequests),
-                subscribe('leaderboardRules', setLeaderboardRules),
-                subscribe('leaderboardCompletions', setLeaderboardCompletions),
-                subscribe('studentEvaluations', setStudentEvaluations),
-                subscribe('parentFeedbacks', setParentFeedbacks),
-                subscribe('feedbackSettings', setFeedbackSettings),
-                subscribe('gameProgress', setGameProgress)
-            );
-            
-            // On-Demand Heavy Data
-            const currentAttendanceLimit = (activeFeatures.has('evaluation') || activeFeatures.has('star')) ? Math.max(5000, attendanceLimit) : attendanceLimit;
-            if (activeFeatures.has('attendance')) unsubs.push(subscribe('attendance', setAttendance, orderBy('date', 'desc'), limit(currentAttendanceLimit)));
-            if (activeFeatures.has('results')) unsubs.push(subscribe('results', setResults, limit(resultsLimit)));
-            if (activeFeatures.has('activities')) unsubs.push(subscribe('activitySubmissions', setActivitySubmissions));
-            if (activeFeatures.has('quran')) unsubs.push(subscribe('quranRecitations', setQuranRecitations, limit(5000)));
-            if (activeFeatures.has('sunnah')) unsubs.push(
-                subscribe('sunnahRecitations', setSunnahRecitations, limit(5000)),
-                subscribe('sunnahSettings', setSunnahSettings)
-            );
-            
-            // Note: Admins may still need full attendance/results for reports, 
-            // but those should ideally be fetched on-demand in the reports page.
-        }
-
-        return () => unsubs.forEach(u => u());
-        // We intentionally depend on `classesKey` (a stable id+name signature) instead of the
-        // raw `classes` array. `classes` is read inside only to derive student batch class IDs;
-        // keying on the signature prevents a full re-subscribe (and read-cost explosion) on
-        // every realtime class snapshot. Do NOT add `classes` back to this array.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser, allStudentsLimit, allMentorsLimit, allClassesLimit, activeFeatures, attendanceLimit, resultsLimit, activitiesLimit, classesKey]);
-
-    // Separate Effect for Log Pagination (to avoid re-subscribing to everything else)
+    // Log Pagination
     // NOTE: where('classId') + orderBy('timestamp') requires a Firestore composite index.
     // We use where-only queries and sort client-side to avoid this requirement.
+    const logsLimit = has('logs') ? Math.max(2000, logLimit) : logLimit;
+    useLiveQuery(
+        isStudent && cid ? `logEntries|s|${cid}`
+            : (hasAssigned ? `logEntries|m|${assignedKey}`
+                : (isAdminRole ? `logEntries|a|${logsLimit}` : null)),
+        () => (isStudent
+            ? query(col('logEntries'), where('classId', '==', cid))
+            : (isMentor
+                ? query(col('logEntries'), where('classId', 'in', assignedClassIds))
+                : query(col('logEntries'), orderBy('timestamp', 'desc'), limit(logsLimit)))),
+        (data) => setLogEntries([...data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)))
+    );
     useEffect(() => {
-        if (!currentUser) {
-            setLogEntries([]);
-            return;
-        }
+        if (!currentUser || (isMentor && !hasAssigned)) setLogEntries([]);
+    }, [currentUser, isMentor, hasAssigned]);
 
-        let q;
-        const currentLimit = activeFeatures.has('logs') ? Math.max(2000, logLimit) : logLimit;
+    // Derived: merged chat + notification streams (same shape as before)
+    const chatMessages = React.useMemo(() => {
+        if (chatDirectMessages.length === 0 && chatSentMessages.length === 0) return chatClassMessages;
+        const seen = new Set();
+        const merged = [];
+        [chatClassMessages, chatDirectMessages, chatSentMessages].forEach(list => list.forEach(m => {
+            if (seen.has(m.id)) return;
+            seen.add(m.id);
+            merged.push(m);
+        }));
+        return merged;
+    }, [chatClassMessages, chatDirectMessages, chatSentMessages]);
 
-        if (currentUser.role === 'student') {
-            // No orderBy — sort client-side to avoid composite index requirement. 
-            // We must fetch all logs for the class to ensure latest are included, as limit() without orderBy returns random docs.
-            q = query(collection(db, 'logEntries'), where('classId', '==', currentUser.classId));
-        } else if (currentUser.role === 'mentor') {
-            const assignedClassIds = currentUser.assignedClassIds || (currentUser.classId ? [currentUser.classId] : []);
-            if (assignedClassIds.length > 0) {
-                // Fetch all logs for assigned classes to avoid composite index requirement
-                q = query(collection(db, 'logEntries'), where('classId', 'in', assignedClassIds));
-            } else {
-                setLogEntries([]);
-                return;
-            }
-        } else if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
-            // Admin has no where clause, orderBy alone is fine (no composite index needed)
-            q = query(collection(db, 'logEntries'), orderBy('timestamp', 'desc'), limit(currentLimit));
-        }
+    const notifications = React.useMemo(() => {
+        const map = new Map();
+        [notifMain, notifClass, notifSpecific].forEach(list => list.forEach(n => map.set(n.id, n)));
+        const merged = Array.from(map.values());
+        const overlayIds = Object.keys(notifOverlay);
+        if (overlayIds.length === 0) return merged;
+        const addUser = (arr, users) => {
+            const base = arr || [];
+            const missing = users.filter(u => !base.includes(u));
+            return missing.length > 0 ? [...base, ...missing] : base;
+        };
+        return merged.map(n => {
+            const o = notifOverlay[n.id];
+            if (!o) return n;
+            return {
+                ...n,
+                readBy: addUser(n.readBy, o.readBy || []),
+                dismissedBy: o.dismissedBy ? addUser(n.dismissedBy, o.dismissedBy) : n.dismissedBy
+            };
+        });
+    }, [notifMain, notifClass, notifSpecific, notifOverlay]);
 
-        if (!q) return;
-
-        const unsub = onSnapshot(q,
-            (snapshot) => {
-                const data = snapshot.docs
-                    .map(doc => ({ ...doc.data(), id: doc.id }))
-                    // Client-side sort — same result, no index needed
-                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                setLogEntries(data);
-            },
-            (error) => {
-                console.error('[DataContext] logEntries subscription failed:', error.message);
-            }
-        );
-
-        return () => unsub();
-    }, [currentUser, logLimit, activeFeatures]);
-
-    // Individual Mentor Settings computed based on current user
-    useEffect(() => {
-        if (currentUser && currentUser.role === 'mentor') {
-            const personal = allMentorSettings.find(s => s.id === currentUser.id);
-            if (personal) {
-                setMentorSettings(personal);
-            } else {
-                setMentorSettings({ sidebarOrder: [] });
-            }
-        }
-    }, [currentUser, allMentorSettings]);
+    const questions = React.useMemo(() => {
+        if (!isStudent) return allQuestions;
+        if (studentTargetedQuestions.length === 0) return studentClassQuestions;
+        const map = new Map();
+        [...studentClassQuestions, ...studentTargetedQuestions].forEach(q => map.set(q.id, q));
+        return Array.from(map.values());
+    }, [isStudent, allQuestions, studentClassQuestions, studentTargetedQuestions]);
 
     /*
     useEffect(() => {
@@ -679,16 +964,11 @@ export const DataProvider = ({ children }) => {
 
     const markNotificationAsRead = async (notificationId, userId) => {
         if (!notificationId || !userId) return;
-        setNotifications(prev => prev.map(n => {
-            if (n.id === notificationId) {
-                const currentRead = n.readBy || [];
-                return {
-                    ...n,
-                    readBy: currentRead.includes(userId) ? currentRead : [...currentRead, userId]
-                };
-            }
-            return n;
-        }));
+        setNotifOverlay(prev => {
+            const current = prev[notificationId] || {};
+            if ((current.readBy || []).includes(userId)) return prev;
+            return { ...prev, [notificationId]: { ...current, readBy: [...(current.readBy || []), userId] } };
+        });
         try {
             await updateDoc(doc(db, 'notifications', notificationId), {
                 readBy: arrayUnion(userId)
@@ -701,18 +981,12 @@ export const DataProvider = ({ children }) => {
     const markNotificationAsDismissed = async (notificationId, userId) => {
         if (!notificationId || !userId) return;
         // 1. Optimistic local state update for instant UI feedback
-        setNotifications(prev => prev.map(n => {
-            if (n.id === notificationId) {
-                const currentDismissed = n.dismissedBy || [];
-                const currentRead = n.readBy || [];
-                return {
-                    ...n,
-                    dismissedBy: currentDismissed.includes(userId) ? currentDismissed : [...currentDismissed, userId],
-                    readBy: currentRead.includes(userId) ? currentRead : [...currentRead, userId]
-                };
-            }
-            return n;
-        }));
+        setNotifOverlay(prev => {
+            const current = prev[notificationId] || {};
+            const readBy = (current.readBy || []).includes(userId) ? (current.readBy || []) : [...(current.readBy || []), userId];
+            const dismissedBy = (current.dismissedBy || []).includes(userId) ? (current.dismissedBy || []) : [...(current.dismissedBy || []), userId];
+            return { ...prev, [notificationId]: { readBy, dismissedBy } };
+        });
 
         // 2. Persist to Firestore atomically
         try {
@@ -728,11 +1002,16 @@ export const DataProvider = ({ children }) => {
 
 
     // --- Seeding Logic ---
+    // Runs only for admins: previously every user (incl. ~2k students) re-read the whole
+    // classes, settings and evaluationForms collections on every app open just to check
+    // whether seeding was needed.
+    const isAdminUser = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
     useEffect(() => {
+        if (!isAdminUser) return;
         const checkAndSeed = async () => {
             try {
                 // 1. Check classes to log initial connection
-                const classesSnapshot = await getDocs(collection(db, 'classes'));
+                const classesSnapshot = await getDocs(query(collection(db, 'classes'), limit(1)));
                 if (classesSnapshot.empty) {
                     console.log("No classes found. App is ready for first class.");
                 }
@@ -796,7 +1075,7 @@ export const DataProvider = ({ children }) => {
                 }
 
                 // 3. Seed Default Evaluation Form if none exist
-                const formsSnap = await getDocs(collection(db, 'evaluationForms'));
+                const formsSnap = await getDocs(query(collection(db, 'evaluationForms'), limit(1)));
                 if (formsSnap.empty) {
                     console.log("Seeding default evaluation form template...");
                     const defaultEvaluationForm = {
@@ -855,7 +1134,7 @@ export const DataProvider = ({ children }) => {
         };
 
         checkAndSeed();
-    }, []);
+    }, [isAdminUser]);
 
 
     // --- Auth Logic ---
@@ -1145,8 +1424,12 @@ export const DataProvider = ({ children }) => {
     };
 
     // Mentors
-    const addMentor = async (mentor) => await addDoc(collection(db, 'mentors'), mentor);
-    const updateMentor = async (id, updated) => {
+    // Mentor photos/signatures are stored in Storage (URL in the doc) instead of inline base64,
+    // because the mentors collection is listened to by every user.
+    const MENTOR_IMAGE_FIELDS = ['profilePhoto', 'signature'];
+    const addMentor = async (mentor) => await addDoc(collection(db, 'mentors'), await persistInlineImages(mentor, MENTOR_IMAGE_FIELDS, 'mentor-images'));
+    const updateMentor = async (id, changes) => {
+        const updated = await persistInlineImages(changes, MENTOR_IMAGE_FIELDS, 'mentor-images');
         await updateDoc(doc(db, 'mentors', id), updated);
         if (currentUser?.id === id) setCurrentUser(prev => ({ ...prev, ...updated }));
     };
@@ -1236,9 +1519,10 @@ export const DataProvider = ({ children }) => {
     const deleteExam = async (id) => await deleteDoc(doc(db, 'exams', id));
 
     // Questions
-    const addQuestion = async (q) => await addDoc(collection(db, 'questions'), q);
+    const addQuestion = async (q) => await addDoc(collection(db, 'questions'), await persistInlineImages(q, ['image'], 'question-images'));
     const deleteQuestion = async (id) => await deleteDoc(doc(db, 'questions', id));
-    const updateQuestion = async (id, updated) => {
+    const updateQuestion = async (id, changes) => {
+        const updated = await persistInlineImages(changes, ['image'], 'question-images');
         // Need oldQ for logic check? We can just update, and if critical fields change, trigger regrade.
         // For simplicity, we update first.
         const qRef = doc(db, 'questions', id);
@@ -1396,6 +1680,19 @@ export const DataProvider = ({ children }) => {
 
         await batch.commit();
 
+        const overlay = {};
+        (record.records || []).forEach(r => {
+            overlay[`${record.date}_${r.studentId}`] = {
+                date: record.date,
+                studentId: r.studentId,
+                classId: record.classId,
+                status: r.status,
+                mentorId: record.mentorId
+            };
+        });
+        (record.unmarkedStudentIds || []).forEach(studentId => { overlay[`${record.date}_${studentId}`] = null; });
+        overlayAttendanceWrites(overlay);
+
         // Send a notification to the class
         const targetClassId = record.classId || (students.find(s => s.id === record.records[0]?.studentId))?.classId;
         
@@ -1420,12 +1717,15 @@ export const DataProvider = ({ children }) => {
         );
         const snap = await getDocs(q);
         const batch = writeBatch(db);
+        const overlay = {};
         snap.docs.forEach(d => {
             if (studentIds.includes(d.data().studentId)) {
                 batch.delete(d.ref);
+                overlay[d.id] = null;
             }
         });
         await batch.commit();
+        overlayAttendanceWrites(overlay);
     };
 
     const deleteAttendanceRecord = async (date, studentId) => {
@@ -1436,8 +1736,10 @@ export const DataProvider = ({ children }) => {
         );
         const snap = await getDocs(q);
         const batch = writeBatch(db);
-        snap.docs.forEach(d => batch.delete(d.ref));
+        const overlay = {};
+        snap.docs.forEach(d => { batch.delete(d.ref); overlay[d.id] = null; });
         await batch.commit();
+        overlayAttendanceWrites(overlay);
     };
 
     const deleteAllAttendanceForStudentIds = async (studentIds) => {
@@ -1445,6 +1747,9 @@ export const DataProvider = ({ children }) => {
         const toDelete = attendance.filter(r => studentIds.includes(r.studentId));
         toDelete.forEach(r => batch.delete(doc(db, 'attendance', r.id)));
         await batch.commit();
+        const overlay = {};
+        toDelete.forEach(r => { overlay[r.id] = null; });
+        overlayAttendanceWrites(overlay);
     };
 
 
@@ -1452,7 +1757,8 @@ export const DataProvider = ({ children }) => {
     const updateInstitutionSettings = async (newSettings) => {
         // Use { merge: true } to prevent accidental erasure of extra fields 
         // and avoid dependency on potentially stale local state
-        await setDoc(doc(db, 'settings', 'institution'), newSettings, { merge: true });
+        const settingsToSave = await persistInlineImages(newSettings, ['signatureImage'], 'institution');
+        await setDoc(doc(db, 'settings', 'institution'), settingsToSave, { merge: true });
     };
 
     const updateAdminCredentials = async (username, password) => {
@@ -2119,22 +2425,14 @@ export const DataProvider = ({ children }) => {
 
         if (classStudentIds.length === 0) return { studentTotals: {}, totalWorkingDays: 0 };
 
-        // Process in batches of 30 (Firestore 'in' limit)
-        const allRecords = [];
-        for (let i = 0; i < classStudentIds.length; i += 30) {
-            const batchIds = classStudentIds.slice(i, i + 30);
-            const qBatch = query(
-                collection(db, 'attendance'),
-                where('studentId', 'in', batchIds)
-            );
-            const snap = await getDocs(qBatch);
-            allRecords.push(...snap.docs.map(d => d.data()));
-        }
+        // All records for these students, in batches of 30 (Firestore 'in' limit);
+        // served from per-student attendance logs once they are ready.
+        const allRecords = await fetchAttendanceForStudents(classStudentIds, attendanceLogsReady);
 
         // Filter by date in memory
         const filteredRecords = allRecords.filter(r => r.date && r.date >= academicYearStartDate && r.date < firstDayOfNextMonth);
         return processHistoricalRecords(filteredRecords, firstDayOfCurrentMonth, classId);
-    }, [institutionSettings, students, db]);
+    }, [institutionSettings, students, attendanceLogsReady]);
 
     const processHistoricalRecords = (records, firstDayOfCurrentMonth, targetClassId) => {
         const studentTotals = {};
@@ -2184,7 +2482,7 @@ export const DataProvider = ({ children }) => {
         allStudents, 
         
         mentors, addMentor, updateMentor, deleteMentor, deleteMentors,
-        attendance, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds, deleteAttendanceRecord,
+        attendance, attendanceLogsReady, recordAttendance, deleteAttendanceBatch, deleteAllAttendanceForStudentIds, deleteAttendanceRecord,
         subjects, addSubject, updateSubject, deleteSubject, deleteSubjects,
         exams, addExam, updateExam, deleteExam,
         classEssentials, addClassEssential, updateClassEssential, deleteClassEssential,

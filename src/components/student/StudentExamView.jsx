@@ -23,10 +23,13 @@ const StudentExamView = () => {
         const unsubResults = requireFeature('results');
         const unsubActivities = requireFeature('activities');
         const unsubAttendance = requireFeature('attendance');
+        // Students load exam questions only while this screen is open
+        const unsubQuestions = requireFeature('questions');
         return () => {
             unsubResults();
             unsubActivities();
             unsubAttendance();
+            unsubQuestions();
         };
     }, [requireFeature]);
     

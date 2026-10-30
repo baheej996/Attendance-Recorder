@@ -6,12 +6,11 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
-import { db } from '../../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { fetchAttendanceForClass } from '../../utils/attendanceLogs';
 import { useData } from '../../contexts/DataContext';
 
 const FullClassResultModal = ({ isOpen, onClose, classObj, exam, students = [], subjects = [], results = [], attendance = [] }) => {
-    const { currentUser, mentors } = useData();
+    const { currentUser, mentors, attendanceLogsReady } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pass' | 'fail'
     const [fetchedAttendance, setFetchedAttendance] = useState(null);
@@ -36,9 +35,7 @@ const FullClassResultModal = ({ isOpen, onClose, classObj, exam, students = [], 
         const fetchFullClassAttendance = async () => {
             setIsLoadingAtt(true);
             try {
-                const q = query(collection(db, 'attendance'), where('classId', '==', classObj.id));
-                const snap = await getDocs(q);
-                const docs = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+                const docs = await fetchAttendanceForClass(classObj.id, attendanceLogsReady);
                 if (isMounted) setFetchedAttendance(docs);
             } catch (err) {
                 console.error("Error fetching complete class attendance:", err);
@@ -49,7 +46,7 @@ const FullClassResultModal = ({ isOpen, onClose, classObj, exam, students = [], 
 
         fetchFullClassAttendance();
         return () => { isMounted = false; };
-    }, [isOpen, classObj?.id]);
+    }, [isOpen, classObj?.id, attendanceLogsReady]);
 
     // Use fetched attendance if available, otherwise fall back to passed attendance prop
     const effectiveAttendance = fetchedAttendance !== null ? fetchedAttendance : (attendance || []);
