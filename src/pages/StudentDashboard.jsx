@@ -32,6 +32,7 @@ import Help from './Help';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { STUDENT_NAV_ITEMS } from '../config/studentNavItems';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { safeLocalStorage } from '../utils/safeStorage';
 
 const COLORS = ['#10B981', '#EF4444'];
 
@@ -241,7 +242,12 @@ const StudentDashboard = () => {
         activeLiveClass = null; // Hide if day doesn't match or config is incomplete
     }
 
-    const isExamActive = (students || []).find(s => s.id === currentUser?.id)?.activeExamSession !== undefined && (students || []).find(s => s.id === currentUser?.id)?.activeExamSession !== null;
+    // Hide navigation only while this device is on the exam screen. A lock left over from a
+    // refresh/crash (or held by another device) must not strand the student on other pages.
+    const myExamSession = (students || []).find(s => s.id === currentUser?.id)?.activeExamSession;
+    const isExamActive = !!myExamSession
+        && location.pathname.startsWith('/student/exams')
+        && myExamSession.deviceId === safeLocalStorage.getItem('samastha_device_id');
 
     if (!currentUser) return null;
 

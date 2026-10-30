@@ -43,6 +43,17 @@ const StudentExamView = () => {
         return id;
     });
 
+    // Release a session lock this device left behind (page refresh, crash, timer auto-submit)
+    // once no exam is open here. Locks held by other devices are left untouched.
+    const startingExamRef = React.useRef(false);
+    const mySession = (students || []).find(s => s.id === currentUser.id)?.activeExamSession;
+    useEffect(() => {
+        if (!mySession || mySession.deviceId !== deviceId || activeExamId || startingExamRef.current) return;
+        updateStudent(currentUser.id, { activeExamSession: null })
+            .catch(err => console.error('Failed to release exam session lock:', err));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mySession?.deviceId, mySession?.startedAt, activeExamId, deviceId]);
+
     const [timeLeft, setTimeLeft] = useState(null); // in seconds
     // Master Heartbeat: Forces UI re-calculation for scheduling every 10 seconds
     const [tick, setTick] = useState(0);
@@ -269,6 +280,7 @@ const StudentExamView = () => {
         }
 
         // Lock Session in Firestore
+        startingExamRef.current = true;
         await updateStudent(currentUser.id, {
             activeExamSession: {
                 examId,
@@ -282,6 +294,7 @@ const StudentExamView = () => {
         setActiveExamId(examId);
         setSelectedSubjectId(subjectName);
         setShowValidationErrors(false);
+        startingExamRef.current = false;
     };
 
 
